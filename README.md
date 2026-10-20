@@ -25,6 +25,10 @@ Open GHub talks to your mouse directly over Logitech's HID++ 2.0 protocol, the
 same protocol G HUB uses. It needs no G HUB installation and no background
 service, and it runs in about 27 MB of RAM from the system tray.
 
+<p align="center">
+  <img src="docs/screenshots/dpi.png" alt="Open GHub DPI settings for a PRO X SUPERLIGHT" width="820">
+</p>
+
 > [!NOTE]
 > Open GHub is an independent project. It is not affiliated with, endorsed by
 > or supported by Logitech. Logitech, Logitech G, G HUB, LIGHTSPEED and product
@@ -41,6 +45,19 @@ service, and it runs in about 27 MB of RAM from the system tray.
 - **Lightweight:** event-driven with no polling. In the tray no WebView runs, so idle CPU is effectively zero.
 - **Automatic updates:** signed updates from GitHub Releases. You can turn update checks off.
 - **No account, no telemetry:** see the [privacy policy](#privacy-policy).
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/devices.png" alt="Devices page"><p align="center"><b>Devices</b></p></td>
+    <td width="50%"><img src="docs/screenshots/profiles.png" alt="Profiles page with auto-switching"><p align="center"><b>Profiles and auto-switching</b></p></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/onboard-memory.png" alt="On-board memory slots"><p align="center"><b>On-board memory</b></p></td>
+    <td width="50%"><img src="docs/screenshots/onboard-slot-editor.png" alt="Editing an on-board slot"><p align="center"><b>Editing an on-board slot</b></p></td>
+  </tr>
+</table>
 
 ## Supported devices
 
