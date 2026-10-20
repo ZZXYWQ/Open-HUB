@@ -47,7 +47,7 @@ export function SettingsPanel({ device, state, onModeChange }: Props) {
         </PanelSection>
       )}
 
-      {device.features.some((f) => f.id === 0x8100) && <OnboardSection device={device} />}
+      {device.features.some((f) => f.id === 0x8100) && <OnboardSection device={device} supportedDpi={state.dpi?.supported ?? []} />}
 
       <PanelSection title="Device info">
         <dl className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-2 text-[13px]">

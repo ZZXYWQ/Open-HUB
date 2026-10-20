@@ -292,27 +292,145 @@ fn onboard_snapshot(state: State<AppState>, id: String) -> Result<onboard::Snaps
     manager.with_device(&id, |d, t| d.onboard_snapshot(t).map(|(s, _)| s)).map_err(|e| e.to_string())
 }
 
-/// Reads the on-board memory and writes a byte-exact backup (decoded view
-/// plus raw sectors) to `path`. Read-only towards the device.
+/// Writes a backup file: decoded snapshot plus raw sectors (hex).
+fn write_onboard_backup(
+    app_version: &str,
+    path: &std::path::Path,
+    device: &device::Device,
+    snapshot: &onboard::Snapshot,
+    raw: &[onboard::RawSector],
+) -> Result<(), String> {
+    let backup = serde_json::json!({
+        "format": "open-ghub-onboard-backup/1",
+        "app_version": app_version,
+        "created": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0),
+        "device": device.name,
+        "model_ids": device.model_ids.iter().map(|id| format!("{id:04X}")).collect::<Vec<_>>(),
+        "snapshot": snapshot,
+        "sectors": raw,
+    });
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    let bytes = serde_json::to_vec_pretty(&backup).map_err(|e| e.to_string())?;
+    std::fs::write(path, bytes).map_err(|e| format!("could not write {}: {e}", path.display()))
+}
+
+/// Automatic backup taken before every on-board write.
+fn auto_backup_path(app: &AppHandle, device: &device::Device) -> Result<PathBuf, String> {
+    let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let name: String = device.name.chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '_' }).collect();
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("onboard-backups");
+    Ok(dir.join(format!("{name}-{stamp}.json")))
+}
+
+/// G HUB's agent also writes on-board memory; two writers at once could
+/// corrupt a sector, so writes are refused while it runs.
+fn ghub_agent_running() -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        std::process::Command::new("tasklist")
+            .args(["/FI", "IMAGENAME eq lghub_agent.exe", "/NH"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .is_ok_and(|o| String::from_utf8_lossy(&o.stdout).to_ascii_lowercase().contains("lghub_agent.exe"))
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
+const GHUB_RUNNING: &str = "G HUB is running. Quit G HUB (tray icon → Quit) before changing on-board memory, so the two don't write at the same time.";
+
+/// Reads the on-board memory and writes a backup to `path`. Read-only towards the device.
 #[tauri::command(async)]
 fn save_onboard_backup(app: AppHandle, state: State<AppState>, id: String, path: String) -> Result<(), String> {
     let guard = manager(&state)?;
     let manager = guard.as_ref().expect("manager initialised");
-    let (snapshot, raw, name, model_ids) = manager
-        .with_device(&id, |d, t| d.onboard_snapshot(t).map(|(s, r)| (s, r, d.name.clone(), d.model_ids.clone())))
-        .map_err(|e| e.to_string())?;
-    drop(guard);
-    let backup = serde_json::json!({
-        "format": "open-ghub-onboard-backup/1",
-        "app_version": app.package_info().version.to_string(),
-        "created": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0),
-        "device": name,
-        "model_ids": model_ids.iter().map(|id| format!("{id:04X}")).collect::<Vec<_>>(),
-        "snapshot": snapshot,
-        "sectors": raw,
-    });
-    let bytes = serde_json::to_vec_pretty(&backup).map_err(|e| e.to_string())?;
-    std::fs::write(&path, bytes).map_err(|e| format!("could not write {path}: {e}"))
+    manager
+        .with_device(&id, |d, t| {
+            let (snapshot, raw) = d.onboard_snapshot(t)?;
+            write_onboard_backup(&app.package_info().version.to_string(), std::path::Path::new(&path), d, &snapshot, &raw).map_err(hidpp::Error::Other)
+        })
+        .map_err(|e| e.to_string())
+}
+
+#[derive(Serialize)]
+struct OnboardWriteResult {
+    report: onboard::WriteReport,
+    backup_path: String,
+    snapshot: onboard::Snapshot,
+}
+
+/// Backs up the on-board memory, then writes new DPI levels, starting level
+/// and report rate into one user slot, verified by reading back.
+#[tauri::command(async)]
+fn write_onboard_slot(
+    app: AppHandle,
+    state: State<AppState>,
+    id: String,
+    settings: onboard::SlotSettings,
+) -> Result<OnboardWriteResult, String> {
+    if ghub_agent_running() {
+        return Err(GHUB_RUNNING.into());
+    }
+    let guard = manager(&state)?;
+    let manager = guard.as_ref().expect("manager initialised");
+    manager
+        .with_device(&id, |d, t| {
+            let (before, raw) = d.onboard_snapshot(t)?;
+            let backup = auto_backup_path(&app, d).map_err(hidpp::Error::Other)?;
+            write_onboard_backup(&app.package_info().version.to_string(), &backup, d, &before, &raw).map_err(hidpp::Error::Other)?;
+            let report = d.write_slot_settings(t, &settings)?;
+            let (snapshot, _) = d.onboard_snapshot(t)?;
+            Ok(OnboardWriteResult { report, backup_path: backup.display().to_string(), snapshot })
+        })
+        .map_err(|e| e.to_string())
+}
+
+#[derive(Serialize)]
+struct OnboardRestoreResult {
+    sectors_written: usize,
+    backup_path: String,
+    snapshot: onboard::Snapshot,
+}
+
+/// Restores the directory and user profiles from a backup file made for the
+/// same mouse model. The current state is backed up first.
+#[tauri::command(async)]
+fn restore_onboard_backup(app: AppHandle, state: State<AppState>, id: String, path: String) -> Result<OnboardRestoreResult, String> {
+    if ghub_agent_running() {
+        return Err(GHUB_RUNNING.into());
+    }
+    let file: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).map_err(|e| format!("could not read {path}: {e}"))?)
+        .map_err(|e| format!("not a backup file: {e}"))?;
+    if file.get("format").and_then(|f| f.as_str()) != Some("open-ghub-onboard-backup/1") {
+        return Err("not an Open GHub on-board backup".into());
+    }
+    let raw: Vec<onboard::RawSector> =
+        serde_json::from_value(file.get("sectors").cloned().unwrap_or_default()).map_err(|e| format!("backup sectors are unreadable: {e}"))?;
+    let sectors = onboard::restorable_sectors(&raw)?;
+    let backup_models: Vec<String> = serde_json::from_value(file.get("model_ids").cloned().unwrap_or_default()).unwrap_or_default();
+
+    let guard = manager(&state)?;
+    let manager = guard.as_ref().expect("manager initialised");
+    manager
+        .with_device(&id, |d, t| {
+            let models: Vec<String> = d.model_ids.iter().map(|m| format!("{m:04X}")).collect();
+            if !backup_models.is_empty() && !backup_models.iter().any(|m| models.contains(m)) {
+                return Err(hidpp::Error::Other(format!("this backup is for a different mouse ({})", backup_models.join(", "))));
+            }
+            let (before, current_raw) = d.onboard_snapshot(t)?;
+            let backup = auto_backup_path(&app, d).map_err(hidpp::Error::Other)?;
+            write_onboard_backup(&app.package_info().version.to_string(), &backup, d, &before, &current_raw).map_err(hidpp::Error::Other)?;
+            let sectors_written = d.restore_sectors(t, &sectors)?;
+            let (snapshot, _) = d.onboard_snapshot(t)?;
+            Ok(OnboardRestoreResult { sectors_written, backup_path: backup.display().to_string(), snapshot })
+        })
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command(async)]
@@ -403,6 +521,30 @@ async fn install_update(app: AppHandle) -> Result<(), String> {
     updater::install(&app).await
 }
 
+/// Runs `f` on the first device with on-board profiles (CLI diagnostics).
+/// Refuses while G HUB's agent runs, like the app.
+fn onboard_cli(f: impl FnOnce(&device::Device, &hidpp::Transport) -> Result<String, String>) {
+    if ghub_agent_running() {
+        return eprintln!("{GHUB_RUNNING}");
+    }
+    let mut manager = match Manager::new(events::sink()) {
+        Ok(m) => m,
+        Err(e) => return eprintln!("HID init failed: {e}"),
+    };
+    if let Err(e) = manager.scan() {
+        return eprintln!("scan failed: {e}");
+    }
+    let Some(id) = manager.devices().iter().find(|d| d.has(device::feature::ONBOARD_PROFILES)).map(|d| d.id.clone()) else {
+        return eprintln!("no device with on-board profiles found");
+    };
+    let mut f = Some(f);
+    match manager.with_device(&id, |d, t| Ok((f.take().expect("called once"))(d, t))) {
+        Ok(Ok(out)) => println!("{out}"),
+        Ok(Err(e)) => eprintln!("{e}"),
+        Err(e) => eprintln!("{e}"),
+    }
+}
+
 /// `open-ghub --onboard-dump [backup.json]`: read-only. Prints the decoded
 /// on-board profiles; with a path, also writes the raw sectors there.
 fn onboard_dump(backup_path: Option<String>) {
@@ -469,6 +611,34 @@ fn main() {
     // Read-only: dump on-board profile memory as JSON (and raw sectors to a file).
     if let Some(pos) = std::env::args().position(|a| a == "--onboard-dump") {
         return onboard_dump(std::env::args().nth(pos + 1));
+    }
+    // Writes one on-board slot (backup first): --onboard-write <slot> <dpi,dpi,..> <start> <hz> <backup.json>
+    if let Some(pos) = std::env::args().position(|a| a == "--onboard-write") {
+        let a: Vec<String> = std::env::args().skip(pos + 1).take(5).collect();
+        return onboard_cli(|d, t| {
+            let [slot, dpis, start, hz, backup] = a.as_slice() else { return Err("usage: --onboard-write <slot> <dpi,..> <start> <hz> <backup.json>".into()) };
+            let settings = onboard::SlotSettings {
+                slot: slot.parse().map_err(|_| "bad slot")?,
+                dpi_levels: dpis.split(',').map(|v| v.parse().map_err(|_| "bad dpi")).collect::<Result<_, _>>()?,
+                default_index: start.parse().map_err(|_| "bad start index")?,
+                report_rate_hz: hz.parse().map_err(|_| "bad rate")?,
+            };
+            let (snapshot, raw) = d.onboard_snapshot(t).map_err(|e| e.to_string())?;
+            write_onboard_backup(env!("CARGO_PKG_VERSION"), std::path::Path::new(backup), d, &snapshot, &raw)?;
+            let report = d.write_slot_settings(t, &settings).map_err(|e| e.to_string())?;
+            Ok(serde_json::to_string_pretty(&report).unwrap_or_default())
+        });
+    }
+    // Restores user sectors from a backup: --onboard-restore <backup.json>
+    if let Some(pos) = std::env::args().position(|a| a == "--onboard-restore") {
+        let path = std::env::args().nth(pos + 1).unwrap_or_default();
+        return onboard_cli(move |d, t| {
+            let file: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+            let raw: Vec<onboard::RawSector> = serde_json::from_value(file["sectors"].clone()).map_err(|e| e.to_string())?;
+            let sectors = onboard::restorable_sectors(&raw)?;
+            let written = d.restore_sectors(t, &sectors).map_err(|e| e.to_string())?;
+            Ok(format!("restored {written} sector(s)"))
+        });
     }
     // Read-only: print what an import from G HUB would produce, without saving.
     if std::env::args().any(|a| a == "--ghub-profiles") {
@@ -539,6 +709,8 @@ fn main() {
             import_ghub_profiles,
             onboard_snapshot,
             save_onboard_backup,
+            write_onboard_slot,
+            restore_onboard_backup,
             get_app_info,
             set_app_settings,
             check_for_update,

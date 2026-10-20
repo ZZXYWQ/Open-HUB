@@ -44,20 +44,34 @@ feature requests itself.
 - Windows may not show notifications from a build that hasn't been installed;
   the installer (`npm run app:build`) registers the app so they appear.
 
-## On-board memory (read-only)
+## On-board memory
 
-Device settings → **On-board memory** reads the profiles stored inside the
+Device settings → **On-board memory** shows the profiles stored inside the
 mouse (HID++ feature `0x8100`): each user slot's DPI levels and starting level,
-report rate and button bindings, plus the factory profile. **Save backup…**
-writes a byte-exact JSON backup (decoded view and raw hex sectors). Nothing is
-written to the mouse.
+report rate and button bindings, plus the factory profile.
+
+- **Edit** (pencil on a user slot) changes that slot's DPI levels (up to 5),
+  starting level and report rate (125–1000 Hz). The mouse uses these in
+  on-board memory mode, even with Open GHub closed.
+- Every write first saves a full backup to
+  `%APPDATA%\dev.local.openghub\onboard-backups\`, changes only the report
+  rate, DPI indices and DPI values (buttons, lighting, power settings and name
+  stay byte for byte), recomputes the CRC, writes, and reads back to verify.
+  On a mismatch the original sector is written back.
+- **Save backup…** writes a byte-exact JSON backup; **Restore from backup…**
+  writes back the directory and user slots that differ (same mouse model only,
+  current state backed up first).
+- The factory (ROM) profile is never written, and writes are refused while
+  G HUB's agent runs, since it writes on-board memory too.
 
 Layout (the same as libratbag's implementation and G HUB's on-board model):
 sector `0x0000` is the profile directory, user profiles are in `0x0001`…,
 factory profiles in `0x0101`…, and every user sector ends with a big-endian
-CRC-16/CCITT (seed `0xFFFF`). Sector size and profile count come from the
-mouse. `open-ghub.exe --onboard-dump [backup.json]` prints the same data from
-the command line.
+CRC-16/CCITT (seed `0xFFFF`). Sector size and profile count come from the mouse.
+
+Command line: `open-ghub.exe --onboard-dump [backup.json]` (read-only),
+`--onboard-write <slot> <dpi,dpi,..> <start-index> <hz> <backup.json>`,
+`--onboard-restore <backup.json>`.
 
 ## Updates
 

@@ -179,6 +179,28 @@ export interface OnboardSnapshot {
   rom_profiles: OnboardProfile[];
 }
 
+export interface SlotSettings {
+  slot: number;
+  dpi_levels: number[];
+  default_index: number;
+  report_rate_hz: number;
+}
+
+export interface OnboardWriteResult {
+  report: { slot: number; sector: number; bytes_changed: number; unchanged: boolean };
+  backup_path: string;
+  snapshot: OnboardSnapshot;
+}
+
+export interface OnboardRestoreResult {
+  sectors_written: number;
+  backup_path: string;
+  snapshot: OnboardSnapshot;
+}
+
+/** Report rates the on-board format can store. */
+export const ONBOARD_RATES_HZ = [125, 250, 500, 1000];
+
 export const DESKTOP_ID = "desktop";
 export const REPORT_RATES_HZ = [125, 250, 500, 1000, 2000, 4000, 8000];
 
@@ -201,6 +223,10 @@ export const api = {
 
   onboardSnapshot: (id: string) => invoke<OnboardSnapshot>("onboard_snapshot", { id }),
   saveOnboardBackup: (id: string, path: string) => invoke<void>("save_onboard_backup", { id, path }),
+  writeOnboardSlot: (id: string, settings: SlotSettings) =>
+    invoke<OnboardWriteResult>("write_onboard_slot", { id, settings }),
+  restoreOnboardBackup: (id: string, path: string) =>
+    invoke<OnboardRestoreResult>("restore_onboard_backup", { id, path }),
 
   appInfo: () => invoke<AppInfo>("get_app_info"),
   setAppSettings: (settings: AppSettings) => invoke<void>("set_app_settings", { settings }),

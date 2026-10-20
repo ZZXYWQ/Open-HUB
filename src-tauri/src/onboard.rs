@@ -1,29 +1,105 @@
-//! Read-only access to on-board profile memory (HID++ 0x8100).
+//! On-board profile memory (HID++ 0x8100).
 //!
 //! Layout (matches G HUB's onboard_profiles model and libratbag's HID++
 //! implementation): memory is split into sectors. Sector 0x0000 is the
 //! profile directory (4-byte entries: big-endian sector address, enabled
 //! flag, reserved; 0xFFFF ends the list). User profiles live in sectors
-//! 0x0001.., factory (ROM) profiles in 0x0101... Every sector ends with a
-//! big-endian CRC-CCITT (seed 0xFFFF) of the bytes before it.
+//! 0x0001.., factory (ROM) profiles in 0x0101... Every user sector ends with
+//! a big-endian CRC-CCITT (seed 0xFFFF) of the bytes before it.
 //!
-//! Nothing here writes to the device.
+//! Reads have no side effects. Writes ([`Device::write_slot_settings`],
+//! [`Device::restore_sectors`]) only touch user profile sectors and the
+//! directory, change only the bytes Open GHub manages, recompute the CRC and
+//! verify by reading back. Factory (ROM) sectors are never written.
 
-use serde::Serialize;
+use std::time::Duration;
+
+use serde::{Deserialize, Serialize};
 
 use crate::device::{feature::ONBOARD_PROFILES, Device};
-use crate::hidpp::{Result, Transport};
+use crate::hidpp::{Error, Result, Transport};
 
 const DIRECTORY_SECTOR: u16 = 0x0000;
 const ROM_BASE: u16 = 0x0100;
 const DIRECTORY_END: u16 = 0xFFFF;
+/// Committing a sector to flash can take longer than an ordinary request.
+const COMMIT_TIMEOUT: Duration = Duration::from_secs(5);
+/// Report rates the on-board format can store, as a period in milliseconds.
+const STORABLE_RATES_MS: [u8; 4] = [1, 2, 4, 8];
 
 /// Function numbers of feature 0x8100.
 mod func {
     pub const GET_INFO: u8 = 0;
+    pub const SET_ACTIVE_PROFILE: u8 = 3;
     pub const GET_ACTIVE_PROFILE: u8 = 4;
     pub const READ: u8 = 5;
+    pub const WRITE_START: u8 = 6;
+    pub const WRITE_DATA: u8 = 7;
+    pub const WRITE_END: u8 = 8;
     pub const GET_ACTIVE_DPI_INDEX: u8 = 0xB;
+}
+
+/// New DPI levels, starting level and report rate for one user slot.
+#[derive(Clone, Debug, Deserialize)]
+pub struct SlotSettings {
+    pub slot: u8,
+    pub dpi_levels: Vec<u16>,
+    pub default_index: u8,
+    pub report_rate_hz: u32,
+}
+
+/// Result of a verified write.
+#[derive(Clone, Debug, Serialize)]
+pub struct WriteReport {
+    pub slot: u8,
+    pub sector: u16,
+    /// Bytes that differ from what was stored before.
+    pub bytes_changed: usize,
+    /// True when nothing changed, so nothing was written.
+    pub unchanged: bool,
+}
+
+/// Puts `settings` into a copy of a profile sector. Only the report rate,
+/// starting and shift DPI indices and the five DPI values change; buttons,
+/// lighting, power settings and the name are kept byte for byte. The CRC is
+/// recomputed.
+pub fn patch_profile_sector(original: &[u8], settings: &SlotSettings) -> std::result::Result<Vec<u8>, String> {
+    if original.len() < 0x20 {
+        return Err("sector too small for a profile".into());
+    }
+    let levels = &settings.dpi_levels;
+    if levels.is_empty() || levels.len() > 5 {
+        return Err("between 1 and 5 DPI levels are required".into());
+    }
+    if levels.iter().any(|&d| d == 0 || d == 0xFFFF) {
+        return Err("DPI levels must be between 1 and 65534".into());
+    }
+    if usize::from(settings.default_index) >= levels.len() {
+        return Err("the starting level must be one of the DPI levels".into());
+    }
+    let period = (1000 / settings.report_rate_hz.max(1)).min(255) as u8;
+    if !STORABLE_RATES_MS.contains(&period) || 1000 / u32::from(period) != settings.report_rate_hz {
+        return Err(format!(
+            "{} Hz can't be stored on the mouse; use 125, 250, 500 or 1000 Hz",
+            settings.report_rate_hz
+        ));
+    }
+
+    let mut data = original.to_vec();
+    data[0] = period;
+    data[1] = settings.default_index;
+    // Keep the shift level valid for the new number of levels.
+    if usize::from(data[2]) >= levels.len() {
+        data[2] = 0;
+    }
+    for i in 0..5 {
+        let value = levels.get(i).copied().unwrap_or(0);
+        data[3 + 2 * i..5 + 2 * i].copy_from_slice(&value.to_le_bytes());
+    }
+    let n = data.len();
+    let crc = crc_ccitt(&data[..n - 2]);
+    data[n - 2..].copy_from_slice(&crc.to_be_bytes());
+    Ok(data)
 }
 
 pub fn crc_ccitt(data: &[u8]) -> u16 {
@@ -103,7 +179,7 @@ pub struct Snapshot {
 }
 
 /// Raw sectors, for a byte-exact backup file.
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RawSector {
     pub sector: u16,
     /// None for ROM sectors, which carry no CRC.
@@ -206,6 +282,36 @@ fn parse_profile(slot: u8, sector: u16, rom: bool, enabled: bool, data: &[u8], b
     }
 }
 
+fn parse_hex(hex: &str) -> std::result::Result<Vec<u8>, String> {
+    if hex.len() % 2 != 0 || !hex.is_ascii() {
+        return Err("malformed hex in backup".into());
+    }
+    (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).map_err(|e| e.to_string()))
+        .collect()
+}
+
+/// Sectors from a backup that may be written back: the directory and user
+/// profile sectors whose stored CRC is valid. Factory (ROM) sectors are skipped.
+pub fn restorable_sectors(raw: &[RawSector]) -> std::result::Result<Vec<(u16, Vec<u8>)>, String> {
+    let mut out = Vec::new();
+    for s in raw {
+        if s.sector >= ROM_BASE || s.crc_valid != Some(true) {
+            continue;
+        }
+        let data = parse_hex(&s.hex)?;
+        if !sector_crc_ok(&data) {
+            return Err(format!("backup sector 0x{:04x} fails its checksum", s.sector));
+        }
+        out.push((s.sector, data));
+    }
+    if out.is_empty() {
+        return Err("the backup contains no restorable sectors".into());
+    }
+    Ok(out)
+}
+
 impl Device {
     pub fn onboard_info(&self, t: &Transport) -> Result<Info> {
         let r = self.call(t, ONBOARD_PROFILES, func::GET_INFO, &[])?;
@@ -283,6 +389,101 @@ impl Device {
 
         Ok((Snapshot { info, directory_crc_valid, active_profile, active_dpi_index, profiles, rom_profiles }, raw))
     }
+
+    /// Writes one whole sector: start (sector, offset 0, length), 16-byte
+    /// chunks, then end, which commits it to flash.
+    fn write_sector(&self, t: &Transport, sector: u16, data: &[u8]) -> Result<()> {
+        if sector >= ROM_BASE {
+            return Err(Error::Other("refusing to write a factory (ROM) sector".into()));
+        }
+        let [sh, sl] = sector.to_be_bytes();
+        let [ch, cl] = (data.len() as u16).to_be_bytes();
+        self.call(t, ONBOARD_PROFILES, func::WRITE_START, &[sh, sl, 0, 0, ch, cl])?;
+        for chunk in data.chunks(16) {
+            let mut buf = [0xFFu8; 16];
+            buf[..chunk.len()].copy_from_slice(chunk);
+            self.call(t, ONBOARD_PROFILES, func::WRITE_DATA, &buf)?;
+        }
+        self.call_with_timeout(t, ONBOARD_PROFILES, func::WRITE_END, &[], COMMIT_TIMEOUT)?;
+        Ok(())
+    }
+
+    /// Writes `data` to `sector` and reads it back. On a mismatch the
+    /// original bytes are written back and an error explains what happened.
+    fn write_sector_verified(&self, t: &Transport, sector: u16, data: &[u8], original: &[u8]) -> Result<()> {
+        let size = data.len() as u16;
+        let outcome = self.write_sector(t, sector, data).and_then(|()| self.read_sector(t, sector, size));
+        let reason = match outcome {
+            Ok(readback) if readback == data => return Ok(()),
+            Ok(_) => "the mouse stored different bytes than were written".to_string(),
+            Err(e) => e.to_string(),
+        };
+        let rolled_back = self
+            .write_sector(t, sector, original)
+            .and_then(|()| self.read_sector(t, sector, size))
+            .is_ok_and(|back| back == original);
+        Err(Error::Other(if rolled_back {
+            format!("write to sector 0x{sector:04x} failed ({reason}); the original was put back")
+        } else {
+            format!("write to sector 0x{sector:04x} failed ({reason}) and the original couldn't be confirmed; restore from the backup")
+        }))
+    }
+
+    /// Changes one user slot's DPI levels, starting level and report rate.
+    pub fn write_slot_settings(&self, t: &Transport, settings: &SlotSettings) -> Result<WriteReport> {
+        let info = self.onboard_info(t)?;
+        if settings.slot == 0 || settings.slot > info.profile_count {
+            return Err(Error::Other(format!("slot {} doesn't exist (1–{})", settings.slot, info.profile_count)));
+        }
+        let directory = self.read_sector(t, DIRECTORY_SECTOR, info.sector_size)?;
+        if !sector_crc_ok(&directory) {
+            return Err(Error::Other("the profile directory fails its checksum; not writing".into()));
+        }
+        let i = usize::from(settings.slot - 1) * 4;
+        let sector = u16::from_be_bytes([directory[i], directory[i + 1]]);
+        if sector == DIRECTORY_END || sector == DIRECTORY_SECTOR || sector >= ROM_BASE {
+            return Err(Error::Other(format!("slot {} has no user profile sector", settings.slot)));
+        }
+        let original = self.read_sector(t, sector, info.sector_size)?;
+        if !sector_crc_ok(&original) {
+            return Err(Error::Other(format!("slot {} fails its checksum; not writing", settings.slot)));
+        }
+        let patched = patch_profile_sector(&original, settings).map_err(Error::Other)?;
+        let bytes_changed = patched.iter().zip(&original).filter(|(a, b)| a != b).count();
+        if bytes_changed == 0 {
+            return Ok(WriteReport { slot: settings.slot, sector, bytes_changed, unchanged: true });
+        }
+        self.write_sector_verified(t, sector, &patched, &original)?;
+        // If the mouse is running this slot from memory, reload it.
+        let active = self.call(t, ONBOARD_PROFILES, func::GET_ACTIVE_PROFILE, &[])?;
+        if active[1] == settings.slot {
+            let _ = self.call(t, ONBOARD_PROFILES, func::SET_ACTIVE_PROFILE, &[0, settings.slot]);
+        }
+        Ok(WriteReport { slot: settings.slot, sector, bytes_changed, unchanged: false })
+    }
+
+    /// Writes backed-up sectors (directory and user profiles only) back to
+    /// the mouse, skipping those already identical. Returns how many changed.
+    pub fn restore_sectors(&self, t: &Transport, sectors: &[(u16, Vec<u8>)]) -> Result<usize> {
+        let info = self.onboard_info(t)?;
+        if let Some((sector, data)) = sectors.iter().find(|(_, d)| d.len() != usize::from(info.sector_size)) {
+            return Err(Error::Other(format!(
+                "backup sector 0x{sector:04x} is {} bytes but this mouse uses {}",
+                data.len(),
+                info.sector_size
+            )));
+        }
+        let mut written = 0;
+        for (sector, data) in sectors {
+            let current = self.read_sector(t, *sector, info.sector_size)?;
+            if &current == data {
+                continue;
+            }
+            self.write_sector_verified(t, *sector, data, &current)?;
+            written += 1;
+        }
+        Ok(written)
+    }
 }
 
 #[cfg(test)]
@@ -293,6 +494,59 @@ mod tests {
     fn crc_ccitt_false_check_value() {
         // CRC-16/CCITT-FALSE (poly 0x1021, seed 0xFFFF) of "123456789" is 0x29B1.
         assert_eq!(crc_ccitt(b"123456789"), 0x29B1);
+    }
+
+    fn sample_sector() -> Vec<u8> {
+        let mut s = vec![0xFFu8; 255];
+        s[0] = 1;
+        s[1] = 0;
+        s[2] = 0;
+        for (i, dpi) in [1500u16, 400, 800, 0, 0].iter().enumerate() {
+            s[3 + 2 * i..5 + 2 * i].copy_from_slice(&dpi.to_le_bytes());
+        }
+        let crc = crc_ccitt(&s[..253]);
+        s[253..].copy_from_slice(&crc.to_be_bytes());
+        s
+    }
+
+    #[test]
+    fn patch_changes_only_managed_bytes_and_fixes_crc() {
+        let original = sample_sector();
+        let settings = SlotSettings { slot: 1, dpi_levels: vec![800, 1600, 3200], default_index: 1, report_rate_hz: 500 };
+        let patched = patch_profile_sector(&original, &settings).unwrap();
+        assert!(sector_crc_ok(&patched));
+        assert_eq!(patched[0], 2); // 500 Hz = 2 ms
+        assert_eq!(patched[1], 1);
+        assert_eq!(u16::from_le_bytes([patched[3], patched[4]]), 800);
+        assert_eq!(u16::from_le_bytes([patched[7], patched[8]]), 3200);
+        assert_eq!(u16::from_le_bytes([patched[9], patched[10]]), 0);
+        // Everything after the DPI values (color, power, buttons, name) is untouched.
+        assert_eq!(&patched[0x0D..253], &original[0x0D..253]);
+    }
+
+    #[test]
+    fn patch_rejects_unstorable_values() {
+        let original = sample_sector();
+        let rate = SlotSettings { slot: 1, dpi_levels: vec![800], default_index: 0, report_rate_hz: 8000 };
+        assert!(patch_profile_sector(&original, &rate).is_err());
+        let index = SlotSettings { slot: 1, dpi_levels: vec![800], default_index: 1, report_rate_hz: 1000 };
+        assert!(patch_profile_sector(&original, &index).is_err());
+        let count = SlotSettings { slot: 1, dpi_levels: vec![1; 6], default_index: 0, report_rate_hz: 1000 };
+        assert!(patch_profile_sector(&original, &count).is_err());
+    }
+
+    #[test]
+    fn restore_skips_rom_and_invalid_sectors() {
+        let good = sample_sector();
+        let hexed: String = good.iter().map(|b| format!("{b:02x}")).collect();
+        let raw = vec![
+            RawSector { sector: 0x0001, crc_valid: Some(true), hex: hexed.clone() },
+            RawSector { sector: 0x0101, crc_valid: None, hex: hexed.clone() },
+            RawSector { sector: 0x0002, crc_valid: Some(false), hex: hexed },
+        ];
+        let sectors = restorable_sectors(&raw).unwrap();
+        assert_eq!(sectors.len(), 1);
+        assert_eq!(sectors[0].0, 0x0001);
     }
 
     #[test]
