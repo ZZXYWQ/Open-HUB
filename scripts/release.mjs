@@ -14,7 +14,7 @@
 // Keep that file private and backed up: without it, installed copies cannot
 // verify new releases.
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -33,7 +33,13 @@ function fail(message) {
 
 function run(cmd, cmdArgs, opts = {}) {
   console.log(`> ${cmd} ${cmdArgs.join(" ")}`);
-  return execFileSync(cmd, cmdArgs, { cwd: root, stdio: "inherit", shell: process.platform === "win32" && cmd === "npx", ...opts });
+  return execFileSync(cmd, cmdArgs, { cwd: root, stdio: "inherit", ...opts });
+}
+
+/** npm/npx are .cmd scripts on Windows and need a shell; their arguments here are fixed. */
+function runScript(command, opts = {}) {
+  console.log(`> ${command}`);
+  return execSync(command, { cwd: root, stdio: "inherit", ...opts });
 }
 
 function output(cmd, cmdArgs) {
@@ -80,11 +86,11 @@ const cargoPath = path.join(root, "src-tauri", "Cargo.toml");
 const cargo = fs.readFileSync(cargoPath, "utf8");
 fs.writeFileSync(cargoPath, cargo.replace(/^version = "[^"]+"/m, `version = "${version}"`));
 
-run("npm", ["install", "--package-lock-only", "--no-fund", "--no-audit"], { shell: true });
+runScript("npm install --package-lock-only --no-fund --no-audit");
 
 // ---------- signed build ----------
 
-run("npx", ["tauri", "build"], {
+runScript("npx tauri build", {
   env: {
     ...process.env,
     TAURI_SIGNING_PRIVATE_KEY: fs.readFileSync(keyPath, "utf8"),
