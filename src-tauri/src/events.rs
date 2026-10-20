@@ -29,6 +29,9 @@ const WARN_AT: [u8; 2] = [15, 5];
 const REARM_ABOVE: u8 = 20;
 /// HID++ 1.0 receiver notification: device connected or disconnected.
 const DEVICE_CONNECTION: u8 = 0x41;
+/// A device we don't know yet (asleep during the last scan) that starts
+/// talking triggers a rescan, at most this often per receiver slot.
+const UNKNOWN_DEVICE_RESCAN_EVERY: Duration = Duration::from_secs(30);
 /// Feature events worth acting on. Others (e.g. 0x8110 button spy, which
 /// reports every click) are ignored so ordinary use costs nothing.
 const WATCHED_FEATURES: &[u16] = &[
@@ -82,8 +85,14 @@ pub fn start(app: AppHandle) {
 
 fn run(app: AppHandle, rx: std::sync::mpsc::Receiver<Msg>) {
     let mut warned: HashMap<String, u8> = HashMap::new();
-    let mut rescan_at: Option<Instant> = None;
+    // Scan once at startup: when launched minimized nothing else would until a
+    // device event, and this also reapplies the active profile.
+    let mut rescan_at: Option<Instant> = Some(Instant::now() + Duration::from_millis(500));
     let mut refresh_at: HashMap<(CString, u8), Instant> = HashMap::new();
+    let mut unknown_rescanned: HashMap<(CString, u8), Instant> = HashMap::new();
+    // Last report per device and feature. Identical repeats (e.g. G HUB polling
+    // the battery every few seconds) are skipped; real changes still go through.
+    let mut last_report: HashMap<(CString, u8, u8), Vec<u8>> = HashMap::new();
     // First battery read shortly after start, then only on events or the safety interval.
     let mut safety_at = Instant::now() + Duration::from_secs(3);
 
@@ -106,8 +115,18 @@ fn run(app: AppHandle, rx: std::sync::mpsc::Receiver<Msg>) {
                 let now = Instant::now();
                 if report[2] == DEVICE_CONNECTION {
                     rescan_at.get_or_insert(now + RESCAN_DELAY);
+                } else if !is_known(&app, &path, report[1]) {
+                    let key = (path, report[1]);
+                    if unknown_rescanned.get(&key).is_none_or(|t| now.duration_since(*t) >= UNKNOWN_DEVICE_RESCAN_EVERY) {
+                        unknown_rescanned.insert(key, now);
+                        rescan_at.get_or_insert(now + RESCAN_DELAY);
+                    }
                 } else if feature_of(&app, &path, report[1], report[2]).is_some_and(|f| WATCHED_FEATURES.contains(&f)) {
-                    refresh_at.entry((path, report[1])).or_insert(now + DEVICE_REFRESH_DELAY);
+                    let key = (path.clone(), report[1], report[2]);
+                    if last_report.get(&key).map(Vec::as_slice) != Some(&report[3..]) {
+                        last_report.insert(key, report[3..].to_vec());
+                        refresh_at.entry((path, report[1])).or_insert(now + DEVICE_REFRESH_DELAY);
+                    }
                 }
             }
             Ok(Msg::Hid(Event::Gone) | Msg::SystemDevicesChanged) => {
@@ -121,7 +140,9 @@ fn run(app: AppHandle, rx: std::sync::mpsc::Receiver<Msg>) {
         if rescan_at.is_some_and(|t| t <= now) {
             rescan_at = None;
             refresh_at.clear();
+            last_report.clear();
             rescan(&app);
+            crate::apply_to_new_devices(&app);
             update_batteries(&app, &mut warned);
             if logging() {
                 eprintln!("[event] rescanned");
@@ -150,10 +171,20 @@ fn rescan(app: &AppHandle) {
     let state = app.state::<AppState>();
     let Ok(mut guard) = crate::manager(&state) else { return };
     if let Some(manager) = guard.as_mut() {
-        if let Err(e) = manager.scan() {
-            eprintln!("rescan failed: {e}");
+        match manager.scan() {
+            Ok(warnings) if logging() => {
+                eprintln!("[event] scan found {} device(s); warnings: {warnings:?}", manager.devices().len())
+            }
+            Ok(_) => {}
+            Err(e) => eprintln!("rescan failed: {e}"),
         }
     }
+}
+
+fn is_known(app: &AppHandle, path: &CString, index: u8) -> bool {
+    let state = app.state::<AppState>();
+    let Ok(guard) = crate::manager(&state) else { return false };
+    guard.as_ref().is_some_and(|m| m.device_at(path, index).is_some())
 }
 
 /// Feature id behind a feature index on the device at `path`/`index`.

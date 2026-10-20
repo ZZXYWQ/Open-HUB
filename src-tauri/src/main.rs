@@ -9,6 +9,7 @@ mod manager;
 mod profiles;
 mod tray;
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard};
 
@@ -52,11 +53,13 @@ struct ScanResult {
 }
 
 #[tauri::command(async)]
-fn scan_devices(state: State<AppState>) -> Result<ScanResult, String> {
+fn scan_devices(app: AppHandle, state: State<AppState>) -> Result<ScanResult, String> {
     let mut guard = manager(&state)?;
-    let manager = guard.as_mut().expect("manager initialised");
-    let warnings = manager.scan().map_err(|e| e.to_string())?;
-    Ok(ScanResult { devices: summaries(manager), warnings })
+    let warnings = guard.as_mut().expect("manager initialised").scan().map_err(|e| e.to_string())?;
+    drop(guard);
+    apply_to_new_devices(&app);
+    let guard = manager(&state)?;
+    Ok(ScanResult { devices: summaries(guard.as_ref().expect("manager initialised")), warnings })
 }
 
 /// Current devices without rescanning (the event loop keeps them current).
@@ -181,12 +184,63 @@ fn activate(app: &AppHandle, id: &str, reason: &'static str) -> Result<Activatio
             Err(e) => errors.push(format!("{}: {e}", d.name)),
         }
     }
+    if let Ok(mut applied) = app.state::<AppliedDevices>().0.lock() {
+        applied.extend(manager.devices().iter().map(|d| d.id.clone()));
+    }
     drop(guard);
 
     let activation = Activation { id: profile.id, name: profile.name, reason, errors };
     tray::refresh(app);
     let _ = app.emit("profile-activated", activation.clone());
     Ok(activation)
+}
+
+/// Devices the active profile has been applied to since they connected.
+/// A device that disconnects drops out, so it gets the profile again on return.
+#[derive(Default)]
+struct AppliedDevices(Mutex<HashSet<String>>);
+
+/// Applies the active profile to devices that connected (or reconnected)
+/// since it was last applied: after power-cycling the mouse, waking it, or
+/// starting Open GHub. Does nothing until the user has saved settings, so a
+/// first launch never changes the mouse unasked.
+/// Lock order: profiles, then devices, then the applied set.
+fn apply_to_new_devices(app: &AppHandle) {
+    let profiles = app.state::<ProfilesState>();
+    if !profiles.path.exists() {
+        return;
+    }
+    let profile = match lock_store(&profiles) {
+        Ok(store) => match store.get(&store.active_id) {
+            Some(p) => p.clone(),
+            None => return,
+        },
+        Err(_) => return,
+    };
+
+    let devices = app.state::<AppState>();
+    let Ok(guard) = manager(&devices) else { return };
+    let Some(manager) = guard.as_ref() else { return };
+    let present: Vec<String> = manager.devices().iter().map(|d| d.id.clone()).collect();
+    let applied_state = app.state::<AppliedDevices>();
+    let Ok(mut applied) = applied_state.0.lock() else { return };
+    applied.retain(|id| present.contains(id));
+    let new: Vec<String> = present.into_iter().filter(|id| !applied.contains(id)).collect();
+    for id in &new {
+        match manager.with_device(id, |d, t| Ok(profiles::apply_to_device(&profile, d, t))) {
+            Ok(errors) => errors.iter().for_each(|e| eprintln!("reapply {}: {e}", profile.name)),
+            Err(e) => eprintln!("reapply {}: {e}", profile.name),
+        }
+        if events::logging() {
+            eprintln!("[event] applied profile '{}' to {id}", profile.name);
+        }
+        applied.insert(id.clone());
+    }
+    drop(applied);
+    drop(guard);
+    for id in new {
+        let _ = app.emit("device-changed", id);
+    }
 }
 
 /// Switches profiles when another application comes to the foreground,
@@ -339,6 +393,7 @@ fn main() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(tray::BatteryCache::default())
+        .manage(AppliedDevices::default())
         .manage(AppState(Mutex::new(None)))
         .setup(|app| {
             let path = app.path().app_data_dir()?.join("profiles.json");

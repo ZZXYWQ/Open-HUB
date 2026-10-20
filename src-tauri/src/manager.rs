@@ -154,7 +154,11 @@ impl Manager {
                 match Device::probe(transport, id, c.long.clone(), index, c.product_id, c.product.clone()) {
                     Ok(device) => found.push(device),
                     // Empty receiver slots and sleeping devices simply don't answer.
-                    Err(Error::Timeout | Error::Hidpp10(_)) => {}
+                    Err(e @ (Error::Timeout | Error::Hidpp10(_))) => {
+                        if crate::events::logging() {
+                            eprintln!("[scan] {} slot {index:#04x}: {e}", c.product);
+                        }
+                    }
                     Err(e) => warnings.push(format!("{} (slot {index:#04x}): {e}", c.product)),
                 }
             }
