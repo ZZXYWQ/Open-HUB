@@ -1,0 +1,57 @@
+name: Device report
+description: Tell us whether your Logitech device works with Open GHub.
+labels: [device]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Device reports help build the list of supported mice. Reports that a device works are welcome too.
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      placeholder: G502 X PLUS
+    validations:
+      required: true
+  - type: dropdown
+    id: connection
+    attributes:
+      label: Connection
+      options:
+        - LIGHTSPEED receiver
+        - Unifying receiver
+        - USB cable
+        - Bluetooth
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Open GHub version
+      placeholder: 0.1.2
+    validations:
+      required: true
+  - type: checkboxes
+    id: works
+    attributes:
+      label: What works?
+      options:
+        - label: Detected with the correct name
+        - label: Battery level
+        - label: DPI levels
+        - label: Report rate
+        - label: On-board memory (read)
+        - label: On-board memory (edit)
+        - label: Profile auto-switching
+  - type: textarea
+    id: notes
+    attributes:
+      label: What doesn't work?
+      description: Anything wrong or missing, such as the wrong name or a setting that has no effect.
+  - type: textarea
+    id: probe
+    attributes:
+      label: Probe output
+      description: |
+        Output of `open-ghub.exe --probe` (read-only; see the README FAQ). It includes the product ids needed to add your device.
+      render: json

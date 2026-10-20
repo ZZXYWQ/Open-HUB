@@ -1,0 +1,65 @@
+name: Bug report
+description: Something doesn't work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please search [existing issues](https://github.com/abidr/open-ghub/issues) first.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Device settings
+        2. Change DPI level 2 to 1600
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Open GHub version
+      description: Shown in App settings (gear icon).
+      placeholder: 0.1.2
+    validations:
+      required: true
+  - type: input
+    id: mouse
+    attributes:
+      label: Mouse and connection
+      placeholder: PRO X SUPERLIGHT via LIGHTSPEED receiver
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 24H2
+    validations:
+      required: true
+  - type: dropdown
+    id: ghub
+    attributes:
+      label: Was G HUB running at the same time?
+      options:
+        - "No"
+        - "Yes"
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        If you can, attach the log and probe output. The README FAQ explains how
+        ("How do I collect logs for a bug report?").
+      render: text
