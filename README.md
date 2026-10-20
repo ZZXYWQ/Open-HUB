@@ -120,3 +120,14 @@ src-tauri/target/debug/open-ghub.exe --probe   # read-only: print detected devic
   saved to the mouse.
 - Requests are tagged with software id `0xB`, so replies meant for other
   software that has the device open are ignored.
+
+## License
+
+Copyright (C) 2026 Abidur Rahman
+
+Open GHub is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See [LICENSE](LICENSE) for the full text.

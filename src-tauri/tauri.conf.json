@@ -50,6 +50,8 @@
         "installMode": "currentUser",
         "displayLanguageSelector": false
       }
-    }
+    },
+    "license": "GPL-3.0-or-later",
+    "licenseFile": "../LICENSE"
   }
 }
