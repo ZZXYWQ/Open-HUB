@@ -106,6 +106,29 @@ export interface ImportResult {
   view: ProfilesView;
 }
 
+export interface AppSettings {
+  check_updates: boolean;
+  auto_install_updates: boolean;
+}
+
+export interface UpdateInfo {
+  version: string;
+  current_version: string;
+  notes: string | null;
+  date: string | null;
+}
+
+export interface AppInfo {
+  version: string;
+  settings: AppSettings;
+  update: UpdateInfo | null;
+}
+
+export interface UpdateProgress {
+  downloaded: number;
+  total: number | null;
+}
+
 export const DESKTOP_ID = "desktop";
 export const REPORT_RATES_HZ = [125, 250, 500, 1000, 2000, 4000, 8000];
 
@@ -125,6 +148,12 @@ export const api = {
   setAutoSwitch: (enabled: boolean) => invoke<ProfilesView>("set_auto_switch", { enabled }),
   activateProfile: (id: string) => invoke<Activation>("activate_profile", { id }),
   importGhub: () => invoke<ImportResult>("import_ghub_profiles"),
+
+  appInfo: () => invoke<AppInfo>("get_app_info"),
+  setAppSettings: (settings: AppSettings) => invoke<void>("set_app_settings", { settings }),
+  checkForUpdate: () => invoke<UpdateInfo | null>("check_for_update"),
+  /** On Windows the app exits and the installer restarts it when this succeeds. */
+  installUpdate: () => invoke<void>("install_update"),
 };
 
 /** Battery percent, estimated from the coarse level when the device has no exact figure. */

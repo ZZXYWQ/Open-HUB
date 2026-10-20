@@ -44,6 +44,39 @@ feature requests itself.
 - Windows may not show notifications from a build that hasn't been installed;
   the installer (`npm run app:build`) registers the app so they appear.
 
+## Updates
+
+Open GHub updates itself from this repository's GitHub releases using the
+Tauri updater. It checks 30 seconds after start and then every 6 hours, even
+while it's in the tray. When a newer version exists it shows a notification,
+an "Install update" item in the tray menu, and an Install button in
+**App settings** (gear icon). Turning on **Install updates automatically**
+installs new versions without asking. Each installer is signed, and Open GHub
+verifies the signature before installing.
+
+The endpoint is `latest.json` on the latest release:
+`https://github.com/abidr/open-ghub/releases/latest/download/latest.json`.
+
+### Publishing a release
+
+```sh
+npm run release -- 0.1.1 --notes path/to/notes.md            # publish
+npm run release -- 0.1.1 --notes path/to/notes.md --dry-run  # build only
+```
+
+`scripts/release.mjs` checks that `main` is clean and pushed, bumps the version
+everywhere, builds the signed installer, commits and tags `v0.1.1`, pushes, and
+creates the GitHub release with the installer, its `.sig` and `latest.json`.
+It needs the GitHub CLI signed in (`gh auth login`).
+
+**Signing key:** the private key is at `~/.tauri/open-ghub.key` (or set
+`OPEN_GHUB_SIGNING_KEY`). Never commit it, and keep a backup. If it's lost,
+installed copies can't verify new releases and users must reinstall manually.
+The matching public key is in `src-tauri/tauri.conf.json`. Because the bundle
+creates updater artifacts, `npm run app:build` needs the key too
+(`TAURI_SIGNING_PRIVATE_KEY`); use `npm run release -- <version> --dry-run`
+for local installer builds.
+
 ## Device names
 
 Firmware often reports an internal name (a PRO X SUPERLIGHT reports
@@ -102,7 +135,7 @@ Prerequisites on Windows:
 ```sh
 npm install
 npm run app:dev     # run the app with hot reload (starts Vite on :1420)
-npm run app:build   # produce an installer in src-tauri/target/release/bundle
+npm run release -- <version> --notes <file> [--dry-run]   # signed installer + GitHub release
 npm run build       # type-check and build only the front end into dist/
 npx shadcn@latest add <component>   # add more shadcn/ui components
 cd src-tauri && cargo test   # DPI-list decoder tests

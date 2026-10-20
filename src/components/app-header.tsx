@@ -1,10 +1,11 @@
 import { ArrowLeft, MonitorCog, Mouse, RefreshCw } from "lucide-react";
 
+import { AppSettingsDialog } from "@/components/app-settings-dialog";
 import { BatteryGlyph } from "@/components/device-status";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { DeviceState, DeviceSummary, ProfilesView } from "@/lib/api";
+import type { DeviceState, DeviceSummary, ProfilesView, UpdateInfo, UpdateProgress } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export type Section = "devices" | "profiles";
@@ -20,6 +21,13 @@ interface Props {
   onScan: () => void;
   onBack: () => void;
   onModeChange: (host: boolean) => void;
+  updates: {
+    update: UpdateInfo | null;
+    onUpdateFound: (info: UpdateInfo | null) => void;
+    progress: UpdateProgress | null;
+    installing: boolean;
+    onInstall: () => void;
+  };
 }
 
 const headerClass = "grid h-20 shrink-0 grid-cols-[1fr_auto_1fr] items-center border-b border-border px-6";
@@ -47,7 +55,7 @@ function ProfilePicker({ profiles, onActivate }: { profiles: ProfilesView; onAct
   );
 }
 
-export function AppHeader({ section, onSection, profiles, onActivateProfile, device, state, scanning, onScan, onBack, onModeChange }: Props) {
+export function AppHeader({ section, onSection, profiles, onActivateProfile, device, state, scanning, onScan, onBack, onModeChange, updates }: Props) {
   if (!device) {
     return (
       <header className={headerClass}>
@@ -70,6 +78,7 @@ export function AppHeader({ section, onSection, profiles, onActivateProfile, dev
         <div />
         <div className="flex items-center justify-end gap-2">
           {profiles && <ProfilePicker profiles={profiles} onActivate={onActivateProfile} />}
+          <AppSettingsDialog {...updates} />
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="icon-lg" className="size-[42px] rounded-full text-muted-foreground" onClick={onScan} disabled={scanning} aria-label="Rescan devices">

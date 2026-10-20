@@ -141,6 +141,17 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     }
 
     menu.append(&MenuItem::with_id(app, "show", "Show Open GHub", true, None::<&str>)?)?;
+    let update = app.try_state::<crate::updater::UpdateState>().and_then(|s| s.available());
+    match update {
+        Some(info) => menu.append(&MenuItem::with_id(
+            app,
+            "update_install",
+            format!("Install update {}", info.version),
+            true,
+            None::<&str>,
+        )?)?,
+        None => menu.append(&MenuItem::with_id(app, "update_check", "Check for updates", true, None::<&str>)?)?,
+    }
     let autostart = app.autolaunch().is_enabled().unwrap_or(false);
     menu.append(&CheckMenuItem::with_id(app, "autostart", "Start with Windows", true, autostart, None::<&str>)?)?;
     menu.append(&PredefinedMenuItem::separator(app)?)?;
@@ -164,6 +175,8 @@ fn on_menu_event(app: &AppHandle, event: MenuEvent) {
     let id = event.id().as_ref().to_string();
     match id.as_str() {
         "show" => show_main(app),
+        "update_check" => crate::updater::check_from_tray(app),
+        "update_install" => crate::updater::install_from_tray(app),
         "quit" => app.exit(0),
         "auto_switch" => {
             let state = app.state::<ProfilesState>();

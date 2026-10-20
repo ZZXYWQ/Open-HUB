@@ -6,7 +6,16 @@ import { AppHeader, type Section } from "@/components/app-header";
 import { DevicePage } from "@/components/device-page";
 import { HomePage } from "@/components/home-page";
 import { ProfilesPage } from "@/components/profiles-page";
-import { api, type Activation, type DeviceState, type DeviceSummary, type Profile, type ProfilesView } from "@/lib/api";
+import {
+  api,
+  type Activation,
+  type DeviceState,
+  type DeviceSummary,
+  type Profile,
+  type ProfilesView,
+  type UpdateInfo,
+  type UpdateProgress,
+} from "@/lib/api";
 import type { Level } from "@/lib/levels";
 
 // The backend pushes changes; this only catches anything an event missed.
@@ -20,6 +29,10 @@ export default function App() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [update, setUpdate] = useState<UpdateInfo | null>(null);
+  const [updateProgress, setUpdateProgress] = useState<UpdateProgress | null>(null);
+  const [installing, setInstalling] = useState(false);
+  const announcedUpdate = useRef<string | null>(null);
   const busy = useRef(false);
   const scanningRef = useRef(false);
   const openIdRef = useRef(openId);
@@ -150,6 +163,39 @@ export default function App() {
     };
   }, [refreshAllStates, refreshState]);
 
+  /** Downloads and installs the update; the app exits and restarts on success. */
+  const installUpdate = useCallback(async () => {
+    setInstalling(true);
+    setUpdateProgress(null);
+    try {
+      await api.installUpdate();
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setInstalling(false);
+    }
+  }, []);
+
+  // Updates: the backend checks in the background and reports what it finds.
+  useEffect(() => {
+    api.appInfo().then((info) => setUpdate(info.update), () => {});
+    const unlistenAvailable = listen<UpdateInfo>("update-available", (e) => {
+      setUpdate(e.payload);
+      if (announcedUpdate.current === e.payload.version) return;
+      announcedUpdate.current = e.payload.version;
+      toast(`Open GHub ${e.payload.version} is available`, {
+        description: "Install now? Open GHub restarts briefly.",
+        duration: 15000,
+        action: { label: "Install", onClick: () => installUpdate() },
+      });
+    });
+    const unlistenProgress = listen<UpdateProgress>("update-progress", (e) => setUpdateProgress(e.payload));
+    return () => {
+      unlistenAvailable.then((f) => f());
+      unlistenProgress.then((f) => f());
+    };
+  }, [installUpdate]);
+
   // Fallback refresh in case an event was missed.
   useEffect(() => {
     const timer = setInterval(() => {
@@ -236,6 +282,7 @@ export default function App() {
         onScan={scan}
         onBack={() => setOpenId(null)}
         onModeChange={setMode}
+        updates={{ update, onUpdateFound: setUpdate, progress: updateProgress, installing, onInstall: installUpdate }}
       />
       {device && activeProfile ? (
         <DevicePage

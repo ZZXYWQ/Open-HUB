@@ -7,7 +7,9 @@ mod foreground;
 mod hidpp;
 mod manager;
 mod profiles;
+mod settings;
 mod tray;
+mod updater;
 
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -336,6 +338,39 @@ fn import_ghub_profiles(app: AppHandle, state: State<ProfilesState>) -> Result<I
     Ok(ImportResult { summary, view })
 }
 
+// ---------- app settings and updates ----------
+
+#[derive(Serialize)]
+struct AppInfo {
+    version: String,
+    settings: settings::AppSettings,
+    update: Option<updater::UpdateInfo>,
+}
+
+#[tauri::command(async)]
+fn get_app_info(app: AppHandle) -> AppInfo {
+    AppInfo {
+        version: app.package_info().version.to_string(),
+        settings: app.state::<settings::SettingsState>().get(),
+        update: app.state::<updater::UpdateState>().available(),
+    }
+}
+
+#[tauri::command(async)]
+fn set_app_settings(app: AppHandle, settings: settings::AppSettings) -> Result<(), String> {
+    app.state::<settings::SettingsState>().set(settings)
+}
+
+#[tauri::command]
+async fn check_for_update(app: AppHandle) -> Result<Option<updater::UpdateInfo>, String> {
+    updater::check(&app).await
+}
+
+#[tauri::command]
+async fn install_update(app: AppHandle) -> Result<(), String> {
+    updater::install(&app).await
+}
+
 /// `open-ghub --probe`: read-only diagnostic that prints every detected
 /// device and its current settings as JSON, without opening a window.
 fn probe() {
@@ -392,6 +427,8 @@ fn main() {
         .plugin(tauri_plugin_autostart::Builder::new().args(["--minimized"]).build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(updater::UpdateState::default())
         .manage(tray::BatteryCache::default())
         .manage(AppliedDevices::default())
         .manage(AppState(Mutex::new(None)))
@@ -399,10 +436,13 @@ fn main() {
             let path = app.path().app_data_dir()?.join("profiles.json");
             let store = ProfileStore::load(&path);
             app.manage(ProfilesState { store: Mutex::new(store), path });
+            let settings_path = app.path().app_data_dir()?.join("settings.json");
+            app.manage(settings::SettingsState::load(settings_path));
             // Before anything creates the device manager, so HID readers get a live sink.
             events::start(app.handle().clone());
             spawn_profile_watcher(app.handle().clone());
             tray::create(app.handle())?;
+            updater::spawn_background(app.handle().clone());
             // Started by "Start with Windows": stay in the tray.
             if !std::env::args().any(|a| a == "--minimized") {
                 tray::show_main(app.handle());
@@ -428,7 +468,11 @@ fn main() {
             delete_profile,
             set_auto_switch,
             activate_profile,
-            import_ghub_profiles
+            import_ghub_profiles,
+            get_app_info,
+            set_app_settings,
+            check_for_update,
+            install_update
         ])
         .build(tauri::generate_context!())
         .expect("error while building Open GHub")
