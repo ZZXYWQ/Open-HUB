@@ -6,6 +6,7 @@ mod events;
 mod foreground;
 mod hidpp;
 mod manager;
+mod onboard;
 mod profiles;
 mod settings;
 mod tray;
@@ -283,6 +284,37 @@ fn spawn_profile_watcher(app: AppHandle) {
     });
 }
 
+/// Reads the mouse's on-board profile memory. Read-only.
+#[tauri::command(async)]
+fn onboard_snapshot(state: State<AppState>, id: String) -> Result<onboard::Snapshot, String> {
+    let guard = manager(&state)?;
+    let manager = guard.as_ref().expect("manager initialised");
+    manager.with_device(&id, |d, t| d.onboard_snapshot(t).map(|(s, _)| s)).map_err(|e| e.to_string())
+}
+
+/// Reads the on-board memory and writes a byte-exact backup (decoded view
+/// plus raw sectors) to `path`. Read-only towards the device.
+#[tauri::command(async)]
+fn save_onboard_backup(app: AppHandle, state: State<AppState>, id: String, path: String) -> Result<(), String> {
+    let guard = manager(&state)?;
+    let manager = guard.as_ref().expect("manager initialised");
+    let (snapshot, raw, name, model_ids) = manager
+        .with_device(&id, |d, t| d.onboard_snapshot(t).map(|(s, r)| (s, r, d.name.clone(), d.model_ids.clone())))
+        .map_err(|e| e.to_string())?;
+    drop(guard);
+    let backup = serde_json::json!({
+        "format": "open-ghub-onboard-backup/1",
+        "app_version": app.package_info().version.to_string(),
+        "created": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0),
+        "device": name,
+        "model_ids": model_ids.iter().map(|id| format!("{id:04X}")).collect::<Vec<_>>(),
+        "snapshot": snapshot,
+        "sectors": raw,
+    });
+    let bytes = serde_json::to_vec_pretty(&backup).map_err(|e| e.to_string())?;
+    std::fs::write(&path, bytes).map_err(|e| format!("could not write {path}: {e}"))
+}
+
 #[tauri::command(async)]
 fn get_profiles(state: State<ProfilesState>) -> Result<ProfilesView, String> {
     Ok(view(&*lock_store(&state)?))
@@ -371,6 +403,38 @@ async fn install_update(app: AppHandle) -> Result<(), String> {
     updater::install(&app).await
 }
 
+/// `open-ghub --onboard-dump [backup.json]`: read-only. Prints the decoded
+/// on-board profiles; with a path, also writes the raw sectors there.
+fn onboard_dump(backup_path: Option<String>) {
+    let mut manager = match Manager::new(events::sink()) {
+        Ok(m) => m,
+        Err(e) => return eprintln!("HID init failed: {e}"),
+    };
+    if let Err(e) = manager.scan() {
+        return eprintln!("scan failed: {e}");
+    }
+    for d in manager.devices() {
+        if !d.has(device::feature::ONBOARD_PROFILES) {
+            continue;
+        }
+        match manager.with_device(&d.id, |d, t| d.onboard_snapshot(t)) {
+            Ok((snapshot, raw)) => {
+                println!("{}", serde_json::to_string_pretty(&serde_json::json!({ "device": d.name, "snapshot": snapshot })).unwrap_or_default());
+                if let Some(path) = &backup_path {
+                    let backup = serde_json::json!({
+                        "device": d.name, "model_ids": d.model_ids, "info": snapshot.info, "sectors": raw,
+                    });
+                    match std::fs::write(path, serde_json::to_vec_pretty(&backup).unwrap_or_default()) {
+                        Ok(()) => eprintln!("raw sectors written to {path}"),
+                        Err(e) => eprintln!("could not write {path}: {e}"),
+                    }
+                }
+            }
+            Err(e) => eprintln!("{}: {e}", d.name),
+        }
+    }
+}
+
 /// `open-ghub --probe`: read-only diagnostic that prints every detected
 /// device and its current settings as JSON, without opening a window.
 fn probe() {
@@ -401,6 +465,10 @@ fn probe() {
 fn main() {
     if std::env::args().any(|a| a == "--probe") {
         return probe();
+    }
+    // Read-only: dump on-board profile memory as JSON (and raw sectors to a file).
+    if let Some(pos) = std::env::args().position(|a| a == "--onboard-dump") {
+        return onboard_dump(std::env::args().nth(pos + 1));
     }
     // Read-only: print what an import from G HUB would produce, without saving.
     if std::env::args().any(|a| a == "--ghub-profiles") {
@@ -469,6 +537,8 @@ fn main() {
             set_auto_switch,
             activate_profile,
             import_ghub_profiles,
+            onboard_snapshot,
+            save_onboard_backup,
             get_app_info,
             set_app_settings,
             check_for_update,

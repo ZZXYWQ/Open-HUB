@@ -1,3 +1,4 @@
+import { OnboardSection } from "@/components/onboard-section";
 import { PanelSection, PanelShell, StateErrors } from "@/components/panel";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -45,6 +46,8 @@ export function SettingsPanel({ device, state, onModeChange }: Props) {
           </div>
         </PanelSection>
       )}
+
+      {device.features.some((f) => f.id === 0x8100) && <OnboardSection device={device} />}
 
       <PanelSection title="Device info">
         <dl className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-2 text-[13px]">

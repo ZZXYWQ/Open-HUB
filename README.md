@@ -44,6 +44,21 @@ feature requests itself.
 - Windows may not show notifications from a build that hasn't been installed;
   the installer (`npm run app:build`) registers the app so they appear.
 
+## On-board memory (read-only)
+
+Device settings → **On-board memory** reads the profiles stored inside the
+mouse (HID++ feature `0x8100`): each user slot's DPI levels and starting level,
+report rate and button bindings, plus the factory profile. **Save backup…**
+writes a byte-exact JSON backup (decoded view and raw hex sectors). Nothing is
+written to the mouse.
+
+Layout (the same as libratbag's implementation and G HUB's on-board model):
+sector `0x0000` is the profile directory, user profiles are in `0x0001`…,
+factory profiles in `0x0101`…, and every user sector ends with a big-endian
+CRC-16/CCITT (seed `0xFFFF`). Sector size and profile count come from the
+mouse. `open-ghub.exe --onboard-dump [backup.json]` prints the same data from
+the command line.
+
 ## Updates
 
 Open GHub updates itself from this repository's GitHub releases using the

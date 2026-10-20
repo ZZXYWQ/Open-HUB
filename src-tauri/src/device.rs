@@ -328,7 +328,7 @@ impl Device {
         self.features.contains_key(&feature)
     }
 
-    fn call(&self, t: &Transport, feature: u16, function: u8, params: &[u8]) -> Result<Vec<u8>> {
+    pub(crate) fn call(&self, t: &Transport, feature: u16, function: u8, params: &[u8]) -> Result<Vec<u8>> {
         let info = self.features.get(&feature).ok_or(Error::Unsupported(feature))?;
         t.request(self.index, info.index, function, params, TIMEOUT)
     }

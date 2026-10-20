@@ -129,6 +129,56 @@ export interface UpdateProgress {
   total: number | null;
 }
 
+// Mirrors src-tauri/src/onboard.rs (read-only on-board memory view).
+
+export interface OnboardInfo {
+  memory_model: number;
+  profile_format: number;
+  macro_format: number;
+  profile_count: number;
+  rom_profile_count: number;
+  button_count: number;
+  sector_count: number;
+  sector_size: number;
+  mechanical_layout: number;
+  various_info: number;
+}
+
+export interface OnboardButton {
+  raw: number[];
+  kind: string;
+  description: string;
+}
+
+export interface OnboardProfile {
+  slot: number;
+  sector: number;
+  rom: boolean;
+  enabled: boolean;
+  /** null for factory (ROM) profiles, which carry no checksum. */
+  crc_valid: boolean | null;
+  name: string | null;
+  report_rate_hz: number;
+  default_dpi_index: number;
+  shift_dpi_index: number;
+  dpi_levels: number[];
+  angle_snapping: number;
+  powersave_timeout: number;
+  poweroff_timeout: number;
+  buttons: OnboardButton[];
+  gshift_buttons: OnboardButton[];
+}
+
+export interface OnboardSnapshot {
+  info: OnboardInfo;
+  directory_crc_valid: boolean;
+  /** 0 when no on-board profile is active (software mode). */
+  active_profile: number;
+  active_dpi_index: number | null;
+  profiles: OnboardProfile[];
+  rom_profiles: OnboardProfile[];
+}
+
 export const DESKTOP_ID = "desktop";
 export const REPORT_RATES_HZ = [125, 250, 500, 1000, 2000, 4000, 8000];
 
@@ -148,6 +198,9 @@ export const api = {
   setAutoSwitch: (enabled: boolean) => invoke<ProfilesView>("set_auto_switch", { enabled }),
   activateProfile: (id: string) => invoke<Activation>("activate_profile", { id }),
   importGhub: () => invoke<ImportResult>("import_ghub_profiles"),
+
+  onboardSnapshot: (id: string) => invoke<OnboardSnapshot>("onboard_snapshot", { id }),
+  saveOnboardBackup: (id: string, path: string) => invoke<void>("save_onboard_backup", { id, path }),
 
   appInfo: () => invoke<AppInfo>("get_app_info"),
   setAppSettings: (settings: AppSettings) => invoke<void>("set_app_settings", { settings }),
