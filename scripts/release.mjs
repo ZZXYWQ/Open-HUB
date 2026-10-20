@@ -1,27 +1,23 @@
 #!/usr/bin/env node
-// Publishes a signed release that installed copies of Open GHub update to.
+// Starts a release that installed copies of Open GHub update to.
 //
-//   npm run release -- 0.1.1 --notes release-notes.md
-//   npm run release -- 0.1.1 --notes release-notes.md --dry-run
+//   npm run release -- 0.1.2 --notes notes.md
+//   npm run release -- 0.1.2 --notes notes.md --dry-run
 //
-// Bumps the version, builds the signed NSIS installer, commits, tags and
-// pushes, then creates the GitHub release with the installer, its signature
-// and latest.json (the updater endpoint in tauri.conf.json points at the
-// latest release's latest.json). --dry-run stops after building and writing
-// the release files, without committing, pushing or publishing.
-//
-// Signing key: OPEN_GHUB_SIGNING_KEY (path), default ~/.tauri/open-ghub.key.
-// Keep that file private and backed up: without it, installed copies cannot
-// verify new releases.
+// Bumps the version everywhere, copies the notes to release-notes/v<version>.md,
+// commits, tags v<version> and pushes. The Release workflow
+// (.github/workflows/release.yml) then builds the app on GitHub, has SignPath
+// code-sign the app and installer, adds the updater signature and latest.json,
+// and publishes the GitHub release. --dry-run bumps the files but doesn't
+// commit, tag or push; revert with `git checkout .`.
 
 import { execFileSync, execSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 
 const root = path.resolve(import.meta.dirname, "..");
 const args = process.argv.slice(2);
-const version = args.find((a) => !a.startsWith("--"));
+const version = args.find((a) => !a.startsWith("--") && args[args.indexOf(a) - 1] !== "--notes");
 const notesIndex = args.indexOf("--notes");
 const notesFile = notesIndex >= 0 ? args[notesIndex + 1] : null;
 const dryRun = args.includes("--dry-run");
@@ -36,7 +32,7 @@ function run(cmd, cmdArgs, opts = {}) {
   return execFileSync(cmd, cmdArgs, { cwd: root, stdio: "inherit", ...opts });
 }
 
-/** npm/npx are .cmd scripts on Windows and need a shell; their arguments here are fixed. */
+/** npm is a .cmd script on Windows and needs a shell; its arguments here are fixed. */
 function runScript(command, opts = {}) {
   console.log(`> ${command}`);
   return execSync(command, { cwd: root, stdio: "inherit", ...opts });
@@ -46,19 +42,10 @@ function output(cmd, cmdArgs) {
   return execFileSync(cmd, cmdArgs, { cwd: root, encoding: "utf8" }).trim();
 }
 
-function ghPath() {
-  const installed = "C:/Program Files/GitHub CLI/gh.exe";
-  return fs.existsSync(installed) ? installed : "gh";
-}
-
 // ---------- checks ----------
 
 if (!version || !/^\d+\.\d+\.\d+$/.test(version)) fail("usage: npm run release -- <x.y.z> --notes <file> [--dry-run]");
 if (!notesFile || !fs.existsSync(notesFile)) fail("pass --notes <file> with the release notes (Markdown)");
-const notes = fs.readFileSync(notesFile, "utf8").trim();
-
-const keyPath = process.env.OPEN_GHUB_SIGNING_KEY || path.join(os.homedir(), ".tauri", "open-ghub.key");
-if (!fs.existsSync(keyPath)) fail(`signing key not found at ${keyPath}`);
 
 const tag = `v${version}`;
 if (!dryRun) {
@@ -68,7 +55,6 @@ if (!dryRun) {
   if (output("git", ["rev-parse", "HEAD"]) !== output("git", ["rev-parse", "origin/main"])) fail("main is not in sync with origin/main");
   if (output("git", ["tag", "--list", tag])) fail(`tag ${tag} already exists`);
 }
-const slug = output("git", ["remote", "get-url", "origin"]).replace(/^.*github\.com[:/]/, "").replace(/\.git$/, "");
 
 // ---------- version bump ----------
 
@@ -87,58 +73,29 @@ const cargo = fs.readFileSync(cargoPath, "utf8");
 fs.writeFileSync(cargoPath, cargo.replace(/^version = "[^"]+"/m, `version = "${version}"`));
 
 runScript("npm install --package-lock-only --no-fund --no-audit");
+// Rewrites Cargo.lock with the new package version without building.
+run("cargo", ["metadata", "--format-version", "1", "--offline", "--manifest-path", "src-tauri/Cargo.toml"], { stdio: "ignore" });
 
-// ---------- signed build ----------
-
-runScript("npx tauri build", {
-  env: {
-    ...process.env,
-    TAURI_SIGNING_PRIVATE_KEY: fs.readFileSync(keyPath, "utf8"),
-    TAURI_SIGNING_PRIVATE_KEY_PASSWORD: process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD ?? "",
-  },
-});
-
-const bundleDir = path.join(root, "src-tauri", "target", "release", "bundle", "nsis");
-const builtName = `${conf.productName}_${version}_x64-setup.exe`;
-const built = path.join(bundleDir, builtName);
-if (!fs.existsSync(built) || !fs.existsSync(`${built}.sig`)) fail(`signed installer not found: ${built}(.sig)`);
-
-// GitHub replaces spaces in asset names, so publish under a name without them.
-const assetName = builtName.replace(/ /g, "-");
-const outDir = path.join(root, "src-tauri", "target", "release", "publish", tag);
-fs.mkdirSync(outDir, { recursive: true });
-const installer = path.join(outDir, assetName);
-fs.copyFileSync(built, installer);
-fs.copyFileSync(`${built}.sig`, `${installer}.sig`);
-
-const latest = {
-  version,
-  notes,
-  pub_date: new Date().toISOString(),
-  platforms: {
-    "windows-x86_64": {
-      signature: fs.readFileSync(`${built}.sig`, "utf8").trim(),
-      url: `https://github.com/${slug}/releases/download/${tag}/${assetName}`,
-    },
-  },
-};
-const latestPath = path.join(outDir, "latest.json");
-fs.writeFileSync(latestPath, JSON.stringify(latest, null, 2) + "\n");
-console.log(`\nRelease files in ${outDir}`);
+const notesDir = path.join(root, "release-notes");
+fs.mkdirSync(notesDir, { recursive: true });
+const notesPath = path.join(notesDir, `${tag}.md`);
+if (path.resolve(notesFile) !== notesPath) fs.copyFileSync(notesFile, notesPath);
 
 if (dryRun) {
-  console.log("Dry run: version bumped and installer built; nothing committed, pushed or published.");
+  console.log(`Dry run: files bumped to ${version}; nothing committed, tagged or pushed.`);
   process.exit(0);
 }
 
-// ---------- commit, tag, publish ----------
+// ---------- commit, tag, push ----------
 
-run("git", ["add", "package.json", "package-lock.json", "src-tauri/Cargo.toml", "src-tauri/Cargo.lock", "src-tauri/tauri.conf.json"]);
+run("git", [
+  "add", "package.json", "package-lock.json", "src-tauri/Cargo.toml", "src-tauri/Cargo.lock",
+  "src-tauri/tauri.conf.json", path.relative(root, notesPath),
+]);
 run("git", ["commit", "-m", `Release ${tag}`]);
 run("git", ["tag", "-a", tag, "-m", `Open GHub ${version}`]);
 run("git", ["push", "origin", "main", tag]);
-run(ghPath(), [
-  "release", "create", tag, installer, `${installer}.sig`, latestPath,
-  "--repo", slug, "--title", `Open GHub ${version}`, "--notes-file", notesFile,
-]);
-console.log(`\nPublished ${tag}. Installed copies will offer it on their next update check.`);
+
+const slug = output("git", ["remote", "get-url", "origin"]).replace(/^.*github\.com[:/]/, "").replace(/\.git$/, "");
+console.log(`\nPushed ${tag}. The Release workflow builds, signs and publishes it:`);
+console.log(`https://github.com/${slug}/actions/workflows/release.yml`);

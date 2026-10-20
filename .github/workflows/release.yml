@@ -1,0 +1,184 @@
+# Builds, code-signs (SignPath) and publishes a release when a version tag is pushed.
+#
+#   npm run release -- 0.1.2 --notes notes.md   (bumps, tags v0.1.2 and pushes;
+#                                                this workflow does the rest)
+#
+# Signing is skipped until the SignPath repository variables below are set, so
+# releases still work (unsigned) before the SignPath project is approved.
+#
+# Secrets:   TAURI_SIGNING_PRIVATE_KEY (+ optional TAURI_SIGNING_PRIVATE_KEY_PASSWORD)
+#            SIGNPATH_API_TOKEN
+# Variables: SIGNPATH_ORGANIZATION_ID, SIGNPATH_PROJECT_SLUG, SIGNPATH_SIGNING_POLICY_SLUG
+
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      SIGN: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version from tag
+        id: version
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          conf=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          if [ "$version" != "$conf" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match tauri.conf.json version $conf" >&2
+            exit 1
+          fi
+          notes="release-notes/v$version.md"
+          [ -f "$notes" ] || { echo "Missing $notes" >&2; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "notes=$notes" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app (no installer yet)
+        run: npx tauri build --no-bundle
+
+      # ---- Round 1: sign the app executable that goes inside the installer ----
+      - name: Upload unsigned app
+        if: env.SIGN == 'true'
+        id: upload-app
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-app
+          path: src-tauri/target/release/open-ghub.exe
+          if-no-files-found: error
+
+      - name: Sign app (SignPath)
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: app-exe
+          github-artifact-id: ${{ steps.upload-app.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed-app
+
+      - name: Use signed app
+        if: env.SIGN == 'true'
+        shell: bash
+        run: cp signed-app/open-ghub.exe src-tauri/target/release/open-ghub.exe
+
+      # Patching would rewrite (and invalidate) the signed executable. Only NSIS
+      # is shipped, so the updater doesn't need the bundle-type marker.
+      - name: Build installer
+        run: npx tauri bundle --bundles nsis --no-binary-patching
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Locate installer
+        id: installer
+        shell: bash
+        run: |
+          file="src-tauri/target/release/bundle/nsis/Open GHub_${{ steps.version.outputs.version }}_x64-setup.exe"
+          [ -f "$file" ] || { echo "Installer not found: $file" >&2; exit 1; }
+          mkdir -p unsigned-installer
+          cp "$file" unsigned-installer/open-ghub-setup.exe
+          echo "path=unsigned-installer/open-ghub-setup.exe" >> "$GITHUB_OUTPUT"
+
+      # ---- Round 2: sign the installer ----
+      - name: Upload unsigned installer
+        if: env.SIGN == 'true'
+        id: upload-installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-installer
+          path: unsigned-installer/open-ghub-setup.exe
+          if-no-files-found: error
+
+      - name: Sign installer (SignPath)
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: installer
+          github-artifact-id: ${{ steps.upload-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed-installer
+
+      - name: Pick final installer
+        id: final
+        shell: bash
+        run: |
+          if [ "$SIGN" = "true" ]; then
+            echo "path=signed-installer/open-ghub-setup.exe" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::SignPath is not configured; publishing an unsigned installer."
+            echo "path=${{ steps.installer.outputs.path }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify Authenticode signature
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: |
+          foreach ($f in @("signed-installer/open-ghub-setup.exe", "src-tauri/target/release/open-ghub.exe")) {
+            $sig = Get-AuthenticodeSignature $f
+            Write-Host "$f : $($sig.Status) $($sig.SignerCertificate.Subject)"
+            if ($sig.Status -ne 'Valid') { throw "$f is not validly signed" }
+          }
+
+      # The updater signature must cover the final (signed) installer bytes.
+      - name: Updater signature and latest.json
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: >
+          node scripts/update-manifest.mjs
+          --installer "${{ steps.final.outputs.path }}"
+          --version "${{ steps.version.outputs.version }}"
+          --notes "${{ steps.version.outputs.notes }}"
+          --repo "${{ github.repository }}"
+          --out publish
+
+      - name: Publish GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="${{ steps.version.outputs.version }}"
+          gh release create "v$v" \
+            "publish/Open-GHub_${v}_x64-setup.exe" \
+            "publish/Open-GHub_${v}_x64-setup.exe.sig" \
+            publish/latest.json \
+            --title "Open GHub $v" \
+            --notes-file "${{ steps.version.outputs.notes }}"

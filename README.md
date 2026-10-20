@@ -89,22 +89,70 @@ The endpoint is `latest.json` on the latest release:
 ### Publishing a release
 
 ```sh
-npm run release -- 0.1.1 --notes path/to/notes.md            # publish
-npm run release -- 0.1.1 --notes path/to/notes.md --dry-run  # build only
+npm run release -- 0.1.2 --notes path/to/notes.md            # bump, tag, push
+npm run release -- 0.1.2 --notes path/to/notes.md --dry-run  # bump files only
 ```
 
 `scripts/release.mjs` checks that `main` is clean and pushed, bumps the version
-everywhere, builds the signed installer, commits and tags `v0.1.1`, pushes, and
-creates the GitHub release with the installer, its `.sig` and `latest.json`.
-It needs the GitHub CLI signed in (`gh auth login`).
+everywhere, saves the notes as `release-notes/v0.1.2.md`, then commits, tags
+`v0.1.2` and pushes. Pushing the tag starts the
+[Release workflow](.github/workflows/release.yml) on GitHub-hosted runners:
 
-**Signing key:** the private key is at `~/.tauri/open-ghub.key` (or set
-`OPEN_GHUB_SIGNING_KEY`). Never commit it, and keep a backup. If it's lost,
-installed copies can't verify new releases and users must reinstall manually.
-The matching public key is in `src-tauri/tauri.conf.json`. Because the bundle
-creates updater artifacts, `npm run app:build` needs the key too
-(`TAURI_SIGNING_PRIVATE_KEY`); use `npm run release -- <version> --dry-run`
-for local installer builds.
+1. builds the app from the tagged source,
+2. has SignPath code-sign `open-ghub.exe` (after a maintainer approves it),
+3. builds the NSIS installer around the signed exe and has SignPath sign it,
+4. signs the final installer for the updater and writes `latest.json`
+   ([scripts/update-manifest.mjs](scripts/update-manifest.mjs)),
+5. publishes the GitHub release with the installer, its `.sig` and `latest.json`.
+
+Until the SignPath variables are set, the workflow skips steps 2-3 and
+publishes an unsigned installer.
+
+Repository settings the workflow needs (Settings, Secrets and variables, Actions):
+
+| Name | Kind | Value |
+| --- | --- | --- |
+| `TAURI_SIGNING_PRIVATE_KEY` | secret | contents of the updater key `~/.tauri/open-ghub.key` |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | secret | the key's password (leave unset if none) |
+| `SIGNPATH_API_TOKEN` | secret | API token of a SignPath CI user that may submit signing requests |
+| `SIGNPATH_ORGANIZATION_ID` | variable | SignPath organization ID |
+| `SIGNPATH_PROJECT_SLUG` | variable | SignPath project slug, e.g. `open-ghub` |
+| `SIGNPATH_SIGNING_POLICY_SLUG` | variable | `release-signing` |
+
+**Updater key:** the matching public key is in `src-tauri/tauri.conf.json`.
+Never commit the private key, and keep a backup. If it's lost, installed copies
+can't verify new releases and users must reinstall manually.
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io),
+certificate by [SignPath Foundation](https://signpath.org).
+
+Windows releases are built from this repository's source by GitHub Actions and
+signed through SignPath. Only the release workflow can submit signing requests,
+and every release-signing request is approved by hand. The SignPath artifact
+configurations are in [.signpath/artifact-configurations](.signpath/artifact-configurations).
+
+**Team roles**
+
+- Committers and reviewers: [Abidur Rahman](https://github.com/abidr)
+- Approvers: [Abidur Rahman](https://github.com/abidr)
+
+All team members use multi-factor authentication on GitHub and SignPath.
+
+**Privacy policy**
+
+This program will not transfer any information to other networked systems
+unless specifically requested by the user or the person installing or
+operating it, with one exception: the update check. About 30 seconds after
+start and then every 6 hours, Open GHub downloads `latest.json` from this
+repository's GitHub releases, and when you install an update it downloads the
+installer from the same release. GitHub receives the usual request information
+(such as your IP address) under the
+[GitHub Privacy Statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
+Turn the update check off in **App settings** (gear icon) under
+**Check for updates automatically**. The installer shows this notice before
+installing. Open GHub has no accounts, telemetry, analytics or crash reporting.
 
 ## Device names
 

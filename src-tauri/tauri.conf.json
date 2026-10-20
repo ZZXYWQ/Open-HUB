@@ -52,7 +52,7 @@
       }
     },
     "license": "GPL-3.0-or-later",
-    "licenseFile": "../LICENSE",
+    "licenseFile": "../installer/license-and-privacy.txt",
     "createUpdaterArtifacts": true
   },
   "plugins": {

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SignPath artifact configuration "installer": the NSIS installer, uploaded by
+     the Release workflow as a GitHub artifact (a ZIP holding open-ghub-setup.exe).
+     The app executable inside it was already signed with "app-exe". -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="open-ghub-setup.exe" product-name="Open GHub">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>
