@@ -28,10 +28,11 @@ pub struct SettingsState {
 
 impl SettingsState {
     pub fn load(path: PathBuf) -> Self {
-        let settings = std::fs::read(&path)
+        let mut settings: AppSettings = std::fs::read(&path)
             .ok()
             .and_then(|bytes| serde_json::from_slice(&bytes).ok())
             .unwrap_or_default();
+        settings.auto_install_updates = false;
         Self { settings: Mutex::new(settings), path }
     }
 
@@ -44,7 +45,8 @@ impl SettingsState {
     }
 
     /// Replaces the settings and writes them via a temporary file.
-    pub fn set(&self, settings: AppSettings) -> Result<(), String> {
+    pub fn set(&self, mut settings: AppSettings) -> Result<(), String> {
+        settings.auto_install_updates = false;
         write_atomic(&self.path, &settings).map_err(|e| format!("could not save settings: {e}"))?;
         *self.lock()? = settings;
         Ok(())
@@ -58,4 +60,14 @@ fn write_atomic(path: &Path, settings: &AppSettings) -> std::io::Result<()> {
     let tmp = path.with_extension("json.tmp");
     std::fs::write(&tmp, serde_json::to_vec_pretty(settings)?)?;
     std::fs::rename(tmp, path)
+}
+
+#[cfg(test)]mod tests{
+ use super::*;
+ #[test]fn legacy_auto_install_is_disabled_on_load_and_save(){
+  let dir=std::env::temp_dir().join(format!("open-hub-update-settings-{}",std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));std::fs::create_dir(&dir).unwrap();let path=dir.join("settings.json");
+  std::fs::write(&path,br#"{"check_updates":true,"auto_install_updates":true}"#).unwrap();let state=SettingsState::load(path.clone());assert!(state.get().check_updates);assert!(!state.get().auto_install_updates);
+  state.set(AppSettings{check_updates:false,auto_install_updates:true}).unwrap();let saved:AppSettings=serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();assert!(!saved.check_updates&&!saved.auto_install_updates);
+  std::fs::remove_file(path).unwrap();std::fs::remove_dir(dir).unwrap();
+ }
 }

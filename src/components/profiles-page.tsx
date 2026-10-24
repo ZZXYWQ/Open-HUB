@@ -1,3 +1,4 @@
+import {compxModel,compxBrand,type CompxBrand} from '@/lib/compx';
 import {AtkProfileImport} from '@/components/atk-profile-import';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from "@/components/ui/dialog";
 import {BrandProfileImports} from '@/components/brand-profile-imports';
@@ -47,11 +48,11 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
   const [icueImport,setIcueImport]=useState(false);
   const [ggImport,setGgImport]=useState(false);
   const [editing, setEditing] = useState<Profile | null>(null);
-  const brandKey=(p:Profile)=>p.sino?'sino:'+p.sino.model.brand:String(profileVendor(p));
-  const brandLabel=(v:string)=>v.startsWith('sino:')?v.slice(5):brandName(v==='null'?null:Number(v));
+  const brandKey=(p:Profile)=>p.sino?'sino:'+p.sino.model.brand:p.multi&&compxModel(p.multi.vendor,p.multi.product)?'compx:'+compxModel(p.multi.vendor,p.multi.product)!.brand:String(profileVendor(p));
+  const brandLabel=(v:string)=>v.startsWith('sino:')?v.slice(5):v.startsWith('compx:')?compxBrand(v.slice(6)):brandName(v==='null'?null:Number(v));
   const [importChooser,setImportChooser]=useState(false);
-  const chooseImport=(source:string,models:SinoModel[])=>{setImportChooser(false);setImportModels(models);if(source==='synapse')setSynapsePreview(true);else if(source==='icue')setIcueImport(true);else if(source==='gg')setGgImport(true);else if(source==='atk')setAtkImport(true);else setImportSource(source);};
-  const [atkImport,setAtkImport]=useState(false);
+  const chooseImport=(source:string,models:SinoModel[])=>{setImportChooser(false);setImportModels(models);if(source==='synapse')setSynapsePreview(true);else if(source==='icue')setIcueImport(true);else if(source==='gg')setGgImport(true);else if(source==='atk'||source==='vxe'||source==='vgn')setAtkImport(source);else setImportSource(source);};
+  const [atkImport,setAtkImport]=useState<CompxBrand|null>(null);
   const [importModels,setImportModels]=useState<SinoModel[]>([]);
   const [importSource,setImportSource]=useState<string|null>(null),[vendor,setVendor]=useState('all');
   const exportPack=async()=>{try{const path=await save({defaultPath:'Open-HUB-配置包.json',filters:[{name:'Open HUB 配置包',extensions:['json']}]});if(path){await api.exportProfilePack(path,view.profiles.filter(p=>vendor==='all'||brandKey(p)===vendor));toast.success('配置包已导出');}}catch(e){toast.error(String(e));}};
@@ -113,7 +114,7 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
               </div>
 
               <div className="flex flex-wrap gap-1.5">
-                <Badge variant="outline">{p.sino?.model.brand??brandName(profileVendor(p))}</Badge>
+                <Badge variant="outline">{p.sino?.model.brand??brandName(profileVendor(p),p.target_model??p.multi?.product)}</Badge>
                 {p.sino&&<Badge variant="outline">完整按键 / {p.sino.macros.length} 个已记录宏 / {p.sino.model.firmware}</Badge>}
                 {p.mchose_board!=null&&<Badge>迈从板载 {p.mchose_board+1}</Badge>}
                 {p.levels.map((l, i) => (
@@ -162,7 +163,7 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
         </DialogContent>
       </Dialog>
       <ProfileImportDialog key={importSource??'closed'} devices={devices} models={importModels} source={importSource} onClose={()=>setImportSource(null)} onDone={()=>toast.success('配置已导入，可按品牌查看并手动应用')}/>
-      {atkImport&&<AtkProfileImport devices={devices} onClose={()=>setAtkImport(false)} onSave={onSave}/>}
+      {atkImport&&<AtkProfileImport brand={atkImport} devices={devices} onClose={()=>setAtkImport(null)} onSave={onSave}/>}
       {synapsePreview&&<SynapsePreview onClose={()=>setSynapsePreview(false)}/>}
       {icueImport&&<VendorProfileImport kind="icue" onClose={()=>setIcueImport(false)} onSave={onSave}/>}
       {ggImport&&<VendorProfileImport kind="gg" onClose={()=>setGgImport(false)} onSave={onSave}/>}

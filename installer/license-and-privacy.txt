@@ -1,21 +1,34 @@
-OPEN GHUB - PRIVACY NOTICE
-==========================
+OPEN HUB - EXPERIMENTAL SOFTWARE / PRIVACY NOTICE
+=================================================
 
-Open GHub runs on your computer and has no account, telemetry, analytics or
-crash reporting. Your profiles and settings stay in your user folder.
+Based on Open GHub by Abidur Rahman, under GPL-3.0-or-later.
+This independent experimental fork is not endorsed by the upstream author
+or by mouse manufacturers. Only listed models/functions are implemented;
+simulated tests do not establish physical-device compatibility.
 
-The only network access is the update check. About 30 seconds after start and
-then every 6 hours, Open GHub downloads
-https://github.com/abidr/open-ghub/releases/latest/download/latest.json from
-GitHub, and when you install an update it downloads the installer from the
-same GitHub release. GitHub receives the usual request information (such as
-your IP address) under the GitHub Privacy Statement:
+Open HUB has no account, telemetry, analytics or crash reporting. Profiles
+and preferences remain in your Windows user folder. Mouse control, audio
+levels and screen-color sampling are processed locally.
+
+If enabled, update discovery reads this fork's public GitHub feed about
+30 seconds after launch and every 6 hours:
+https://raw.githubusercontent.com/ZZXYWQ/Open-HUB/main/updates/latest.json
+You choose whether to download, and separately whether to install/restart.
+Installers come only from https://github.com/ZZXYWQ/Open-HUB/releases .
+GitHub receives ordinary request information such as your IP address:
 https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement
+Automatic checks can be disabled in the gear menu. Update packages have
+an independent version-bound integrity signature. This experimental EXE
+does not have Windows Authenticode signing or upstream SignPath certification.
 
-You can turn the update check off in App settings (the gear icon) by turning off
-"Check for updates automatically". Nothing else is sent anywhere.
+Optional PC RGB control starts the bundled OpenRGB service on demand,
+using a loopback SDK connection. No vendor control center or kernel driver
+is installed. If WebView2 is absent, this installer obtains Microsoft's
+WebView2 bootstrapper/runtime from Microsoft; that requires internet access.
 
-Free code signing provided by SignPath.io, certificate by SignPath Foundation.
+Third-party notices and OpenRGB corresponding source are included. Separate
+Piper SVG artwork retains its own GPL-2.0 license and editable source.
+Manufacturer product images and marks remain owned by their rights holders.
 
 
                     GNU GENERAL PUBLIC LICENSE

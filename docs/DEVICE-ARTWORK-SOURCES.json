@@ -1,0 +1,177 @@
+[
+  {
+    "file": "/devices/vxe-r1-black.webp",
+    "source": "https://bpcdn.atkgear.com/device/ossAssets/r1/black.webp",
+    "source_sha256": "4065cbed9606b082d566cb05d1ae17147d0ef56f71d0c54e00db0c5d4cc6e740",
+    "bytes": 7850,
+    "sha256": "a5708be705965d819c0dfebfe98b7fd82c1fee44efa08b64270ccc36fbf25bcb"
+  },
+  {
+    "file": "/devices/vxe-r1-white.webp",
+    "source": "https://bpcdn.atkgear.com/device/ossAssets/r1/white.webp",
+    "source_sha256": "c26254b116bf0fcad0f7e02e7d7bdb331fbe1a8d542d618a9a476c337a38faa8",
+    "bytes": 7098,
+    "sha256": "abcb388c9db52985ac67f20f414f0ed711b4e25126b8bf9c7017f4972781dbc5"
+  },
+  {
+    "file": "/devices/atk-a9-black.webp",
+    "source": "https://bpcdn.atkgear.com/device/ossAssets/a9/black.webp",
+    "source_sha256": "6883ff637bd4f63a217ad21b4921a69b1960a5eebb0c0680880f734ffc59a465",
+    "bytes": 7892,
+    "sha256": "aea5cefb5f9d07fad5626a97262c8a5bf19f0e335af1a98391e2e958399a3714"
+  },
+  {
+    "file": "/devices/atk-a9-white.webp",
+    "source": "https://bpcdn.atkgear.com/device/ossAssets/a9nearlink/white.webp",
+    "source_sha256": "dba9e606467de205d61e7a8e7d7f8fe3430ce409d4d331fd45c4e37844568980",
+    "bytes": 7574,
+    "sha256": "91f3f061ab208f98ac4efa2e1c26dde82aea6b0955187ab50e084ef04bd85850"
+  },
+  {
+    "file": "/devices/atk-x1-black.webp",
+    "source": "https://bpcdn.atkgear.com/device/ossAssets/x1/black.webp",
+    "source_sha256": "3a54a29211be6c7eda55e398defbe16450c71dd15c6a9e38c0919d1594ef1d57",
+    "bytes": 7940,
+    "sha256": "2bcffe5ebb38c257aecfb7228d3d46a37c0a6c5dba240e296a2398661e61b7bc"
+  },
+  {
+    "file": "/devices/atk-x1-white.webp",
+    "source": "https://bpcdn.atkgear.com/device/ossAssets/x1/white.webp",
+    "source_sha256": "6c0793d1b511f67ff7954ba4569c49d359e099126c3116fa3a323d8a5b465e42",
+    "bytes": 7500,
+    "sha256": "bc7fb562abf67f7e3fc2dacd1f6adaeb4220073d45e8a82cf0358f2ca1b4d581"
+  },
+  {
+    "file": "/devices/vgn-f1-black.webp",
+    "source": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/black-D-g07huf.webp",
+    "source_sha256": "913028114bdd0ee3d8f05423fc0e3ebe54b77963051749928809ba49b59abfd8",
+    "bytes": 8512,
+    "sha256": "30b478c6385f825654aa3ba74cf9efccf609fca4010c264eb0366bf43c7fa44f"
+  },
+  {
+    "file": "/devices/vgn-f1-white.webp",
+    "source": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/white-BkYvVLnK.webp",
+    "source_sha256": "df7558a209162595fbe9abd32f7191f61c205c48cc1143205f887fb1455b6ef4",
+    "bytes": 7578,
+    "sha256": "1ca2e3729487703f4f1ddbad4282f29785205cbb1d95d7ca7b6c81e3708e5ef9"
+  },
+  {
+    "file": "/devices/vxe-madr-black.webp",
+    "source": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/black-DCbDiXsF.webp",
+    "source_sha256": "6181e7928c566d21f067fbae0558d16ba6cb69afd252fb72fea68bef260681e3",
+    "bytes": 7236,
+    "sha256": "813233e1d7fa83e330a5b34983bc822183902d8cfa79d27d3cea54a77a09ab46"
+  },
+  {
+    "file": "/devices/vxe-madr-white.webp",
+    "source": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/white-mYWaqE2h.webp",
+    "source_sha256": "a24daeee976a1da1181a3c65e5e99ffa4bc642a643f99e9d70dba9348bccf673",
+    "bytes": 7648,
+    "sha256": "5eb200f841c651b25b5d9534d853dfb1d5627fa25bb977342bb19bfc81cbce34"
+  },
+  {
+    "file": "/devices/razer-naga-v2-hyperspeed.webp",
+    "source": "https://assets3.razerzone.com/78C15acax6miivokK1Wg15ZK4rk=/300x300/https%3A%2F%2Fmedias-p1.phoenix.razer.com%2Fsys-master-phoenix-images-container%2Fh68%2Fhac%2F9529652740126%2Fnaga-v2-hyperspeed-2-500x500.png",
+    "source_sha256": "61c0ff286e9bc655e05a31db05678b2164a73f2ace4eacc05708030474f122b6",
+    "bytes": 5538,
+    "sha256": "479f802449994eb704352b8d8a951445fa48d7ef9874e269eba965aefc7b55f5"
+  },
+  {
+    "file": "/devices/razer-viper-v3-pro.webp",
+    "source": "https://assets3.razerzone.com/2y2JG9RBGw3HijRRqX-7ZRsI4E4=/300x300/https%3A%2F%2Fmedias-p1.phoenix.razer.com%2Fsys-master-phoenix-images-container%2Fh08%2Fh61%2F9765618188318%2Fviper-v3-pro-black-500x500.png",
+    "source_sha256": "11cc88ece3a25925d5f222ea6bcaf0e98f55e487561e6fa279acf6ba65ede6e0",
+    "bytes": 4648,
+    "sha256": "d36483123a16a995dc20b5334f82cf34315ed4df0721ab14412b1a66dba533c3"
+  },
+  {
+    "file": "/devices/corsair-m65-pro.webp",
+    "source": "https://assets.corsair.com/image/upload/c_pad,q_auto,h_384,w_384,f_auto/products/Gaming-Mice/CH-9300011-NA/Gallery/M65_PRO_RGB_BLK_01.webp",
+    "source_sha256": "f60fbdfd6160c4d8d6798567b73d103f122660b40dcba7e3c7f5855f0234fcef",
+    "bytes": 11414,
+    "sha256": "893fb6c5e775d3a1dcab1c200a91efc17db9b07170ce310d63d0a55133825f52"
+  },
+  {
+    "file": "/devices/razer-viper-ultimate.webp",
+    "source": "https://assets.razerzone.com/eeimages/support/products/1577/ee_photo.png",
+    "source_sha256": "6be11441cae2f6137c743c8f6b1aead97ee9b9f3500a82cddd198d1df7f05395",
+    "bytes": 7794,
+    "sha256": "abc24f5ec315aded454120b73da66d3b3629b24e8fa66e7e73e0f6749cbc5417"
+  },
+  {
+    "file": "/devices/razer-deathadder-v2.webp",
+    "source": "https://assets.razerzone.com/eeimages/support/products/1612/1612_razerdeathadderv2.png",
+    "source_sha256": "fa6f78bd6ec3b86b6ad5bebfe46755e8caeb8c341ac0de3679eb166c16475568",
+    "bytes": 8658,
+    "sha256": "f39eca0ceab8e610f8651cf33829e73e82fecdb6033a173056cc4b45e0fcdee2"
+  },
+  {
+    "file": "/devices/razer-viper-v2-pro.webp",
+    "source": "https://dl.razerzone.com/src/6048-1-en-v10.png",
+    "source_sha256": "a180597dcb8fa31a2c13684fa2b4e6a37522ac73343c229cc5e7925f68d04eeb",
+    "bytes": 6188,
+    "sha256": "d020dd0678b85f7e6eddbca189d4bcd4a302a72687e3b7fcfee2957a8e34a43c"
+  },
+  {
+    "file": "/devices/dreammachines-dm5.webp",
+    "source": "https://www.dreammachines.io/media/vendors/dreammachines/products/DM5_Blink/img/website/DM5_1v.png",
+    "source_sha256": "d6c46b74d4b155bbe662ee146a9951b091788a469e707ce1a30cf503507cda9e",
+    "bytes": 14838,
+    "sha256": "25471b6ce7723b127a56aec0cff89b6f46b1083e522a31b40b241dc7e136f8c5"
+  },
+  {
+    "file": "/devices/gwolves-hati.webp",
+    "source": "https://shop.g-wolves.com/cdn/shop/collections/410qEZRbHvL_da687ded-6838-4c93-8d99-a965cb63707b.jpg?v=1613993931&width=384",
+    "source_sha256": "655e97b0a28241dd02575d73d844c096721ece86c4d960199e5d6e6321425782",
+    "bytes": 13152,
+    "sha256": "bf24f039976efd74e5749486ff443a4033af596453c01717b161cc3d9837770c"
+  },
+  {
+    "file": "/devices/glorious-o-eternal.webp",
+    "source": "https://cdn.shopify.com/s/files/1/0549/2681/files/GLO-OE-W-BLK_Web_Gallery_Front.webp?v=1748467406&width=384",
+    "source_sha256": "15a6eb086aa580d0cfd6aab84a3dfeb7571381ef52751782c82fef32604bd6cf",
+    "bytes": 11474,
+    "sha256": "de752309c60237f6309d3c43432a84512b948abe5481de5e29af06dd7fe5adb9"
+  },
+  {
+    "file": "/devices/machenike-m620.webp",
+    "source": "https://cdn.shopify.com/s/files/1/0576/4110/7626/products/5_3fb22342-8883-4dc2-aa67-db29a984bc26.png?v=1637052939&width=384",
+    "source_sha256": "9254d60a7907435b66e62c3a1313366213c0fc7a9c6b0ad7256cb59c34d1df88",
+    "bytes": 16810,
+    "sha256": "563d0084d4576a271668933578333f47c497472d0154611cf962e24f5ce72860"
+  },
+  {
+    "file": "/devices/logitech-g305.webp",
+    "source": "https://resource.logitechg.com/w_384,c_limit,q_auto,f_auto,dpr_1.0/d_transparent.gif/content/dam/gaming/en/products/g305/2025-update/g305-lightspeed-mouse-top-angle-black-gallery-1.png",
+    "source_sha256": "a55c114d9bcfcf6195fb67caee3d5cf731b5629481adad9dc741b3544746b797",
+    "bytes": 3872,
+    "sha256": "0a883d9ee47e4fb8fdc239c28351a01a168a732948d6d2632e3e4c047bcaa36f"
+  },
+  {
+    "file": "/devices/marvo-g961.webp",
+    "source": "https://www.marvo-tech.com/pages/draft-product-download",
+    "detail": "Static skins/mouse/mouse_nr.png extracted from official G961 installer; installer never executed",
+    "bytes": 20882,
+    "sha256": "28a0766ea9d57d86a64a45ba2700012301b6e081a002a3c655120ec20734d3e8"
+  },
+  {
+    "file": "/devices/tdagger-imperial.webp",
+    "source": "https://www.tdagger.com.br/produtos/imperial",
+    "detail": "https://static.wixstatic.com/media/71a6c2_6a13bd353868406fb1509dae06b93bb5~mv2.png",
+    "bytes": 16328,
+    "sha256": "8bc2e89f3d0148ca656372b8127881f8f5c024b5920c7fb0138f94870a2d9a8b"
+  },
+  {
+    "file": "/devices/genesis-xenon770.webp",
+    "source": "https://genesis-zone.com/product/xenon-770",
+    "detail": "https://de.genesis-zone.com/media/cache/optimize_description_3440/opisy/1y78oz14bircywbcqty98hd7.png",
+    "bytes": 11024,
+    "sha256": "01ed4f50127b55a3c161f14da196ad2a246e0aea96ef55b2536bb23453ed23a9"
+  },
+  {
+    "file": "/devices/maddog-gm905.webp",
+    "source": "https://maddog.pl/produkty/myszki/57,mad-dog-gm905",
+    "detail": "https://maddog.pl/files/thumbs/produkty_nowy_header_2025/353567.png/798_692_crop.png?pn=new-card-hero-thumb&ts=1747395000",
+    "bytes": 14840,
+    "sha256": "5db414f732b7de511bda2a99949d7a683b370fd5ad7a6ee7075d50ca3b96595a"
+  }
+]

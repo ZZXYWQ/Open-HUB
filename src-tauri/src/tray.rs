@@ -146,11 +146,11 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         Some(info) => menu.append(&MenuItem::with_id(
             app,
             "update_install",
-            format!("Install update {}", info.version),
+            format!("{} {}{}",if info.downloaded{"安装更新"}else{"下载更新"},info.version,if info.experimental{" · 实验版"}else{""}),
             true,
             None::<&str>,
         )?)?,
-        None => menu.append(&MenuItem::with_id(app, "update_check", "Check for updates", true, None::<&str>)?)?,
+        None => menu.append(&MenuItem::with_id(app, "update_check", "检查 GitHub 更新", true, None::<&str>)?)?,
     }
     let autostart = app.autolaunch().is_enabled().unwrap_or(false);
     menu.append(&CheckMenuItem::with_id(app, "autostart", "Start with Windows", true, autostart, None::<&str>)?)?;

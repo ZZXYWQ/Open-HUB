@@ -127,6 +127,9 @@ export interface AppSettings {
 }
 
 export interface UpdateInfo {
+  release_url?: string;
+  experimental?: boolean;
+  downloaded?: boolean;
   version: string;
   current_version: string;
   notes: string | null;
@@ -275,7 +278,8 @@ export const api = {
   setAppSettings: (settings: AppSettings) => invoke<void>("set_app_settings", { settings }),
   checkForUpdate: () => invoke<UpdateInfo | null>("check_for_update"),
   /** On Windows the app exits and the installer restarts it when this succeeds. */
-  installUpdate: () => invoke<void>("install_update"),
+  installUpdate: (expectedVersion:string) => invoke<void>("install_update",{expectedVersion}),
+  downloadUpdate: (expectedVersion:string) => invoke<UpdateInfo>("download_update",{expectedVersion}),
 };
 
 /** Battery percent, estimated from the coarse level when the device has no exact figure. */

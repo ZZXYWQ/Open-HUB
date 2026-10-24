@@ -157,7 +157,7 @@ pub fn decode(slot: u8, play: u8, data: &[u8]) -> Result<Macro> {
     }
     let m = Macro {
         id: format!("atk-native:{slot}:{play}"),
-        name: format!("ATK 板载宏 {}", slot + 1),
+        name: format!("板载宏 {}", slot + 1),
         mode,
         steps,
     };

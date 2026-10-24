@@ -1,0 +1,625 @@
+[
+  {
+    "id": "atk-a9",
+    "label": "ATK A9 Plus NK",
+    "vendor": 14139,
+    "products": [
+      4373,
+      4297
+    ],
+    "names": [],
+    "images": [
+      {
+        "label": "黑色",
+        "src": "/devices/atk-a9-black.webp"
+      },
+      {
+        "label": "白色",
+        "src": "/devices/atk-a9-white.webp"
+      }
+    ]
+  },
+  {
+    "id": "atk-x1",
+    "label": "ATK X1 Pro Max",
+    "vendor": 14139,
+    "products": [
+      4119
+    ],
+    "names": [],
+    "images": [
+      {
+        "label": "黑色",
+        "src": "/devices/atk-x1-black.webp"
+      },
+      {
+        "label": "白色",
+        "src": "/devices/atk-x1-white.webp"
+      }
+    ]
+  },
+  {
+    "id": "vxe-r1",
+    "label": "VXE R1 / R1 Pro",
+    "vendor": 13652,
+    "products": [
+      62863,
+      62860
+    ],
+    "names": [],
+    "images": [
+      {
+        "label": "黑色",
+        "src": "/devices/vxe-r1-black.webp"
+      },
+      {
+        "label": "白色",
+        "src": "/devices/vxe-r1-white.webp"
+      }
+    ]
+  },
+  {
+    "id": "vxe-madr",
+    "label": "VXE MAD R / MAD R+",
+    "vendor": 14139,
+    "products": [
+      4159,
+      4171
+    ],
+    "names": [],
+    "images": [
+      {
+        "label": "黑色",
+        "src": "/devices/vxe-madr-black.webp"
+      },
+      {
+        "label": "白色",
+        "src": "/devices/vxe-madr-white.webp"
+      }
+    ]
+  },
+  {
+    "id": "vgn-f1",
+    "label": "VGN F1 Pro / Pro Max",
+    "vendor": 13652,
+    "products": [
+      62722,
+      62726
+    ],
+    "names": [],
+    "images": [
+      {
+        "label": "黑色",
+        "src": "/devices/vgn-f1-black.webp"
+      },
+      {
+        "label": "白色",
+        "src": "/devices/vgn-f1-white.webp"
+      }
+    ]
+  },
+  {
+    "id": "razer-naga-v2-hyperspeed",
+    "label": "Razer Naga V2 HyperSpeed",
+    "vendor": 5426,
+    "products": [
+      180
+    ],
+    "names": [
+      "Razer Naga V2 HyperSpeed"
+    ],
+    "images": [
+      {
+        "label": "黑色",
+        "src": "/devices/razer-naga-v2-hyperspeed.webp"
+      }
+    ]
+  },
+  {
+    "id": "razer-deathadder-v2",
+    "label": "Razer DeathAdder V2",
+    "vendor": 5426,
+    "products": [
+      132
+    ],
+    "names": [
+      "Razer DeathAdder V2"
+    ],
+    "images": [
+      {
+        "label": "黑色",
+        "src": "/devices/razer-deathadder-v2.webp"
+      }
+    ]
+  },
+  {
+    "id": "razer-viper-ultimate",
+    "label": "Razer Viper Ultimate",
+    "vendor": 5426,
+    "products": [
+      122,
+      123
+    ],
+    "names": [
+      "Razer Viper Ultimate"
+    ],
+    "images": [
+      {
+        "label": "黑色",
+        "src": "/devices/razer-viper-ultimate.webp"
+      }
+    ]
+  },
+  {
+    "id": "razer-viper-v2-pro",
+    "label": "Razer Viper V2 Pro",
+    "vendor": 5426,
+    "products": [
+      165,
+      166
+    ],
+    "names": [
+      "Razer Viper V2 Pro"
+    ],
+    "images": [
+      {
+        "label": "黑色",
+        "src": "/devices/razer-viper-v2-pro.webp"
+      }
+    ]
+  },
+  {
+    "id": "razer-viper-v3-pro",
+    "label": "Razer Viper V3 Pro",
+    "vendor": 5426,
+    "products": [
+      192,
+      193
+    ],
+    "names": [
+      "Razer Viper V3 Pro"
+    ],
+    "images": [
+      {
+        "label": "黑色",
+        "src": "/devices/razer-viper-v3-pro.webp"
+      }
+    ]
+  },
+  {
+    "id": "corsair-m65-pro",
+    "label": "Corsair M65 PRO RGB",
+    "vendor": 6940,
+    "products": [
+      6958
+    ],
+    "names": [
+      "Corsair M65 PRO RGB"
+    ],
+    "images": [
+      {
+        "label": "黑色",
+        "src": "/devices/corsair-m65-pro.webp"
+      }
+    ]
+  },
+  {
+    "id": "steelseries-rival310",
+    "label": "SteelSeries Rival 310",
+    "vendor": 4152,
+    "products": [
+      5920
+    ],
+    "names": [
+      "SteelSeries Rival 310"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/steelseries-rival310.svg"
+      }
+    ]
+  },
+  {
+    "id": "logitech-g102-g203",
+    "label": "Logitech G102",
+    "vendor": 1133,
+    "products": [],
+    "names": [
+      "G102",
+      "G203 LIGHTSYNC"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/logitech-g102-g203.svg"
+      }
+    ]
+  },
+  {
+    "id": "logitech-g303",
+    "label": "Logitech G302",
+    "vendor": 1133,
+    "products": [],
+    "names": [
+      "G302",
+      "G303"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/logitech-g303.svg"
+      }
+    ]
+  },
+  {
+    "id": "logitech-g303-se",
+    "label": "Logitech G303 SHROUD EDITION",
+    "vendor": 1133,
+    "products": [],
+    "names": [
+      "G303 SHROUD EDITION"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/logitech-g303-se.svg"
+      }
+    ]
+  },
+  {
+    "id": "logitech-g402",
+    "label": "Logitech G402",
+    "vendor": 1133,
+    "products": [],
+    "names": [
+      "G402"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/logitech-g402.svg"
+      }
+    ]
+  },
+  {
+    "id": "logitech-g403",
+    "label": "Logitech G403",
+    "vendor": 1133,
+    "products": [],
+    "names": [
+      "G403",
+      "G403 HERO"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/logitech-g403.svg"
+      }
+    ]
+  },
+  {
+    "id": "logitech-g502",
+    "label": "Logitech G502",
+    "vendor": 1133,
+    "products": [],
+    "names": [
+      "G502",
+      "G502 HERO",
+      "G502 LIGHTSPEED"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/logitech-g502.svg"
+      }
+    ]
+  },
+  {
+    "id": "logitech-g602",
+    "label": "Logitech G602",
+    "vendor": 1133,
+    "products": [],
+    "names": [
+      "G602"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/logitech-g602.svg"
+      }
+    ]
+  },
+  {
+    "id": "logitech-g603",
+    "label": "Logitech G603",
+    "vendor": 1133,
+    "products": [],
+    "names": [
+      "G603"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/logitech-g603.svg"
+      }
+    ]
+  },
+  {
+    "id": "logitech-g604",
+    "label": "Logitech G604 LIGHTSPEED",
+    "vendor": 1133,
+    "products": [],
+    "names": [
+      "G604 LIGHTSPEED"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/logitech-g604.svg"
+      }
+    ]
+  },
+  {
+    "id": "logitech-g703",
+    "label": "Logitech G703",
+    "vendor": 1133,
+    "products": [],
+    "names": [
+      "G703",
+      "G703 LIGHTSPEED"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/logitech-g703.svg"
+      }
+    ]
+  },
+  {
+    "id": "logitech-g900",
+    "label": "Logitech G900",
+    "vendor": 1133,
+    "products": [],
+    "names": [
+      "G900",
+      "G903",
+      "G903 LIGHTSPEED"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/logitech-g900.svg"
+      }
+    ]
+  },
+  {
+    "id": "logitech-mx518",
+    "label": "Logitech MX518",
+    "vendor": 1133,
+    "products": [],
+    "names": [
+      "MX518"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/logitech-mx518.svg"
+      }
+    ]
+  },
+  {
+    "id": "logitech-g-pro",
+    "label": "Logitech PRO",
+    "vendor": 1133,
+    "products": [],
+    "names": [
+      "PRO",
+      "PRO HERO"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/logitech-g-pro.svg"
+      }
+    ]
+  },
+  {
+    "id": "logitech-g-pro-wireless",
+    "label": "Logitech PRO WIRELESS",
+    "vendor": 1133,
+    "products": [],
+    "names": [
+      "PRO WIRELESS"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/logitech-g-pro-wireless.svg"
+      }
+    ]
+  },
+  {
+    "id": "logitech-g-pro-x-wireless-superlight",
+    "label": "Logitech PRO X SUPERLIGHT",
+    "vendor": 1133,
+    "products": [],
+    "names": [
+      "PRO X SUPERLIGHT"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/logitech-g-pro-x-wireless-superlight.svg"
+      }
+    ]
+  },
+  {
+    "id": "logitech-g305",
+    "label": "Logitech G305",
+    "vendor": 1133,
+    "products": [],
+    "names": [
+      "G305"
+    ],
+    "images": [
+      {
+        "label": "黑色",
+        "src": "/devices/logitech-g305.webp"
+      }
+    ]
+  },
+  {
+    "id": "glorious-model-o",
+    "label": "Glorious Model O / O-",
+    "vendor": null,
+    "products": [],
+    "names": [
+      "Glorious Model O/O-",
+      "Glorious Model O (old firmware)",
+      "Glorious Model O",
+      "Glorious Model O-"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/glorious-model-o.svg"
+      }
+    ]
+  },
+  {
+    "id": "glorious-model-d",
+    "label": "Glorious Model D",
+    "vendor": null,
+    "products": [],
+    "names": [
+      "Glorious Model D"
+    ],
+    "images": [
+      {
+        "label": "型号轮廓",
+        "src": "/devices/piper/glorious-model-d.svg"
+      }
+    ]
+  },
+  {
+    "id": "glorious-o-eternal",
+    "label": "Glorious Model O Eternal",
+    "vendor": null,
+    "products": [],
+    "names": [
+      "Glorious Model O Eternal"
+    ],
+    "images": [
+      {
+        "label": "型号外观",
+        "src": "/devices/glorious-o-eternal.webp"
+      }
+    ]
+  },
+  {
+    "id": "dreammachines-dm5",
+    "label": "DreamMachines DM5 Blink",
+    "vendor": null,
+    "products": [],
+    "names": [
+      "DreamMachines DM5 Blink"
+    ],
+    "images": [
+      {
+        "label": "型号外观",
+        "src": "/devices/dreammachines-dm5.webp"
+      }
+    ]
+  },
+  {
+    "id": "gwolves-hati",
+    "label": "G-Wolves Hati HT-M",
+    "vendor": null,
+    "products": [],
+    "names": [
+      "G-Wolves Hati HT-M Wired"
+    ],
+    "images": [
+      {
+        "label": "型号外观",
+        "src": "/devices/gwolves-hati.webp"
+      }
+    ]
+  },
+  {
+    "id": "machenike-m620",
+    "label": "Machenike M620",
+    "vendor": null,
+    "products": [],
+    "names": [
+      "Machenike M620"
+    ],
+    "images": [
+      {
+        "label": "型号外观",
+        "src": "/devices/machenike-m620.webp"
+      }
+    ]
+  },
+  {
+    "id": "marvo-g961",
+    "label": "Marvo Scorpion G961",
+    "vendor": null,
+    "products": [],
+    "names": [
+      "Marvo Scorpion G961"
+    ],
+    "images": [
+      {
+        "label": "官方驱动外观",
+        "src": "/devices/marvo-g961.webp"
+      }
+    ]
+  },
+  {
+    "id": "tdagger-imperial",
+    "label": "T-Dagger Imperial T-TGM310",
+    "vendor": null,
+    "products": [],
+    "names": [
+      "T-Dagger Imperial T-TGM310"
+    ],
+    "images": [
+      {
+        "label": "型号外观",
+        "src": "/devices/tdagger-imperial.webp"
+      }
+    ]
+  },
+  {
+    "id": "genesis-xenon770",
+    "label": "Genesis Xenon 770",
+    "vendor": null,
+    "products": [],
+    "names": [
+      "Genesis Xenon 770"
+    ],
+    "images": [
+      {
+        "label": "型号外观",
+        "src": "/devices/genesis-xenon770.webp"
+      }
+    ]
+  },
+  {
+    "id": "maddog-gm905",
+    "label": "Mad Dog GM905",
+    "vendor": null,
+    "products": [],
+    "names": [
+      "Mad Dog GM905"
+    ],
+    "images": [
+      {
+        "label": "型号外观与可换侧板",
+        "src": "/devices/maddog-gm905.webp"
+      }
+    ]
+  }
+]

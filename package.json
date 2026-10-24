@@ -1,7 +1,7 @@
 {
   "name": "open-hub",
   "private": true,
-  "version": "0.3.1",
+  "version": "0.3.2",
   "license": "GPL-3.0-or-later",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,8 @@
     "app:build": "tauri build",
     "app:build:offline": "tauri build --config src-tauri/tauri.offline.conf.json",
     "package:footprint": "node scripts/package-footprint.mjs",
-    "release": "node scripts/release.mjs"
+    "release": "node scripts/prepare-experimental-release.mjs",
+    "test:ui": "node scripts/run-ui-regression.cjs"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

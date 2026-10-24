@@ -1,0 +1,168 @@
+{
+  "product": "Open HUB",
+  "version": "0.3.2",
+  "tag": "v0.3.2-experimental.1",
+  "experimental": true,
+  "date": "2026-10-24T16:13:06.115201+00:00",
+  "origin": {
+    "repository": "https://github.com/abidr/open-ghub",
+    "author": "Abidur Rahman",
+    "license": "GPL-3.0-or-later",
+    "base": "2853a6251a31a376a0f7287c1c846bd9bff97198"
+  },
+  "native_tests": {
+    "passed": 248,
+    "default_suite": 246,
+    "explicit_external_source_tests": 2,
+    "failed": 0
+  },
+  "ui_tests": {
+    "passed": true,
+    "suites": 18,
+    "ipc_mocked": true,
+    "suite_results": [
+      {
+        "name": "test-appearance-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-atk-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-brand-imports-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-compx-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-device-art-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-gg-import-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-icue-import-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-manual-recovery-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-multi-macros-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-reconnect-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-session-plan-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-sino-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-synapse-import-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-synapse-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-three-brand-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-ui-integration.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-updater-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-viper-ui.cjs",
+        "passed": true
+      }
+    ]
+  },
+  "artwork_tests": {
+    "passed": true,
+    "catalog_cases": 52,
+    "logitech_names": 25,
+    "sino_records": 11,
+    "compx_transports": 9,
+    "other_native_models": 7,
+    "hardware_tested": false,
+    "checks": [
+      "every named native mouse has matching local artwork",
+      "all WebP and SVG images decode",
+      "grid and list use model artwork",
+      "Naga and Viper have distinct bodies",
+      "unknown future model cannot borrow another photo"
+    ]
+  },
+  "production_executable_selftest": {
+    "passed": true,
+    "simulated_transport_identities": 19,
+    "new_vxe_vgn_models": 6,
+    "hardware_accessed": false
+  },
+  "installer": {
+    "passed": true,
+    "version": "0.3.2",
+    "installer_bytes": 38654664,
+    "installer_sha256": "c47bccbd849cbb01885e21a41d915d576136f0cff873265a7f657888fb9171b2",
+    "application_sha256": "89c7458eaf6435116129719b7c1f1e210abfb23dbebac2cf65b29f5f5fdd0da9",
+    "payload_files_verified": 43,
+    "current_frontend_embedded": true,
+    "installed": false,
+    "registry_changed": false,
+    "user_configuration_touched": false
+  },
+  "installer_migration": {
+    "passed": true,
+    "checks": [
+      "nested/unicode backups copied; source/newer/prior snapshots unchanged; registers restored",
+      "repeat migration reserves new snapshot without overwriting any prior file",
+      "destination failure returns nonzero before uninstall continuation and preserves source",
+      "real sharing violation during copy returns nonzero before uninstall continuation; source preserved",
+      "missing source is a successful no-op; registers restored"
+    ],
+    "helper_sha256": "63c41eeb53ab7802ec16f170fb8afbcd26279fc579fe40072e609a884f76b3fa",
+    "scope": "Real NSIS compiler/runtime; isolated workspace fixtures; no registry or installed software changed"
+  },
+  "update_package": {
+    "independent_key": true,
+    "version_bound_signature_generated": true,
+    "windows_authenticode": "NotSigned",
+    "private_key_included": false,
+    "download_and_install_are_separate_explicit_actions": true,
+    "automatic_download": false,
+    "automatic_install": false,
+    "windows_direct_exit_cleanup": true,
+    "public_feed_acceptance": "Run --verify-release-update after the public release/feed are available."
+  },
+  "hardware_validation": {
+    "existing_physical_mouse": "MCHOSE A7 V3 Ultra+",
+    "existing_physical_dock": "MagDock",
+    "new_vxe_vgn_physical_tests": false,
+    "logitech_physical_regression": false
+  },
+  "limits": [
+    "Specific models/firmware/transports only; not whole-brand support",
+    "Simulation and browser IPC fixtures do not establish hardware compatibility",
+    "No new 0.3.2 installation on the current user account",
+    "No fresh Windows or missing-WebView2 installation test",
+    "R1/F1 indicator only; MAD R lighting not exposed; AULA still unimplemented"
+  ]
+}

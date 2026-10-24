@@ -1,3 +1,15 @@
+# Open HUB 0.3.2 — VXE/VGN、型号外观、用户选择更新
+
+新增六款精确 VXE/VGN USB 身份，范围与 MID 白名单见 COMPX-ADAPTER.md。生产驱动模拟覆盖 DPI/按键、三种板载宏、原厂未知宏保留、五键 MAD R、型号改变和共享 PID 未实现 MID 拒绝；没有新增实机验证。原生回归合计 248 项通过：默认运行 246 项，另显式提供公开 iCUE 样本和官方 GG SQL 后执行的两项也通过。
+
+所有已命名鼠标的设备中心/原生设置/方案与原生灯光卡片使用型号图片，25 张 WebP + 18 张可编辑 SVG 合计 668,716 字节。52 个原生目录身份的外观显示/资源解码回归覆盖 25 个罗技名称、11 条 SinoWealth 型号/固件、9 条 COMPX 连接身份和 7 个其他原生型号；这些不是新增 52 款硬件兼容声明。迈从已有图片压缩与原页面保留。
+
+新增浏览器回归验证 VXE/VGN 独立品牌筛选、板载导入的宏/XY DPI/精确目标、错误设备响应拒绝、六款原生 DTO 的 UI 与配色、五键/回报率能力边界，以及更新检查/稍后无下载、签名失败、单独下载与安装选择、旧自动安装选项归零和离线错误。全部界面套件与最终包验收以 docs/releases/0.3.2-validation.json 为准。浏览器只模拟 Tauri IPC，不冒充硬件执行。
+
+更新源仅本仓库，版本绑定签名且安装前二次校验。发布后的只读诊断会验证公开附件、篡改文件拒绝和版本不符拒绝；不启动安装器。当前机器不会因发布动作自动升级。0.3.1 升级安装保留数据的历史证据继续有效，但不等同本次 0.3.2 新安装实测。
+
+本次不声称新增型号实机通过、全品牌兼容、所有官方配置可解析或任意 RGB 灯效可用。Windows EXE 仍没有 Authenticode 代码签名。上游共享驱动与导入解析器未修改，原有历史验证如下。
+
 # Open HUB 0.3.1 ATK validation — 2026-10-24
 
 ATK adds A9 Plus NK USB 373B:1115 and older NearLink 373B:10C9 (CID/MID 2,83), and X1 Pro Max USB 373B:1017 (2,39). These are two mouse models / three exact transport identities, not whole-brand compatibility. ATK has no physical-device validation. Scope and protocol provenance: ATK-ADAPTER.md.

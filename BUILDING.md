@@ -1,6 +1,6 @@
 # 构建与测试
 
-代码内部版本为 0.3.1，GitHub 预发布标签为 v0.3.1-experimental.1。
+代码内部版本为 0.3.2，GitHub 预发布标签为 v0.3.2-experimental.1。
 
 ## Windows 构建
 
@@ -38,8 +38,12 @@ cargo test --locked --manifest-path src-tauri/vendor/gearwise/Cargo.toml --works
 cargo test --locked --manifest-path src-tauri/vendor/sidearm-synapse-parser/Cargo.toml
 ```
 
-浏览器脚本 scripts/test-*-ui.cjs 另需 Playwright 与 Chromium 开发依赖，不进入应用运行时。脚本模拟 Tauri，一些回归需要先由原生测试生成 DTO fixture。scripts/test-installer-migration.py 另需 NSIS，执行隔离样本，不等于整包安装测试。保留脚本中的可选外部 fixture / 研究输入路径，不将它们伪装成随包提供的输入。
+浏览器脚本 scripts/test-*-ui.cjs 另需 Playwright 与可用浏览器开发依赖（Windows 测试运行器可复用已安装 Edge），不进入应用运行时。脚本模拟 Tauri，一些回归需要先由原生测试生成 DTO fixture。scripts/test-installer-migration.py 另需 NSIS，执行隔离样本，不等于整包安装测试。保留脚本中的可选外部 fixture / 研究输入路径，不将它们伪装成随包提供的输入。
 
-实际证据见 RELEASE-VALIDATION.md、docs/releases/0.3.1-validation.json。模拟测试不能代替实机。
+实际证据见 RELEASE-VALIDATION.md、docs/releases/0.3.2-validation.json。模拟测试不能代替实机。
 
-本次手动发布已验证安装器，没有配置本分支的自动工作流、签名密钥或自动发版。上游工作流作为原历史保留，不继承其签名声明。
+本次仍为本地手动构建和发布，未修改上游工作流。更新包使用本分支独立私钥的版本绑定签名，签名发布流程见 docs/UPDATES.md；Windows EXE 没有 Authenticode 证书。
+
+## 原生 DTO 和 UI 回归
+
+在运行根原生测试前，可将 OPEN_HUB_COMPX_FIXTURE_DIR 设为 ../outputs/compx-native-fixtures 的绝对路径，OPEN_HUB_SESSION_FIXTURE 设为 ../native-session-views.json，OPEN_HUB_VIPER_FIXTURE 设为 ../native-viper-views.json 的绝对路径，生成明确的合成 HID 输出。运行 node scripts/run-ui-regression.cjs 验证已构建的 dist，需要 Playwright 开发环境；这些包不进入运行时。可选 OPEN_HUB_ICUE_SAMPLE / OPEN_HUB_GG_RIVAL310_SQL 测试需要另行获取对应公开样本/官方安装包中的 SQL，不在源码包附带厂商安装程序。

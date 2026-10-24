@@ -705,8 +705,12 @@ async fn check_for_update(app: AppHandle) -> Result<Option<updater::UpdateInfo>,
 }
 
 #[tauri::command]
-async fn install_update(app: AppHandle) -> Result<(), String> {
-    updater::install(&app).await
+async fn install_update(app: AppHandle, expected_version:String) -> Result<(), String> {
+    updater::install(&app,&expected_version)
+}
+#[tauri::command]
+async fn download_update(app:AppHandle,expected_version:String)->Result<updater::UpdateInfo,String>{
+    updater::download(&app,&expected_version).await
 }
 
 /// Runs `f` on the first device with on-board profiles (CLI diagnostics).
@@ -792,7 +796,22 @@ fn probe() {
     println!("foreground app: {}", foreground::foreground_exe().unwrap_or_else(|| "(none)".into()));
 }
 
+// The Windows updater exits directly; share cleanup with ordinary app exit.
+pub(crate) fn prepare_shutdown(app:&AppHandle){
+ let _=app.state::<multibrand::Service>().stop_software(&app.state::<macro_runtime::Runtime>());
+ app.state::<macro_runtime::Runtime>().shutdown();let _=app.state::<effects::Engine>().stop();let _=app.state::<magdock::Controller>().stop();app.state::<rgb::Server>().shutdown();
+}
+
 fn main() {
+    if let Some(pos)=std::env::args().position(|a|a=="--verify-release-update"){
+        let output=std::env::args().nth(pos+1).expect("verification report path required");
+        let app=tauri::Builder::default().plugin(tauri_plugin_updater::Builder::new().build()).build(tauri::generate_context!()).expect("verification host");
+        let result=tauri::async_runtime::block_on(updater::verify_published(app.handle()));
+        let report=match result{Ok(v)=>v,Err(e)=>serde_json::json!({"passed":false,"error":e,"installed":false,"hardware_accessed":false})};
+        std::fs::write(output,serde_json::to_vec_pretty(&report).unwrap()).expect("write verification report");
+        std::process::exit(if report["passed"]==true{0}else{1});
+    }
+
     if std::env::args().any(|v|v=="--three-brand-self-test"){let result=(||->Result<serde_json::Value,String>{let templates=multibrand::templates()?;let mut results=Vec::new();for v in templates{let d=v.state.dpi.ok_or("模拟设备未报告 DPI")?;let p=multibrand::Plan { macros:vec![], source:None,vendor:v.descriptor.vendor_id,product:v.descriptor.product_id,settings:vec![gearwise_core::Setting::Dpi(d),gearwise_core::Setting::ReportRate(500)]};results.push(serde_json::json!({"model":v.descriptor.name,"result":multibrand::simulate(&p)?}));}Ok(serde_json::json!({"simulated":true,"hardware_tested":false,"devices":results}))})();match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;}
 
     let args:Vec<String>=std::env::args().collect();
@@ -929,7 +948,8 @@ fn main() {
             events::start(app.handle().clone());
             spawn_profile_watcher(app.handle().clone());
             tray::create(app.handle())?;
-            // This local MCHOSE fork must not be replaced by an upstream update.
+            // Only this fork's signed GitHub feed is used; background discovery never downloads.
+            updater::spawn_background(app.handle().clone());
             // Started by "Start with Windows": stay in the tray.
             if !std::env::args().any(|a| a == "--minimized") {
                 tray::show_main(app.handle());
@@ -983,12 +1003,13 @@ fn main() {
             set_app_settings,
             appearance::export_ui_skin,
             check_for_update,
-            install_update
+            install_update,
+            download_update
         ])
         .build(tauri::generate_context!())
         .expect("error while building Open HUB")
         .run(|_app, event| {
-            if matches!(event,tauri::RunEvent::ExitRequested{code:Some(_),..}|tauri::RunEvent::Exit){let _=_app.state::<multibrand::Service>().stop_software(&_app.state::<macro_runtime::Runtime>());_app.state::<macro_runtime::Runtime>().shutdown();let _=_app.state::<effects::Engine>().stop();let _=_app.state::<magdock::Controller>().stop();_app.state::<rgb::Server>().shutdown();}
+            if matches!(event,tauri::RunEvent::ExitRequested{code:Some(_),..}|tauri::RunEvent::Exit){prepare_shutdown(_app);}
             // The last window closing would normally quit; stay in the tray
             // instead. Quit from the tray menu passes an exit code and goes through.
             if let tauri::RunEvent::ExitRequested { api, code: None, .. } = event {

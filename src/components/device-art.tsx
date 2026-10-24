@@ -1,5 +1,6 @@
 import {MchoseArt} from "@/components/mchose-art";
-import { useId } from "react";
+import { useId,useEffect,useState } from "react";
+import {deviceVisual} from "@/lib/device-visuals";
 
 import { cn } from "@/lib/utils";
 
@@ -88,10 +89,14 @@ function KeyboardArt() {
   );
 }
 
-export function DeviceArt({ kind, className, vendorId }: { kind: string; className?: string; vendorId?:number }) {
-  return (
-    <div className={cn("flex items-center justify-center drop-shadow-[0_24px_28px_rgb(0_0_0/0.7)]", className)}>
-      {vendorId===0x3837?<MchoseArt/>:kind === "Receiver" ? <ReceiverArt /> : kind === "Keyboard" ? <KeyboardArt /> : <MouseArt />}
-    </div>
-  );
+export function DeviceArt({kind,className,vendorId,productId,name='',interactive=false}:{kind:string;className?:string;vendorId?:number;productId?:number|string;name?:string;interactive?:boolean}){
+ const type=kind.toLowerCase(),visual=type==='mouse'?deviceVisual(vendorId,productId,name):undefined,[selected,setSelected]=useState(''),[failed,setFailed]=useState('');
+ useEffect(()=>{const load=()=>{try{setSelected(visual?localStorage.getItem('open-hub:device-visual:'+visual.id)??'':'');}catch{setSelected('');}};load();setFailed('');window.addEventListener('open-hub-device-visual',load);return()=>window.removeEventListener('open-hub-device-visual',load);},[visual?.id]);
+ const image=visual?.images.find(i=>i.src===selected)??visual?.images[0];
+ const choose=(value:string)=>{setSelected(value);try{if(visual)localStorage.setItem('open-hub:device-visual:'+visual.id,value);}catch{}window.dispatchEvent(new Event('open-hub-device-visual'));};
+
+ return <div className={cn('flex min-h-0 flex-col items-center justify-center gap-2',className)} data-device-visual={visual?.id??(vendorId===0x3837&&type==='mouse'?'mchose-a7':'unmapped')}>
+  {vendorId===0x3837&&type==='mouse'?<MchoseArt/>:image&&failed!==image.src?<img src={image.src} alt={`${name||visual?.label} 外观图`} draggable={false} loading="lazy" decoding="async" className="h-full max-h-full min-h-0 w-full object-contain drop-shadow-[0_16px_20px_rgb(0_0_0/0.25)]" onError={()=>setFailed(image.src)}/>:type==='receiver'?<ReceiverArt/>:type==='keyboard'?<KeyboardArt/>:<><MouseArt/><span className="text-xs text-muted-foreground">{name?'该型号外观图待补充':'鼠标示意图'}</span></>}
+  {interactive&&visual&&visual.images.length>1&&<label className="text-xs text-muted-foreground">外观配色 <select aria-label="鼠标外观配色" className="rounded border bg-background p-1" value={image?.src} onChange={e=>choose(e.target.value)}>{visual.images.map(i=><option key={i.src} value={i.src}>{i.label}</option>)}</select><span className="block">仅改变展示图片</span></label>}
+ </div>;
 }

@@ -28,6 +28,7 @@ interface Props {
     progress: UpdateProgress | null;
     installing: boolean;
     onInstall: () => void;
+    onDownload: () => void;
   };
 }
 

@@ -5,6 +5,8 @@ import type {SinoModel} from '@/lib/sino';
 import {Button} from '@/components/ui/button';
 
 const sources = [
+  {id:'vxe',brand:'蜻蜓 / VXE',software:'读取板载配置',label:'蜻蜓 / VXE 板载配置导入',models:'R1 / R1 Pro · MAD R / MAD R+ · 精确 USB ID',scope:'预览 DPI、回报率、按键和板载宏 · 模拟验证'},
+  {id:'vgn',brand:'VGN',software:'读取板载配置',label:'VGN 板载配置导入',models:'蜻蜓 F1 Pro / F1 Pro Max · 精确 USB ID',scope:'预览 DPI、回报率、按键、板载宏和指示灯 · 模拟验证'},
   {id:'atk',brand:'ATK',software:'读取板载配置',label:'ATK 板载配置导入',models:'A9 Plus NK · USB / NearLink；X1 Pro Max · USB',scope:'预览 DPI、回报率、按键、板载宏和指示灯 · 模拟验证'},
   {id:'ghub',brand:'罗技 / Logitech',software:'G HUB',label:'G HUB 配置导入',models:'已适配的 HID++ 鼠标',scope:'DPI、回报率、应用关联'},
   {id:'mhub',brand:'迈从 / MCHOSE',software:'M HUB',label:'M HUB 板载配置导入',models:'A7 V3 Ultra+',scope:'三组板载名称与引用'},

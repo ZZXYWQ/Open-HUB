@@ -82,7 +82,7 @@ export function DevicePage({ device, state, profile, onLevelsChange, onApplyLeve
             <div className="mt-1 text-xs tracking-widest text-muted-foreground uppercase">Current DPI</div>
           </div>
         )}
-        <DeviceArt kind={device.kind} className="h-[50vh] max-h-[460px] min-h-[200px]" />
+        <DeviceArt kind={device.kind} vendorId={device.vendor_id} productId={device.product_id} name={device.name} interactive className="h-[50vh] max-h-[460px] min-h-[200px]" />
         {!state && <p className="text-xs tracking-widest text-muted-foreground uppercase">Reading device…</p>}
         {dpi && device.vendor_id!==0x3837 && (
           <>

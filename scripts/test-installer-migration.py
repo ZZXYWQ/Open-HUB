@@ -6,11 +6,12 @@ import hashlib
 import json
 import subprocess
 import uuid
+import os
 
 REPO = Path(__file__).resolve().parents[1]
 ROOT = REPO.parent / ("installer-migration-qa-" + uuid.uuid4().hex[:8])
 ROOT.mkdir()
-COMPILER = REPO / "src-tauri/target/.tauri/NSIS/makensis.exe"
+COMPILER = Path(os.environ.get("CARGO_TARGET_DIR", str(REPO / "src-tauri/target"))) / ".tauri/NSIS/makensis.exe"
 if not COMPILER.exists():
     COMPILER = COMPILER.parent / "Bin/makensis.exe"
 HELPER = REPO / "installer/preserve-backups.nsh"

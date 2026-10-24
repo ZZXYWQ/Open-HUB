@@ -165,18 +165,24 @@ export default function App() {
     };
   }, [refreshAllStates, refreshState]);
 
-  /** Downloads and installs the update; the app exits and restarts on success. */
-  const installUpdate = useCallback(async () => {
+  /** Installs only the version explicitly selected and already downloaded. */
+  const installUpdate = useCallback(async (version:string) => {
     setInstalling(true);
     setUpdateProgress(null);
     try {
-      await api.installUpdate();
+      await api.installUpdate(version);
     } catch (e) {
       toast.error(String(e));
     } finally {
       setInstalling(false);
     }
   }, []);
+
+  const downloadUpdate = useCallback(async(version:string)=>{
+    setInstalling(true);setUpdateProgress(null);
+    try{const found=await api.downloadUpdate(version);setUpdate(found);toast.success('更新已下载并验证签名',{description:'你可以立即安装，也可以稍后再安装。',action:{label:'安装并重启',onClick:()=>void installUpdate(found.version)}});}
+    catch(e){toast.error(String(e));}finally{setInstalling(false);}
+  },[installUpdate]);
 
   // Updates: the backend checks in the background and reports what it finds.
   useEffect(() => {
@@ -185,18 +191,21 @@ export default function App() {
       setUpdate(e.payload);
       if (announcedUpdate.current === e.payload.version) return;
       announcedUpdate.current = e.payload.version;
-      toast(`Open HUB ${e.payload.version} is available`, {
-        description: "Install now? Open HUB restarts briefly.",
+      toast(`Open HUB ${e.payload.version}${e.payload.experimental?' 实验版':''} 可用`, {
+        description: "可在设置查看更新说明，自行选择下载；安装需要另行确认。",
         duration: 15000,
-        action: { label: "Install", onClick: () => installUpdate() },
+        action: { label: "下载更新", onClick: () => void downloadUpdate(e.payload.version) },
+        cancel:{label:"稍后",onClick:()=>{}},
       });
     });
+    const unlistenDownloaded = listen<UpdateInfo>("update-downloaded",e=>setUpdate(e.payload));
     const unlistenProgress = listen<UpdateProgress>("update-progress", (e) => setUpdateProgress(e.payload));
     return () => {
       unlistenAvailable.then((f) => f());
       unlistenProgress.then((f) => f());
+      unlistenDownloaded.then((f)=>f());
     };
-  }, [installUpdate]);
+  }, [downloadUpdate]);
 
   // Fallback refresh in case an event was missed.
   useEffect(() => {
@@ -285,7 +294,7 @@ export default function App() {
         onScan={scan}
         onBack={() => setOpenId(null)}
         onModeChange={setMode}
-        updates={{ update, onUpdateFound: setUpdate, progress: updateProgress, installing, onInstall: installUpdate }}
+        updates={{ update, onUpdateFound: setUpdate, progress: updateProgress, installing, onInstall: ()=>{if(update)void installUpdate(update.version)}, onDownload:()=>{if(update)void downloadUpdate(update.version)} }}
       />
       {section === "lighting" ? <LightingPanel/> : device && activeProfile ? (
         <DevicePage

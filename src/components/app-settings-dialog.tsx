@@ -1,150 +1,29 @@
 import {AppearanceSettings} from '@/components/appearance-settings';
-import { useEffect, useState } from "react";
-import { Download, RefreshCw, Settings } from "lucide-react";
-import { toast } from "sonner";
-
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { api, type AppInfo, type AppSettings, type UpdateInfo, type UpdateProgress } from "@/lib/api";
-import { cn } from "@/lib/utils";
-
-interface Props {
-  /** Latest update found (from the backend's background check or an event). */
-  update: UpdateInfo | null;
-  onUpdateFound: (info: UpdateInfo | null) => void;
-  progress: UpdateProgress | null;
-  installing: boolean;
-  onInstall: () => void;
-}
-
-function SettingRow({ id, title, description, checked, onChange }: { id: string; title: string; description: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-lg bg-secondary/60 px-4 py-3">
-      <Label htmlFor={id} className="flex-col items-start gap-0.5">
-        <span className="text-sm font-semibold">{title}</span>
-        <span className="text-[12.5px] font-normal text-muted-foreground">{description}</span>
-      </Label>
-      <Switch id={id} checked={checked} onCheckedChange={onChange} />
-    </div>
-  );
-}
-
-/** App-wide settings: version, update checks and automatic installs. */
-export function AppSettingsDialog({ update, onUpdateFound, progress, installing, onInstall }: Props) {
-  const [info, setInfo] = useState<AppInfo | null>(null);
-  const [checking, setChecking] = useState(false);
-  const [checkedOnce, setCheckedOnce] = useState(false);
-
-  const load = () => api.appInfo().then(setInfo, (e) => toast.error(String(e)));
-  useEffect(() => {
-    load();
-  }, []);
-
-  const save = async (patch: Partial<AppSettings>) => {
-    if (!info) return;
-    const settings = { ...info.settings, ...patch };
-    try {
-      await api.setAppSettings(settings);
-      setInfo({ ...info, settings });
-    } catch (e) {
-      toast.error(String(e));
-    }
-  };
-
-  const checkNow = async () => {
-    setChecking(true);
-    try {
-      onUpdateFound(await api.checkForUpdate());
-      setCheckedOnce(true);
-    } catch (e) {
-      toast.error(String(e));
-    } finally {
-      setChecking(false);
-    }
-  };
-
-  const pct = progress?.total ? Math.min(100, Math.round((progress.downloaded / progress.total) * 100)) : null;
-
-  return (
-    <Dialog onOpenChange={(open) => open && load()}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DialogTrigger asChild>
-            <Button variant="ghost" size="icon-lg" className="relative size-[42px] rounded-full text-muted-foreground" aria-label="App settings">
-              <Settings className="size-5" />
-              {update && <span className="absolute top-2 right-2 size-2 rounded-full bg-primary" aria-label="Update available" />}
-            </Button>
-          </DialogTrigger>
-        </TooltipTrigger>
-        <TooltipContent>App settings</TooltipContent>
-      </Tooltip>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-extrabold tracking-tight uppercase">外观与设置</DialogTitle>
-          <DialogDescription>Open HUB {info ? `version ${info.version}` : ""}</DialogDescription>
-        </DialogHeader>
-
-        <AppearanceSettings/>
-        <Separator/>
-        <section className="grid gap-3">
-          <h3 className="text-[13px] font-bold tracking-widest uppercase">Updates</h3>
-
-          <div className={cn("flex items-center justify-between gap-3 rounded-lg px-4 py-3", update ? "bg-row-active" : "bg-secondary/60")}>
-            <div className="min-w-0 text-sm">
-              {update ? (
-                <>
-                  <div className="font-semibold">Version {update.version} is available</div>
-                  {installing ? (
-                    <div className="text-muted-foreground">
-                      {pct != null ? `Downloading… ${pct}%` : "Downloading…"} Open HUB will restart.
-                    </div>
-                  ) : (
-                    update.notes && <div className="line-clamp-2 text-muted-foreground">{update.notes.split("\n")[0]}</div>
-                  )}
-                </>
-              ) : (
-                <div className="text-muted-foreground">{checkedOnce ? "You're up to date." : "Updates come from the project's GitHub releases."}</div>
-              )}
-            </div>
-            {update ? (
-              <Button onClick={onInstall} disabled={installing}>
-                <Download /> {installing ? "Installing…" : "Install"}
-              </Button>
-            ) : (
-              <Button variant="secondary" onClick={checkNow} disabled={checking}>
-                <RefreshCw className={cn(checking && "animate-spin")} /> {checking ? "Checking…" : "Check now"}
-              </Button>
-            )}
-          </div>
-
-          {info && (
-            <>
-              <SettingRow
-                id="check-updates"
-                title="Check for updates automatically"
-                description="Shortly after start and every 6 hours. You get a notification when one is available."
-                checked={info.settings.check_updates}
-                onChange={(v) => save({ check_updates: v, auto_install_updates: v && info.settings.auto_install_updates })}
-              />
-              <SettingRow
-                id="auto-install"
-                title="Install updates automatically"
-                description="Downloads and installs new versions without asking. Open HUB restarts briefly."
-                checked={info.settings.auto_install_updates}
-                onChange={(v) => save({ auto_install_updates: v, check_updates: v || info.settings.check_updates })}
-              />
-            </>
-          )}
-          <Separator className="mt-1" />
-          <p className="text-xs text-muted-foreground">
-            Updates are signed. Open HUB verifies each download before installing it.
-          </p>
-        </section>
-      </DialogContent>
-    </Dialog>
-  );
+import {useEffect,useState} from 'react';
+import {Download,RefreshCw,Settings} from 'lucide-react';
+import {toast} from 'sonner';
+import {Button} from '@/components/ui/button';
+import {Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle,DialogTrigger} from '@/components/ui/dialog';
+import {Label} from '@/components/ui/label';
+import {Separator} from '@/components/ui/separator';
+import {Switch} from '@/components/ui/switch';
+import {Tooltip,TooltipContent,TooltipTrigger} from '@/components/ui/tooltip';
+import {api,type AppInfo,type UpdateInfo,type UpdateProgress} from '@/lib/api';
+interface Props{update:UpdateInfo|null;onUpdateFound:(info:UpdateInfo|null)=>void;progress:UpdateProgress|null;installing:boolean;onInstall:()=>void;onDownload:()=>void}
+export function AppSettingsDialog({update,onUpdateFound,progress,installing,onInstall,onDownload}:Props){
+ const [info,setInfo]=useState<AppInfo|null>(null),[checking,setChecking]=useState(false),[checkedOnce,setCheckedOnce]=useState(false),[error,setError]=useState('');
+ const load=()=>api.appInfo().then(setInfo,e=>toast.error(String(e)));
+ useEffect(()=>{void load();},[]);
+ const check=async()=>{setChecking(true);setCheckedOnce(false);setError('');try{onUpdateFound(await api.checkForUpdate());setCheckedOnce(true);}catch(e){setError(String(e));}finally{setChecking(false);}};
+ const toggle=async(value:boolean)=>{if(!info)return;const settings={...info.settings,check_updates:value,auto_install_updates:false};try{await api.setAppSettings(settings);setInfo({...info,settings});}catch(e){setError(String(e));}};
+ const pct=progress?.total?Math.min(100,Math.round(progress.downloaded/progress.total*100)):null;
+ return <Dialog onOpenChange={open=>{if(open)void load();}}><Tooltip><TooltipTrigger asChild><DialogTrigger asChild><Button variant="ghost" size="icon-lg" className="relative size-[42px] rounded-full text-muted-foreground" aria-label="App settings"><Settings className="size-5"/>{update&&<span className="absolute top-2 right-2 size-2 rounded-full bg-primary" aria-label="Update available"/>}</Button></DialogTrigger></TooltipTrigger><TooltipContent>外观与设置</TooltipContent></Tooltip>
+ <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle className="text-xl font-extrabold">外观与设置</DialogTitle><DialogDescription>Open HUB {info?.version} · 实验性版本</DialogDescription></DialogHeader><AppearanceSettings/><Separator/>
+ <section aria-label="GitHub 版本更新" className="grid gap-3"><h3 className="font-bold">版本更新</h3><p className="text-xs text-muted-foreground">来源：GitHub · ZZXYWQ/Open-HUB。自动检查只读取版本信息，不自动下载或安装。</p>
+ <div className="rounded-xl border p-4 space-y-3">{update?<><b>发现新版本 {update.version}{update.experimental?' · 实验版':''}</b><p className="text-sm text-muted-foreground">当前 {info?.version??update.current_version}。{update.downloaded?'安装包已下载，安装前将再次验证签名。':'下载完成后，你仍可选择是否安装。'}</p>{update.notes&&<details><summary className="cursor-pointer text-sm">查看更新说明</summary><pre className="mt-2 max-h-60 overflow-y-auto whitespace-pre-wrap break-words text-xs">{update.notes}</pre></details>}<div className="flex flex-wrap gap-2">{update.downloaded?<Button disabled={installing} onClick={()=>onInstall()}>{installing?'正在安装…':'安装并重启'}</Button>:<Button disabled={installing} onClick={()=>onDownload()}><Download size={16}/>{installing?(pct==null?'正在下载…':`正在下载… ${pct}%`):'下载更新'}</Button>}{update.downloaded&&<Button disabled={installing} variant="outline" onClick={()=>onDownload()}>重新下载</Button>}<Button disabled={installing} variant="ghost" onClick={()=>toast.info('已保留当前版本，可稍后从此处继续更新')}>稍后</Button></div></>:<p className="text-sm text-muted-foreground">{checkedOnce?'当前已是最新版本。':'检查已发布的稳定版或实验版；预发布会明确标识。'}</p>}
+ {installing&&progress&&<p role="status" className="text-xs">已下载 {(progress.downloaded/1048576).toFixed(1)} MiB{pct!=null?` · ${pct}%`:''}</p>}
+ <Button variant="outline" disabled={checking||installing} onClick={()=>void check()}><RefreshCw className={checking?'animate-spin':''} size={16}/>{checking?'正在检查…':'立即检查更新'}</Button></div>
+ {error&&<p role="alert" className="text-sm text-destructive">{error}</p>}
+ {info&&<div className="flex items-center justify-between gap-4 rounded-lg bg-secondary/60 px-4 py-3"><Label htmlFor="check-updates" className="flex-col items-start gap-1"><span>自动检查 GitHub 更新</span><span className="text-xs font-normal text-muted-foreground">启动约 30 秒后及每 6 小时检查；下载、安装均由你选择。</span></Label><Switch id="check-updates" checked={info.settings.check_updates} onCheckedChange={v=>void toggle(v)}/></div>}
+ <p className="text-xs text-muted-foreground">更新包使用 Open HUB 独立密钥验证完整性与来源。此更新签名不同于 Windows 代码签名，实验安装包仍未取得 Windows 代码签名证书。</p></section></DialogContent></Dialog>;
 }

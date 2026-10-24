@@ -79,7 +79,7 @@ impl Service {
             .lock()
             .map_err(|_| "Three-brand manager lock poisoned")?;
         if guard.is_none() {
-            let backend = HidapiBackend::with_filter(VendorFilter::only([0x1532, 0x1b1c, 0x1038, 0x373b]))
+            let backend = HidapiBackend::with_filter(VendorFilter::only([0x1532, 0x1b1c, 0x1038, 0x373b, 0x3554]))
                 .map_err(|e| e.to_string())?;
             *guard = Some(DeviceManager::new(
                 Box::new(ExactBackend(backend)),
@@ -134,7 +134,7 @@ impl Service {
             let native=Plan{vendor:plan.vendor,product:plan.product,settings:compiled.settings.clone(),macros:vec![],source:None};
             validate_capabilities(&native,device.capabilities())?;
             let before=view(device.as_mut())?;
-            if plan.vendor==0x373b{device.set_macro_definitions(&plan.macros).map_err(|e|e.to_string())?;}
+            if crate::atk::supported(plan.vendor,plan.product){device.set_macro_definitions(&plan.macros).map_err(|e|e.to_string())?;}
             if (plan.vendor,plan.product)==(0x1b1c,0x1b2e)&&plan.settings.iter().any(|s|matches!(s,Setting::ReportRate(rate) if before.state.report_rate!=Some(*rate))){
                 let message=rate_reconnect::begin(root,device.as_mut(),plan)?;manager.drop_device(raw_id(id));return Err(message);
             }
@@ -319,20 +319,20 @@ pub fn validate(p: &Plan) -> Result<(), String> {
         }
         match s {
             Setting::Dpi(d) => {
-                if p.vendor==0x373b{crate::atk::validate_dpi(d,p.product).map_err(|e|e.to_string())?;}
-                let (max, step, count, xy) = match p.vendor {
+                if crate::atk::supported(p.vendor,p.product){crate::atk::validate_dpi(d,p.product).map_err(|e|e.to_string())?;}
+                let (max, step, count, xy) = if let Some(model)=crate::atk::model(p.vendor,p.product){(model.max_dpi,50,8,true)}else{match p.vendor {
                     0x1532 if p.product==0x00b4 => (30000,1,1,true),
                     0x1532 => {let model=gearwise_razer::models::find(p.product).ok_or("未知雷蛇型号")?;let dpi=model.dpi.ok_or("该型号不支持 DPI")?;(dpi.max,1,if dpi.stages{5}else{1},true)},
                     0x1b1c => (12000, 1, 5, true),
                     0x373b => (if p.product==0x1017{36000}else{30000},50,8,true),
                     _ => (12000, 100, 2, false),
-                };
+                }};
                 if d.stages.is_empty()
                     || d.stages.len() > count
                     || d.active as usize >= d.stages.len()
                     || d.stages.iter().any(|s| {
-                        s.x < if p.vendor==0x373b&&p.product==0x1017{50}else{100}
-                            || s.y < if p.vendor==0x373b&&p.product==0x1017{50}else{100}
+                        s.x < if crate::atk::supported(p.vendor,p.product)&&p.product==0x1017{50}else{100}
+                            || s.y < if crate::atk::supported(p.vendor,p.product)&&p.product==0x1017{50}else{100}
                             || s.x > max
                             || s.y > max
                             || s.x % step != 0
@@ -344,7 +344,7 @@ pub fn validate(p: &Plan) -> Result<(), String> {
                 }
             }
             Setting::ReportRate(r) => {
-                let allowed = if p.vendor==0x373b&&p.product==0x1017{vec![125,250,500,1000,2000,4000,8000]}else if p.vendor==0x1532&&p.product!=0x00b4 {
+                let allowed = if let Some(model)=crate::atk::model(p.vendor,p.product){model.rates.clone()}else if p.vendor==0x1532&&p.product!=0x00b4 {
                     gearwise_razer::models::find(p.product).ok_or("未知雷蛇型号")?.polling.rates.to_vec()
                 } else if p.vendor == 0x1532 {
                     vec![125, 500, 1000]
@@ -369,7 +369,7 @@ pub fn validate(p: &Plan) -> Result<(), String> {
                 }
                 if p.vendor==0x1532&&p.product==0x00b4{if !crate::naga::known_button(*id){return Err("未知 Naga 按键".into());}match action{ButtonAction::Default|ButtonAction::Mouse(_)|ButtonAction::Macro(_)=>{},ButtonAction::Key{usage,..} if (4..=0xa4).contains(usage)=>{},_=>return Err("Naga 不支持此板载动作".into())}if *id==1{return Err("保留左键原始点击".into());}continue;}
                 if p.vendor==0x1b1c&&p.product==0x1b2e{if !(2..=8).contains(id){return Err("保留左键，且只允许 M65 PRO 已知按键".into());}match action{ButtonAction::Default|ButtonAction::Disabled|ButtonAction::Mouse(_)|ButtonAction::Macro(_)|ButtonAction::Dpi(DpiFunction::Up|DpiFunction::Down|DpiFunction::Cycle)=>{},ButtonAction::Dpi(DpiFunction::Shift(d)) if (100..=12000).contains(d)=>{},ButtonAction::Key{usage,..} if (4..=0xa4).contains(usage)=>{},_=>return Err("M65 PRO 按键动作无效".into())}continue;}
-                if p.vendor==0x373b {if !(2..=6).contains(id)||!matches!(action,ButtonAction::Default|ButtonAction::Disabled|ButtonAction::Key{..}|ButtonAction::Macro(_)|ButtonAction::Mouse(gearwise_core::model::MouseButton::Left|gearwise_core::model::MouseButton::Right|gearwise_core::model::MouseButton::Middle|gearwise_core::model::MouseButton::Back|gearwise_core::model::MouseButton::Forward)|ButtonAction::Dpi(DpiFunction::Cycle|DpiFunction::Up|DpiFunction::Down)){return Err("ATK 仅开放已实现的基础按键、键盘点按和板载宏；未知原厂动作保持不变".into());}continue;}
+                if crate::atk::supported(p.vendor,p.product) {if !(2..=crate::atk::model(p.vendor,p.product).unwrap().buttons).contains(id)||!matches!(action,ButtonAction::Default|ButtonAction::Disabled|ButtonAction::Key{..}|ButtonAction::Macro(_)|ButtonAction::Mouse(gearwise_core::model::MouseButton::Left|gearwise_core::model::MouseButton::Right|gearwise_core::model::MouseButton::Middle|gearwise_core::model::MouseButton::Back|gearwise_core::model::MouseButton::Forward)|ButtonAction::Dpi(DpiFunction::Cycle|DpiFunction::Up|DpiFunction::Down)){return Err("该精确型号仅开放已实现的基础按键、键盘点按和板载宏；未知原厂动作保持不变".into());}continue;}
                 if p.vendor != 0x1038 || !(1..=6).contains(id) {
                     return Err("此型号的按键写入尚未实现".into());
                 }
@@ -509,7 +509,7 @@ fn simulated(
     product: u16,
 ) -> Result<(Box<dyn gearwise_core::Device>, MockLog), String> {
     match (vendor, product) {
-        (0x373b,0x1115|0x1017|0x10c9)=>crate::atk::simulated(product).map_err(|e|e.to_string()),
+        (v,p) if crate::atk::supported(v,p)=>crate::atk::simulated(product).map_err(|e|e.to_string()),
         (0x1532, 0x0084) => Ok(gearwise_razer::simulated_deathadder_v2()),
         (0x1532, 0x007a|0x007b|0x00a5|0x00a6|0x00c0|0x00c1) => gearwise_razer::simulated_viper(product).map_err(|e|e.to_string()),
         (0x1532, 0x00b4) => Ok(crate::naga::simulated()),
@@ -519,8 +519,7 @@ fn simulated(
     }
 }
 pub fn templates() -> Result<Vec<View>, String> {
-    [(0x373b,0x1115),(0x373b,0x1017),(0x373b,0x10c9),(0x1532, 0x0084), (0x1532, 0x00b4), (0x1b1c, 0x1b2e), (0x1038, 0x1720),(0x1532,0x007a),(0x1532,0x007b),(0x1532,0x00a5),(0x1532,0x00a6),(0x1532,0x00c0),(0x1532,0x00c1)]
-        .into_iter()
+    crate::atk::models().iter().map(|m|(m.vendor,m.product)).chain([(0x1532, 0x0084), (0x1532, 0x00b4), (0x1b1c, 0x1b2e), (0x1038, 0x1720),(0x1532,0x007a),(0x1532,0x007b),(0x1532,0x00a5),(0x1532,0x00a6),(0x1532,0x00c0),(0x1532,0x00c1)].into_iter())
         .map(|(v, p)| {
             let (mut d, _) = simulated(v, p)?;
             let mut out = view(d.as_mut())?;
@@ -538,7 +537,7 @@ pub fn simulate(plan: &Plan) -> Result<serde_json::Value, String> {
     let native_plan=Plan{vendor:plan.vendor,product:plan.product,settings:compiled.settings.clone(),macros:vec![],source:None};
     validate_capabilities(&native_plan, device.capabilities())?;
     log.lock().map_err(|_| "Mock log lock")?.clear();
-    if plan.vendor==0x373b{device.set_macro_definitions(&plan.macros).map_err(|e|e.to_string())?;}
+    if crate::atk::supported(plan.vendor,plan.product){device.set_macro_definitions(&plan.macros).map_err(|e|e.to_string())?;}
     for s in &compiled.settings {
         device.apply(s).map_err(|e| e.to_string())?;
     }
@@ -607,7 +606,7 @@ pub fn compile(plan:&Plan)->Result<Compiled,String>{
  let software_input=corsair&&plan.settings.iter().any(|s|matches!(s,Setting::Button{action,..} if !matches!(action,ButtonAction::Default)));
  let mut native=Vec::new();let mut bindings=Vec::new();let mut keys=std::collections::BTreeMap::new();let mut buttons=Vec::new();let mut dpi_actions=std::collections::BTreeMap::new();
  let mut definitions=std::collections::HashMap::new();if plan.macros.len()>32{return Err("最多保存 32 个软件宏".into());}
- for m in &plan.macros{crate::host_macros::validate(m)?;if plan.vendor==0x373b{crate::atk::validate_macro(m).map_err(|e|e.to_string())?;}if definitions.insert(m.id.as_str(),m).is_some(){return Err("宏标识重复".into());}}
+ for m in &plan.macros{crate::host_macros::validate(m)?;if crate::atk::supported(plan.vendor,plan.product){crate::atk::validate_macro(m).map_err(|e|e.to_string())?;}if definitions.insert(m.id.as_str(),m).is_some(){return Err("宏标识重复".into());}}
  if let Some(source)=&plan.source{if source.vendor!=plan.vendor||source.product!=plan.product{return Err("软件宏来源与方案品牌/型号不一致".into());}}
  for s in &plan.settings{
   if corsair {if let Setting::Button{id,action}=s{
@@ -623,7 +622,7 @@ pub fn compile(plan:&Plan)->Result<Compiled,String>{
    if let Some(steps)=steps{let action=Macro{id:format!("openhub-remap-{id}"),name:format!("按住按键 {id}"),mode:MacroMode::WhileHeld,steps};crate::host_macros::validate(&action)?;bindings.push(crate::host_macros::Binding{button:*id,action});buttons.push(*id);}
    native.push(s.clone());continue;
   }}
-  if plan.vendor==0x373b {if let Setting::Button{action:ButtonAction::Key{usage,mods},..}=s{crate::atk::validate_key(*usage,*mods).map_err(|e|e.to_string())?;}if let Setting::Button{action:ButtonAction::Macro(id),..}=s{let definition=definitions.get(id.as_str()).ok_or("ATK 板载宏定义缺失")?;crate::atk::validate_macro(definition).map_err(|e|e.to_string())?;}native.push(s.clone());continue;}
+  if crate::atk::supported(plan.vendor,plan.product) {if let Setting::Button{action:ButtonAction::Key{usage,mods},..}=s{crate::atk::validate_key(*usage,*mods).map_err(|e|e.to_string())?;}if let Setting::Button{action:ButtonAction::Macro(id),..}=s{let definition=definitions.get(id.as_str()).ok_or("ATK 板载宏定义缺失")?;crate::atk::validate_macro(definition).map_err(|e|e.to_string())?;}native.push(s.clone());continue;}
   if let Setting::Button{id,action:ButtonAction::Macro(macro_id)}=s{
    if !matches!((plan.vendor,plan.product),(0x1532,0x00b4)|(0x1038,0x1720)){return Err("该型号的软件宏输入尚未接通".into());}
    if *id==1{return Err("保留左键原始点击".into());}
@@ -786,4 +785,24 @@ fn resolve_defaults(compiled:&mut Compiled,before:&View)->Result<(),String>{
 #[cfg(test)]mod atk_native_plan_tests{
  use super::*;use gearwise_core::profile::{Macro,MacroMode,MacroStep};
  #[test]fn atk_plan_uses_native_macro_packets_instead_of_host_hooks(){let p=Plan{vendor:0x373b,product:0x1115,settings:vec![Setting::Button{id:4,action:ButtonAction::Macro("board".into())}],macros:vec![Macro{id:"board".into(),name:"board".into(),mode:MacroMode::WhileHeld,steps:vec![MacroStep::KeyDown(4),MacroStep::Delay(20),MacroStep::KeyUp(4)]}],source:None};let compiled=compile(&p).unwrap();assert!(compiled.bindings.is_empty());assert!(!compiled.software_input);assert!(matches!(compiled.settings[0],Setting::Button{action:ButtonAction::Macro(_),..}));let result=simulate(&p).unwrap();assert!(result["packet_count"].as_u64().unwrap()>10);assert!(result["software_macros"].as_array().unwrap().is_empty());}
+}
+
+#[cfg(test)]mod compx_integration_tests{
+ use super::*;
+ #[test]fn new_brands_native_plans_preserve_board_macros_through_save_and_simulation(){
+  use gearwise_core::profile::{Macro,MacroMode,MacroStep};
+  for model in crate::atk::models().iter().filter(|m|m.brand!="atk"){
+   let p=Plan{vendor:model.vendor,product:model.product,source:None,settings:vec![Setting::Dpi(gearwise_core::model::DpiState{stages:vec![gearwise_core::model::DpiStage{x:1200,y:1600}],active:0}),Setting::Button{id:4,action:ButtonAction::Macro("native".into())}],macros:vec![Macro{id:"native".into(),name:"native".into(),mode:MacroMode::Toggle,steps:vec![MacroStep::KeyDown(4),MacroStep::Delay(10),MacroStep::KeyUp(4)]}]};
+   let saved=serde_json::to_vec(&p).unwrap();let loaded:Plan=serde_json::from_slice(&saved).unwrap();assert_eq!(loaded,p);
+   let compiled=compile(&loaded).unwrap();assert!(!compiled.software_input&&compiled.bindings.is_empty());
+   let result=simulate(&loaded).unwrap();assert!(result["packet_count"].as_u64().unwrap()>10);assert!(result["software_macros"].as_array().unwrap().is_empty());
+   if let Some(dir)=std::env::var_os("OPEN_HUB_COMPX_FIXTURE_DIR"){
+    let (mut device,_)=simulated(model.vendor,model.product).unwrap();device.set_macro_definitions(&loaded.macros).unwrap();
+    for setting in &compiled.settings{device.apply(setting).unwrap();}
+    let dto=view(device.as_mut()).unwrap();let dir=std::path::PathBuf::from(dir);std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join(format!("{:04x}-{:04x}.json",model.vendor,model.product)),serde_json::to_vec_pretty(&dto).unwrap()).unwrap();
+   }
+
+  }
+ }
 }

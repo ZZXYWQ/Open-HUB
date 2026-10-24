@@ -100,7 +100,7 @@ export function HomePage({ devices, states, scanning, onOpen, onScan,onLighting 
                   <div className="mt-3.5">
                     <DeviceStatus device={d} battery={s?.battery ?? null} />
                   </div>
-                  <DeviceArt kind={d.kind} vendorId={d.vendor_id} className="min-h-0 flex-1 pt-1.5 pb-13 [&_svg]:max-h-60" />
+                  <DeviceArt kind={d.kind} vendorId={d.vendor_id} productId={d.product_id} name={d.name} className="min-h-0 flex-1 pt-1.5 pb-13 [&_svg]:max-h-60" />
                   {s?.onboard_mode === "onboard" && <OnboardBadge className="absolute right-6 bottom-6" />}
                 </Card>
               </button>
@@ -114,7 +114,7 @@ export function HomePage({ devices, states, scanning, onOpen, onScan,onLighting 
             return (
               <button key={d.id} onClick={() => onOpen(d.id)} className="rounded-[10px] text-left outline-none focus-visible:ring-3 focus-visible:ring-ring" aria-label={`Open ${d.name}`}>
                 <Card className="grid h-26 grid-cols-[80px_1fr_auto_48px] items-center gap-5 rounded-[10px] px-5 py-0 ring-0 transition-colors hover:bg-[#2a2b2f]">
-                  <DeviceArt kind={d.kind} vendorId={d.vendor_id} className="h-19" />
+                  <DeviceArt kind={d.kind} vendorId={d.vendor_id} productId={d.product_id} name={d.name} className="h-19" />
                   <div className="flex min-w-0 flex-col">
                     <span className="truncate text-xl font-extrabold tracking-tight uppercase">{d.name}</span>
                     <span className="text-xs text-muted-foreground">{d.connection}</span>

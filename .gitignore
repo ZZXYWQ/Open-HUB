@@ -7,3 +7,8 @@ outputs/
 .env
 .env.*
 !.env.example
+
+# Private updater signing keys must stay outside the repository
+*.key
+*.pfx
+*.pem

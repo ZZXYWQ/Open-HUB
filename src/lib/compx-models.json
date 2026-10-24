@@ -1,0 +1,180 @@
+[
+  {
+    "vendor": 14139,
+    "product": 4373,
+    "mids": [
+      83
+    ],
+    "brand": "atk",
+    "name": "ATK A9 Plus NK · USB",
+    "max_dpi": 30000,
+    "buttons": 6,
+    "indicator": false,
+    "wireless": false,
+    "rates": [
+      125,
+      250,
+      500,
+      1000
+    ]
+  },
+  {
+    "vendor": 14139,
+    "product": 4297,
+    "mids": [
+      83
+    ],
+    "brand": "atk",
+    "name": "ATK A9 Plus NK · NearLink receiver",
+    "max_dpi": 30000,
+    "buttons": 6,
+    "indicator": false,
+    "wireless": true,
+    "rates": [
+      125,
+      250,
+      500,
+      1000
+    ]
+  },
+  {
+    "vendor": 14139,
+    "product": 4119,
+    "mids": [
+      39
+    ],
+    "brand": "atk",
+    "name": "ATK X1 Pro Max · USB",
+    "max_dpi": 36000,
+    "buttons": 6,
+    "indicator": true,
+    "wireless": false,
+    "rates": [
+      125,
+      250,
+      500,
+      1000,
+      2000,
+      4000,
+      8000
+    ]
+  },
+  {
+    "vendor": 13652,
+    "product": 62863,
+    "mids": [
+      11,
+      12
+    ],
+    "brand": "vxe",
+    "name": "VXE 蜻蜓 R1 · USB",
+    "max_dpi": 30000,
+    "buttons": 6,
+    "indicator": true,
+    "wireless": false,
+    "rates": [
+      125,
+      250,
+      500,
+      1000
+    ]
+  },
+  {
+    "vendor": 13652,
+    "product": 62860,
+    "mids": [
+      7,
+      8
+    ],
+    "brand": "vxe",
+    "name": "VXE 蜻蜓 R1 Pro · USB",
+    "max_dpi": 30000,
+    "buttons": 6,
+    "indicator": true,
+    "wireless": false,
+    "rates": [
+      125,
+      250,
+      500,
+      1000
+    ]
+  },
+  {
+    "vendor": 14139,
+    "product": 4159,
+    "mids": [
+      49
+    ],
+    "brand": "vxe",
+    "name": "VXE MAD R · USB",
+    "max_dpi": 30000,
+    "buttons": 5,
+    "indicator": false,
+    "wireless": false,
+    "rates": [
+      125,
+      250,
+      500,
+      1000
+    ]
+  },
+  {
+    "vendor": 14139,
+    "product": 4171,
+    "mids": [
+      54
+    ],
+    "brand": "vxe",
+    "name": "VXE MAD R+ · USB",
+    "max_dpi": 30000,
+    "buttons": 5,
+    "indicator": false,
+    "wireless": false,
+    "rates": [
+      125,
+      250,
+      500,
+      1000
+    ]
+  },
+  {
+    "vendor": 13652,
+    "product": 62722,
+    "mids": [
+      1,
+      2
+    ],
+    "brand": "vgn",
+    "name": "VGN 蜻蜓 F1 Pro · USB",
+    "max_dpi": 30000,
+    "buttons": 6,
+    "indicator": true,
+    "wireless": false,
+    "rates": [
+      125,
+      250,
+      500,
+      1000
+    ]
+  },
+  {
+    "vendor": 13652,
+    "product": 62726,
+    "mids": [
+      3,
+      4
+    ],
+    "brand": "vgn",
+    "name": "VGN 蜻蜓 F1 Pro Max · USB",
+    "max_dpi": 30000,
+    "buttons": 6,
+    "indicator": true,
+    "wireless": false,
+    "rates": [
+      125,
+      250,
+      500,
+      1000
+    ]
+  }
+]
