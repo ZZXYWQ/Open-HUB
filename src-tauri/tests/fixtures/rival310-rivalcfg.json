@@ -1,0 +1,243 @@
+{
+  "source": "https://github.com/flozz/rivalcfg",
+  "simulated": true,
+  "hardware_access": false,
+  "cases": [
+    {
+      "name": "dpi1-100",
+      "method": "set_sensitivity1",
+      "value": 100,
+      "report": [
+        0,
+        83,
+        0,
+        1,
+        0,
+        0,
+        66
+      ]
+    },
+    {
+      "name": "dpi1-800",
+      "method": "set_sensitivity1",
+      "value": 800,
+      "report": [
+        0,
+        83,
+        0,
+        1,
+        7,
+        0,
+        66
+      ]
+    },
+    {
+      "name": "dpi1-1600",
+      "method": "set_sensitivity1",
+      "value": 1600,
+      "report": [
+        0,
+        83,
+        0,
+        1,
+        15,
+        0,
+        66
+      ]
+    },
+    {
+      "name": "dpi1-12000",
+      "method": "set_sensitivity1",
+      "value": 12000,
+      "report": [
+        0,
+        83,
+        0,
+        1,
+        119,
+        0,
+        66
+      ]
+    },
+    {
+      "name": "dpi2-100",
+      "method": "set_sensitivity2",
+      "value": 100,
+      "report": [
+        0,
+        83,
+        0,
+        2,
+        0,
+        0,
+        66
+      ]
+    },
+    {
+      "name": "dpi2-800",
+      "method": "set_sensitivity2",
+      "value": 800,
+      "report": [
+        0,
+        83,
+        0,
+        2,
+        7,
+        0,
+        66
+      ]
+    },
+    {
+      "name": "dpi2-1600",
+      "method": "set_sensitivity2",
+      "value": 1600,
+      "report": [
+        0,
+        83,
+        0,
+        2,
+        15,
+        0,
+        66
+      ]
+    },
+    {
+      "name": "dpi2-12000",
+      "method": "set_sensitivity2",
+      "value": 12000,
+      "report": [
+        0,
+        83,
+        0,
+        2,
+        119,
+        0,
+        66
+      ]
+    },
+    {
+      "name": "rate-125",
+      "method": "set_polling_rate",
+      "value": 125,
+      "report": [
+        0,
+        84,
+        0,
+        4
+      ]
+    },
+    {
+      "name": "rate-250",
+      "method": "set_polling_rate",
+      "value": 250,
+      "report": [
+        0,
+        84,
+        0,
+        3
+      ]
+    },
+    {
+      "name": "rate-500",
+      "method": "set_polling_rate",
+      "value": 500,
+      "report": [
+        0,
+        84,
+        0,
+        2
+      ]
+    },
+    {
+      "name": "rate-1000",
+      "method": "set_polling_rate",
+      "value": 1000,
+      "report": [
+        0,
+        84,
+        0,
+        1
+      ]
+    },
+    {
+      "name": "buttons-default",
+      "method": "set_buttons_mapping",
+      "value": "default",
+      "report": [
+        0,
+        49,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        0,
+        0,
+        5,
+        0,
+        0,
+        0,
+        0,
+        48,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "buttons-key-a",
+      "method": "set_buttons_mapping",
+      "value": "buttons(button1=button1;button6=a)",
+      "report": [
+        0,
+        49,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        0,
+        0,
+        5,
+        0,
+        0,
+        0,
+        0,
+        81,
+        4,
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

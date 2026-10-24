@@ -1,0 +1,62 @@
+{
+  "product": "Open HUB",
+  "internal_version": "0.3.1",
+  "release_tag": "v0.3.1-experimental.1",
+  "experimental": true,
+  "upstream": "https://github.com/abidr/open-ghub",
+  "upstream_commit": "2853a6251a31a376a0f7287c1c846bd9bff97198",
+  "installer": {
+    "name": "Open-HUB-0.3.1-x64-setup.exe",
+    "bytes": 40723085,
+    "sha256": "3755791591e6626bcb83afd74b58ced753ea5cac713eac388e5ef26c0496c307",
+    "code_signed": false
+  },
+  "current_release_checks": {
+    "native_tests_passed": 239,
+    "native_tests_failed": 0,
+    "atk_native_tests": 19,
+    "browser_ui_suites_passed": 15,
+    "browser_ui_suites_failed": 0,
+    "browser_uses_mock_tauri": true,
+    "protocol_uses_production_driver_with_synthetic_hid": true,
+    "production_build_passed": true,
+    "installer_payload_hashes_verified": true,
+    "embedded_icon_sizes_verified": 5,
+    "upgrade_from_0_3_0_passed": true,
+    "preference_files_unchanged_before_first_launch": 11,
+    "window_present_and_responding": true
+  },
+  "historical_dependency_regressions": {
+    "shared_driver_unit_tests": 289,
+    "shared_driver_doc_tests": 1,
+    "synapse_parser_unit_tests": 148,
+    "synapse_parser_integration_tests": 3
+  },
+  "hardware_verification": {
+    "physically_exercised_mouse": [
+      "MCHOSE A7 V3 Ultra+"
+    ],
+    "physically_exercised_dock": [
+      "MCHOSE MagDock"
+    ],
+    "other_added_mouse_models_physically_tested": false,
+    "logitech_physical_regression_in_this_fork": false,
+    "atk_physically_tested": false,
+    "whole_brand_support_claimed": false
+  },
+  "unverified": [
+    "Fresh Windows / new-user installation",
+    "Missing-WebView2 network bootstrap",
+    "All firmware variants",
+    "Full manual desktop-transparency visual verification",
+    "Other added mouse models on hardware"
+  ],
+  "not_implemented": [
+    "VXE R1 / MAD R",
+    "VGN F1",
+    "AULA SC620 / SC580",
+    "Six-color icon selector",
+    "Whole-brand universal mouse control"
+  ],
+  "report_date": "2026-10-24"
+}

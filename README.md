@@ -1,267 +1,96 @@
 <div align="center">
 
-<img src="app-icon.png" alt="Open GHub" width="96" height="96">
+<img src="public/open-hub.png" width="96" height="96" alt="Open HUB">
 
-# Open GHub
+# Open HUB · 实验性版本
 
-**A lightweight, open-source alternative to Logitech G HUB for configuring Logitech gaming mice on Windows.**
+**基于 [abidr/open-ghub（Open GHub）](https://github.com/abidr/open-ghub) 修改的多品牌鼠标控制实验项目。**
 
-[![Latest release](https://img.shields.io/github/v/release/abidr/open-ghub?label=release)](https://github.com/abidr/open-ghub/releases/latest)
-[![CI](https://github.com/abidr/open-ghub/actions/workflows/ci.yml/badge.svg)](https://github.com/abidr/open-ghub/actions/workflows/ci.yml)
-[![License: GPL v3](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
-![Platform: Windows](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078d4)
+**[⬇ 下载 Windows x64 EXE 安装包 · 0.3.1 实验版（约 39 MiB）](https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.1-experimental.1/Open-HUB-0.3.1-x64-setup.exe)**
 
-[Download](https://github.com/abidr/open-ghub/releases/latest) ·
-[Features](#features) ·
-[FAQ](#faq) ·
-[Contributing](CONTRIBUTING.md) ·
-[Changelog](CHANGELOG.md)
+[版本说明与全部附件](https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.1-experimental.1) ·
+[对应源码 ZIP](https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.1-experimental.1/Open-HUB-0.3.1-source.zip) ·
+[完整适配范围](MOUSE-BRAND-SUPPORT.md) · [验证记录](RELEASE-VALIDATION.md)
 
 </div>
 
----
+> [!WARNING]
+> **这仅是一个实验性版本，不是稳定版。** 多数新增鼠标只有生产驱动与模拟设备测试，没有对应实机验证，不能认定整个品牌兼容。连接方式、USB ID、固件和功能边界均会影响支持情况。应用前请先保留原配置，只对明确列出的型号进行测试。
 
-Open GHub talks to your mouse directly over Logitech's HID++ 2.0 protocol, the
-same protocol G HUB uses. It needs no G HUB installation and no background
-service, and it runs in about 27 MB of RAM from the system tray.
+## 来源与改动
 
-<p align="center">
-  <img src="docs/screenshots/dpi.png" alt="Open GHub DPI settings for a PRO X SUPERLIGHT" width="820">
-</p>
+本项目修改自 **Abidur Rahman 的 [Open GHub](https://github.com/abidr/open-ghub)**，保留上游提交历史、作者信息与 GPL-3.0-or-later 许可。修改基线为 [`2853a6251a31a376a0f7287c1c846bd9bff97198`](https://github.com/abidr/open-ghub/commit/2853a6251a31a376a0f7287c1c846bd9bff97198)。[上游原始 README](docs/upstream/Open-GHub-README.md) 仅作来源记录，其中的下载、签名和测试声明属于上游。
 
-> [!NOTE]
-> Open GHub is an independent project. It is not affiliated with, endorsed by
-> or supported by Logitech. Logitech, Logitech G, G HUB, LIGHTSPEED and product
-> names are trademarks of Logitech, used here only to identify compatible
-> hardware.
+本分支改名为 **Open HUB**，增加迈从及部分其他品牌型号的设备适配、按品牌分类的配置导入、对应功能界面、板载/软件宏、灯光同步、新图标、配色、透明度与小型 JSON 皮肤。保留原有罗技 HID++ 路径，按品牌、型号和设备身份隔离配置。
 
-## Features
+本项目与各硬件厂商及上游作者均无官方隶属或背书关系。
 
-- **DPI levels and report rate:** up to 5 DPI levels with separate X/Y on supported mice, and report rates up to 8000 Hz.
-- **Per-application profiles:** profiles switch automatically when a linked game or app comes to the foreground, with a Desktop fallback.
-- **On-board memory:** view and edit the profiles stored inside the mouse, which keep working with Open GHub closed. Every write is backed up first and verified by reading it back.
-- **Battery:** shows the level in the app and tray, with low-battery notifications at 15% and 5%.
-- **Import from G HUB:** converts your existing G HUB profiles in one click (optional).
-- **Lightweight:** event-driven with no polling. In the tray no WebView runs, so idle CPU is effectively zero.
-- **Automatic updates:** signed updates from GitHub Releases. You can turn update checks off.
-- **No account, no telemetry:** see the [privacy policy](#privacy-policy).
+## 哪些设备适配到什么程度
 
-## Screenshots
+**当前涉及 14 个品牌的部分型号，不是全品牌兼容。** 上游原有测试不计作本分支新增实机验证。
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/screenshots/devices.png" alt="Devices page"><p align="center"><b>Devices</b></p></td>
-    <td width="50%"><img src="docs/screenshots/profiles.png" alt="Profiles page with auto-switching"><p align="center"><b>Profiles and auto-switching</b></p></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/screenshots/onboard-memory.png" alt="On-board memory slots"><p align="center"><b>On-board memory</b></p></td>
-    <td width="50%"><img src="docs/screenshots/onboard-slot-editor.png" alt="Editing an on-board slot"><p align="center"><b>Editing an on-board slot</b></p></td>
-  </tr>
-</table>
+|品牌|明确型号 / 范围|已实现的主要范围|本分支验证|
+|---|---|---|---|
+|罗技 Logitech|原有 HID++ 2.0 路径，按能力显示|保留原功能；G HUB 导入 DPI、回报率和应用关联，不转换官方按键、宏、灯效|保留上游实现、自动化隔离检查；未做罗技实机回归|
+|迈从 MCHOSE|A7 V3 Ultra+、MagDock|DPI、性能、按键、板载宏、三组板载配置；底座原厂效果与软件同步；M HUB 板载名称/引用导入|**使用这款鼠标和底座实机验证**；不代表全部功能/固件均已认证|
+|雷蛇 Razer|Naga V2 HyperSpeed；DeathAdder V2；Viper Ultimate / V2 Pro / V3 Pro|Naga 的 DPI、回报率、支持的按键/软件宏及有限 Synapse 转换；其余型号能力不同|生产驱动 + 模拟，未实机验证|
+|海盗船 Corsair|M65 PRO RGB，1B1C:1B2E|DPI、回报率、支持的按键/软件宏、有限 iCUE 转换；部分状态来自缓存，重连需核对|生产驱动 + 模拟，未实机验证|
+|赛睿 SteelSeries|Rival 310，1038:1720|两组 CPI、回报率、支持的按键/软件宏、有限 GG 数据库转换；部分状态来自写入缓存|生产驱动 + 模拟，未实机验证|
+|ATK|A9 Plus NK：373B:1115 / 老 NearLink 10C9；X1 Pro Max USB：373B:1017|八档 XY DPI、对应回报率、基础按键、键盘点按、板载宏、只读板载导入；X1 指示灯关闭/常亮|生产驱动 + 模拟，**没有 ATK 实机**|
+|Glorious|Model O/O- V103、Model D V102、Model O Eternal 1009、老 Model O V102|下述 SinoWealth 范围|生产驱动 + 模拟，未实机验证|
+|G-Wolves|Hati HT-M Wired V161|下述 SinoWealth 范围|生产驱动 + 模拟，未实机验证|
+|DreamMachines|DM5 Blink 3106|下述 SinoWealth 范围|生产驱动 + 模拟，未实机验证|
+|Genesis|Xenon 770 3110|下述 SinoWealth 范围|生产驱动 + 模拟，未实机验证|
+|Machenike 机械师|M620 V127|下述 SinoWealth 范围|生产驱动 + 模拟，未实机验证|
+|Mad Dog|GM905 V287|下述 SinoWealth 范围|生产驱动 + 模拟，未实机验证|
+|T-Dagger|Imperial T-TGM310 2642|下述 SinoWealth 范围|生产驱动 + 模拟，未实机验证|
+|Marvo|Scorpion G961 9677|下述 SinoWealth 范围|生产驱动 + 模拟，未实机验证|
 
-## Supported devices
+SinoWealth 范围：仅表中型号/固件的 DPI、回报率、按键、程序记录的板载宏和板载读取。原厂宏内容不可读回，灯光另取决于实际接口。以上 8 个品牌为 11 条型号/固件记录，不能把固件和有线/无线 PID 重复计作新鼠标。
 
-Open GHub works with Logitech G mice that speak HID++ 2.0, connected by USB
-cable or through a LIGHTSPEED or Unifying receiver. Its built-in table names
-about 110 Logitech G products.
+雷蛇型号之间也不同：DeathAdder V2 和 Viper Ultimate 未启用按键/宏；Viper V2 Pro 无 RGB、未启用按键/宏；Viper V3 Pro 只开放指定物理键的鼠标动作映射，无键盘动作/宏/RGB。Naga 的转换能力不适用于这些 Viper。精确 USB ID、DPI、回报率和灯效边界见 [完整适配表](MOUSE-BRAND-SUPPORT.md)、[ATK 说明](ATK-ADAPTER.md)、[SinoWealth 说明](SINO-ADAPTER.md)。
 
-| Status | Devices |
-| --- | --- |
-| Tested | PRO X SUPERLIGHT |
-| Expected to work | Other HID++ 2.0 Logitech G mice (G502 X, G Pro Wireless, G305, G703, G903 and others) |
-| Not supported yet | Keyboards, headsets and lighting control |
+**尚未接入：** VXE 蜻蜓 R1 / MAD R、VGN F1、AULA 狼蛛 SC620 / SC580 及未明确列出的其他型号。研究表或灯光引擎中出现品牌名称不等于完成 DPI、按键、宏和官方配置适配。ATK X1 无线接收器、A9 2.0、新 BITMOUSE/FF05 协议也不在本版范围。
 
-Has your mouse been tested? Please
-[report it](https://github.com/abidr/open-ghub/issues/new?template=device_report.yml),
-whether it works or not.
+## 配置导入与灯光边界
 
-## Installation
+导入菜单按品牌列出，先预览再保存，不自动应用鼠标。G HUB 仅导入已支持字段；M HUB 仅导入本地三组板载名称与引用，不迁移云端或未写入鼠标的完整方案。Synapse / iCUE / GG 只转换实现过的格式、型号和动作，不保证任意官方文件可用。ATK 和上述 SinoWealth 型号通过设备板载读取导入，**不是官方软件文件解析器**。
 
-1. Download `Open-GHub_<version>_x64-setup.exe` from the
-   [latest release](https://github.com/abidr/open-ghub/releases/latest).
-2. Run the installer. It installs for the current user and doesn't need
-   administrator rights.
-3. Start **Open GHub** from the Start menu.
+灯光界面按实际能力识别品牌和鼠标，原厂效果按型号提供。电脑 RGB 同步使用按需启动的 OpenRGB 1.1，只有匹配设备、Direct 模式和灯珠均满足才允许同步。RGB 兼容不代表 DPI、按键、宏兼容，不自动安装内核驱动。音乐使用系统播放电平，屏幕取色读取主显示器少量像素，均在本机处理。
 
-**Requirements:** Windows 10 or 11 (64-bit) and the Microsoft Edge WebView2
-runtime, which comes preinstalled on Windows 11.
+## 外观
 
-> [!TIP]
-> Quit G HUB while you use Open GHub (right-click its tray icon, then
-> Quit). Otherwise G HUB may reapply its own settings to the mouse.
+齿轮 → **外观与设置**：4 组预设、主题/背景/面板颜色、透明或半透明、圆角和小型皮肤导入/导出。皮肤是最多 8 KiB 的严格 JSON，不加载任意脚本、图片包或 CSS。新图标为抽象 Z 字轨迹；**图标六色切换尚未实现**。见 [外观说明](APPEARANCE.md)。
 
-## Usage
+## 测试与实验性质
 
-### Tray and background mode
+本次 0.3.1 的检查：
 
-Closing the window keeps Open GHub running in the system tray, so profile
-switching and battery warnings keep working. The tray menu shows battery
-levels and lets you switch profiles, toggle auto-switching, check for updates,
-start with Windows, or quit. When **Start with Windows** is on, Open GHub
-starts minimized to the tray.
+- **239 项原生测试通过**，含 19 项 ATK 专项及外观校验/导出测试。
+- **15 组浏览器界面回归通过**，浏览器使用模拟 Tauri；协议使用生产驱动配合内存 HID，不能代替真实鼠标。
+- Windows 生产构建、安装包解包/哈希核对通过；当前 Windows 用户下完成 **0.3.0 → 0.3.1** 升级，11 个配置/界面偏好文件在升级后、首次启动前哈希不变，新版主窗口启动并响应。
+- 历史共享驱动检查为 289 个单元测试 + 1 个文档测试；Synapse 解析器为 148 个单元测试 + 3 个集成测试，作为历史回归证据列出。
 
-### Profiles
+**未覆盖：** 其他鼠标实机、全新 Windows / 新用户、缺失 WebView2 的联网补装、所有固件变体、桌面透明效果的完整人工视觉验证。测试通过不构成全品牌兼容或稳定性保证。见 [公开验证摘要](docs/releases/0.3.1-validation.json) 和 [测试边界](RELEASE-VALIDATION.md)。
 
-Each profile stores DPI levels, the active level and a report rate, and can be
-linked to an application. That's either a specific `.exe` or a folder; the
-longest match wins. With **Auto-switch** on, the matching profile is applied
-whenever its app comes to the foreground. **Desktop** is used when nothing
-else matches. Profiles live in software. To keep settings with Open GHub
-closed, use on-board memory.
+## 安装与校验
 
-### On-board memory
+1. 点击主页顶部 **EXE 下载**，或进入 [实验版 Release](https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.1-experimental.1)。
+2. 运行 `Open-HUB-0.3.1-x64-setup.exe`，按当前用户安装到 `%LOCALAPPDATA%\Programs\Open HUB`。
+3. 从开始菜单打开 Open HUB。测试设备前先退出对应官方控制中心，避免反复覆盖设置。
 
-Go to **Device settings → On-board memory** to read the profiles stored in the
-mouse. Click the pencil on a slot to change its DPI levels, starting level and
-report rate. Only those bytes change; buttons, lighting and the profile name
-stay exactly as they were.
+Windows 10 / 11 x64，需要 Microsoft Edge WebView2。约 39 MiB 的常规包复用系统 WebView2，缺少时联网补装，不携带完整浏览器运行库。**本实验 EXE 未代码签名**，不继承上游 SignPath 认证；本分支自动更新已禁用，后续从本仓库 Release 手动安装。
 
-Before every write, Open GHub saves a backup to
-`%APPDATA%\dev.local.openghub\onboard-backups\`. You can restore any backup
-from the same screen. The factory profile is never written.
+EXE 的 SHA-256：
 
-### Updates
-
-Open GHub checks for a new release 30 seconds after it starts and then every
-6 hours. When one is available it shows a notification, a tray item and an
-Install button in **App settings** (gear icon). You can also turn on automatic
-installation there. Every update is signed, and Open GHub checks the signature
-before installing.
-
-## FAQ
-
-<details>
-<summary><b>Do I need G HUB installed?</b></summary>
-
-No. Open GHub is standalone. G HUB is only used if you choose **Import from G
-HUB**, which reads its settings database read-only.
-</details>
-
-<details>
-<summary><b>Windows SmartScreen warns about the installer</b></summary>
-
-Releases are being moved to code signing through the SignPath Foundation (see
-[Code signing policy](#code-signing-policy)). Until a release is signed, click
-**More info → Run anyway**. You can always check that the installer came from
-this repository's Releases page.
-</details>
-
-<details>
-<summary><b>My DPI changes are lost when the mouse turns off</b></summary>
-
-In software mode, settings last until the mouse loses power; Open GHub
-reapplies your active profile when the mouse reconnects. To keep settings with
-Open GHub closed, write them to the mouse's on-board memory and switch the
-mouse to on-board mode.
-</details>
-
-<details>
-<summary><b>The mouse shows the wrong name</b></summary>
-
-Firmware often reports an internal name. Open GHub corrects it using its
-product table in [`device_db.rs`](src-tauri/src/device_db.rs). If yours is
-missing, open a [device report](https://github.com/abidr/open-ghub/issues/new?template=device_report.yml)
-or send a pull request.
-</details>
-
-<details>
-<summary><b>How do I collect logs for a bug report?</b></summary>
-
-Quit Open GHub from the tray, then run it from PowerShell with logging on. Use
-it until the problem happens, then quit from the tray again:
-
-```powershell
-$env:OPEN_GHUB_LOG = "1"
-& "$env:LOCALAPPDATA\Open GHub\open-ghub.exe" 2> "$env:TEMP\open-ghub.log"
+```text
+3755791591e6626bcb83afd74b58ced753ea5cac713eac388e5ef26c0496c307
 ```
 
-To save the detected devices and their settings as JSON without changing
-anything, run:
+Release 同时提供对应源码 ZIP、`SHA256SUMS.txt` 与公开验证摘要。源码包含第三方许可与 OpenRGB 对应源码存档，不上传个人配置、设备备份、账号信息或厂商驱动研究文件。
 
-```powershell
-& "$env:LOCALAPPDATA\Open GHub\open-ghub.exe" --probe > "$env:TEMP\open-ghub-probe.json"
-```
+## 开发与许可
 
-Attach both files to your issue.
-</details>
+构建和测试见 [BUILDING.md](BUILDING.md)，体积与安装机制见 [PACKAGING.md](PACKAGING.md)。
 
-## Building from source
-
-**Prerequisites:** [Rust](https://rustup.rs) stable (MSVC), Visual Studio
-Build Tools with the "Desktop development with C++" workload, and Node.js 20
-or later.
-
-```sh
-git clone https://github.com/abidr/open-ghub.git
-cd open-ghub
-npm install
-npm run app:dev                       # run with hot reload
-npx tauri build --no-bundle           # release build of the executable
-cd src-tauri && cargo test            # unit tests
-```
-
-> [!IMPORTANT]
-> Build the app with the Tauri CLI (`npx tauri ...`), not plain `cargo build`.
-> A plain cargo build expects the Vite dev server and shows "localhost refused
-> to connect".
-
-For more detail, see [Architecture](docs/architecture.md) for how the code is
-laid out and how it maps to HID++, and [Releasing](docs/releasing.md) for the
-release and signing pipeline.
-
-## Contributing
-
-Contributions are welcome: bug reports, device reports, documentation and
-code. Please read the [contributing guide](CONTRIBUTING.md) and follow the
-[code of conduct](CODE_OF_CONDUCT.md). To report a security issue, see the
-[security policy](SECURITY.md).
-
-## Code signing policy
-
-Free code signing provided by [SignPath.io](https://about.signpath.io),
-certificate by [SignPath Foundation](https://signpath.org).
-
-Windows releases are built from this repository's source by GitHub Actions and
-signed through SignPath. Only the [release workflow](.github/workflows/release.yml)
-can submit signing requests, and every release-signing request is approved by
-hand. The SignPath artifact configurations are in
-[`.signpath/artifact-configurations`](.signpath/artifact-configurations).
-
-**Team roles**
-
-- Committers and reviewers: [Abidur Rahman](https://github.com/abidr)
-- Approvers: [Abidur Rahman](https://github.com/abidr)
-
-All team members use multi-factor authentication on GitHub and SignPath.
-
-## Privacy policy
-
-This program will not transfer any information to other networked systems
-unless specifically requested by the user or the person installing or
-operating it, with one exception: the update check. About 30 seconds after
-start and then every 6 hours, Open GHub downloads `latest.json` from this
-repository's GitHub releases, and when you install an update it downloads the
-installer from the same release. GitHub receives the usual request information
-(such as your IP address) under the
-[GitHub Privacy Statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
-Turn the update check off in **App settings** (gear icon) under
-**Check for updates automatically**. The installer shows this notice before
-installing. Open GHub has no accounts, telemetry, analytics or crash reporting.
-
-## Acknowledgements
-
-- [Solaar](https://github.com/pwr-Solaar/Solaar) and
-  [libratbag](https://github.com/libratbag/libratbag), whose open HID++ work
-  documents much of the protocol.
-- [Tauri](https://tauri.app), [shadcn/ui](https://ui.shadcn.com) and
-  [hidapi](https://github.com/ruabmbua/hidapi-rs).
-
-## License
-
-Copyright (C) 2026 Abidur Rahman
-
-Open GHub is free software: you can redistribute it and/or modify it under the
-terms of the GNU General Public License as published by the Free Software
-Foundation, either version 3 of the License, or (at your option) any later
-version. It is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY. See [LICENSE](LICENSE) for details.
+Open GHub / 本衍生项目采用 [GPL-3.0-or-later](LICENSE)。原作者和第三方署名保留，组件包括 MIT 许可的 Gearwise、Sidearm Synapse parser、libratbag 协议参考，以及 GPL-2.0-or-later 的 OpenRGB。见 [来源与组件](NOTICE.md) 及随包许可。厂商名称和设备图片权利属于原权利人，仅用于型号识别与说明。

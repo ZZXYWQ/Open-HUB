@@ -1,13 +1,39 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[cfg(test)]
+mod multibrand_protocol;
+use sidearm_synapse_parser as synapse_import;
+mod macro_runtime;
+mod raw_input;
+mod feature_transport;
+mod naga;
+mod atk;
+mod appearance;
+mod host_macros;
+mod multibrand;
+mod macro_recovery;
+mod import_keys;
+mod synapse_profiles;
+mod icue_profiles;
+mod gg_profiles;
+mod profile_transfer;
+mod sinowealth;
 mod device;
 mod device_db;
 mod events;
 mod foreground;
 mod hidpp;
 mod manager;
+mod mchose;
+mod mchose_config;
+mod magdock;
+mod audio_meter;
+mod rgb;
+mod screen;
+mod effects;
 mod onboard;
 mod profiles;
+mod mhub_import;
 mod settings;
 mod tray;
 mod updater;
@@ -37,6 +63,7 @@ fn manager<'a>(state: &'a State<AppState>) -> Result<MutexGuard<'a, Option<Manag
 
 #[derive(Serialize)]
 struct DeviceSummary {
+    vendor_id: u16,
     id: String,
     name: String,
     product: String,
@@ -62,21 +89,79 @@ fn scan_devices(app: AppHandle, state: State<AppState>) -> Result<ScanResult, St
     drop(guard);
     apply_to_new_devices(&app);
     let guard = manager(&state)?;
-    Ok(ScanResult { devices: summaries(guard.as_ref().expect("manager initialised")), warnings })
+    let mut devices=summaries(guard.as_ref().expect("manager initialised"));drop(guard);
+    let mut warnings=warnings;match app.state::<sinowealth::Service>().scan(){Ok(peers)=>devices.extend(peers.iter().map(sino_summary)),Err(e)=>warnings.push(format!("SinoWealth 检测：{e}"))};
+    let (multi,issues)=app.state::<multibrand::Service>().scan()?;devices.extend(multi.iter().map(multi_summary));warnings.extend(issues);warnings.extend(app.state::<multibrand::Service>().recover_pending(&app.state::<macro_runtime::Runtime>())?);
+    Ok(ScanResult { devices, warnings })
 }
 
 /// Current devices without rescanning (the event loop keeps them current).
 #[tauri::command(async)]
-fn list_devices(state: State<AppState>) -> Result<Vec<DeviceSummary>, String> {
+fn list_devices(state: State<AppState>,sino:State<sinowealth::Service>,multi:State<multibrand::Service>) -> Result<Vec<DeviceSummary>, String> {
     let guard = manager(&state)?;
-    Ok(summaries(guard.as_ref().expect("manager initialised")))
+    let mut out=summaries(guard.as_ref().expect("manager initialised"));out.extend(sino.peers().iter().map(sino_summary));out.extend(multi.peers().iter().map(multi_summary));Ok(out)
 }
+
+fn multi_summary(d:&gearwise_core::DeviceDescriptor)->DeviceSummary{DeviceSummary{vendor_id:d.vendor_id,id:format!("multi:{}",d.id),name:d.name.clone(),product:d.name.clone(),product_id:format!("{:04X}",d.product_id),kind:"mouse",firmware_name:d.firmware.clone().unwrap_or_default(),model_ids:vec![format!("{:04X}",d.product_id)],connection:format!("{:?}",d.connection),protocol:"Open HUB 型号驱动（未实机验证）".into(),features:vec![]}}
+#[tauri::command(async)]
+fn multi_read(service:State<multibrand::Service>,runtime:State<macro_runtime::Runtime>,id:String)->Result<multibrand::View,String>{service.read(&id,&runtime)}
+#[tauri::command(async)]
+fn multi_apply(service:State<multibrand::Service>,runtime:State<macro_runtime::Runtime>,id:String,plan:multibrand::Plan)->Result<multibrand::View,String>{service.apply(&id,&plan,&runtime)}
+#[tauri::command(async)]
+fn multi_templates()->Result<Vec<multibrand::View>,String>{multibrand::templates()}
+#[tauri::command(async)]
+fn multi_simulate(plan:multibrand::Plan)->Result<serde_json::Value,String>{multibrand::simulate(&plan)}
+#[tauri::command(async)]
+fn multi_macro_simulate(source:host_macros::Source,button:u16,action:gearwise_core::profile::Macro)->Result<serde_json::Value,String>{host_macros::simulate(source,button,action)}
+#[tauri::command(async)]
+fn multi_input_sources()->Result<Vec<raw_input::SourceInfo>,String>{raw_input::sources()}
+#[tauri::command(async)]
+fn multi_macro_status(runtime:State<macro_runtime::Runtime>)->macro_runtime::Status{runtime.status()}
+#[tauri::command(async)]
+fn multi_stop_macros(service:State<multibrand::Service>,runtime:State<macro_runtime::Runtime>)->Result<(),String>{service.stop_software(&runtime)}
+#[tauri::command(async)]
+fn multi_stop_device_macros(service:State<multibrand::Service>,runtime:State<macro_runtime::Runtime>,id:String)->Result<(),String>{service.stop_device_software(&id,&runtime)}
+#[tauri::command(async)]
+fn multi_recovery_list(service:State<multibrand::Service>,id:String)->Result<multibrand::RecoveryList,String>{service.recovery_list(&id)}
+#[tauri::command(async)]
+fn multi_recovery_observe(service:State<multibrand::Service>,runtime:State<macro_runtime::Runtime>,id:String,source:host_macros::Source)->Result<(),String>{service.observe_recovery(&id,&source,&runtime)}
+#[tauri::command(async)]
+fn multi_recovery_restore(service:State<multibrand::Service>,runtime:State<macro_runtime::Runtime>,id:String,key:String,revision:String,source:host_macros::Source,confirmed:bool)->Result<(),String>{service.restore_recovery(&id,&key,&revision,&source,confirmed,&runtime)}
+#[tauri::command(async)]
+fn multi_reconnect_list(service:State<multibrand::Service>)->Result<multibrand::PendingList,String>{service.reconnect_list()}
+#[tauri::command(async)]
+fn multi_reconnect_candidates(service:State<multibrand::Service>,key:String,revision:String)->Result<multibrand::PendingCandidates,String>{service.reconnect_candidates(&key,&revision)}
+#[tauri::command(async)]
+fn multi_reconnect_resume(service:State<multibrand::Service>,runtime:State<macro_runtime::Runtime>,key:String,revision:String,id:String,candidate_revision:String,source:Option<host_macros::Source>,confirmed:bool)->Result<multibrand::View,String>{service.reconnect_resume(&key,&revision,&id,&candidate_revision,source,confirmed,&runtime)}
+#[tauri::command(async)]
+fn multi_reconnect_retry(service:State<multibrand::Service>,key:String,revision:String,id:String,candidate_revision:String,confirmed:bool)->Result<String,String>{service.reconnect_retry(&key,&revision,&id,&candidate_revision,confirmed)}
+#[tauri::command(async)]
+fn multi_reconnect_discard(service:State<multibrand::Service>,key:String,revision:String)->Result<(),String>{service.reconnect_discard(&key,&revision)}
+fn sino_summary(p:&sinowealth::Peer)->DeviceSummary{DeviceSummary{vendor_id:p.model.vendor,id:p.id.clone(),name:p.model.name.clone(),product:p.model.name.clone(),product_id:format!("{:04X}",p.model.product),kind:"mouse",firmware_name:p.model.firmware.clone(),model_ids:vec![format!("{:04X}",p.model.product)],connection:"USB 有线".into(),protocol:"SinoWealth wired".into(),features:vec![]}}
+#[tauri::command(async)]
+fn sino_read(sino:State<sinowealth::Service>,id:String,profile:Option<u8>)->Result<sinowealth::View,String>{sino.read(&id,profile)}
+#[tauri::command(async)]
+fn sino_apply(sino:State<sinowealth::Service>,id:String,plan:sinowealth::Plan)->Result<sinowealth::View,String>{sino.write(&id,plan)}
+#[tauri::command(async)]
+fn sino_models()->Vec<sinowealth::Model>{sinowealth::models()}
+#[tauri::command(async)]
+fn sino_simulate(plan:sinowealth::Plan)->Result<serde_json::Value,String>{sinowealth::simulate(&plan)}
+
+#[tauri::command(async)]
+fn preview_synapse_import(path:String)->Result<synapse_import::types::ParsedSynapseProfiles,String>{synapse_import::preview(std::path::Path::new(&path))}
+#[tauri::command(async)]
+fn prepare_synapse_import(path:String)->Result<synapse_profiles::Prepared,String>{synapse_profiles::prepare(std::path::Path::new(&path))}
+#[tauri::command(async)]
+fn prepare_icue_import(path:String)->Result<icue_profiles::Prepared,String>{icue_profiles::prepare(std::path::Path::new(&path))}
+#[tauri::command]
+fn prepare_gg_import(path:String)->Result<icue_profiles::Prepared,String>{gg_profiles::prepare(std::path::Path::new(&path))}
 
 fn summaries(manager: &Manager) -> Vec<DeviceSummary> {
     manager
         .devices()
         .iter()
         .map(|d| DeviceSummary {
+            vendor_id: d.vendor_id,
             id: d.id.clone(),
             name: d.name.clone(),
             product: d.product.clone(),
@@ -84,7 +169,9 @@ fn summaries(manager: &Manager) -> Vec<DeviceSummary> {
             kind: d.kind,
             firmware_name: d.firmware_name.clone(),
             model_ids: d.model_ids.iter().map(|id| format!("{id:04X}")).collect(),
-            connection: if d.index == hidpp::DIRECT {
+            connection: if d.vendor_id == mchose::VID {
+                "MCHOSE 2.4 GHz receiver".into()
+            } else if d.index == hidpp::DIRECT {
                 "Direct (USB)".into()
             } else {
                 format!("{} · slot {}", d.product, d.index)
@@ -96,21 +183,28 @@ fn summaries(manager: &Manager) -> Vec<DeviceSummary> {
 }
 
 #[tauri::command(async)]
-fn device_state(state: State<AppState>, id: String) -> Result<DeviceState, String> {
+fn device_state(state: State<AppState>,sino:State<sinowealth::Service>, id: String) -> Result<DeviceState, String> {
+ if id.starts_with("multi:"){return Ok(DeviceState{battery:None,dpi:None,report_rate:None,onboard_mode:None,errors:vec![]});}
+ if id.starts_with("sino:"){let v=sino.read(&id,None)?;return Ok(DeviceState{battery:None,dpi:Some(device::Dpi{feature:0,x:v.plan.dpi[v.plan.active][0],y:Some(v.plan.dpi[v.plan.active][1]),default:None,supported:(100..=16000).step_by(100).collect(),supports_y:true,lod:None,supports_lod:false}),report_rate:Some(device::ReportRate{feature:0,current:match v.plan.rate{125=>1,250=>2,500=>3,_=>4},choices:[125,250,500,1000].into_iter().enumerate().map(|(i,hz)|device::Choice{value:i as u8+1,label:format!("{hz} Hz"),hz}).collect()}),onboard_mode:Some("onboard"),errors:vec![]})}
+
     let guard = manager(&state)?;
     let manager = guard.as_ref().expect("manager initialised");
     manager.with_device(&id, |d, t| Ok(d.state(t))).map_err(|e| e.to_string())
 }
 
 #[tauri::command(async)]
-fn set_dpi(state: State<AppState>, id: String, x: u16, y: Option<u16>, lod: Option<u8>) -> Result<(), String> {
+fn set_dpi(state: State<AppState>,sino:State<sinowealth::Service>, id: String, x: u16, y: Option<u16>, lod: Option<u8>) -> Result<(), String> {
+ if id.starts_with("sino:"){if lod.is_some(){return Err("此适配器不写入LOD".into())}let mut p=sino.read(&id,None)?.plan;p.dpi[p.active]=[x,y.unwrap_or(x)];p.macros.clear();sino.write(&id,p)?;return Ok(())}
+
     let guard = manager(&state)?;
     let manager = guard.as_ref().expect("manager initialised");
     manager.with_device(&id, |d, t| d.set_dpi(t, x, y, lod)).map_err(|e| e.to_string())
 }
 
 #[tauri::command(async)]
-fn set_report_rate(state: State<AppState>, id: String, value: u8) -> Result<(), String> {
+fn set_report_rate(state: State<AppState>,sino:State<sinowealth::Service>, id: String, value: u8) -> Result<(), String> {
+ if id.starts_with("sino:"){let rate=[125,250,500,1000].get(value.checked_sub(1).ok_or("回报率无效")? as usize).copied().ok_or("回报率无效")?;let mut p=sino.read(&id,None)?.plan;p.rate=rate;p.macros.clear();sino.write(&id,p)?;return Ok(())}
+
     let guard = manager(&state)?;
     let manager = guard.as_ref().expect("manager initialised");
     manager.with_device(&id, |d, t| d.set_report_rate(t, value)).map_err(|e| e.to_string())
@@ -122,6 +216,78 @@ fn set_onboard_mode(state: State<AppState>, id: String, host: bool) -> Result<()
     let manager = guard.as_ref().expect("manager initialised");
     manager.with_device(&id, |d, t| d.set_onboard_mode(t, host)).map_err(|e| e.to_string())
 }
+
+fn with_mchose<R>(state: &State<AppState>, id:&str, f: impl FnOnce(&mchose::Transport)->hidpp::Result<R>)->Result<R,String>{
+    let guard=manager(state)?;
+    guard.as_ref().expect("manager initialised").with_device(id,|_,t|f(t.mchose().ok_or_else(||hidpp::Error::Other("This is not a verified MCHOSE device".into()))?)).map_err(|e|e.to_string())
+}
+#[tauri::command(async)]
+fn mchose_hardware(state:State<AppState>,id:String)->Result<mchose_config::HardwareState,String>{with_mchose(&state,&id,|t|t.hardware_state())}
+#[tauri::command(async)]
+fn mchose_macro(state:State<AppState>,id:String,slot:u8)->Result<Option<mchose_config::MouseMacro>,String>{with_mchose(&state,&id,|t|t.read_macro(slot))}
+#[tauri::command(async)]
+fn mchose_macro_file(path:String,slot:u8,name:String,mode:u8,events:Vec<mchose_config::MacroEvent>)->Result<(),String>{
+    if slot>=18{return Err("宏槽无效".into())}
+    let raw=mchose_config::encode_macro(&name,mode,&events).map_err(|e|e.to_string())?;
+    let record=mchose_config::MouseMacro{slot,name,mode,events,raw};
+    std::fs::write(path,serde_json::to_vec_pretty(&record).map_err(|e|e.to_string())?).map_err(|e|e.to_string())
+}
+#[tauri::command(async)]
+fn mchose_apply(app:AppHandle,state:State<AppState>,id:String,expected_profile:u8,action:mchose_config::Action)->Result<mchose_config::HardwareState,String>{
+    let result=with_mchose(&state,&id,|t|{
+        if t.settings()?[0]!=expected_profile{return Err(hidpp::Error::Other("板载配置已经改变，请刷新后重试".into()))}
+        t.apply_hardware(action)
+    })?;
+    let _=app.emit("device-changed",id);Ok(result)
+}
+#[tauri::command(async)]
+fn mchose_export(state:State<AppState>,id:String,path:String)->Result<(),String>{
+    let snapshot=with_mchose(&state,&id,|t|t.full_snapshot())?;
+    std::fs::write(path,serde_json::to_vec_pretty(&snapshot).map_err(|e|e.to_string())?).map_err(|e|e.to_string())
+}
+#[tauri::command(async)]
+fn mchose_restore(app:AppHandle,state:State<AppState>,id:String,path:String)->Result<mchose_config::HardwareState,String>{
+    let meta=std::fs::metadata(&path).map_err(|e|e.to_string())?;
+    if meta.len()>1024*1024{return Err("备份文件过大".into())}
+    let snapshot=serde_json::from_slice(&std::fs::read(path).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;
+    let result=with_mchose(&state,&id,|t|t.restore_snapshot(snapshot))?;
+    let _=app.emit("device-changed",id);Ok(result)
+}
+#[tauri::command]
+fn open_mhub(app:AppHandle)->Result<(),String>{
+    let root=std::env::var_os("ProgramFiles").ok_or("ProgramFiles is unavailable")?;
+    let exe=std::path::PathBuf::from(root).join("MCHOSE HUB").join("MCHOSE HUB Launcher.exe");
+    std::process::Command::new(exe).spawn().map_err(|e|e.to_string())?;
+    app.exit(0);Ok(())
+}
+
+
+#[tauri::command(async)]
+fn magdock_state(c:State<magdock::Controller>)->Result<magdock::View,String>{c.view()}
+#[tauri::command(async)]
+fn magdock_apply(c:State<magdock::Controller>,engine:State<effects::Engine>,light:magdock::Light)->Result<magdock::View,String>{engine.stop()?;c.apply(light)}
+#[tauri::command(async)]
+fn magdock_music(c:State<magdock::Controller>,enabled:bool,light:magdock::Light,gain:f32)->Result<magdock::View,String>{if enabled{c.music(light,gain)}else{c.stop()?;c.view()}}
+#[tauri::command(async)]
+fn magdock_reset(c:State<magdock::Controller>,engine:State<effects::Engine>)->Result<magdock::View,String>{engine.stop()?;c.reset()}
+
+
+#[tauri::command(async)]
+async fn rgb_devices(app:tauri::AppHandle)->Result<Vec<rgb::Device>,String>{
+ tauri::async_runtime::spawn_blocking(move||app.state::<rgb::Server>().scan()).await.map_err(|e|format!("灯光识别任务失败：{e}"))?
+}
+#[tauri::command(async)]
+fn effects_status(engine:State<effects::Engine>)->Result<effects::Status,String>{engine.status()}
+#[tauri::command(async)]
+fn effects_start(engine:State<effects::Engine>,dock:State<magdock::Controller>,config:effects::Config)->Result<effects::Status,String>{dock.stop()?;engine.start(config,dock.inner().clone())}
+#[tauri::command(async)]
+fn effects_stop(engine:State<effects::Engine>)->Result<effects::Status,String>{engine.stop()}
+
+#[tauri::command(async)]
+fn effects_preset(path:String,mut config:effects::Config,target_keys:Option<Vec<String>>)->Result<(),String>{let keys=target_keys.unwrap_or_default();if keys.len()>64||keys.iter().any(|s|s.len()>4096){return Err("设备标识过长".into())}config.rgb.clear();let mut check=config.clone();check.dock=true;check.validate()?;std::fs::write(path,serde_json::to_vec_pretty(&serde_json::json!({"format":"open-hub-lighting/1","config":config,"target_keys":keys})).map_err(|e|e.to_string())?).map_err(|e|e.to_string())}
+
+#[tauri::command(async)]
+fn import_mhub_profiles(app:AppHandle,state:State<ProfilesState>,path:Option<String>)->Result<serde_json::Value,String>{let path=path.map(PathBuf::from).map(Ok).unwrap_or_else(mhub_import::default_path)?;let doc=mhub_import::read(&path)?;let mut guard=lock_store(&state)?;let mut updated=guard.clone();let summary=mhub_import::import(&mut updated,&doc)?;updated.save(&state.path).map_err(|e|e.to_string())?;*guard=updated;let result=serde_json::json!({"summary":summary,"view":view(&guard)});drop(guard);let _=app.emit("profiles-changed",());tray::refresh(&app);Ok(result)}
 
 // ---------- profiles ----------
 
@@ -169,8 +335,8 @@ fn activate(app: &AppHandle, id: &str, reason: &'static str) -> Result<Activatio
     let profile = {
         let mut store = lock_store(&profiles)?;
         let profile = store.get(id).cloned().ok_or_else(|| "profile not found".to_string())?;
-        store.active_id = profile.id.clone();
-        store.save(&profiles.path).map_err(|e| format!("could not save profiles: {e}"))?;
+        if profile.sino.is_some()||profile.multi.is_some(){profile_transfer::validate(&profile)?;}
+        if profile.sino.is_none()&&profile.multi.is_none(){store.active_id = profile.id.clone();store.save(&profiles.path).map_err(|e| format!("could not save profiles: {e}"))?;}
         profile
     };
 
@@ -192,6 +358,10 @@ fn activate(app: &AppHandle, id: &str, reason: &'static str) -> Result<Activatio
     }
     drop(guard);
 
+    if let Some(plan)=&profile.multi{let service=app.state::<multibrand::Service>();let peers=service.peers().into_iter().filter(|d|d.vendor_id==plan.vendor&&d.product_id==plan.product).collect::<Vec<_>>();if peers.is_empty(){errors.push("未连接此配置对应的具体型号".into());}for peer in peers{if let Err(e)=service.apply(&peer.id,plan,&app.state::<macro_runtime::Runtime>()){errors.push(format!("{}: {e}",peer.name));}}}
+    if let Some(plan)=&profile.sino{let service=app.state::<sinowealth::Service>();let candidates=service.peers().into_iter().filter(|d|d.model==plan.model).collect::<Vec<_>>();if candidates.is_empty(){errors.push("未连接匹配品牌、型号与固件的鼠标".into())}for d in candidates{if let Err(e)=service.activate(&d.id,plan.clone()){errors.push(format!("{}: {e}",d.model.name));}}}
+    if profile.multi.is_none()&&profile.sino.is_none()&&profile.target_vendor.is_none()&&profile.target_model.is_none()&&profile.ghub_id.is_none()&&profile.mchose_board.is_none(){let service=app.state::<sinowealth::Service>();for d in service.peers(){if let Err(e)=service.apply_generic(&d.id,&profile){errors.push(format!("{}: {e}",d.model.name));}}}
+    if (profile.sino.is_some()||profile.multi.is_some())&&errors.is_empty(){let mut store=lock_store(&profiles)?;store.active_id=profile.id.clone();store.save(&profiles.path).map_err(|e|e.to_string())?;}
     let activation = Activation { id: profile.id, name: profile.name, reason, errors };
     tray::refresh(app);
     let _ = app.emit("profile-activated", activation.clone());
@@ -205,7 +375,7 @@ struct AppliedDevices(Mutex<HashSet<String>>);
 
 /// Applies the active profile to devices that connected (or reconnected)
 /// since it was last applied: after power-cycling the mouse, waking it, or
-/// starting Open GHub. Does nothing until the user has saved settings, so a
+/// starting Open HUB. Does nothing until the user has saved settings, so a
 /// first launch never changes the mouse unasked.
 /// Lock order: profiles, then devices, then the applied set.
 fn apply_to_new_devices(app: &AppHandle) {
@@ -213,9 +383,9 @@ fn apply_to_new_devices(app: &AppHandle) {
     if !profiles.path.exists() {
         return;
     }
-    let profile = match lock_store(&profiles) {
+    let (profile,auto_switch) = match lock_store(&profiles) {
         Ok(store) => match store.get(&store.active_id) {
-            Some(p) => p.clone(),
+            Some(p) => (p.clone(),store.auto_switch),
             None => return,
         },
         Err(_) => return,
@@ -230,6 +400,9 @@ fn apply_to_new_devices(app: &AppHandle) {
     applied.retain(|id| present.contains(id));
     let new: Vec<String> = present.into_iter().filter(|id| !applied.contains(id)).collect();
     for id in &new {
+        if !auto_switch && manager.devices().iter().any(|d|d.id==*id&&d.vendor_id==mchose::VID){
+            applied.insert(id.clone());continue;
+        }
         match manager.with_device(id, |d, t| Ok(profiles::apply_to_device(&profile, d, t))) {
             Ok(errors) => errors.iter().for_each(|e| eprintln!("reapply {}: {e}", profile.name)),
             Err(e) => eprintln!("reapply {}: {e}", profile.name),
@@ -408,7 +581,7 @@ fn restore_onboard_backup(app: AppHandle, state: State<AppState>, id: String, pa
     let file: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).map_err(|e| format!("could not read {path}: {e}"))?)
         .map_err(|e| format!("not a backup file: {e}"))?;
     if file.get("format").and_then(|f| f.as_str()) != Some("open-ghub-onboard-backup/1") {
-        return Err("not an Open GHub on-board backup".into());
+        return Err("not an Open HUB on-board backup".into());
     }
     let raw: Vec<onboard::RawSector> =
         serde_json::from_value(file.get("sectors").cloned().unwrap_or_default()).map_err(|e| format!("backup sectors are unreadable: {e}"))?;
@@ -440,10 +613,13 @@ fn get_profiles(state: State<ProfilesState>) -> Result<ProfilesView, String> {
 
 #[tauri::command(async)]
 fn save_profile(app: AppHandle, state: State<ProfilesState>, mut profile: Profile) -> Result<ProfilesView, String> {
+    if profile.sino.is_some()||profile.multi.is_some(){profile_transfer::validate(&profile)?;}
+    if profile.mchose_board.is_some()&&profile.target_vendor.is_some_and(|v|v!=mchose::VID){return Err("板载引用与品牌不一致".into())}
+    if profile.mchose_board.is_some_and(|b|b>2){return Err("迈从板载配置必须为 1–3".into())}
     if profile.id.is_empty() {
         profile.id = profiles::new_id();
     }
-    if profile.name.trim().is_empty() || profile.levels.is_empty() {
+    if profile.name.trim().is_empty() || (profile.levels.is_empty()&&profile.mchose_board.is_none()) {
         return Err("a profile needs a name and at least one DPI level".into());
     }
     let view = update_store(&state, |store| store.upsert(profile))?;
@@ -486,6 +662,18 @@ fn import_ghub_profiles(app: AppHandle, state: State<ProfilesState>) -> Result<I
     let summary = summary.expect("import ran")?;
     tray::refresh(&app);
     Ok(ImportResult { summary, view })
+}
+
+#[tauri::command(async)]
+fn preview_profile_import(source:String,path:Option<String>)->Result<profile_transfer::Preview,String>{profile_transfer::preview(&source,path)}
+#[tauri::command(async)]
+fn commit_profile_import(app:AppHandle,state:State<ProfilesState>,profiles:Vec<Profile>)->Result<ProfilesView,String>{
+ let mut guard=lock_store(&state)?;let mut updated=guard.clone();profile_transfer::merge(&mut updated,profiles)?;updated.save(&state.path).map_err(|e|e.to_string())?;*guard=updated;let result=view(&guard);drop(guard);let _=app.emit("profiles-changed",());tray::refresh(&app);Ok(result)
+}
+#[tauri::command(async)]
+fn export_profile_pack(path:String,profiles:Vec<Profile>)->Result<(),String>{
+ if profiles.len()>512{return Err("最多导出512组配置".into())}for p in &profiles{profile_transfer::validate(p)?;}
+ std::fs::write(path,serde_json::to_vec_pretty(&serde_json::json!({"format":"open-hub-profiles/1","profiles":profiles})).map_err(|e|e.to_string())?).map_err(|e|e.to_string())
 }
 
 // ---------- app settings and updates ----------
@@ -605,6 +793,59 @@ fn probe() {
 }
 
 fn main() {
+    if std::env::args().any(|v|v=="--three-brand-self-test"){let result=(||->Result<serde_json::Value,String>{let templates=multibrand::templates()?;let mut results=Vec::new();for v in templates{let d=v.state.dpi.ok_or("模拟设备未报告 DPI")?;let p=multibrand::Plan { macros:vec![], source:None,vendor:v.descriptor.vendor_id,product:v.descriptor.product_id,settings:vec![gearwise_core::Setting::Dpi(d),gearwise_core::Setting::ReportRate(500)]};results.push(serde_json::json!({"model":v.descriptor.name,"result":multibrand::simulate(&p)?}));}Ok(serde_json::json!({"simulated":true,"hardware_tested":false,"devices":results}))})();match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;}
+
+    let args:Vec<String>=std::env::args().collect();
+    if let Some(i)=args.iter().position(|v|v=="--synapse-import-probe"){let result=args.get(i+1).ok_or_else(||"缺少配置文件路径".to_string()).and_then(|p|synapse_import::preview(std::path::Path::new(p)));match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;}
+
+    if std::env::args().any(|a|a=="--mhub-import-probe"){let result=(||->Result<serde_json::Value,String>{let doc=mhub_import::read(&mhub_import::default_path()?)?;let mut store=ProfileStore::default();let summary=mhub_import::import(&mut store,&doc)?;Ok(serde_json::json!({"summary":summary,"profiles":store.profiles}))})();match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;}
+
+    if std::env::args().any(|a|a=="--lighting-self-test"){let result=effects::hardware_test();match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;}
+
+    if std::env::args().any(|a|a=="--lighting-probe"){let result=(||->Result<serde_json::Value,String>{let rgb=rgb::Client::connect()?.devices;let screen=screen::sample()?;let meter=audio_meter::Meter::open()?;Ok(serde_json::json!({"rgb":rgb,"screen":screen,"audio_peak":meter.peak()?}))})();match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;}
+
+    if std::env::args().any(|a|a=="--magdock-probe"||a=="--magdock-self-test"||a=="--magdock-music-test") {
+        let c=magdock::Controller::default();let result=if std::env::args().any(|a|a=="--magdock-self-test"){c.self_test()}else if std::env::args().any(|a|a=="--magdock-music-test"){( c.view()).and_then(|v|{c.music(v.light,2.0)?;std::thread::sleep(std::time::Duration::from_secs(3));let during=c.view()?;c.stop()?;Ok(serde_json::json!({"during":during,"after":c.view()?}))})}else{c.view().and_then(|v|serde_json::to_value(v).map_err(|e|e.to_string()))};match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;
+    }
+    if std::env::args().any(|a|a=="--mchose-hardware-probe"||a=="--mchose-hardware-self-test") {
+        let test=std::env::args().any(|a|a=="--mchose-hardware-self-test");
+        let result=(||->Result<serde_json::Value,String>{
+            let mut m=Manager::new(events::sink()).map_err(|e|e.to_string())?;m.scan().map_err(|e|e.to_string())?;
+            let d=m.devices().iter().find(|d|d.vendor_id==mchose::VID).ok_or("No MCHOSE mouse found")?;
+            m.with_device(&d.id,|_,t|{
+                let t=t.mchose().ok_or_else(||hidpp::Error::Other("Wrong backend".into()))?;
+                if test{t.hardware_self_test()}else{serde_json::to_value(t.full_snapshot()?).map_err(|e|hidpp::Error::Other(e.to_string()))}
+            }).map_err(|e|e.to_string())
+        })();
+        match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;
+    }
+    // Reversible real-hardware validation, never performed at normal startup.
+    if std::env::args().any(|a| a == "--mchose-self-test") {
+        let result=(|| -> Result<serde_json::Value,String> {
+            let mut manager=Manager::new(events::sink()).map_err(|e|e.to_string())?;
+            manager.scan().map_err(|e|e.to_string())?;
+            let d=manager.devices().iter().find(|d|d.vendor_id==mchose::VID).ok_or("No verified MCHOSE mouse connected")?;
+            manager.with_device(&d.id,|_,t| {
+                let t=t.mchose().ok_or_else(||hidpp::Error::Other("Wrong transport".into()))?;
+                let original=t.dpi()?.ok_or_else(||hidpp::Error::Other("No DPI state".into()))?;
+                let rate=t.report_rate()?.ok_or_else(||hidpp::Error::Other("No report-rate state".into()))?;
+                if original.y.is_some(){return Err(hidpp::Error::Other("Self-test requires square DPI".into()))}
+                let test_dpi=if original.x<50000 {original.x+50} else {original.x-50};
+                let test_rate=if rate.current==2 {3} else {2};
+                let trial=(|| -> hidpp::Result<()> {t.set_dpi(test_dpi,None,None)?;t.set_report_rate(test_rate)?;Ok(())})();
+                // Restore both settings even when a trial command failed.
+                let dpi_restore=t.set_dpi(original.x,None,None);
+                let rate_restore=t.set_report_rate(rate.current);
+                dpi_restore?; rate_restore?; trial?;
+                let dpi=t.dpi()?.ok_or_else(||hidpp::Error::Other("Missing DPI after restore".into()))?;
+                let final_rate=t.report_rate()?.ok_or_else(||hidpp::Error::Other("Missing rate after restore".into()))?;
+                if dpi.x!=original.x || final_rate.current!=rate.current {return Err(hidpp::Error::Other("Restored state did not match".into()))}
+                Ok(serde_json::json!({"passed":true,"original_dpi":original.x,"tested_dpi":test_dpi,"original_rate":rate.current,"tested_rate":test_rate,"restored":true}))
+            }).map_err(|e|e.to_string())
+        })();
+        match result {Ok(r)=>println!("{}",r),Err(e)=>{eprintln!("MCHOSE self-test failed: {e}");std::process::exit(1)}}
+        return;
+    }
     if std::env::args().any(|a| a == "--probe") {
         return probe();
     }
@@ -661,16 +902,24 @@ fn main() {
     tauri::Builder::default()
         // Must be first: a second launch focuses this window instead of
         // starting another instance that would also talk to the mouse.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| tray::show_main(app)))
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {if args.iter().any(|a|a=="--prepare-update"){let _=app.state::<effects::Engine>().stop();let _=app.state::<magdock::Controller>().stop();app.state::<rgb::Server>().shutdown();app.exit(0);}else{tray::show_main(app)}}))
         .plugin(tauri_plugin_autostart::Builder::new().args(["--minimized"]).build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(effects::Engine::default())
+        .manage(rgb::Server::default())
+        .manage(magdock::Controller::default())
+        .manage(sinowealth::Service::default())
+        .manage(multibrand::Service::default())
+        .manage(macro_runtime::Runtime::default())
         .manage(updater::UpdateState::default())
         .manage(tray::BatteryCache::default())
         .manage(AppliedDevices::default())
         .manage(AppState(Mutex::new(None)))
         .setup(|app| {
+            if std::env::args().any(|a|a=="--prepare-update"){app.handle().exit(0);return Ok(());}
+
             let path = app.path().app_data_dir()?.join("profiles.json");
             let store = ProfileStore::load(&path);
             app.manage(ProfilesState { store: Mutex::new(store), path });
@@ -680,7 +929,7 @@ fn main() {
             events::start(app.handle().clone());
             spawn_profile_watcher(app.handle().clone());
             tray::create(app.handle())?;
-            updater::spawn_background(app.handle().clone());
+            // This local MCHOSE fork must not be replaced by an upstream update.
             // Started by "Start with Windows": stay in the tray.
             if !std::env::args().any(|a| a == "--minimized") {
                 tray::show_main(app.handle());
@@ -701,24 +950,45 @@ fn main() {
             set_dpi,
             set_report_rate,
             set_onboard_mode,
+            rgb_devices,
+            effects_preset,
+            effects_status,
+            effects_start,
+            effects_stop,
+            magdock_state,
+            magdock_apply,
+            magdock_music,
+            magdock_reset,
+            mchose_hardware,
+            mchose_macro,
+            mchose_macro_file,
+            mchose_apply,
+            mchose_export,
+            mchose_restore,
+            open_mhub,
             get_profiles,
             save_profile,
             delete_profile,
             set_auto_switch,
             activate_profile,
             import_ghub_profiles,
+            import_mhub_profiles,
+            sino_read,sino_apply,sino_models,sino_simulate,multi_read,multi_apply,multi_templates,multi_simulate,multi_macro_simulate,multi_input_sources,multi_macro_status,multi_stop_macros,multi_stop_device_macros,multi_recovery_list,multi_recovery_observe,multi_recovery_restore,multi_reconnect_list,multi_reconnect_candidates,multi_reconnect_resume,multi_reconnect_retry,multi_reconnect_discard,preview_synapse_import,prepare_synapse_import,prepare_icue_import,prepare_gg_import,
+            preview_profile_import,commit_profile_import,export_profile_pack,
             onboard_snapshot,
             save_onboard_backup,
             write_onboard_slot,
             restore_onboard_backup,
             get_app_info,
             set_app_settings,
+            appearance::export_ui_skin,
             check_for_update,
             install_update
         ])
         .build(tauri::generate_context!())
-        .expect("error while building Open GHub")
+        .expect("error while building Open HUB")
         .run(|_app, event| {
+            if matches!(event,tauri::RunEvent::ExitRequested{code:Some(_),..}|tauri::RunEvent::Exit){let _=_app.state::<multibrand::Service>().stop_software(&_app.state::<macro_runtime::Runtime>());_app.state::<macro_runtime::Runtime>().shutdown();let _=_app.state::<effects::Engine>().stop();let _=_app.state::<magdock::Controller>().stop();_app.state::<rgb::Server>().shutdown();}
             // The last window closing would normally quit; stay in the tray
             // instead. Quit from the tray menu passes an exit code and goes through.
             if let tauri::RunEvent::ExitRequested { api, code: None, .. } = event {

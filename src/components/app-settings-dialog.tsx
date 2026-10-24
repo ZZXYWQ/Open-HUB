@@ -1,3 +1,4 @@
+import {AppearanceSettings} from '@/components/appearance-settings';
 import { useEffect, useState } from "react";
 import { Download, RefreshCw, Settings } from "lucide-react";
 import { toast } from "sonner";
@@ -81,12 +82,14 @@ export function AppSettingsDialog({ update, onUpdateFound, progress, installing,
         </TooltipTrigger>
         <TooltipContent>App settings</TooltipContent>
       </Tooltip>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-extrabold tracking-tight uppercase">App settings</DialogTitle>
-          <DialogDescription>Open GHub {info ? `version ${info.version}` : ""}</DialogDescription>
+          <DialogTitle className="text-xl font-extrabold tracking-tight uppercase">外观与设置</DialogTitle>
+          <DialogDescription>Open HUB {info ? `version ${info.version}` : ""}</DialogDescription>
         </DialogHeader>
 
+        <AppearanceSettings/>
+        <Separator/>
         <section className="grid gap-3">
           <h3 className="text-[13px] font-bold tracking-widest uppercase">Updates</h3>
 
@@ -97,7 +100,7 @@ export function AppSettingsDialog({ update, onUpdateFound, progress, installing,
                   <div className="font-semibold">Version {update.version} is available</div>
                   {installing ? (
                     <div className="text-muted-foreground">
-                      {pct != null ? `Downloading… ${pct}%` : "Downloading…"} Open GHub will restart.
+                      {pct != null ? `Downloading… ${pct}%` : "Downloading…"} Open HUB will restart.
                     </div>
                   ) : (
                     update.notes && <div className="line-clamp-2 text-muted-foreground">{update.notes.split("\n")[0]}</div>
@@ -130,7 +133,7 @@ export function AppSettingsDialog({ update, onUpdateFound, progress, installing,
               <SettingRow
                 id="auto-install"
                 title="Install updates automatically"
-                description="Downloads and installs new versions without asking. Open GHub restarts briefly."
+                description="Downloads and installs new versions without asking. Open HUB restarts briefly."
                 checked={info.settings.auto_install_updates}
                 onChange={(v) => save({ auto_install_updates: v, check_updates: v || info.settings.check_updates })}
               />
@@ -138,7 +141,7 @@ export function AppSettingsDialog({ update, onUpdateFound, progress, installing,
           )}
           <Separator className="mt-1" />
           <p className="text-xs text-muted-foreground">
-            Updates are signed. Open GHub verifies each download before installing it.
+            Updates are signed. Open HUB verifies each download before installing it.
           </p>
         </section>
       </DialogContent>

@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {importLightingPreset} from '../src/lib/lighting-preset.ts';
+const c={kind:'rainbow',style:0,color:[112,230,207],palette:[[112,230,207],[110,129,255]],brightness:.65,speed:1,gain:2,dock:false,rgb:[]};
+const a={id:9,key:'Razer|serial-A',name:'Mouse',vendor:'Razer',kind:6,direct:true,leds:2},b={...a,id:0,key:'Logitech|serial-B'};
+assert.deepEqual(importLightingPreset({format:'open-hub-lighting/1',config:c,target_keys:[a.key]},[a,b],[]).config.rgb,[{id:9,key:a.key}]);
+assert.equal(importLightingPreset({format:'open-hub-lighting/1',config:c,target_keys:['missing']},[a,b],[]).missing,1);
+assert.equal(importLightingPreset({format:'open-hub-lighting/1',config:c,target_keys:['missing']},[a,b],[]).config.rgb.length,0);
+assert.deepEqual(importLightingPreset(c,[a],[{id:3,key:a.key}]).config.rgb,[{id:9,key:a.key}]);
+assert.throws(()=>importLightingPreset({...c,brightness:5},[a],[]));
+assert.throws(()=>importLightingPreset({...c,color:[999,0,0]},[a],[]));
+assert.throws(()=>importLightingPreset({format:'unknown',config:c},[a],[]));
+assert.equal(importLightingPreset({format:'open-hub-lighting/1',config:c,target_keys:[a.key]},[{...a,direct:false}],[]).config.rgb.length,0);
+console.log('8 lighting preset identity / validation checks passed');

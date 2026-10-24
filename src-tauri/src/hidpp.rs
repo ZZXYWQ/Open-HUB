@@ -83,6 +83,7 @@ pub type EventSink = Arc<dyn Fn(Event) + Send + Sync>;
 #[derive(Debug)]
 pub enum Event {
     Notification { path: CString, report: Vec<u8> },
+    DeviceChanged { path: CString, index: u8 },
     Gone,
 }
 
@@ -180,6 +181,7 @@ fn spawn_reader(dev: HidDevice, path: CString, shared: Arc<Shared>, events: Even
 /// An open HID++ device or receiver. Devices behind a receiver share the
 /// receiver's transport and are addressed by device index.
 pub struct Transport {
+    mchose: Option<crate::mchose::Transport>,
     long: HidDevice,
     short: Option<HidDevice>,
     shared: Arc<Shared>,
@@ -206,10 +208,18 @@ impl Transport {
             },
             None => None,
         };
-        Ok(Self { long, short, shared })
+        Ok(Self { long, short, shared, mchose: None })
     }
 
+    pub fn open_mchose(api: &HidApi, path: &CStr, events: EventSink) -> Result<Self> {
+        let native=crate::mchose::Transport::open(api,path,events)?;
+        Ok(Self { long:api.open_path(path)?,short:None,mchose:Some(native),shared:Arc::new(Shared {slot:Mutex::new(Slot::default()),reply_ready:Condvar::new(),alive:AtomicBool::new(true)}) })
+    }
+
+    pub fn mchose(&self) -> Option<&crate::mchose::Transport> { self.mchose.as_ref() }
+
     pub fn is_alive(&self) -> bool {
+        if let Some(t)=&self.mchose {return t.is_alive()}
         self.shared.alive.load(Ordering::SeqCst)
     }
 
@@ -257,6 +267,7 @@ impl Transport {
         params: &[u8],
         timeout: Duration,
     ) -> Result<Vec<u8>> {
+        if self.mchose.is_some() {return Err(Error::Other("HID++ requests cannot be sent to a MCHOSE device".into()))}
         let mut packet = [0u8; LONG_LEN];
         packet[0] = REPORT_LONG;
         packet[1] = device;

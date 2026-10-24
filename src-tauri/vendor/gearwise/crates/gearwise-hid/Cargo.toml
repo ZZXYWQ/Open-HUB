@@ -1,0 +1,29 @@
+[package]
+name = "gearwise-hid"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "hidapi-backed HID transport for Gearwise"
+
+[dependencies]
+gearwise-core.workspace = true
+log.workspace = true
+
+# Only pure-Rust hidapi backends are used, so building needs no C compiler,
+# libudev-dev, libusb or hidapi packages. `default-features = false` is
+# essential: the defaults select the C `linux-static-hidraw` backend, which
+# links libudev through pkg-config.
+#
+# Linux: talks to /dev/hidraw* directly; `basic-udev` is a pure-Rust udev
+# database reader (no libudev).
+[target.'cfg(target_os = "linux")'.dependencies]
+hidapi = { version = "2.6", default-features = false, features = ["linux-native-basic-udev"] }
+
+# Windows: talks to hid.dll / SetupAPI through windows-sys (no C hidapi).
+[target.'cfg(windows)'.dependencies]
+hidapi = { version = "2.6", default-features = false, features = ["windows-native"] }
+
+# errno constants for classifying hidapi's I/O errors.
+[target.'cfg(not(windows))'.dependencies]
+libc = "0.2"

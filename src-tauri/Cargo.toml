@@ -1,6 +1,6 @@
 [package]
-name = "open-ghub"
-version = "0.1.2"
+name = "open-hub"
+version = "0.3.1"
 description = "Configure Logitech HID++ 2.0 mice (DPI, report rate, profiles)"
 authors = ["Abidur Rahman"]
 license = "GPL-3.0-or-later"
@@ -14,7 +14,16 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["tray-icon"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+quick-xml = "0.41"
+sidearm-synapse-parser = { path = "vendor/sidearm-synapse-parser" }
 thiserror = "2"
+gearwise-core = { path = "vendor/gearwise/crates/gearwise-core" }
+gearwise-hid = { path = "vendor/gearwise/crates/gearwise-hid" }
+gearwise-razer = { path = "vendor/gearwise/crates/gearwise-razer", features = ["simulation"] }
+gearwise-corsair = { path = "vendor/gearwise/crates/gearwise-corsair", features = ["simulation"] }
+gearwise-steelseries = { path = "vendor/gearwise/crates/gearwise-steelseries", features = ["simulation"] }
+gearwise-input = { path = "vendor/gearwise/crates/gearwise-input" }
+
 tauri-plugin-dialog = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-autostart = "2"
@@ -27,7 +36,7 @@ rusqlite = { version = "0.37", features = ["bundled"] }
 [target.'cfg(windows)'.dependencies]
 hidapi = { version = "2.6", default-features = false, features = ["windows-native"] }
 # Foreground-window hook (auto-switch) and device arrival notifications.
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging", "Win32_UI_Accessibility", "Win32_Devices_DeviceAndDriverInstallation"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Devices_HumanInterfaceDevice", "Win32_Storage_FileSystem", "Win32_Security", "Win32_UI_Input", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_LibraryLoader", "Win32_Graphics_Gdi", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging", "Win32_UI_Accessibility", "Win32_Devices_DeviceAndDriverInstallation"] }
 
 [target.'cfg(not(windows))'.dependencies]
 hidapi = "2.6"
@@ -36,3 +45,7 @@ hidapi = "2.6"
 lto = true
 codegen-units = 1
 strip = true
+
+
+
+

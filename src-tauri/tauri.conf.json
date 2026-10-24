@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Open GHub",
-  "version": "0.1.2",
-  "identifier": "dev.local.openghub",
+  "productName": "Open HUB",
+  "version": "0.3.1",
+  "identifier": "dev.local.openghub.mchose",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -14,14 +14,16 @@
     "windows": [
       {
         "label": "main",
-        "title": "Open GHub",
-        "width": 1040,
-        "height": 700,
+        "title": "Open HUB",
+        "width": 1180,
+        "height": 800,
         "minWidth": 820,
         "minHeight": 560,
         "visible": true,
         "create": false,
-        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-gpu"
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-gpu",
+        "transparent": true,
+        "backgroundColor": "#00000000"
       }
     ],
     "security": {
@@ -30,6 +32,7 @@
   },
   "bundle": {
     "active": true,
+    "useLocalToolsDir": true,
     "targets": [
       "nsis"
     ],
@@ -39,21 +42,36 @@
       "icons/128x128@2x.png",
       "icons/icon.ico"
     ],
-    "publisher": "Abidur Rahman",
+    "publisher": "Open HUB Community",
     "copyright": "Copyright 2026 Abidur Rahman. Not affiliated with Logitech.",
     "category": "Utility",
     "homepage": "https://github.com/abidr/open-ghub",
-    "shortDescription": "Lightweight configurator for Logitech HID++ mice",
-    "longDescription": "Open GHub configures Logitech gaming mice over HID++: DPI, report rate, per-game profiles with auto-switching, and battery alerts from the system tray. Independent project, not affiliated with Logitech.",
+    "shortDescription": "多品牌鼠标与灯光控制中心",
+    "longDescription": "Open HUB：按品牌隔离的鼠标设置、配置导入、灯光效果及电脑 RGB 同步。",
     "windows": {
       "nsis": {
         "installMode": "currentUser",
-        "displayLanguageSelector": false
+        "displayLanguageSelector": false,
+        "languages": [
+          "SimpChinese",
+          "English"
+        ],
+        "installerHooks": "../installer/mchose-hooks.nsh",
+        "template": "../installer/mchose-installer.nsi",
+        "compression": "lzma"
+      },
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
       }
     },
     "license": "GPL-3.0-or-later",
     "licenseFile": "../installer/license-and-privacy.txt",
-    "createUpdaterArtifacts": true
+    "createUpdaterArtifacts": false,
+    "resources": {
+      "resources/rgb-engine/": "rgb-engine/",
+      "resources/notices/": "notices/"
+    }
   },
   "plugins": {
     "updater": {

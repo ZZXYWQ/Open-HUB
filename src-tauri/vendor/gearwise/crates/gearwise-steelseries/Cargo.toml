@@ -1,0 +1,14 @@
+[package]
+name = "gearwise-steelseries"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+gearwise-core.workspace = true
+log.workspace = true
+
+[features]
+simulation = []
+

@@ -1,0 +1,11 @@
+{
+  "format": "open-hub-skin/1",
+  "name": "我的冰川皮肤",
+  "accent": "#7fcbff",
+  "background": "#0e1c2b",
+  "surface": "#19334a",
+  "opacity": 78,
+  "panelOpacity": 84,
+  "blur": 10,
+  "radius": 14
+}

@@ -1,0 +1,5 @@
+const http=require('http'),fs=require('fs'),path=require('path');
+const root=path.resolve('dist'),source=fs.readFileSync('scripts/test-multi-macros-ui.cjs','utf8');
+const start=source.indexOf('await page.addInitScript(()=>{')+'await page.addInitScript(()=>{'.length,end=source.indexOf('});await page.goto',start);if(start<28||end<start)throw Error('Mock fixture boundaries missing');
+const mock='(()=>{'+source.slice(start,end)+'})();';
+http.createServer((req,res)=>{let p=path.join(root,decodeURIComponent(req.url.split('?')[0]));if(!p.startsWith(root+path.sep)&&p!==root){res.writeHead(403);return res.end();}if(!fs.existsSync(p)||fs.statSync(p).isDirectory())p=path.join(root,'index.html');res.setHeader('Content-Type',({'.html':'text/html','.js':'application/javascript','.css':'text/css','.png':'image/png','.woff2':'font/woff2'})[path.extname(p)]||'application/octet-stream');let data=fs.readFileSync(p);if(p.endsWith('.html'))data=data.toString().replace('<head>','<head><script>'+mock+'</script>');res.end(data);}).listen(1431,'127.0.0.1',()=>console.log('Mock UI ready on localhost:1431; no physical device writes'));

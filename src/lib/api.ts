@@ -1,3 +1,4 @@
+import type {SinoPlan,SinoView,SinoModel} from './sino';
 import { invoke } from "@tauri-apps/api/core";
 
 // Mirrors the Serialize types in src-tauri/src/{main,device}.rs.
@@ -11,6 +12,7 @@ export interface FeatureInfo {
 }
 
 export interface DeviceSummary {
+  vendor_id: number;
   id: string;
   name: string;
   product: string;
@@ -63,6 +65,14 @@ export interface DeviceState {
   errors: string[];
 }
 
+export interface MchoseHardware {
+  raw_settings:number[]; profile:number; names:string[]; dpi_x:number[]; dpi_y:number[]; count:number; active:number; independent:boolean;
+  sleep:number; never_sleep:boolean; left_debounce:number; right_debounce:number; sensor:number; rotation:number; lod:number;
+  buttons:number[][]; adaptive:number[]; firmware:string; receiver_firmware:string;
+}
+export interface MchoseMacroEvent {kind:"key"|"mouse"|"scroll"|"delay";code:number;down:boolean;delay_ms:number}
+export interface MchoseMacro {slot:number;name:string;mode:number;events:MchoseMacroEvent[];raw?:number[]}
+
 export interface ScanResult {
   devices: DeviceSummary[];
   warnings: string[];
@@ -77,6 +87,11 @@ export interface ProfileLevel {
 }
 
 export interface Profile {
+ multi?: import("./multi").MultiPlan|null;
+ sino?:SinoPlan|null;
+ target_vendor?:number|null;
+ target_model?:number|null;
+  mchose_board?:number|null;
   /** Empty string when creating a new profile. */
   id: string;
   name: string;
@@ -204,7 +219,35 @@ export const ONBOARD_RATES_HZ = [125, 250, 500, 1000];
 export const DESKTOP_ID = "desktop";
 export const REPORT_RATES_HZ = [125, 250, 500, 1000, 2000, 4000, 8000];
 
+export interface DockLight{enabled:boolean;mode:number;mode_count:number;speed:number;brightness:number;sync:boolean;color:number[];direction:number}
+export interface DockView{light:DockLight;firmware:string;music_running:boolean;audio_level:number;music_error:string|null}
+export interface RgbDevice{id:number;key:string;name:string;vendor:string;kind:number;leds:number;direct:boolean}
+export interface EffectConfig{kind:string;style:number;color:number[];palette:number[][];brightness:number;speed:number;gain:number;dock:boolean;rgb:{id:number;key:string}[]}
+export interface EffectStatus{running:boolean;kind:string;level:number;pixels:number[][];error:string|null;config:EffectConfig|null}
 export const api = {
+ sinoRead:(id:string,profile:number|null=null)=>invoke<SinoView>('sino_read',{id,profile}),
+ sinoApply:(id:string,plan:SinoPlan)=>invoke<SinoView>('sino_apply',{id,plan}),
+ sinoModels:()=>invoke<SinoModel[]>('sino_models'),
+ sinoSimulate:(plan:SinoPlan)=>invoke<{simulated:boolean;hardware_tested:boolean;packet_count:number;note:string}>('sino_simulate',{plan}),
+ previewProfileImport:(source:string,path:string|null)=>invoke<{profiles:Profile[];note:string}>('preview_profile_import',{source,path}),
+ commitProfileImport:(profiles:Profile[])=>invoke<ProfilesView>('commit_profile_import',{profiles}),
+ exportProfilePack:(path:string,profiles:Profile[])=>invoke<void>('export_profile_pack',{path,profiles}),
+ dockState:()=>invoke<DockView>('magdock_state'),
+ dockApply:(light:DockLight)=>invoke<DockView>('magdock_apply',{light}),
+ dockReset:()=>invoke<DockView>('magdock_reset'),
+ rgbDevices:()=>invoke<RgbDevice[]>('rgb_devices'),
+ effectsStart:(config:EffectConfig)=>invoke<EffectStatus>('effects_start',{config}),
+ effectsStop:()=>invoke<EffectStatus>('effects_stop'),
+ effectsStatus:()=>invoke<EffectStatus>('effects_status'),
+ effectsPreset:(path:string,config:EffectConfig,targetKeys:string[]=[])=>invoke<void>('effects_preset',{path,config,targetKeys}),
+  mchoseHardware:(id:string)=>invoke<MchoseHardware>("mchose_hardware",{id}),
+  mchoseMacro:(id:string,slot:number)=>invoke<MchoseMacro|null>("mchose_macro",{id,slot}),
+  mchoseMacroFile:(path:string,macro:MchoseMacro)=>invoke<void>("mchose_macro_file",{path,...macro}),
+  mchoseApply:(id:string,expectedProfile:number,action:Record<string,unknown>)=>invoke<MchoseHardware>("mchose_apply",{id,expectedProfile,action}),
+  mchoseExport:(id:string,path:string)=>invoke<void>("mchose_export",{id,path}),
+  mchoseRestore:(id:string,path:string)=>invoke<MchoseHardware>("mchose_restore",{id,path}),
+  importMhub:(path:string|null=null)=>invoke<ImportResult>("import_mhub_profiles",{path}),
+  openMhub:()=>invoke<void>("open_mhub"),
   scan: () => invoke<ScanResult>("scan_devices"),
   /** Current devices without rescanning; the backend keeps them up to date. */
   listDevices: () => invoke<DeviceSummary[]>("list_devices"),
@@ -241,3 +284,4 @@ export function batteryPercent(b: Battery): number | null {
   const byLevel: Record<string, number> = { full: 100, good: 70, low: 25, critical: 8 };
   return b.level ? (byLevel[b.level] ?? null) : null;
 }
+

@@ -132,7 +132,7 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
     const date = new Date().toISOString().slice(0, 10);
     const path = await save({
       title: "Save on-board memory backup",
-      defaultPath: `open-ghub-onboard-${device.name.replace(/[^\w-]+/g, "_")}-${date}.json`,
+      defaultPath: `open-hub-onboard-${device.name.replace(/[^\w-]+/g, "_")}-${date}.json`,
       filters: [{ name: "Backup", extensions: ["json"] }],
     });
     if (!path) return;
@@ -151,7 +151,7 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
   return (
     <PanelSection
       title="On-board memory"
-      help="Profiles stored inside the mouse, used in on-board memory mode even with Open GHub closed. Reading never changes the mouse; every save is backed up first."
+      help="Profiles stored inside the mouse, used in on-board memory mode even with Open HUB closed. Reading never changes the mouse; every save is backed up first."
     >
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" onClick={read} disabled={reading}>

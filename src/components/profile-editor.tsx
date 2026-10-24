@@ -1,3 +1,4 @@
+import {BRANDS,profileVendor} from "@/lib/brands";
 import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { FolderOpen, Plus, X } from "lucide-react";
@@ -12,7 +13,7 @@ import { MAX_LEVELS } from "@/lib/levels";
 import { cn } from "@/lib/utils";
 
 const DPI_MIN = 50;
-const DPI_MAX = 32000;
+const DPI_MAX = 50000;
 
 export const newProfile = (): Profile => ({
   id: "",
@@ -58,7 +59,7 @@ export function ProfileEditor({ profile, onClose, onSave }: Props) {
     }
   };
 
-  const valid = draft.name.trim() !== "" && draft.levels.length > 0;
+  const valid = draft.name.trim() !== "" && (draft.levels.length > 0||draft.mchose_board!=null);
   const save = async () => {
     setSaving(true);
     const levels = draft.levels.map((l) => ({ ...l, x: Math.min(DPI_MAX, Math.max(DPI_MIN, Math.round(l.x))) }));
@@ -106,6 +107,14 @@ export function ProfileEditor({ profile, onClose, onSave }: Props) {
             </div>
           )}
 
+          <div className="grid gap-2"><Label>适用品牌</Label><select aria-label="配置适用品牌" className="h-9 rounded-md border border-input bg-background px-3 text-sm" value={profileVendor(draft)??"any"} onChange={e=>{const vendor=e.target.value==="any"?null:Number(e.target.value);set({target_vendor:vendor,target_model:vendor===0x3837?0x4026:null,mchose_board:vendor===0x3837?draft.mchose_board:null,ghub_id:vendor===0x046d?draft.ghub_id:null,levels:draft.levels.length?draft.levels:newProfile().levels});}}><option value="any">通用（所有兼容设备）</option>{BRANDS.map(b=><option value={b.vendor} key={b.vendor}>{b.name}</option>)}</select><p className="text-xs text-muted-foreground">专属品牌配置只应用到匹配品牌；板载引用还会校验型号。</p></div>
+          {profileVendor(draft)===0x3837&&<div className="grid gap-2">
+            <Label>迈从自动板载切换</Label>
+            <Select value={draft.mchose_board==null?"none":String(draft.mchose_board)} onValueChange={v=>set({mchose_board:v==="none"?null:Number(v),target_vendor:0x3837,target_model:0x4026,levels:draft.levels.length?draft.levels:newProfile().levels})}>
+              <SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="none">使用下方的软件 DPI / 回报率</SelectItem>{[0,1,2].map(i=><SelectItem key={i} value={String(i)}>切换到板载配置 {i+1}</SelectItem>)}</SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">选择板载配置时，迈从使用其中保存的按键、宏和性能设置，下方软件 DPI / 回报率不覆盖它。开启 Auto-switch 后随应用切换。</p>
+          </div>}
           <div className="grid gap-2">
             <Label>DPI levels</Label>
             <div className="flex flex-wrap items-center gap-2">

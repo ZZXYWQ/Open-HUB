@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {eligibleMouse,reconcileTargets} from '../src/lib/lighting-targets.ts';
+const mouse={id:1,key:'mouse|serial-A',name:'A',vendor:'Razer',kind:6,leds:2,direct:true};
+const pc={...mouse,id:2,key:'monitor|serial-B',kind:20};
+const noDirect={...mouse,id:3,key:'mouse|serial-C',direct:false};
+const noLeds={...mouse,id:4,key:'mouse|serial-D',leds:0};
+assert.deepEqual(reconcileTargets([mouse,pc,noDirect,noLeds],[],true,new Set()),[{id:1,key:mouse.key}]);
+assert.deepEqual(reconcileTargets([mouse],[],false,new Set()),[]);
+assert.deepEqual(reconcileTargets([mouse],[],true,new Set([mouse.key])),[]);
+assert.deepEqual(reconcileTargets([{...mouse,id:9}],[{id:1,key:mouse.key}],false,new Set()),[{id:9,key:mouse.key}]);
+assert.deepEqual(reconcileTargets([{...mouse,key:'replacement'}],[{id:1,key:mouse.key}],false,new Set()),[]);
+assert.deepEqual(reconcileTargets([pc],[{id:2,key:pc.key}],true,new Set()),[{id:2,key:pc.key}]);
+assert.deepEqual(reconcileTargets([noDirect],[{id:3,key:noDirect.key}],false,new Set()),[]);
+assert(!eligibleMouse(pc));
+console.log('8 lighting identity / selection checks passed');

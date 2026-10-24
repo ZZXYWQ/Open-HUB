@@ -1,9 +1,11 @@
+import {matchesDevice,brandName} from "@/lib/brands";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
 
 import { AppHeader, type Section } from "@/components/app-header";
 import { DevicePage } from "@/components/device-page";
+import {LightingPanel} from "@/components/lighting-panel";
 import { HomePage } from "@/components/home-page";
 import { ProfilesPage } from "@/components/profiles-page";
 import {
@@ -183,8 +185,8 @@ export default function App() {
       setUpdate(e.payload);
       if (announcedUpdate.current === e.payload.version) return;
       announcedUpdate.current = e.payload.version;
-      toast(`Open GHub ${e.payload.version} is available`, {
-        description: "Install now? Open GHub restarts briefly.",
+      toast(`Open HUB ${e.payload.version} is available`, {
+        description: "Install now? Open HUB restarts briefly.",
         duration: 15000,
         action: { label: "Install", onClick: () => installUpdate() },
       });
@@ -209,7 +211,8 @@ export default function App() {
 
   const device = devices.find((d) => d.id === openId) ?? null;
   const state = device ? (states[device.id] ?? null) : null;
-  const activeProfile = profiles?.profiles.find((p) => p.id === profiles.active_id) ?? profiles?.profiles[0] ?? null;
+  const globalProfile = profiles?.profiles.find((p) => p.id === profiles.active_id) ?? profiles?.profiles[0] ?? null;
+  const activeProfile:Profile|null = !device||!globalProfile||matchesDevice(globalProfile,device)?globalProfile:profiles?.profiles.find(p=>p.id==="desktop"&&matchesDevice(p,device))??profiles?.profiles.find(p=>matchesDevice(p,device))??{id:"vendor-default-"+device.vendor_id.toString(16),name:brandName(device.vendor_id)+" Default",target_vendor:device.vendor_id,target_model:null,app_path:null,levels:[{x:state?.dpi?.x??1600,y:null}],active_level:0,report_rate_hz:null};
 
   const activateProfile = async (id: string) => {
     try {
@@ -267,7 +270,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground select-none">
+    <div id="hub-shell" className={`flex h-screen flex-col overflow-hidden bg-background text-foreground select-none ${section==="lighting"||device?.vendor_id===0x3837||(!device&&devices.length>0&&devices.every(d=>d.vendor_id===0x3837))?"mchose-theme":""}`}>
       <AppHeader
         section={section}
         onSection={(s) => {
@@ -284,9 +287,10 @@ export default function App() {
         onModeChange={setMode}
         updates={{ update, onUpdateFound: setUpdate, progress: updateProgress, installing, onInstall: installUpdate }}
       />
-      {device && activeProfile ? (
+      {section === "lighting" ? <LightingPanel/> : device && activeProfile ? (
         <DevicePage
           key={device.id}
+          onProfiles={()=>{setOpenId(null);setSection("profiles");}}
           device={device}
           state={state}
           profile={activeProfile}
@@ -298,6 +302,7 @@ export default function App() {
         />
       ) : section === "profiles" && profiles ? (
         <ProfilesPage
+          devices={devices}
           view={profiles}
           importing={importing}
           onAutoSwitch={(enabled) => profileCall(() => api.setAutoSwitch(enabled), enabled ? "Auto-switch on" : "Auto-switch off")}
@@ -305,9 +310,10 @@ export default function App() {
           onSave={(p: Profile) => profileCall(() => api.saveProfile(p), "Profile saved")}
           onDelete={(id) => profileCall(() => api.deleteProfile(id), "Profile deleted")}
           onImport={importGhub}
+          onMhubImport={async(path)=>{setImporting(true);try{const result=await api.importMhub(path??null);setProfiles(result.view);toast.success(`M HUB 已导入 ${result.summary.imported} 组，更新 ${result.summary.updated} 组；未改动鼠标`);}catch(e){toast.error(String(e));}finally{setImporting(false);}}}
         />
       ) : (
-        <HomePage devices={devices} states={states} scanning={scanning} onOpen={open} onScan={scan} />
+        <HomePage onLighting={key=>{sessionStorage.setItem('lighting-focus-key',key);setOpenId(null);setSection('lighting');}} devices={devices} states={states} scanning={scanning} onOpen={open} onScan={scan} />
       )}
     </div>
   );

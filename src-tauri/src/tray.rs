@@ -1,6 +1,6 @@
 //! System tray: battery and active profile at a glance, quick profile
 //! switching, start-with-Windows, and low-battery notifications.
-//! Closing the main window hides it; Open GHub keeps running here.
+//! Closing the main window hides it; Open HUB keeps running here.
 
 use std::sync::Mutex;
 
@@ -44,7 +44,7 @@ fn battery_label(b: &DeviceBattery) -> String {
 }
 
 /// Shows the main window, creating it if needed. The window is destroyed when
-/// closed, so while Open GHub sits in the tray no WebView2 processes run.
+/// closed, so while Open HUB sits in the tray no WebView2 processes run.
 pub fn show_main(app: &AppHandle) {
     let window = match app.get_webview_window("main") {
         Some(window) => window,
@@ -76,7 +76,7 @@ pub fn tray_hint_once(app: &AppHandle) {
     }
     notify(
         app,
-        "Open GHub is still running",
+        "Open HUB is still running",
         "It keeps applying your profiles from the system tray. Right-click the tray icon to quit.",
     );
     let _ = std::fs::create_dir_all(&dir);
@@ -84,7 +84,7 @@ pub fn tray_hint_once(app: &AppHandle) {
 }
 
 fn tooltip(app: &AppHandle) -> String {
-    let mut lines = vec!["Open GHub".to_string()];
+    let mut lines = vec!["Open HUB".to_string()];
     if let Some(cache) = app.try_state::<BatteryCache>() {
         if let Ok(batteries) = cache.0.lock() {
             lines.extend(batteries.iter().map(battery_label));
@@ -140,7 +140,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         }
     }
 
-    menu.append(&MenuItem::with_id(app, "show", "Show Open GHub", true, None::<&str>)?)?;
+    menu.append(&MenuItem::with_id(app, "show", "Show Open HUB", true, None::<&str>)?)?;
     let update = app.try_state::<crate::updater::UpdateState>().and_then(|s| s.available());
     match update {
         Some(info) => menu.append(&MenuItem::with_id(
@@ -155,7 +155,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let autostart = app.autolaunch().is_enabled().unwrap_or(false);
     menu.append(&CheckMenuItem::with_id(app, "autostart", "Start with Windows", true, autostart, None::<&str>)?)?;
     menu.append(&PredefinedMenuItem::separator(app)?)?;
-    menu.append(&MenuItem::with_id(app, "quit", "Quit Open GHub", true, None::<&str>)?)?;
+    menu.append(&MenuItem::with_id(app, "quit", "Quit Open HUB", true, None::<&str>)?)?;
     Ok(menu)
 }
 
@@ -189,7 +189,7 @@ fn on_menu_event(app: &AppHandle, event: MenuEvent) {
             let launcher = app.autolaunch();
             let result = if launcher.is_enabled().unwrap_or(false) { launcher.disable() } else { launcher.enable() };
             if let Err(e) = result {
-                notify(app, "Open GHub", &format!("Could not change Start with Windows: {e}"));
+                notify(app, "Open HUB", &format!("Could not change Start with Windows: {e}"));
             }
             refresh(app);
         }
@@ -199,7 +199,7 @@ fn on_menu_event(app: &AppHandle, event: MenuEvent) {
                 let (app, profile_id) = (app.clone(), profile_id.to_string());
                 std::thread::spawn(move || {
                     if let Err(e) = crate::activate(&app, &profile_id, "tray") {
-                        notify(&app, "Open GHub", &format!("Could not apply profile: {e}"));
+                        notify(&app, "Open HUB", &format!("Could not apply profile: {e}"));
                     }
                 });
             }
@@ -209,7 +209,7 @@ fn on_menu_event(app: &AppHandle, event: MenuEvent) {
 
 pub fn create(app: &AppHandle) -> tauri::Result<()> {
     let mut builder = TrayIconBuilder::with_id(TRAY_ID)
-        .tooltip("Open GHub")
+        .tooltip("Open HUB")
         .menu(&build_menu(app)?)
         .show_menu_on_left_click(false)
         .on_menu_event(on_menu_event)

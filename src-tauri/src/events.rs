@@ -106,11 +106,19 @@ fn run(app: AppHandle, rx: std::sync::mpsc::Receiver<Msg>) {
                     eprintln!("[event] hid notification {report:02X?} feature={feature:04X?}")
                 }
                 Ok(Msg::Hid(Event::Gone)) => eprintln!("[event] transport gone"),
+                Ok(Msg::Hid(Event::DeviceChanged { .. })) => eprintln!("[event] MCHOSE settings changed"),
                 Ok(Msg::SystemDevicesChanged) => eprintln!("[event] system HID devices changed"),
                 Err(_) => {}
             }
         }
         match msg {
+            Ok(Msg::Hid(Event::DeviceChanged { path, index })) => {
+                if is_known(&app,&path,index) {
+                    refresh_at.entry((path,index)).or_insert(Instant::now()+DEVICE_REFRESH_DELAY);
+                } else {
+                    rescan_at.get_or_insert(Instant::now()+RESCAN_DELAY);
+                }
+            }
             Ok(Msg::Hid(Event::Notification { path, report })) => {
                 let now = Instant::now();
                 if report[2] == DEVICE_CONNECTION {
@@ -179,6 +187,8 @@ fn rescan(app: &AppHandle) {
             Err(e) => eprintln!("rescan failed: {e}"),
         }
     }
+    drop(guard);if let Err(e)=app.state::<crate::multibrand::Service>().scan(){eprintln!("Three-brand rescan: {e}");}if let Err(e)=app.state::<crate::sinowealth::Service>().scan(){eprintln!("SinoWealth rescan failed: {e}");}
+
 }
 
 fn is_known(app: &AppHandle, path: &CString, index: u8) -> bool {
@@ -304,3 +314,4 @@ fn watch_system_devices(tx: Sender<Msg>) {
 
 #[cfg(not(windows))]
 fn watch_system_devices(_tx: Sender<Msg>) {}
+

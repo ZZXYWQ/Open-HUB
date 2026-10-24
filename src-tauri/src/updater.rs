@@ -51,6 +51,7 @@ impl UpdateState {
 /// Asks the release endpoint for a newer version. Remembers the result for
 /// the tray and tells the UI ("update-available").
 pub async fn check(app: &AppHandle) -> Result<Option<UpdateInfo>, String> {
+    if app.config().identifier == "dev.local.openghub.mchose" { return Ok(None); }
     let updater = app.updater().map_err(|e| e.to_string())?;
     let update = match updater.check().await {
         Ok(update) => update,
@@ -78,12 +79,13 @@ pub async fn check(app: &AppHandle) -> Result<Option<UpdateInfo>, String> {
 /// Downloads, verifies and installs the latest update. On Windows this does
 /// not return on success: the app exits so the installer can replace it.
 pub async fn install(app: &AppHandle) -> Result<(), String> {
+    if app.config().identifier == "dev.local.openghub.mchose" { return Err("Updates are disabled for this local MCHOSE build".into()); }
     let updater = app.updater().map_err(|e| e.to_string())?;
     let update = updater
         .check()
         .await
         .map_err(|e| format!("update check failed: {e}"))?
-        .ok_or_else(|| "Open GHub is already up to date".to_string())?;
+        .ok_or_else(|| "Open HUB is already up to date".to_string())?;
     let mut downloaded: u64 = 0;
     let progress_app = app.clone();
     update
@@ -108,7 +110,7 @@ fn announce(app: &AppHandle, info: &UpdateInfo) {
     *notified = Some(info.version.clone());
     tray::notify(
         app,
-        &format!("Open GHub {} is available", info.version),
+        &format!("Open HUB {} is available", info.version),
         "Install it from the tray menu or from App settings.",
     );
 }
@@ -125,9 +127,9 @@ pub fn spawn_background(app: AppHandle) {
                 if settings.check_updates {
                     match tauri::async_runtime::block_on(check(&app)) {
                         Ok(Some(info)) if settings.auto_install_updates => {
-                            tray::notify(&app, "Updating Open GHub", &format!("Installing version {}…", info.version));
+                            tray::notify(&app, "Updating Open HUB", &format!("Installing version {}…", info.version));
                             if let Err(e) = tauri::async_runtime::block_on(install(&app)) {
-                                tray::notify(&app, "Open GHub update failed", &e);
+                                tray::notify(&app, "Open HUB update failed", &e);
                             }
                         }
                         Ok(Some(info)) => {
@@ -155,9 +157,9 @@ pub fn check_from_tray(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || match tauri::async_runtime::block_on(check(&app)) {
         Ok(Some(info)) => {
-            tray::notify(&app, &format!("Open GHub {} is available", info.version), "Choose \"Install update\" in the tray menu.")
+            tray::notify(&app, &format!("Open HUB {} is available", info.version), "Choose \"Install update\" in the tray menu.")
         }
-        Ok(None) => tray::notify(&app, "Open GHub is up to date", &format!("You have version {}.", app.package_info().version)),
+        Ok(None) => tray::notify(&app, "Open HUB is up to date", &format!("You have version {}.", app.package_info().version)),
         Err(e) => tray::notify(&app, "Could not check for updates", &e),
     });
 }
@@ -166,9 +168,9 @@ pub fn check_from_tray(app: &AppHandle) {
 pub fn install_from_tray(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
-        tray::notify(&app, "Updating Open GHub", "Downloading the update…");
+        tray::notify(&app, "Updating Open HUB", "Downloading the update…");
         if let Err(e) = tauri::async_runtime::block_on(install(&app)) {
-            tray::notify(&app, "Open GHub update failed", &e);
+            tray::notify(&app, "Open HUB update failed", &e);
         }
     });
 }

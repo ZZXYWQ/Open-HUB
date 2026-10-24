@@ -1,0 +1,3 @@
+const {chromium}=require('playwright'),fs=require('fs'),path=require('path');
+const out=path.resolve('../chromium-headless-probe');fs.mkdirSync(out,{recursive:true});process.env.TEMP=out;process.env.TMP=out;
+(async()=>{const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-gpu'],timeout:20000});try{const page=await browser.newPage();await page.setContent('<h1>Open HUB browser test</h1>');if(await page.locator('h1').textContent()!=='Open HUB browser test')throw Error('Rendering failed');await page.screenshot({path:path.join(out,'probe.png')});console.log('Workspace Chromium headless rendering passed');}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

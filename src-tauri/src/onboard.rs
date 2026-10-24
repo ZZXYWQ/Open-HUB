@@ -9,7 +9,7 @@
 //!
 //! Reads have no side effects. Writes ([`Device::write_slot_settings`],
 //! [`Device::restore_sectors`]) only touch user profile sectors and the
-//! directory, change only the bytes Open GHub manages, recompute the CRC and
+//! directory, change only the bytes Open HUB manages, recompute the CRC and
 //! verify by reading back. Factory (ROM) sectors are never written.
 
 use std::time::Duration;

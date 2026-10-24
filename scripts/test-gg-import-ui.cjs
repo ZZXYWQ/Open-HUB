@@ -1,0 +1,30 @@
+const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),assert=require('assert');
+const root=path.resolve('dist'),out=path.resolve('../gg-import-ui-qa');fs.mkdirSync(out,{recursive:true});
+const base=fs.readFileSync(path.join(__dirname,'test-synapse-import-ui.cjs'),'utf8'),marker='await page.addInitScript(()=>{';
+const start=base.indexOf(marker)+marker.length,end=base.indexOf('\n});await ',start);if(start<marker.length||end<start)throw Error('Shared fixture not found');
+(async()=>{const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-gpu']});try{
+ const page=await browser.newPage({viewport:{width:1450,height:1000},deviceScaleFactor:1}),errors=[];page.on('pageerror',e=>errors.push(String(e)));
+ await page.addInitScript({content:`(()=>{${base.slice(start,end)}})()`});
+ await page.addInitScript(()=>{
+  const steps=[{KeyDown:4},{MouseDown:'Right'},{Delay:23},{KeyUp:4},{MouseUp:'Right'}];
+  const plan={vendor:0x1038,product:0x1720,settings:[{Dpi:{stages:[{x:800,y:800},{x:1600,y:1600}],active:0}},{ReportRate:250},{Button:{id:4,action:{Key:{usage:26,mods:32}}}},{Button:{id:5,action:{Macro:'gg-macro:original:5'}}}],macros:[{id:'gg-macro:original:5',name:'原始键鼠混合宏',mode:'Once',steps}],source:null};
+  const profile={id:'gg:1038:1720:original',name:'GG 游戏配置',app_path:null,target_vendor:0x1038,target_model:0x1720,mchose_board:null,ghub_id:null,sino:null,multi:plan,levels:[{x:800,y:800},{x:1600,y:1600}],active_level:0,report_rate_hz:250};
+  const original=window.__TAURI_INTERNALS__.invoke;
+  window.__TAURI_INTERNALS__.invoke=async(cmd,a={})=>{
+   if(['plugin:dialog|open','prepare_gg_import','multi_templates','multi_simulate'].includes(cmd))window.__qaCalls.push({cmd,args:a});else return original(cmd,a);
+   if(cmd==='plugin:dialog|open')return 'GG-mouse-copy.db';
+   if(cmd==='prepare_gg_import'){if(window.__qaGgBad)throw Error('GG database invalid');return {name:'SteelSeries GG 鼠标配置',source_kind:'GG SQLite',candidates:[{model:'rival_310 · GG 游戏配置',profile,issues:[],notes:['原数据库只读，原始灯效请保留。']},{model:'sensei_310 · 其他鼠标',profile:null,issues:['不匹配 Rival 310 的物理布局'],notes:[]}]};}
+   if(cmd==='multi_simulate')return {packet_count:16,software_macros:[{events:steps}]};
+   return [{descriptor:{id:'simulation:steelseries',name:'SteelSeries Rival 310',vendor_id:0x1038,product_id:0x1720,simulated:true},capabilities:{dpi:{min:100,max:12000,step:100,max_stages:2,separate_xy:false},report_rates:[125,250,500,1000],buttons:[{id:4,name:'后退',remappable:true},{id:5,name:'前进',remappable:true},{id:6,name:'CPI 切换',remappable:true}],lighting:[]},state:{dpi:plan.settings[0].Dpi,report_rate:250,buttons:{},lighting:{}},readback:'write_only_cached',hardware_tested:false}];
+  };
+ });
+ await require('./ui-static-route.cjs')(page,root);await page.goto('http://127.0.0.1:1431');await page.getByRole('button',{name:'配置',exact:true}).click();await page.getByRole('button',{name:'导入配置',exact:true}).click();
+ const sources=page.getByRole('region',{name:'按品牌导入配置'}).locator('.hub-source-grid').first();await sources.waitFor();for(const label of ['G HUB 配置导入','M HUB 板载配置导入','导入 Synapse 配置','导入 iCUE 配置','导入 GG 配置'])assert(await sources.getByRole('button',{name:label,exact:true}).isVisible());
+ await sources.getByRole('button',{name:'导入 GG 配置',exact:true}).click();await page.getByRole('button',{name:'选择 GG 配置数据库',exact:true}).click();await page.getByRole('heading',{name:'rival_310 · GG 游戏配置',exact:true}).waitFor();
+ const blocked=page.getByRole('heading',{name:'sensei_310 · 其他鼠标',exact:true}).locator('..');assert.equal(await blocked.getByRole('button').count(),0);assert(await page.getByText('档位 1：800 / 800 · 默认',{exact:true}).isVisible());assert(await page.getByText(/型号绑定 1038:1720/).isVisible());
+ await page.getByRole('button',{name:'模拟 GG 转换方案',exact:true}).click();await page.getByRole('status').filter({hasText:'真实驱动模拟通过'}).waitFor();await page.screenshot({path:path.join(out,'gg-preview.png'),fullPage:true});
+ await page.getByRole('button',{name:'检查并编辑 GG 转换方案',exact:true}).click();await page.getByRole('combobox',{name:'软件宏播放方式',exact:true}).selectOption('Toggle');await page.getByRole('button',{name:'保存设备方案',exact:true}).click();await page.getByRole('status').filter({hasText:'已保存到配置中心'}).waitFor();await page.getByRole('button',{name:'保存 GG 转换方案',exact:true}).click();
+ const calls=await page.evaluate(()=>window.__qaCalls),saved=calls.filter(c=>c.cmd==='save_profile');assert.equal(saved.length,2);for(const c of saved){const p=c.args.profile;assert.equal(p.target_vendor,0x1038);assert.equal(p.target_model,0x1720);assert.equal(p.report_rate_hz,250);assert.deepEqual(p.levels,[{x:800,y:800},{x:1600,y:1600}]);assert.equal(p.multi.macros[0].mode,'Toggle');assert.deepEqual(p.multi.macros[0].steps,[{KeyDown:4},{MouseDown:'Right'},{Delay:23},{KeyUp:4},{MouseUp:'Right'}]);assert(p.multi.settings.some(s=>s.Button?.action.Key?.mods===32));}assert(calls.some(c=>c.cmd==='prepare_gg_import'&&c.args.path==='GG-mouse-copy.db'));assert(!calls.some(c=>['multi_apply','sino_apply','activate_profile'].includes(c.cmd)));
+ await page.evaluate(()=>window.__qaGgBad=true);await page.getByRole('button',{name:'选择 GG 配置数据库',exact:true}).click();await page.getByRole('alert').filter({hasText:'GG database invalid'}).waitFor();assert.equal(await page.getByRole('button',{name:'保存 GG 转换方案',exact:true}).count(),0);assert.deepEqual(errors,[]);
+ fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({result:'passed',mock_backend:true,checks:['six named sources share one menu','GG database path passed to native converter','CPI stages and chosen stage shown','exact model scope shown','foreign layout cannot save','native simulation before saving','editor changes survive quick save','original mouse and keyboard holds plus delay retained','right modifier retained','polling and model persist','import never applies hardware','invalid database clears stale actions','no browser exceptions']},null,2));console.log('13 GG import UI checks passed (mock backend)');
+ }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

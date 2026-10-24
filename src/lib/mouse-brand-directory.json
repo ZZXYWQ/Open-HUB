@@ -1,0 +1,412 @@
+[
+  {
+    "brand": "AJAZZ",
+    "software": "各型号驱动",
+    "url": "https://ajazzbrand.com/pages/software",
+    "title": "",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "Alienware",
+    "software": "Command Center",
+    "url": "https://www.dell.com/support/home/",
+    "title": "Access Denied",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "AOC",
+    "software": "G-Menu",
+    "url": "https://aoc.com/",
+    "title": "Home | AOC Monitors",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "ASUS ROG",
+    "software": "Armoury Crate / Gear Link",
+    "url": "https://rog.asus.com/content/armoury-crate/",
+    "title": "ROG - Republic of Gamers｜Global | For Those Who Dare",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "ATK",
+    "software": "ATK HUB",
+    "url": "https://www.atk.store/pages/download",
+    "title": "",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "Attack Shark",
+    "software": "驱动 / 网页驱动",
+    "url": "https://attackshark.com/pages/driver-download",
+    "title": "",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "Bloody / A4Tech",
+    "software": "Bloody",
+    "url": "https://www.bloody.com/en/download.php",
+    "title": "",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "Cooler Master",
+    "software": "MasterPlus+",
+    "url": "https://masterplus.coolermaster.com/",
+    "title": "MasterPlus",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "Corsair",
+    "software": "iCUE",
+    "url": "https://www.corsair.com/us/en/s/icue",
+    "title": "iCUE Software | Drivers | Software | CORSAIR",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "COUGAR",
+    "software": "UIX",
+    "url": "https://cougargaming.com/downloads/",
+    "title": "COUGAR Downloads",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "Dareu",
+    "software": "驱动 / 网页驱动",
+    "url": "https://www.dareu.com/",
+    "title": "",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "Darmoshark",
+    "software": "驱动 / 网页驱动",
+    "url": "https://darmoshark.com/",
+    "title": "",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "Delux",
+    "software": "各型号驱动",
+    "url": "https://www.deluxworld.com/",
+    "title": "DELUX 多彩 | 健康办公，从多彩开始! |垂直鼠标|立式鼠标|游戏鼠标|人体工学键盘推荐|人体工学鼠标推荐|-DELUX多彩官网",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "Endgame Gear",
+    "software": "配置工具",
+    "url": "https://www.endgamegear.com/en-us/downloads",
+    "title": "404 Not Found",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "EVGA",
+    "software": "UNLEASH RGB",
+    "url": "https://www.evga.com/unleash/",
+    "title": "EVGA - Unleash Software",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "Fantech",
+    "software": "各型号软件",
+    "url": "https://fantechworld.com/pages/download",
+    "title": "",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "Genesis",
+    "software": "各型号软件",
+    "url": "https://genesis-zone.com/support",
+    "title": "Just a moment...",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "GIGABYTE / AORUS",
+    "software": "Control Center / Engine",
+    "url": "https://www.gigabyte.com/Consumer/Software/GIGABYTE-Control-Center/global/",
+    "title": "Access Denied",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "Glorious",
+    "software": "CORE",
+    "url": "https://www.gloriousgaming.com/pages/software",
+    "title": "",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "HyperX",
+    "software": "NGENUITY",
+    "url": "https://hyperx.com/pages/ngenuity",
+    "title": "",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "Keychron",
+    "software": "Launcher",
+    "url": "https://launcher.keychron.com/",
+    "title": "Launcher",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "LAMZU",
+    "software": "软件 / 网页驱动",
+    "url": "https://lamzu.com/pages/download",
+    "title": "",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "Lenovo Legion",
+    "software": "Accessories Central",
+    "url": "https://support.lenovo.com/",
+    "title": "Access Denied",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "Logitech",
+    "software": "G HUB",
+    "url": "https://www.logitechg.com/innovation/g-hub.html",
+    "title": "G HUB Gaming Software| Logitech G",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "原生参数；兼容型号可用 OpenRGB 灯光",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "MCHOSE",
+    "software": "M HUB",
+    "url": "https://www.mchose.com.cn/",
+    "title": "M HUB 迈从科技 官方驱动",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "原生 A7 V3 Ultra+ / MagDock",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "MSI",
+    "software": "MSI Center",
+    "url": "https://www.msi.com/Landing/MSI-Center",
+    "title": "Access Denied",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "Ninjutso",
+    "software": "Sora 配置工具",
+    "url": "https://www.ninjutso.com/",
+    "title": "",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "NZXT",
+    "software": "CAM",
+    "url": "https://nzxt.com/software/cam",
+    "title": "",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "Patriot Viper",
+    "software": "Viper 软件",
+    "url": "https://viper.patriotmemory.com/pages/downloads",
+    "title": "Patriot Memory",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "Pulsar",
+    "software": "Fusion / 各型号驱动",
+    "url": "https://www.pulsar.gg/pages/download",
+    "title": "",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "RAPOO",
+    "software": "各型号驱动",
+    "url": "https://www.rapoo.com/",
+    "title": "RAPOO雷柏-无线外设-雷柏科技",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "Razer",
+    "software": "Synapse",
+    "url": "https://www.razer.com/synapse-4",
+    "title": "Razer Synapse 4: Advanced Device Control and Lighting Software | Razer United States",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "Redragon",
+    "software": "各型号驱动",
+    "url": "https://www.redragonzone.com/pages/download",
+    "title": "404 Not Found",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "ROCCAT / Turtle Beach",
+    "software": "Swarm",
+    "url": "https://support.turtlebeach.com/s/downloads",
+    "title": "Turtle Beach Support",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "Sharkoon",
+    "software": "各型号软件",
+    "url": "https://en.sharkoon.com/",
+    "title": "Sharkoon - Home",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "SteelSeries",
+    "software": "GG / Engine",
+    "url": "https://steelseries.com/gg/engine",
+    "title": "Official Site - For Glory | SteelSeries",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "Thermaltake",
+    "software": "iTAKE",
+    "url": "https://www.thermaltake.com/itake",
+    "title": "404 Not Found &ndash; Thermaltake Global",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "Trust",
+    "software": "各型号软件",
+    "url": "https://www.trust.com/en/support",
+    "title": "Home | Support : Customer Support",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "VGN",
+    "software": "V HUB",
+    "url": "https://www.vgnclub.com/",
+    "title": "",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  },
+  {
+    "brand": "VXE",
+    "software": "V HUB / 网页驱动",
+    "url": "https://www.vxe.com/",
+    "title": "ATK商城官网",
+    "reachable": true,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "官网可访问；仍需逐型号核对"
+  },
+  {
+    "brand": "WLmouse",
+    "software": "网页驱动",
+    "url": "https://www.wlmouse.com/",
+    "title": "",
+    "reachable": false,
+    "checked": "2026-10-22",
+    "support": "待核对具体型号；不能视为已原生适配",
+    "verification": "当前无法核实官网页面"
+  }
+]

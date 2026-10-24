@@ -1,3 +1,4 @@
+import {MchoseArt} from "@/components/mchose-art";
 import { useId } from "react";
 
 import { cn } from "@/lib/utils";
@@ -87,10 +88,10 @@ function KeyboardArt() {
   );
 }
 
-export function DeviceArt({ kind, className }: { kind: string; className?: string }) {
+export function DeviceArt({ kind, className, vendorId }: { kind: string; className?: string; vendorId?:number }) {
   return (
     <div className={cn("flex items-center justify-center drop-shadow-[0_24px_28px_rgb(0_0_0/0.7)]", className)}>
-      {kind === "Receiver" ? <ReceiverArt /> : kind === "Keyboard" ? <KeyboardArt /> : <MouseArt />}
+      {vendorId===0x3837?<MchoseArt/>:kind === "Receiver" ? <ReceiverArt /> : kind === "Keyboard" ? <KeyboardArt /> : <MouseArt />}
     </div>
   );
 }

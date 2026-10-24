@@ -1,0 +1,30 @@
+{
+  "webIndexList": [
+    {
+      "vendorId": 14391,
+      "productId": 4116,
+      "deviceName": "A7 V3 Ultra+",
+      "productName": "MCHOSE A7 V3 Ultra+",
+      "profile": {
+        "index": 0,
+        "detail": [
+          {
+            "name": "默认板载",
+            "index": 0,
+            "source": "custom"
+          },
+          {
+            "name": "默认板载2",
+            "index": 1,
+            "source": "custom"
+          },
+          {
+            "name": "默认板载3",
+            "index": 2,
+            "source": "custom"
+          }
+        ]
+      }
+    }
+  ]
+}

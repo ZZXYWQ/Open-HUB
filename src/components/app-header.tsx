@@ -1,4 +1,5 @@
-import { ArrowLeft, MonitorCog, Mouse, RefreshCw } from "lucide-react";
+import {matchesDevice} from "@/lib/brands";
+import { ArrowLeft, MonitorCog, RefreshCw } from "lucide-react";
 
 import { AppSettingsDialog } from "@/components/app-settings-dialog";
 import { BatteryGlyph } from "@/components/device-status";
@@ -8,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import type { DeviceState, DeviceSummary, ProfilesView, UpdateInfo, UpdateProgress } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-export type Section = "devices" | "profiles";
+export type Section = "devices" | "profiles" | "lighting";
 
 interface Props {
   section: Section;
@@ -36,16 +37,17 @@ const tabClass =
   "relative flex items-center text-[15px] font-semibold hover:text-primary data-[active=true]:text-primary data-[active=true]:after:absolute data-[active=true]:after:-bottom-px data-[active=true]:after:left-1/2 data-[active=true]:after:h-0.5 data-[active=true]:after:w-9 data-[active=true]:after:-translate-x-1/2 data-[active=true]:after:bg-muted-foreground";
 
 /** G HUB-style "Desktop: Default" pill: shows and switches the active profile. */
-function ProfilePicker({ profiles, onActivate }: { profiles: ProfilesView; onActivate: (id: string) => void }) {
+function ProfilePicker({ profiles, onActivate,device }: { profiles: ProfilesView; onActivate: (id: string) => void;device?:DeviceSummary|null }) {
+  const choices=device?profiles.profiles.filter(p=>matchesDevice(p,device)):profiles.profiles;
   return (
-    <Select value={profiles.active_id} onValueChange={onActivate}>
+    <Select value={choices.some(p=>p.id===profiles.active_id)?profiles.active_id:""} onValueChange={onActivate}>
       <SelectTrigger className="h-[42px] max-w-72 gap-2.5 border-0 bg-card px-4 text-sm font-bold dark:bg-card dark:hover:bg-secondary" aria-label="Active profile">
         <MonitorCog className="size-5 text-foreground" />
         <span className="text-muted-foreground">Profile:</span>
-        <SelectValue />
+        <SelectValue placeholder="选择本品牌配置" />
       </SelectTrigger>
       <SelectContent position="popper" align="end" className="max-h-80">
-        {profiles.profiles.map((p) => (
+        {choices.map((p) => (
           <SelectItem key={p.id} value={p.id}>
             {p.name}
           </SelectItem>
@@ -60,9 +62,9 @@ export function AppHeader({ section, onSection, profiles, onActivateProfile, dev
     return (
       <header className={headerClass}>
         <div className="flex h-full items-center">
-          <Mouse className="ml-2.5 size-7" aria-label="Open GHub" />
+          <img src="/open-hub.png" className="ml-2 size-9" alt="Open HUB"/>
           <nav className="ml-11 flex h-full gap-9" aria-label="Sections">
-            {(["devices", "profiles"] as const).map((s) => (
+            {(["devices", "profiles", "lighting"] as const).map((s) => (
               <button
                 key={s}
                 data-active={section === s}
@@ -70,14 +72,14 @@ export function AppHeader({ section, onSection, profiles, onActivateProfile, dev
                 onClick={() => onSection(s)}
                 className={tabClass}
               >
-                {s === "devices" ? "Devices" : "Profiles"}
+                {s === "devices" ? "设备" : s === "profiles" ? "配置" : "灯光同步"}
               </button>
             ))}
           </nav>
         </div>
         <div />
         <div className="flex items-center justify-end gap-2">
-          {profiles && <ProfilePicker profiles={profiles} onActivate={onActivateProfile} />}
+          {profiles && <ProfilePicker profiles={profiles} onActivate={onActivateProfile} device={device}/>}
           <AppSettingsDialog {...updates} />
           <Tooltip>
             <TooltipTrigger asChild>
@@ -120,7 +122,7 @@ export function AppHeader({ section, onSection, profiles, onActivateProfile, dev
       </div>
 
       <div>
-        {state?.onboard_mode && (
+        {state?.onboard_mode && !device.id.startsWith("sino:") && (
           <Select value={state.onboard_mode} onValueChange={(v) => onModeChange(v === "host")}>
             <SelectTrigger className="h-[42px] gap-2 border-0 bg-card px-4 text-sm font-bold dark:bg-card dark:hover:bg-secondary" aria-label="Settings storage">
               <span className="text-muted-foreground">Mode:</span>

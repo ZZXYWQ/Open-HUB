@@ -63,7 +63,7 @@ export function OnboardSlotEditor({ profile, supportedDpi, onClose, onSave }: Pr
         <DialogHeader>
           <DialogTitle className="text-xl font-extrabold tracking-tight uppercase">On-board slot {profile.slot}</DialogTitle>
           <DialogDescription>
-            Saved inside the mouse and used in on-board memory mode, even with Open GHub closed. A backup of the mouse's
+            Saved inside the mouse and used in on-board memory mode, even with Open HUB closed. A backup of the mouse's
             memory is saved first, and the write is checked by reading it back.
           </DialogDescription>
         </DialogHeader>
@@ -73,7 +73,7 @@ export function OnboardSlotEditor({ profile, supportedDpi, onClose, onSave }: Pr
             <div className="flex items-center justify-between">
               <Label>DPI levels</Label>
               <Button variant="link" size="sm" className="h-auto p-0" onClick={fromActiveProfile}>
-                Use my active Open GHub profile
+                Use my active Open HUB profile
               </Button>
             </div>
             <div className="flex flex-wrap items-center gap-2">

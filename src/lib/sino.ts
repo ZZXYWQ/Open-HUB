@@ -1,0 +1,10 @@
+export interface SinoModel{vendor:number;product:number;firmware:string;name:string;brand:string;buttons:number;profiles:number;sensors:number[]}
+export interface SinoEvent{kind:'key'|'mouse';code:number;down:boolean;delay:number}
+export interface SinoMacro{slot:number;repeat:number;events:SinoEvent[]}
+export interface SinoPlan{model:SinoModel;profile:number;dpi:[number,number][];active:number;rate:number;buttons:number[][];macros:SinoMacro[]}
+export interface SinoView{peer:{id:string;model:SinoModel;serial:string};plan:SinoPlan;free_macro_slots:number[];macro_readback:boolean;backup:string|null}
+export const profileFromSino=(plan:SinoPlan,name:string,id='')=>({id,name,target_vendor:plan.model.vendor,target_model:plan.model.product,mchose_board:null,ghub_id:null,app_path:null,levels:plan.dpi.map(([x,y])=>({x,y})),active_level:plan.active,report_rate_hz:plan.rate,sino:plan});
+export const KEY_NAMES:Array<[number,string]>=[[4,'A'],[5,'B'],[6,'C'],[7,'D'],[8,'E'],[9,'F'],[10,'G'],[11,'H'],[12,'I'],[13,'J'],[14,'K'],[15,'L'],[16,'M'],[17,'N'],[18,'O'],[19,'P'],[20,'Q'],[21,'R'],[22,'S'],[23,'T'],[24,'U'],[25,'V'],[26,'W'],[27,'X'],[28,'Y'],[29,'Z'],[40,'Enter'],[41,'Esc'],[42,'Backspace'],[43,'Tab'],[44,'Space'],[79,'→'],[80,'←'],[81,'↓'],[82,'↑'],[224,'Left Ctrl'],[225,'Left Shift'],[226,'Left Alt'],[227,'Left Win']];
+export function codeToHid(code:string){if(/^Key[A-Z]$/.test(code))return code.charCodeAt(3)-65+4;if(/^Digit[1-9]$/.test(code))return Number(code[5])+29;if(code==='Digit0')return 39;if(/^F([1-9]|1[0-2])$/.test(code))return Number(code.slice(1))+57;return ({Enter:40,Escape:41,Backspace:42,Tab:43,Space:44,ArrowRight:79,ArrowLeft:80,ArrowDown:81,ArrowUp:82,ControlLeft:224,ShiftLeft:225,AltLeft:226,MetaLeft:227,ControlRight:228,ShiftRight:229,AltRight:230,MetaRight:231} as Record<string,number>)[code]??null;}
+
+KEY_NAMES.push(...Array.from({length:10},(_,i)=>[i===9?39:30+i,String((i+1)%10)] as [number,string]),...Array.from({length:12},(_,i)=>[58+i,'F'+(i+1)] as [number,string]),[228,'Right Ctrl'],[229,'Right Shift'],[230,'Right Alt'],[231,'Right Win']);

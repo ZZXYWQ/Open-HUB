@@ -1,5 +1,8 @@
+import {MultiPanel} from '@/components/multi-panel';
 import { useState } from "react";
-import { Crosshair, Settings, type LucideIcon } from "lucide-react";
+import { Crosshair, Settings, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import {SinoPanel} from "@/components/sino-panel";
+import {MchosePanel} from "@/components/mchose-panel";
 
 import { DeviceArt } from "@/components/device-art";
 import { DpiPanel } from "@/components/dpi-panel";
@@ -10,7 +13,7 @@ import type { DeviceState, DeviceSummary, Profile } from "@/lib/api";
 import { levelLabel, levelMatches, type Level } from "@/lib/levels";
 import { cn } from "@/lib/utils";
 
-type Tab = "dpi" | "settings";
+type Tab = "dpi" | "settings" | "hardware";
 
 interface Props {
   device: DeviceSummary;
@@ -21,6 +24,7 @@ interface Props {
   onReportRate: (value: number) => void;
   onLod: (lod: number) => void;
   onModeChange: (host: boolean) => void;
+  onProfiles?:()=>void;
 }
 
 function RailItem({ icon: Icon, label, active, onClick }: { icon: LucideIcon; label: string; active: boolean; onClick: () => void }) {
@@ -45,20 +49,23 @@ function RailItem({ icon: Icon, label, active, onClick }: { icon: LucideIcon; la
   );
 }
 
-export function DevicePage({ device, state, profile, onLevelsChange, onApplyLevel, onReportRate, onLod, onModeChange }: Props) {
-  const [tab, setTab] = useState<Tab | null>("dpi");
+export function DevicePage({ device, state, profile, onLevelsChange, onApplyLevel, onReportRate, onLod, onModeChange,onProfiles }: Props) {
+  const [tab, setTab] = useState<Tab | null>(device.vendor_id===0x3837?"hardware":"dpi");
   const toggle = (t: Tab) => setTab((cur) => (cur === t ? null : t));
   const dpi = state?.dpi;
   const levels = profile.levels;
+  if(device.id.startsWith("multi:"))return <MultiPanel key={device.id} id={device.id} onImported={onProfiles}/>;
+  if(device.id.startsWith("sino:"))return <SinoPanel key={device.id} id={device.id} onImported={onProfiles}/>;
+  if(device.vendor_id===0x3837)return <div className="mchose-studio min-h-0 flex-1"><MchosePanel id={device.id}/></div>;
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[72px_auto_1fr]">
       <nav className="flex flex-col items-center gap-1 border-r border-border pt-4.5" aria-label="Device features">
-        <RailItem icon={Crosshair} label="Sensitivity (DPI)" active={tab === "dpi"} onClick={() => toggle("dpi")} />
+        {device.vendor_id===0x3837 ? <RailItem icon={SlidersHorizontal} label="迈从控制中心" active={tab==="hardware"} onClick={()=>toggle("hardware")}/> : <RailItem icon={Crosshair} label="Sensitivity (DPI)" active={tab === "dpi"} onClick={() => toggle("dpi")} />}
         <RailItem icon={Settings} label="Device settings" active={tab === "settings"} onClick={() => toggle("settings")} />
       </nav>
 
-      {state && tab === "dpi" ? (
+      {tab==="hardware"&&device.vendor_id===0x3837 ? <MchosePanel id={device.id}/> : state && tab === "dpi" ? (
         <DpiPanel device={device} state={state} profile={profile} onLevelsChange={onLevelsChange} onApplyLevel={onApplyLevel} onReportRate={onReportRate} onLod={onLod} />
       ) : state && tab === "settings" ? (
         <SettingsPanel device={device} state={state} onModeChange={onModeChange} />
@@ -77,7 +84,7 @@ export function DevicePage({ device, state, profile, onLevelsChange, onApplyLeve
         )}
         <DeviceArt kind={device.kind} className="h-[50vh] max-h-[460px] min-h-[200px]" />
         {!state && <p className="text-xs tracking-widest text-muted-foreground uppercase">Reading device…</p>}
-        {dpi && (
+        {dpi && device.vendor_id!==0x3837 && (
           <>
             <div className="flex items-center gap-4.5">
               {levels.map((l, i) => (
@@ -102,3 +109,4 @@ export function DevicePage({ device, state, profile, onLevelsChange, onApplyLeve
     </div>
   );
 }
+

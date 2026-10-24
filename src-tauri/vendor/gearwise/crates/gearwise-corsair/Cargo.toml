@@ -1,0 +1,17 @@
+[package]
+name = "gearwise-corsair"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+gearwise-core.workspace = true
+log.workspace = true
+
+[dev-dependencies]
+gearwise-hid.workspace = true
+
+[features]
+simulation = []
+

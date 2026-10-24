@@ -1,0 +1,19 @@
+{
+  "productId": 180,
+  "deviceName": "Naga V2 HyperSpeed",
+  "category": "MOUSE",
+  "profiles": [
+    {
+      "name": "Synthetic Naga import regression",
+      "payload": "eyJndWlkIjoic291cmNlLWltcG9ydC1zeW50aGV0aWMtbmFnYSIsIm5hbWUiOiJTeW50aGV0aWMgTmFnYSBpbXBvcnQgcmVncmVzc2lvbiIsImRwaSI6eyJ4IjoxNjAwLCJ5IjoyNDAwfSwicG9sbGluZ1JhdGUiOjEwMDAsInBvbGxpbmdSYXRlV2lyZWxlc3MiOjUwMCwibWFwcGluZ3MiOltdLCJzaWRlUGFuZWxNYXBwaW5ncyI6eyIxMkJ1dHRvblNpZGUiOlt7ImlucHV0VHlwZSI6IktleUlucHV0IiwiaW5wdXRJRCI6IktFWV8xIiwiaXNIeXBlclNoaWZ0IjpmYWxzZSwib3V0cHV0VHlwZSI6ImtleWJvYXJkR3JvdXAiLCJrZXlib2FyZEdyb3VwIjp7ImtleSI6IktFWV9DIiwibW9kaWZpZXJzIjpbIktFWV9MRUZUX0NUUkwiXX19LHsiaW5wdXRUeXBlIjoiS2V5SW5wdXQiLCJpbnB1dElEIjoiS0VZXzIiLCJpc0h5cGVyU2hpZnQiOmZhbHNlLCJvdXRwdXRUeXBlIjoibWFjcm9Hcm91cCIsIm1hY3JvR3JvdXAiOnsiZ3VpZCI6Im9yaWdpbmFsLWhvbGQifX1dfX0=",
+      "hash": ""
+    }
+  ],
+  "macros": [
+    {
+      "name": "Original overlapping hold",
+      "payload": "eyJndWlkIjoib3JpZ2luYWwtaG9sZCIsIm1hY3JvRXZlbnRzIjpbeyJUeXBlIjoxLCJLZXlFdmVudCI6eyJNYWtlY29kZSI6MzAsIlN0YXRlIjowfX0seyJUeXBlIjoxLCJLZXlFdmVudCI6eyJNYWtlY29kZSI6NDgsIlN0YXRlIjowfX0seyJUeXBlIjowLCJOdW1iZXIiOjAuMDI1fSx7IlR5cGUiOjEsIktleUV2ZW50Ijp7Ik1ha2Vjb2RlIjozMCwiU3RhdGUiOjF9fSx7IlR5cGUiOjEsIktleUV2ZW50Ijp7Ik1ha2Vjb2RlIjo0OCwiU3RhdGUiOjF9fV19",
+      "hash": ""
+    }
+  ]
+}

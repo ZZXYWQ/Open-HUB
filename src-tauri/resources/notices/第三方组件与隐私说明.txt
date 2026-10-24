@@ -1,0 +1,16 @@
+Open HUB 0.3.0
+本地个人适配版，基于 abidr/open-ghub（GPL-3.0-or-later）。
+原生迈从协议与灯光引擎由本适配版独立实现。本软件与迈从、罗技均无隶属关系。
+官方型号图片来自 https://cdn.mchose.com.cn/configCenter/static/images/ ，仅作为本地设备识别展示，图片权利属于原权利人。
+OpenRGB 1.1 原版 Windows 可携组件，GPL-2.0-or-later：
+https://openrgb.org/releases.html
+https://codeberg.org/OpenRGB/OpenRGB/src/commit/8e16de2
+下载压缩包 SHA256：63291726C6FC84EB479EF2EE752E97E1187F6CE9C49FD27EEE40DED588A8172A
+OpenRGB 内含未修改的 Qt 动态库，Qt 的开源许可及源码： https://www.qt.io/licensing/open-source-lgpl-obligations / https://download.qt.io/archive/qt/
+OpenRGB 仅在点击扫描灯光鼠标或进入灯光同步页面检测时启动，SDK 限制为 127.0.0.1:6742。
+主板、内存等设备是否可用取决于 OpenRGB 的设备支持和驱动条件；本安装包不自动安装内核驱动。
+屏幕取色只读取主显示器少量像素，音乐律动只读取 Windows 当前播放设备电平；均在本机计算，不保存或上传。
+
+
+
+SinoWealth 原生协议参考遵循 libratbag 的 MIT 许可；Marian Beermann © 2020。原许可与参考源文件一并提供，详见 libratbag-MIT-license.txt。

@@ -1,7 +1,7 @@
 //! Profiles: per-application DPI and report-rate settings, modelled on G HUB.
 //!
 //! G HUB stores Application -> Profile -> (slot -> card) in one JSON document
-//! inside `%LOCALAPPDATA%\LGHUB\settings.db`. Open GHub keeps a flatter model
+//! inside `%LOCALAPPDATA%\LGHUB\settings.db`. Open HUB keeps a flatter model
 //! (one settings set per profile, applied to every connected mouse) in
 //! `profiles.json` under the app data directory.
 
@@ -25,6 +25,16 @@ pub struct Level {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Profile {
+    #[serde(default)]
+    pub target_vendor: Option<u16>,
+    #[serde(default)]
+    pub target_model: Option<u16>,
+    #[serde(default)]
+    pub mchose_board: Option<u8>,
+    #[serde(default)]
+    pub sino: Option<crate::sinowealth::Plan>,
+    #[serde(default)]
+    pub multi: Option<crate::multibrand::Plan>,
     pub id: String,
     pub name: String,
     /// Executable path or install folder that activates this profile.
@@ -41,18 +51,38 @@ pub struct Profile {
 impl Profile {
     pub fn desktop() -> Self {
         Self {
+            target_vendor: None,
+            target_model: None,
+            mchose_board: None,
+            sino: None,
+            multi: None,
             id: DESKTOP_ID.into(),
             name: "Desktop".into(),
             app_path: None,
-            levels: [400, 800, 1600, 3200, 6400].map(|x| Level { x, y: None }).to_vec(),
+            levels: [400, 800, 1600, 3200, 6400]
+                .map(|x| Level { x, y: None })
+                .to_vec(),
             active_level: 2,
             report_rate_hz: Some(1000),
             ghub_id: None,
         }
     }
 
+    pub fn targets(&self, vendor: u16, models: &[u16]) -> bool {
+        let expected = if self.mchose_board.is_some() {
+            Some(crate::mchose::VID)
+        } else {
+            self.target_vendor
+                .or_else(|| self.ghub_id.as_ref().map(|_| 0x046D))
+        };
+        expected.is_none_or(|v| v == vendor)
+            && self.target_model.is_none_or(|m| models.contains(&m))
+            && (!self.mchose_board.is_some() || models.contains(&crate::mchose::MODEL_PID))
+    }
     pub fn active(&self) -> Option<&Level> {
-        self.levels.get(self.active_level).or_else(|| self.levels.first())
+        self.levels
+            .get(self.active_level)
+            .or_else(|| self.levels.first())
     }
 }
 
@@ -66,19 +96,29 @@ pub struct ProfileStore {
 impl Default for ProfileStore {
     fn default() -> Self {
         // Auto-switch starts off so DPI never changes until the user opts in.
-        Self { profiles: vec![Profile::desktop()], auto_switch: false, active_id: DESKTOP_ID.into() }
+        Self {
+            profiles: vec![Profile::desktop()],
+            auto_switch: false,
+            active_id: DESKTOP_ID.into(),
+        }
     }
 }
 
 pub fn new_id() -> String {
     static COUNTER: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
-    let nanos = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
     let n = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     format!("p{nanos:x}{n:x}")
 }
 
 fn normalize(path: &str) -> String {
-    path.trim().replace('/', "\\").trim_end_matches('\\').to_lowercase()
+    path.trim()
+        .replace('/', "\\")
+        .trim_end_matches('\\')
+        .to_lowercase()
 }
 
 impl ProfileStore {
@@ -111,7 +151,9 @@ impl ProfileStore {
     }
 
     pub fn upsert(&mut self, mut profile: Profile) {
-        profile.active_level = profile.active_level.min(profile.levels.len().saturating_sub(1));
+        profile.active_level = profile
+            .active_level
+            .min(profile.levels.len().saturating_sub(1));
         if profile.id == DESKTOP_ID {
             profile.app_path = None;
         }
@@ -139,7 +181,8 @@ impl ProfileStore {
             .iter()
             .filter_map(|p| {
                 let path = normalize(p.app_path.as_deref()?);
-                let hit = !path.is_empty() && (exe == path || exe.starts_with(&format!("{path}\\")));
+                let hit =
+                    !path.is_empty() && (exe == path || exe.starts_with(&format!("{path}\\")));
                 hit.then_some((path.len(), p))
             })
             .max_by_key(|(len, _)| *len)
@@ -152,11 +195,33 @@ impl ProfileStore {
 /// Values are snapped to what the device supports. Returns per-setting errors.
 pub fn apply_to_device(profile: &Profile, device: &Device, t: &Transport) -> Vec<String> {
     let mut errors = Vec::new();
+    if profile.multi.is_some() || profile.sino.is_some() || !profile.targets(device.vendor_id, &device.model_ids) {
+        return errors;
+    }
+    if let (Some(native), Some(board)) = (t.mchose(), profile.mchose_board) {
+        let result = (|| -> crate::hidpp::Result<()> {
+            if board > 2 {
+                return Err(crate::hidpp::Error::Other("Invalid MCHOSE board".into()));
+            }
+            if native.settings()?[0] != board {
+                native.apply_hardware(crate::mchose_config::Action::Profile { index: board })?;
+            }
+            Ok(())
+        })();
+        if let Err(e) = result {
+            errors.push(format!("{}: {e}", device.name));
+        }
+        return errors;
+    }
     if let Some(level) = profile.active() {
         match device.dpi(t) {
             Ok(Some(dpi)) => {
                 let snap = |v: u16| {
-                    dpi.supported.iter().copied().min_by_key(|s| s.abs_diff(v)).unwrap_or(v)
+                    dpi.supported
+                        .iter()
+                        .copied()
+                        .min_by_key(|s| s.abs_diff(v))
+                        .unwrap_or(v)
                 };
                 let x = snap(level.x);
                 let y = dpi.supports_y.then(|| snap(level.y.unwrap_or(level.x)));
@@ -202,25 +267,40 @@ pub fn ghub_settings_path() -> Option<PathBuf> {
 /// Reads G HUB's settings document without modifying it.
 fn read_ghub_document(path: &Path) -> Result<Value, String> {
     use rusqlite::{Connection, OpenFlags};
-    let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX)
-        .map_err(|e| format!("could not open G HUB settings: {e}"))?;
+    let conn = Connection::open_with_flags(
+        path,
+        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+    .map_err(|e| format!("could not open G HUB settings: {e}"))?;
     let blob: Vec<u8> = conn
-        .query_row("SELECT file FROM data ORDER BY _id DESC LIMIT 1", [], |row| row.get(0))
+        .query_row(
+            "SELECT file FROM data ORDER BY _id DESC LIMIT 1",
+            [],
+            |row| row.get(0),
+        )
         .map_err(|e| format!("could not read G HUB settings: {e}"))?;
     serde_json::from_slice(&blob).map_err(|e| format!("G HUB settings are not valid JSON: {e}"))
 }
 
 fn ghub_list<'a>(doc: &'a Value, key: &str) -> &'a [Value] {
-    doc.get(key).and_then(|v| v.get(key)).and_then(Value::as_array).map(Vec::as_slice).unwrap_or(&[])
+    doc.get(key)
+        .and_then(|v| v.get(key))
+        .and_then(Value::as_array)
+        .map(Vec::as_slice)
+        .unwrap_or(&[])
 }
 
-/// Converts G HUB profiles (one per application) into Open GHub profiles,
+/// Converts G HUB profiles (one per application) into Open HUB profiles,
 /// taking DPI levels and report rate from each profile's MOUSE_SETTINGS card.
 pub fn import_ghub(store: &mut ProfileStore, path: &Path) -> Result<ImportSummary, String> {
     let doc = read_ghub_document(path)?;
     let apps = ghub_list(&doc, "applications");
     let cards = ghub_list(&doc, "cards");
-    let mut summary = ImportSummary { imported: 0, updated: 0, skipped: 0 };
+    let mut summary = ImportSummary {
+        imported: 0,
+        updated: 0,
+        skipped: 0,
+    };
 
     for gp in ghub_list(&doc, "profiles") {
         let str_of = |v: &Value, k: &str| v.get(k).and_then(Value::as_str).map(str::to_string);
@@ -228,7 +308,10 @@ pub fn import_ghub(store: &mut ProfileStore, path: &Path) -> Result<ImportSummar
             summary.skipped += 1;
             continue;
         };
-        let Some(app) = apps.iter().find(|a| a.get("applicationId").and_then(Value::as_str) == Some(app_id.as_str())) else {
+        let Some(app) = apps
+            .iter()
+            .find(|a| a.get("applicationId").and_then(Value::as_str) == Some(app_id.as_str()))
+        else {
             summary.skipped += 1; // profile whose application no longer exists
             continue;
         };
@@ -239,9 +322,17 @@ pub fn import_ghub(store: &mut ProfileStore, path: &Path) -> Result<ImportSummar
             .and_then(Value::as_array)
             .into_iter()
             .flatten()
-            .filter(|a| a.get("slotId").and_then(Value::as_str).is_some_and(|s| s.ends_with("_mouse_settings")))
+            .filter(|a| {
+                a.get("slotId")
+                    .and_then(Value::as_str)
+                    .is_some_and(|s| s.ends_with("_mouse_settings"))
+            })
             .filter_map(|a| a.get("cardId").and_then(Value::as_str))
-            .find_map(|cid| cards.iter().find(|c| c.get("id").and_then(Value::as_str) == Some(cid)))
+            .find_map(|cid| {
+                cards
+                    .iter()
+                    .find(|c| c.get("id").and_then(Value::as_str) == Some(cid))
+            })
             .and_then(|c| c.get("mouseSettings"));
         let Some(mouse) = mouse else {
             summary.skipped += 1;
@@ -255,17 +346,26 @@ pub fn import_ghub(store: &mut ProfileStore, path: &Path) -> Result<ImportSummar
             .into_iter()
             .flatten()
             .filter_map(|v| v.as_u64().or_else(|| v.get("x").and_then(Value::as_u64)))
-            .map(|x| Level { x: x.min(u64::from(u16::MAX)) as u16, y: None })
+            .map(|x| Level {
+                x: x.min(u64::from(u16::MAX)) as u16,
+                y: None,
+            })
             .collect();
         if levels.is_empty() {
             summary.skipped += 1;
             continue;
         }
-        let active_dpi = table.and_then(|t| t.get("activeDpi")).and_then(Value::as_u64);
+        let active_dpi = table
+            .and_then(|t| t.get("activeDpi"))
+            .and_then(Value::as_u64);
         let active_level = active_dpi
             .and_then(|a| levels.iter().position(|l| u64::from(l.x) == a))
             .unwrap_or(0);
-        let report_rate_hz = mouse.get("reportRate").and_then(|r| r.get("value")).and_then(Value::as_u64).map(|v| v as u32);
+        let report_rate_hz = mouse
+            .get("reportRate")
+            .and_then(|r| r.get("value"))
+            .and_then(Value::as_u64)
+            .map(|v| v as u32);
 
         let app_name = str_of(app, "name").unwrap_or_default();
         let is_desktop = app_name == "APPLICATION_NAME_DESKTOP";
@@ -276,7 +376,10 @@ pub fn import_ghub(store: &mut ProfileStore, path: &Path) -> Result<ImportSummar
             (false, other) => format!("{app_name}: {other}"),
         };
         // Only the profile G HUB uses for the application switches automatically.
-        let active_for_app = gp.get("activeForApplication").and_then(Value::as_bool).unwrap_or(false);
+        let active_for_app = gp
+            .get("activeForApplication")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
         let app_path = (!is_desktop && active_for_app)
             .then(|| str_of(app, "applicationPath").or_else(|| str_of(app, "applicationFolder")))
             .flatten()
@@ -285,10 +388,19 @@ pub fn import_ghub(store: &mut ProfileStore, path: &Path) -> Result<ImportSummar
         let existing_id = if is_desktop {
             Some(DESKTOP_ID.to_string())
         } else {
-            store.profiles.iter().find(|p| p.ghub_id.as_deref() == Some(gid.as_str())).map(|p| p.id.clone())
+            store
+                .profiles
+                .iter()
+                .find(|p| p.ghub_id.as_deref() == Some(gid.as_str()))
+                .map(|p| p.id.clone())
         };
         let updated = existing_id.is_some();
         store.upsert(Profile {
+            target_vendor: Some(0x046D),
+            target_model: None,
+            mchose_board: None,
+            sino: None,
+            multi: None,
             id: existing_id.unwrap_or_else(new_id),
             name,
             app_path,
@@ -309,9 +421,21 @@ pub fn import_ghub(store: &mut ProfileStore, path: &Path) -> Result<ImportSummar
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn old_profiles_keep_working_without_board_binding() {
+        let mut v = serde_json::to_value(Profile::desktop()).unwrap();
+        v.as_object_mut().unwrap().remove("mchose_board");
+        let p: Profile = serde_json::from_value(v).unwrap();
+        assert!(p.mchose_board.is_none());
+    }
 
     fn profile(id: &str, path: Option<&str>) -> Profile {
-        Profile { id: id.into(), name: id.into(), app_path: path.map(Into::into), ..Profile::desktop() }
+        Profile {
+            id: id.into(),
+            name: id.into(),
+            app_path: path.map(Into::into),
+            ..Profile::desktop()
+        }
     }
 
     #[test]
@@ -322,7 +446,10 @@ mod tests {
         assert_eq!(store.match_exe(r"h:\riot games\valorant\live\ShooterGame\Binaries\Win64\VALORANT-Win64-Shipping.exe").id, "valorant");
         assert_eq!(store.match_exe(r"C:\Games\Game\game.exe").id, "game");
         assert_eq!(store.match_exe(r"C:\Games\Game\other.exe").id, DESKTOP_ID);
-        assert_eq!(store.match_exe(r"H:\Riot Games\VALORANT\live2\x.exe").id, DESKTOP_ID);
+        assert_eq!(
+            store.match_exe(r"H:\Riot Games\VALORANT\live2\x.exe").id,
+            DESKTOP_ID
+        );
     }
 
     #[test]
@@ -332,3 +459,29 @@ mod tests {
         assert!(store.get(DESKTOP_ID).is_some());
     }
 }
+#[cfg(test)]
+mod brand_tests {
+    use super::*;
+    #[test]
+    fn legacy_mchose_boards_never_touch_logitech() {
+        let mut p = Profile::desktop();
+        p.mchose_board = Some(0);
+        assert!(p.targets(0x3837, &[0x4026]));
+        assert!(!p.targets(0x046d, &[0x4093]));
+        assert!(!p.targets(0x3837, &[0x4027]));
+    }
+    #[test]
+    fn ghub_and_explicit_brand_scope() {
+        let mut p = Profile::desktop();
+        p.ghub_id = Some("legacy-ghub".into());
+        assert!(p.targets(0x046d, &[0x4093]));
+        assert!(!p.targets(0x3837, &[0x4026]));
+        p.ghub_id = None;
+        p.target_vendor = Some(0x3837);
+        p.target_model = Some(0x4026);
+        assert!(p.targets(0x3837, &[0x4026]));
+        assert!(!p.targets(0x046d, &[0x4026]));
+        assert!(!p.targets(0x3837, &[0x4027]));
+    }
+}
+

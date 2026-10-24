@@ -22,7 +22,7 @@ export function SettingsPanel({ device, state, onModeChange }: Props) {
     ["Connection", device.connection],
     ["Product ID", device.model_ids.length ? device.model_ids.join(", ") : device.product_id],
     ...(device.model_ids.length ? ([["Receiver ID", device.product_id]] as [string, string][]) : []),
-    ["Protocol", `HID++ ${device.protocol}`],
+    ["Protocol", device.vendor_id === 0x3837 ? device.protocol : `HID++ ${device.protocol}`],
   ];
   if (b) {
     const parts = [b.percent != null ? `${b.percent}%` : b.level, b.voltage_mv ? `${b.voltage_mv} mV` : null, b.status];
@@ -32,6 +32,11 @@ export function SettingsPanel({ device, state, onModeChange }: Props) {
   return (
     <PanelShell title="Settings">
       <StateErrors errors={state.errors} />
+      {device.vendor_id === 0x3837 && (
+        <PanelSection>
+          <p className="text-sm text-muted-foreground">迈从 A7 V3 Ultra+：点击左侧滑杆图标可管理六档 DPI、独立 X/Y、LOD、消抖、休眠、传感器、按键、宏及板载备份。设置保存到鼠标，写入前自动备份。请退出 M HUB 后使用。</p>
+        </PanelSection>
+      )}
 
       {state.onboard_mode && (
         <PanelSection>
@@ -39,7 +44,7 @@ export function SettingsPanel({ device, state, onModeChange }: Props) {
             <Label htmlFor="onboard" className="flex-col items-start gap-0.5">
               <span className="text-sm font-semibold">On-board memory mode</span>
               <span className="text-[12.5px] font-normal text-muted-foreground">
-                On: the mouse runs the profile stored on it. Off: Open GHub controls it live, and settings reset when it loses power.
+                On: the mouse runs the profile stored on it. Off: Open HUB controls it live, and settings reset when it loses power.
               </span>
             </Label>
             <Switch id="onboard" checked={state.onboard_mode === "onboard"} onCheckedChange={(on) => onModeChange(!on)} />
@@ -60,7 +65,7 @@ export function SettingsPanel({ device, state, onModeChange }: Props) {
         </dl>
       </PanelSection>
 
-      <PanelSection title={`HID++ features (${device.features.length})`}>
+      {device.vendor_id !== 0x3837 && <PanelSection title={`HID++ features (${device.features.length})`}>
         <Table className="text-[12.5px]">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -81,7 +86,7 @@ export function SettingsPanel({ device, state, onModeChange }: Props) {
             ))}
           </TableBody>
         </Table>
-      </PanelSection>
+      </PanelSection>}
     </PanelShell>
   );
 }

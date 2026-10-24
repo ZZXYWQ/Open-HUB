@@ -115,6 +115,7 @@ pub struct FeatureInfo {
 
 #[derive(Clone)]
 pub struct Device {
+    pub vendor_id: u16,
     pub id: String,
     pub path: CString,
     pub index: u8,
@@ -248,6 +249,7 @@ impl Device {
         }
 
         let mut device = Device {
+            vendor_id: crate::hidpp::LOGITECH_VID,
             id,
             path,
             index,
@@ -346,6 +348,7 @@ impl Device {
     }
 
     pub fn ping(&self, t: &Transport) -> bool {
+        if let Some(t)=t.mchose(){return t.identity().is_ok()}
         t.request(self.index, 0, 1, &[0, 0, 0xA5], PROBE_TIMEOUT).is_ok()
     }
 
@@ -365,6 +368,7 @@ impl Device {
     }
 
     pub fn battery(&self, t: &Transport) -> Result<Option<Battery>> {
+        if let Some(t)=t.mchose(){return t.battery()}
         if self.has(UNIFIED_BATTERY) {
             let caps = self.call(t, UNIFIED_BATTERY, 0, &[])?;
             let r = self.call(t, UNIFIED_BATTERY, 1, &[])?;
@@ -421,6 +425,7 @@ impl Device {
     }
 
     pub fn dpi(&self, t: &Transport) -> Result<Option<Dpi>> {
+        if let Some(t)=t.mchose(){return t.dpi()}
         if self.has(EXTENDED_DPI) {
             // fn1 getSensorCapabilities: byte 2 bit 0 = separate Y, bit 1 = lift-off distance.
             let caps = self.call(t, EXTENDED_DPI, 1, &[SENSOR])?;
@@ -474,6 +479,7 @@ impl Device {
     }
 
     pub fn set_dpi(&self, t: &Transport, x: u16, y: Option<u16>, lod: Option<u8>) -> Result<()> {
+        if let Some(t)=t.mchose(){return t.set_dpi(x,y,lod)}
         if self.has(EXTENDED_DPI) {
             let current = self.call(t, EXTENDED_DPI, 5, &[SENSOR])?;
             let y = y.unwrap_or(x);
@@ -494,6 +500,7 @@ impl Device {
     }
 
     pub fn report_rate(&self, t: &Transport) -> Result<Option<ReportRate>> {
+        if let Some(t)=t.mchose(){return t.report_rate()}
         if self.has(EXTENDED_REPORT_RATE) {
             const HZ: [u32; 7] = [125, 250, 500, 1000, 2000, 4000, 8000];
             // fn1 getActualReportRateList -> bitmask of rate indices.
@@ -529,6 +536,7 @@ impl Device {
     }
 
     pub fn set_report_rate(&self, t: &Transport, value: u8) -> Result<()> {
+        if let Some(t)=t.mchose(){return t.set_report_rate(value)}
         if self.has(EXTENDED_REPORT_RATE) {
             self.call(t, EXTENDED_REPORT_RATE, 3, &[value])?;
             return Ok(());

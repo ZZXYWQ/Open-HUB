@@ -1,0 +1,368 @@
+[
+  {
+    "name": "AOC Mouse",
+    "vendor": "AOC",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/AOCMouseController/RGBController_AOCMouse.cpp"
+  },
+  {
+    "name": "Areson",
+    "vendor": "Areson",
+    "direct": ":x:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/AresonController/RGBController_Areson.cpp"
+  },
+  {
+    "name": "Asus Aura Mouse",
+    "vendor": "ASUS",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/AsusAuraUSBController/AsusAuraMouseController/RGBController_AsusAuraMouse.cpp"
+  },
+  {
+    "name": "Asus Aura Spatha",
+    "vendor": "ASUS",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/AsusAuraUSBController/AsusAuraMouseGen1Controller/RGBController_AsusROGSpatha.cpp"
+  },
+  {
+    "name": "Asus Aura Strix Evolve",
+    "vendor": "ASUS",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/AsusAuraUSBController/AsusAuraMouseGen1Controller/RGBController_AsusROGStrixEvolve.cpp"
+  },
+  {
+    "name": "Asus Strix Claw",
+    "vendor": "ASUS",
+    "direct": ":x:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/AsusLegacyUSBController/AsusStrixClawController/RGBController_AsusStrixClaw.cpp"
+  },
+  {
+    "name": "BloodyMouse",
+    "vendor": "Bloody",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/A4TechController/BloodyMouseController/RGBController_BloodyMouse.cpp"
+  },
+  {
+    "name": "Coolermaster Master Mouse",
+    "vendor": "Cooler Master",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/CoolerMasterController/CMMM711Controller/RGBController_CMMM711Controller.cpp"
+  },
+  {
+    "name": "Coolermaster Master Mouse",
+    "vendor": "Cooler Master",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/CoolerMasterController/CMMM712Controller/RGBController_CMMM712Controller.cpp"
+  },
+  {
+    "name": "Coolermaster Master Mouse",
+    "vendor": "",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/CoolerMasterController/CMMMController/RGBController_CMMMController.cpp"
+  },
+  {
+    "name": "Corsair Peripheral",
+    "vendor": "Corsair",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/CorsairPeripheralController/RGBController_CorsairPeripheral.cpp"
+  },
+  {
+    "name": "CorsairPeripheralController",
+    "vendor": "",
+    "direct": "以连接后的模式为准",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/CorsairPeripheralController/CorsairPeripheralController.cpp"
+  },
+  {
+    "name": "CorsairPeripheralV2Devices",
+    "vendor": "",
+    "direct": "以连接后的模式为准",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/CorsairPeripheralV2Controller/CorsairPeripheralV2Devices.cpp"
+  },
+  {
+    "name": "Cougar Revenger ST",
+    "vendor": "Cougar",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/CougarController/CougarRevengerSTController/RGBController_CougarRevengerST.cpp"
+  },
+  {
+    "name": "EVGA USB X20 Mouse",
+    "vendor": "EVGA",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/EVGAUSBController/EVGAMouseController/RGBController_EVGAMouse.cpp"
+  },
+  {
+    "name": "EVGA X12 Gaming Mouse",
+    "vendor": "EVGA",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/EVGAUSBController/EVGAX12Controller/RGBController_EVGAX12.cpp"
+  },
+  {
+    "name": "Genesis Xenon 200",
+    "vendor": "Genesis",
+    "direct": ":x:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/SinowealthController/GenesisXenon200Controller/RGBController_GenesisXenon200.cpp"
+  },
+  {
+    "name": "Gigabyte Aorus mouse",
+    "vendor": "Gigabyte",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/GigabyteAorusMouseController/RGBController_GigabyteAorusMouse.cpp"
+  },
+  {
+    "name": "HID LampArray Controllers",
+    "vendor": "",
+    "direct": "以连接后的模式为准",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/HIDLampArrayController/RGBController_HIDLampArray.cpp"
+  },
+  {
+    "name": "Holtek A070",
+    "vendor": "Holtek",
+    "direct": ":x:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/HoltekController/HoltekA070Controller/RGBController_HoltekA070.cpp"
+  },
+  {
+    "name": "Holtek A1FA",
+    "vendor": "Holtek",
+    "direct": ":x:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/HoltekController/HoltekA1FAController/RGBController_HoltekA1FA.cpp"
+  },
+  {
+    "name": "HyperX Pulsefire Dart",
+    "vendor": "HyperX",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/HyperXMouseController/HyperXPulsefireDartController/RGBController_HyperXPulsefireDart.cpp"
+  },
+  {
+    "name": "HyperX Pulsefire FPS",
+    "vendor": "HyperX",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/HyperXMouseController/HyperXPulsefireFPSProController/RGBController_HyperXPulsefireFPSPro.cpp"
+  },
+  {
+    "name": "HyperX Pulsefire Haste",
+    "vendor": "HyperX",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/HyperXMouseController/HyperXPulsefireHasteController/RGBController_HyperXPulsefireHaste.cpp"
+  },
+  {
+    "name": "HyperX Pulsefire Raid",
+    "vendor": "HyperX",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/HyperXMouseController/HyperXPulsefireRaidController/RGBController_HyperXPulsefireRaid.cpp"
+  },
+  {
+    "name": "HyperX Pulsefire Surge",
+    "vendor": "HyperX",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/HyperXMouseController/HyperXPulsefireSurgeController/RGBController_HyperXPulsefireSurge.cpp"
+  },
+  {
+    "name": "Instant mouse",
+    "vendor": "",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/InstantMouseController/RGBController_InstantMouse.cpp"
+  },
+  {
+    "name": "Laview Technology Mice",
+    "vendor": "",
+    "direct": ":x:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/LaviewTechnologyController/LaviewTechnologyController/RGBController_LaviewTechnology.cpp"
+  },
+  {
+    "name": "Lenovo Legion M300",
+    "vendor": "Lenovo",
+    "direct": ":x:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/LenovoControllers/LenovoM300Controller/RGBController_LenovoM300.cpp"
+  },
+  {
+    "name": "Lexip Mouse",
+    "vendor": "Lexip",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/LexipMouseController/RGBController_LexipMouse.cpp"
+  },
+  {
+    "name": "Logitech G203L",
+    "vendor": "Logitech",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/LogitechController/LogitechG203LController/RGBController_LogitechG203L.cpp"
+  },
+  {
+    "name": "Logitech G600",
+    "vendor": "Logitech",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/LogitechController/LogitechG600Controller/RGBController_LogitechG600.cpp"
+  },
+  {
+    "name": "Logitech HID++ 2.0",
+    "vendor": "Logitech",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/LogitechController/LogitechHIDPP20Controller/RGBController_LogitechHIDPP20.cpp"
+  },
+  {
+    "name": "Logitech Lightspeed",
+    "vendor": "Logitech",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/LogitechController/LogitechLightspeedController/RGBController_LogitechLightspeed.cpp"
+  },
+  {
+    "name": "Logitech Lightsync Mouse",
+    "vendor": "Logitech",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/LogitechController/LogitechGLightsyncController/RGBController_LogitechGLightsync.cpp"
+  },
+  {
+    "name": "Logitech Lightsync Mouse (1 Zone)",
+    "vendor": "Logitech",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/LogitechController/LogitechGLightsyncController/RGBController_LogitechGLightsync1zone.cpp"
+  },
+  {
+    "name": "LogitechHIDPP20Controller",
+    "vendor": "",
+    "direct": "以连接后的模式为准",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/LogitechController/LogitechHIDPP20Controller/LogitechHIDPP20Controller.cpp"
+  },
+  {
+    "name": "N5312A mouse",
+    "vendor": "Unknown",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/N5312AController/RGBController_N5312A.cpp"
+  },
+  {
+    "name": "NZXT Mouse",
+    "vendor": "NZXT",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/NZXTMouseController/RGBController_NZXTMouse.cpp"
+  },
+  {
+    "name": "Patriot Viper V550",
+    "vendor": "Patriot",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/PatriotViperMouseController/RGBController_PatriotViperMouse.cpp"
+  },
+  {
+    "name": "Razer",
+    "vendor": "Razer",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/RazerController/RazerController/RGBController_Razer.cpp"
+  },
+  {
+    "name": "RazerController",
+    "vendor": "",
+    "direct": "以连接后的模式为准",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/RazerController/RazerController/RazerController.cpp"
+  },
+  {
+    "name": "RazerDevices",
+    "vendor": "",
+    "direct": "以连接后的模式为准",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/RazerController/RazerDevices.cpp"
+  },
+  {
+    "name": "Redragon Mice",
+    "vendor": "Redragon",
+    "direct": ":x:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/RedragonController/RGBController_RedragonMouse.cpp"
+  },
+  {
+    "name": "Roccat Burst Mouse",
+    "vendor": "Roccat",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/RoccatController/RoccatBurstController/RGBController_RoccatBurst.cpp"
+  },
+  {
+    "name": "Roccat Burst Pro Air",
+    "vendor": "Roccat",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/RoccatController/RoccatBurstProAirController/RGBController_RoccatBurstProAir.cpp"
+  },
+  {
+    "name": "Roccat Kone Aimo",
+    "vendor": "Roccat",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/RoccatController/RoccatKoneAimoController/RGBController_RoccatKoneAimo.cpp"
+  },
+  {
+    "name": "Roccat Kone Pro Air Mouse",
+    "vendor": "Roccat",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/RoccatController/RoccatKoneProAirController/RGBController_RoccatKoneProAir.cpp"
+  },
+  {
+    "name": "Roccat Kone Pro Mouse",
+    "vendor": "Roccat",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/RoccatController/RoccatKoneProController/RGBController_RoccatKonePro.cpp"
+  },
+  {
+    "name": "Roccat Kone XP Mouse",
+    "vendor": "Roccat",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/RoccatController/RoccatKoneXPController/RGBController_RoccatKoneXP.cpp"
+  },
+  {
+    "name": "Roccat Kova",
+    "vendor": "Roccat",
+    "direct": ":x:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/RoccatController/RoccatKovaController/RGBController_RoccatKova.cpp"
+  },
+  {
+    "name": "Sinowealth 1007 Mouse",
+    "vendor": "ZET",
+    "direct": ":x:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/SinowealthController/Sinowealth1007Controller/RGBController_Sinowealth1007.cpp"
+  },
+  {
+    "name": "Sinowealth Glorious Model O Wireless",
+    "vendor": "",
+    "direct": ":x:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/SinowealthController/SinowealthGMOWController/RGBController_SinowealthGMOW.cpp"
+  },
+  {
+    "name": "Sinowealth Mice",
+    "vendor": "",
+    "direct": ":x:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/SinowealthController/SinowealthController/RGBController_Sinowealth.cpp"
+  },
+  {
+    "name": "Steel Series Rival",
+    "vendor": "SteelSeries",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/SteelSeriesController/SteelSeriesRivalController/RGBController_SteelSeriesRival.cpp"
+  },
+  {
+    "name": "Steel Series Rival 3",
+    "vendor": "SteelSeries",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/SteelSeriesController/SteelSeriesRival3Controller/RGBController_SteelSeriesRival3.cpp"
+  },
+  {
+    "name": "Steel Series Sensei",
+    "vendor": "SteelSeries",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/SteelSeriesController/SteelSeriesSenseiController/RGBController_SteelSeriesSensei.cpp"
+  },
+  {
+    "name": "SteelSeriesRival5",
+    "vendor": "SteelSeries",
+    "direct": "以连接后的模式为准",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/SteelSeriesController/SteelSeriesRival5Controller/RGBController_SteelSeriesRival5.cpp"
+  },
+  {
+    "name": "Tecknet Mouse",
+    "vendor": "Tecknet",
+    "direct": ":white_check_mark:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/TecknetController/RGBController_Tecknet.cpp"
+  },
+  {
+    "name": "Trust GXT 114",
+    "vendor": "Trust",
+    "direct": ":x:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/TrustController/TrustGXT114Controller/RGBController_TrustGXT114.cpp"
+  },
+  {
+    "name": "Trust GXT 180",
+    "vendor": "Trust",
+    "direct": ":x:",
+    "source": "https://codeberg.org/OpenRGB/OpenRGB/src/tag/release_1.1/Controllers/TrustController/TrustGXT180Controller/RGBController_TrustGXT180.cpp"
+  }
+]

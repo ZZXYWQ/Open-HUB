@@ -9,13 +9,14 @@ use hidapi::HidApi;
 
 use crate::device::Device;
 use crate::hidpp::{
-    Error, EventSink, Result, Transport, DIRECT, HIDPP_LONG_USAGE, HIDPP_SHORT_USAGE, HIDPP_USAGE_PAGE, LOGITECH_VID,
+    Error, EventSink, Result, Transport, DIRECT, HIDPP_LONG_USAGE, HIDPP_SHORT_USAGE,
+    HIDPP_USAGE_PAGE, LOGITECH_VID,
 };
 
 /// Unifying, Nano, Lightspeed and Bolt receivers.
 const RECEIVER_PIDS: &[u16] = &[
-    0xC517, 0xC52B, 0xC52F, 0xC531, 0xC532, 0xC534, 0xC539, 0xC53A, 0xC53D, 0xC53F, 0xC541,
-    0xC545, 0xC547, 0xC548, 0xC54D,
+    0xC517, 0xC52B, 0xC52F, 0xC531, 0xC532, 0xC534, 0xC539, 0xC53A, 0xC53D, 0xC53F, 0xC541, 0xC545,
+    0xC547, 0xC548, 0xC54D,
 ];
 /// Paired-device slots on a receiver.
 const RECEIVER_SLOTS: std::ops::RangeInclusive<u8> = 1..=6;
@@ -48,6 +49,7 @@ fn interface_key(path: &str) -> String {
 }
 
 struct Collection {
+    mchose: bool,
     long: CString,
     short: Option<CString>,
     product_id: u16,
@@ -63,7 +65,12 @@ pub struct Manager {
 
 impl Manager {
     pub fn new(events: EventSink) -> Result<Self> {
-        Ok(Self { api: HidApi::new()?, events, transports: HashMap::new(), devices: Vec::new() })
+        Ok(Self {
+            api: HidApi::new()?,
+            events,
+            transports: HashMap::new(),
+            devices: Vec::new(),
+        })
     }
 
     pub fn devices(&self) -> &[Device] {
@@ -72,26 +79,57 @@ impl Manager {
 
     /// Device addressed by a notification: its transport path and device index.
     pub fn device_at(&self, path: &CString, index: u8) -> Option<&Device> {
-        self.devices.iter().find(|d| &d.path == path && d.index == index)
+        self.devices
+            .iter()
+            .find(|d| &d.path == path && d.index == index)
     }
 
     fn collections(&self) -> Vec<Collection> {
         let hidpp = |usage: u16| {
-            self.api
-                .device_list()
-                .filter(move |d| d.vendor_id() == LOGITECH_VID && d.usage_page() == HIDPP_USAGE_PAGE && d.usage() == usage)
+            self.api.device_list().filter(move |d| {
+                d.vendor_id() == LOGITECH_VID
+                    && d.usage_page() == HIDPP_USAGE_PAGE
+                    && d.usage() == usage
+            })
         };
         let shorts: HashMap<String, CString> = hidpp(HIDPP_SHORT_USAGE)
-            .map(|d| (interface_key(&d.path().to_string_lossy()), d.path().to_owned()))
+            .map(|d| {
+                (
+                    interface_key(&d.path().to_string_lossy()),
+                    d.path().to_owned(),
+                )
+            })
             .collect();
-        hidpp(HIDPP_LONG_USAGE)
+        let mut out: Vec<Collection> = hidpp(HIDPP_LONG_USAGE)
             .map(|d| Collection {
+                mchose: false,
                 long: d.path().to_owned(),
-                short: shorts.get(&interface_key(&d.path().to_string_lossy())).cloned(),
+                short: shorts
+                    .get(&interface_key(&d.path().to_string_lossy()))
+                    .cloned(),
                 product_id: d.product_id(),
                 product: d.product_string().unwrap_or("Logitech device").to_string(),
             })
-            .collect()
+            .collect();
+        out.extend(
+            self.api
+                .device_list()
+                .filter(|d| {
+                    d.vendor_id() == crate::mchose::VID
+                        && d.product_id() == crate::mchose::RECEIVER_PID
+                        && d.usage_page() == crate::mchose::USAGE_PAGE
+                        && d.usage() == 1
+                        && d.product_string() == Some("MCHOSE A7 V3 Ultra+")
+                })
+                .map(|d| Collection {
+                    mchose: true,
+                    long: d.path().to_owned(),
+                    short: None,
+                    product_id: d.product_id(),
+                    product: d.product_string().unwrap_or_default().to_string(),
+                }),
+        );
+        out
     }
 
     /// Asks a receiver to report device connections, keeping its other flags.
@@ -99,7 +137,12 @@ impl Manager {
         let flags = transport.register(0x81, 0x00, [0; 3], REGISTER_TIMEOUT)?;
         let wanted = NOTIFY_WIRELESS | NOTIFY_SOFTWARE_PRESENT;
         if flags[1] & wanted != wanted {
-            transport.register(0x80, 0x00, [flags[0], flags[1] | wanted, flags[2]], REGISTER_TIMEOUT)?;
+            transport.register(
+                0x80,
+                0x00,
+                [flags[0], flags[1] | wanted, flags[2]],
+                REGISTER_TIMEOUT,
+            )?;
         }
         Ok(())
     }
@@ -118,13 +161,21 @@ impl Manager {
             if self.transports.contains_key(&c.long) {
                 continue;
             }
-            let receiver = is_receiver(c.product_id, &c.product);
+            let receiver = !c.mchose && is_receiver(c.product_id, &c.product);
             let short = receiver.then_some(c.short.as_deref()).flatten();
-            match Transport::open(&self.api, &c.long, short, self.events.clone()) {
+            let opened = if c.mchose {
+                Transport::open_mchose(&self.api, &c.long, self.events.clone())
+            } else {
+                Transport::open(&self.api, &c.long, short, self.events.clone())
+            };
+            match opened {
                 Ok(t) => {
                     if receiver {
                         if let Err(e) = Self::enable_receiver_notifications(&t) {
-                            warnings.push(format!("{}: could not enable notifications ({e})", c.product));
+                            warnings.push(format!(
+                                "{}: could not enable notifications ({e})",
+                                c.product
+                            ));
                         }
                     }
                     self.transports.insert(c.long.clone(), t);
@@ -138,6 +189,26 @@ impl Manager {
             let Some(transport) = self.transports.get(&c.long) else {
                 continue;
             };
+            if c.mchose {
+                match transport.mchose().expect("MCHOSE transport").identity() {
+                    Ok(_) => found.push(Device {
+                        vendor_id: crate::mchose::VID,
+                        id: format!("{}#{DIRECT}", c.long.to_string_lossy()),
+                        path: c.long.clone(),
+                        index: DIRECT,
+                        product_id: c.product_id,
+                        product: c.product.clone(),
+                        name: "MCHOSE A7 V3 Ultra+".into(),
+                        firmware_name: c.product.clone(),
+                        model_ids: vec![crate::mchose::MODEL_PID],
+                        kind: "Mouse",
+                        protocol: "MCHOSE V3 (0x4D)".into(),
+                        features: Default::default(),
+                    }),
+                    Err(e) => warnings.push(format!("{}: {e}", c.product)),
+                }
+                continue;
+            }
             let slots: Vec<u8> = if is_receiver(c.product_id, &c.product) {
                 RECEIVER_SLOTS.collect()
             } else {
@@ -151,7 +222,14 @@ impl Manager {
                     }
                     continue;
                 }
-                match Device::probe(transport, id, c.long.clone(), index, c.product_id, c.product.clone()) {
+                match Device::probe(
+                    transport,
+                    id,
+                    c.long.clone(),
+                    index,
+                    c.product_id,
+                    c.product.clone(),
+                ) {
                     Ok(device) => found.push(device),
                     // Empty receiver slots and sleeping devices simply don't answer.
                     Err(e @ (Error::Timeout | Error::Hidpp10(_))) => {
@@ -167,7 +245,11 @@ impl Manager {
         Ok(warnings)
     }
 
-    pub fn with_device<R>(&self, id: &str, f: impl FnOnce(&Device, &Transport) -> Result<R>) -> Result<R> {
+    pub fn with_device<R>(
+        &self,
+        id: &str,
+        f: impl FnOnce(&Device, &Transport) -> Result<R>,
+    ) -> Result<R> {
         let device = self
             .devices
             .iter()
