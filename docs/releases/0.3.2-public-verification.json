@@ -1,0 +1,36 @@
+{
+  "version": "0.3.2",
+  "experimental": true,
+  "source_commit": "f6884ff1e73dc097e033dc7f665bae7d67eb59c4",
+  "checked_at": "2026-10-24T16:17:28.552776+00:00",
+  "production_executable_update_check": {
+    "bytes": 38654664,
+    "download_signature_valid": true,
+    "hardware_accessed": false,
+    "installed": false,
+    "passed": true,
+    "release_url": "https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.2-experimental.1",
+    "signed_version_mismatch_rejected": true,
+    "tamper_rejected": true,
+    "version": "0.3.2"
+  },
+  "anonymous_download": {
+    "passed": true,
+    "anonymous_exe_http_status": 200,
+    "bytes": 38654664,
+    "sha256": "c47bccbd849cbb01885e21a41d915d576136f0cff873265a7f657888fb9171b2",
+    "feed_version": "0.3.2",
+    "canonical_download_url": "https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.2-experimental.1/Open-HUB-0.3.2-x64-setup.exe",
+    "feed_url": "https://raw.githubusercontent.com/ZZXYWQ/Open-HUB/main/updates/latest.json"
+  },
+  "source_archive": {
+    "files": 402,
+    "all_entries_match_git_blobs": true,
+    "private_keys_included": false
+  },
+  "default_windows_network_environment": {
+    "passed": true,
+    "explicit_proxy_environment_variables": false
+  },
+  "current_user_installation_changed": false
+}
