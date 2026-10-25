@@ -1,0 +1,65 @@
+{
+  "kind": "synthetic vectors reconstructed from official SC620 x86 field stores; not a USB capture or hardware result",
+  "before_response_hex": "aa 0e a5 00 2e 00 00 02 02 fd 04 06 03 20 03 b0 04 40 06 80 0c 88 13 e0 2e 01 02 03 10 20 30 ff 00 7f 00 ff 80 12 34 56 ab cd ef aa bb cc dd ee 07 03 b5 0c 0a 09 00 00 00 00 00 00 00 00 00 00",
+  "patch": {
+    "active": 5,
+    "dpi": [
+      50,
+      51,
+      1234,
+      10000,
+      25000,
+      26000
+    ],
+    "colors": [
+      [
+        255,
+        255,
+        255
+      ],
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        254,
+        128
+      ],
+      [
+        32,
+        64,
+        96
+      ],
+      [
+        17,
+        34,
+        51
+      ],
+      [
+        222,
+        173,
+        190
+      ]
+    ]
+  },
+  "expected_windows_output_hex": "00 55 0f ae 74 2e 00 00 02 02 fd 04 06 06 32 00 33 00 d2 04 10 27 a8 61 90 65 ff ff ff 00 00 00 01 fe 80 20 40 60 11 22 33 de ad be aa bb cc dd ee 07 03 b5 0c 0a 09 00 00 00 00 00 00 00 00 00 00",
+  "read_headers": [
+    {
+      "query": "Identity",
+      "page": 0,
+      "hex": "00 55 03 00 00 00 00 00 00"
+    },
+    {
+      "query": "Bindings",
+      "page": 5,
+      "hex": "00 55 08 A5 31 2C 00 00 05"
+    },
+    {
+      "query": "Config",
+      "page": 2,
+      "hex": "00 55 0E A5 30 2E 00 00 02"
+    }
+  ]
+}

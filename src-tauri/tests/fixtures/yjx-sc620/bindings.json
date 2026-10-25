@@ -1,0 +1,148 @@
+{
+  "kind": "synthetic vectors reconstructed from SC620 411110..4115AF, not a hardware capture",
+  "actions": [
+    {
+      "action": {
+        "Mouse": "Left"
+      },
+      "hex": "20 01 00 00"
+    },
+    {
+      "action": {
+        "Mouse": "Right"
+      },
+      "hex": "20 02 00 00"
+    },
+    {
+      "action": {
+        "Mouse": "Middle"
+      },
+      "hex": "20 04 00 00"
+    },
+    {
+      "action": {
+        "Mouse": "Back"
+      },
+      "hex": "20 08 00 00"
+    },
+    {
+      "action": {
+        "Mouse": "Forward"
+      },
+      "hex": "20 10 00 00"
+    },
+    {
+      "action": {
+        "Media": "PlayPause"
+      },
+      "hex": "30 CD 00 00"
+    },
+    {
+      "action": {
+        "Media": "Player"
+      },
+      "hex": "30 83 01 00"
+    },
+    {
+      "action": "DoubleClick",
+      "hex": "20 01 02 00"
+    },
+    {
+      "action": "WheelUp",
+      "hex": "21 38 01 00"
+    },
+    {
+      "action": "WheelDown",
+      "hex": "21 38 FF 00"
+    },
+    {
+      "action": "DpiCycle",
+      "hex": "21 55 00 00"
+    },
+    {
+      "action": {
+        "Key": {
+          "usage": 6,
+          "modifiers": 17
+        }
+      },
+      "hex": "10 11 06 00"
+    },
+    {
+      "action": {
+        "Key": {
+          "usage": 0,
+          "modifiers": 128
+        }
+      },
+      "hex": "10 80 00 00"
+    },
+    {
+      "action": {
+        "Media": "Stop"
+      },
+      "hex": "30 B7 00 00"
+    },
+    {
+      "action": {
+        "Media": "Previous"
+      },
+      "hex": "30 B6 00 00"
+    },
+    {
+      "action": {
+        "Media": "Next"
+      },
+      "hex": "30 B5 00 00"
+    },
+    {
+      "action": {
+        "Media": "VolumeUp"
+      },
+      "hex": "30 E9 00 00"
+    },
+    {
+      "action": {
+        "Media": "VolumeDown"
+      },
+      "hex": "30 EA 00 00"
+    },
+    {
+      "action": {
+        "Media": "Mute"
+      },
+      "hex": "30 E2 00 00"
+    }
+  ],
+  "response_hex": "aa 08 a5 00 2c 00 00 03 20 01 00 00 20 02 00 00 20 04 00 00 20 08 00 00 20 10 00 00 70 a0 01 02 21 38 01 00 21 38 ff 00 70 b2 03 00 f0 02 03 00 99 aa bb cc 00 00 00 00 00 00 00 00 00 00 00 00",
+  "changes": [
+    {
+      "record": 4,
+      "expected": [
+        32,
+        16,
+        0,
+        0
+      ],
+      "action": {
+        "Key": {
+          "usage": 6,
+          "modifiers": 17
+        }
+      }
+    },
+    {
+      "record": 7,
+      "expected": [
+        33,
+        56,
+        255,
+        0
+      ],
+      "action": {
+        "Media": "PlayPause"
+      }
+    }
+  ],
+  "expected_output_hex": "00 55 09 a5 33 2c 00 00 03 20 01 00 00 20 02 00 00 20 04 00 00 20 08 00 00 10 11 06 00 70 a0 01 02 21 38 01 00 30 cd 00 00 70 b2 03 00 f0 02 03 00 99 aa bb cc 00 00 00 00 00 00 00 00 00 00 00 00"
+}

@@ -10,6 +10,7 @@ mod naga;
 mod atk;
 mod hyperx;
 mod x11;
+mod yjx_sc620;
 mod legacy;
 mod appearance;
 mod host_macros;

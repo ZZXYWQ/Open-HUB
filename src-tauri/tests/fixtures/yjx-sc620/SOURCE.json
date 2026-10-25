@@ -1,0 +1,20 @@
+{
+  "archive_url": "https://aulastar.com/mouse/",
+  "archive_name": "AULA SC620-V1.2.2.exe",
+  "archive_sha256": "8c2537d687360a2922ec2b11e1710ba6b2612c8d8a3d4d60966fcad39cee9263",
+  "program_sha256": "cd947c856d287042bfa75e2617ee0488f9d29c9be532588a6cedfd8e3faf7514",
+  "config_version": "1.2.1",
+  "evidence": {
+    "checksum": "43A450..43A484: sum Windows report bytes 5..64 into byte 4",
+    "read_bindings": "429291..429300: 08/A5, 44 bytes, six pages; 11 four-byte records per page",
+    "read_config": "42933A..42936B: 0E/A5, 46 bytes, page currentProfile-1",
+    "write_config": "42A960..42B0CC: 0F/AE; 46-byte payload, six stages, little-endian DPI and COLORREF bytes",
+    "dpi_bounds": "42AB1A..42AB2B, repeated for all six values: unsigned(value-50) <= 0x655E",
+    "write_bindings": "42A4CB..42A5D5: 09/A5, 44-byte page, eleven four-byte records; six pages",
+    "known_actions": "411110..4115AF: mouse, double click, wheel, DPI cycle, keyboard/modifier, eight media records",
+    "modifier_conversion": "43D390..43D3F5: E0..E7 converted to bits 0..7; other usage codes retained"
+  },
+  "hardware_tested": false,
+  "golden_kind": "reconstructed static vectors, not measured USB traces",
+  "automatic_driver_registration": false
+}
