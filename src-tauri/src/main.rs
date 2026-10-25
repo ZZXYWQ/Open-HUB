@@ -605,6 +605,7 @@ fn write_onboard_bindings(
     let manager = guard.as_ref().expect("manager initialised");
     manager.with_device(&id,|d,t|{
         onboard_bindings::validate_target(d).map_err(hidpp::Error::Other)?;
+        d.verify_native_identity(t,&settings.expected_device)?;
         let(before,raw)=d.onboard_snapshot(t)?;
         let backup=auto_backup_path(&app,d).map_err(hidpp::Error::Other)?;
         write_onboard_backup(&app.package_info().version.to_string(),&backup,d,&before,&raw).map_err(hidpp::Error::Other)?;
@@ -630,6 +631,7 @@ fn write_onboard_slot(
     manager
         .with_device(&id, |d, t| {
             onboard_bindings::validate_target(d).map_err(hidpp::Error::Other)?;
+            d.verify_native_identity(t,&settings.expected_device)?;
             let (before, raw) = d.onboard_snapshot(t)?;
             let backup = auto_backup_path(&app, d).map_err(hidpp::Error::Other)?;
             write_onboard_backup(&app.package_info().version.to_string(), &backup, d, &before, &raw).map_err(hidpp::Error::Other)?;
@@ -650,7 +652,7 @@ struct OnboardRestoreResult {
 /// Restores the directory and user profiles from a backup file made for the
 /// same mouse model. The current state is backed up first.
 #[tauri::command(async)]
-fn restore_onboard_backup(app: AppHandle, state: State<AppState>, id: String, path: String) -> Result<OnboardRestoreResult, String> {
+fn restore_onboard_backup(app: AppHandle, state: State<AppState>, id: String, path: String, expected_device: String) -> Result<OnboardRestoreResult, String> {
     if ghub_agent_running() {
         return Err(GHUB_RUNNING.into());
     }
@@ -668,6 +670,8 @@ fn restore_onboard_backup(app: AppHandle, state: State<AppState>, id: String, pa
     let manager = guard.as_ref().expect("manager initialised");
     manager
         .with_device(&id, |d, t| {
+            onboard_bindings::validate_target(d).map_err(hidpp::Error::Other)?;
+            d.verify_native_identity(t,&expected_device)?;
             let models: Vec<String> = d.model_ids.iter().map(|m| format!("{m:04X}")).collect();
             if !backup_models.is_empty() && !backup_models.iter().any(|m| models.contains(m)) {
                 return Err(hidpp::Error::Other(format!("this backup is for a different mouse ({})", backup_models.join(", "))));
@@ -962,13 +966,17 @@ fn main() {
         let a: Vec<String> = std::env::args().skip(pos + 1).take(5).collect();
         return onboard_cli(|d, t| {
             let [slot, dpis, start, hz, backup] = a.as_slice() else { return Err("usage: --onboard-write <slot> <dpi,..> <start> <hz> <backup.json>".into()) };
+            let (snapshot, raw) = d.onboard_snapshot(t).map_err(|e| e.to_string())?;
+            let target_slot:u8=slot.parse().map_err(|_| "bad slot")?;
+            let target=snapshot.profiles.iter().find(|p|p.slot==target_slot).ok_or("slot not found")?;
             let settings = onboard::SlotSettings {
+                expected_device: snapshot.device_key.clone(),
+                sector: target.sector,
                 slot: slot.parse().map_err(|_| "bad slot")?,
                 dpi_levels: dpis.split(',').map(|v| v.parse().map_err(|_| "bad dpi")).collect::<Result<_, _>>()?,
                 default_index: start.parse().map_err(|_| "bad start index")?,
                 report_rate_hz: hz.parse().map_err(|_| "bad rate")?,
             };
-            let (snapshot, raw) = d.onboard_snapshot(t).map_err(|e| e.to_string())?;
             write_onboard_backup(env!("CARGO_PKG_VERSION"), std::path::Path::new(backup), d, &snapshot, &raw)?;
             let report = d.write_slot_settings(t, &settings).map_err(|e| e.to_string())?;
             Ok(serde_json::to_string_pretty(&report).unwrap_or_default())

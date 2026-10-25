@@ -41,7 +41,10 @@ mod func {
 
 /// New DPI levels, starting level and report rate for one user slot.
 #[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SlotSettings {
+    pub expected_device: String,
+    pub sector: u16,
     pub slot: u8,
     pub dpi_levels: Vec<u16>,
     pub default_index: u8,
@@ -170,6 +173,7 @@ pub struct Profile {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot {
+    pub device_key: String,
     pub info: Info,
     pub directory_crc_valid: bool,
     /// Active on-board profile slot (1-based); 0 when none is active,
@@ -354,6 +358,7 @@ impl Device {
 
     /// Reads and decodes the directory, user profiles and ROM profiles.
     pub fn onboard_snapshot(&self, t: &dyn FeatureRequest) -> Result<(Snapshot, Vec<RawSector>)> {
+        self.verify_native_identity(t, &self.profile_key)?;
         let info = self.onboard_info(t)?;
         let size = info.sector_size;
         if !(210..=4096).contains(&size)||usize::from(info.profile_count)*4+2>usize::from(size){return Err(Error::Other("unsupported profile/directory geometry".into()));}
@@ -394,12 +399,15 @@ impl Device {
         let active_profile = active[1];
         let active_dpi_index = self.call(t, ONBOARD_PROFILES, func::GET_ACTIVE_DPI_INDEX, &[]).ok().map(|r| r[0]);
 
-        Ok((Snapshot { info, directory_crc_valid, active_profile, active_dpi_index, profiles, rom_profiles }, raw))
+        self.verify_native_identity(t, &self.profile_key)?;
+        Ok((Snapshot { device_key: self.profile_key.clone(), info, directory_crc_valid, active_profile, active_dpi_index, profiles, rom_profiles }, raw))
     }
 
     /// Writes one whole sector: start (sector, offset 0, length), 16-byte
     /// chunks, then end, which commits it to flash.
     fn write_sector(&self, t: &dyn FeatureRequest, sector: u16, data: &[u8]) -> Result<()> {
+        crate::onboard_bindings::validate_target(self).map_err(Error::Other)?;
+        self.verify_native_identity(t, &self.profile_key)?;
         if sector >= ROM_BASE {
             return Err(Error::Other("refusing to write a factory (ROM) sector".into()));
         }
@@ -412,6 +420,7 @@ impl Device {
             self.call(t, ONBOARD_PROFILES, func::WRITE_DATA, &buf)?;
         }
         self.call_with_timeout(t, ONBOARD_PROFILES, func::WRITE_END, &[], COMMIT_TIMEOUT)?;
+        self.verify_native_identity(t, &self.profile_key)?;
         Ok(())
     }
 
@@ -419,7 +428,7 @@ impl Device {
     /// original bytes are written back and an error explains what happened.
     fn write_sector_verified(&self, t: &dyn FeatureRequest, sector: u16, data: &[u8], original: &[u8]) -> Result<()> {
         let size = data.len() as u16;
-        let outcome = self.write_sector(t, sector, data).and_then(|()| self.read_sector(t, sector, size));
+        let outcome = self.write_sector(t, sector, data).and_then(|()| self.read_sector(t, sector, size)).and_then(|bytes| { self.verify_native_identity(t, &self.profile_key)?; Ok(bytes) });
         let reason = match outcome {
             Ok(readback) if readback == data => return Ok(()),
             Ok(_) => "the mouse stored different bytes than were written".to_string(),
@@ -438,7 +447,10 @@ impl Device {
 
     /// Changes one user slot's DPI levels, starting level and report rate.
     pub fn write_slot_settings(&self, t: &dyn FeatureRequest, settings: &SlotSettings) -> Result<WriteReport> {
+        crate::onboard_bindings::validate_target(self).map_err(Error::Other)?;
+        self.verify_native_identity(t, &settings.expected_device)?;
         let info = self.onboard_info(t)?;
+        crate::onboard_bindings::validate_info(&info).map_err(Error::Other)?;
         if settings.slot == 0 || settings.slot > info.profile_count {
             return Err(Error::Other(format!("slot {} doesn't exist (1–{})", settings.slot, info.profile_count)));
         }
@@ -448,7 +460,7 @@ impl Device {
         }
         let i = usize::from(settings.slot - 1) * 4;
         let sector = u16::from_be_bytes([directory[i], directory[i + 1]]);
-        if sector == DIRECTORY_END || sector == DIRECTORY_SECTOR || sector >= ROM_BASE {
+        if sector != settings.sector || sector == DIRECTORY_END || sector == DIRECTORY_SECTOR || sector >= ROM_BASE {
             return Err(Error::Other(format!("slot {} has no user profile sector", settings.slot)));
         }
         let original = self.read_sector(t, sector, info.sector_size)?;
@@ -457,10 +469,12 @@ impl Device {
         }
         let patched = patch_profile_sector(&original, settings).map_err(Error::Other)?;
         let bytes_changed = patched.iter().zip(&original).filter(|(a, b)| a != b).count();
+        self.verify_native_identity(t, &settings.expected_device)?;
         if bytes_changed == 0 {
             return Ok(WriteReport { slot: settings.slot, sector, bytes_changed, unchanged: true });
         }
         self.write_sector_verified(t, sector, &patched, &original)?;
+        self.verify_native_identity(t, &settings.expected_device)?;
         // If the mouse is running this slot from memory, reload it.
         let active = self.call(t, ONBOARD_PROFILES, func::GET_ACTIVE_PROFILE, &[])?;
         if active[1] == settings.slot {
@@ -478,6 +492,7 @@ impl Device {
     ) -> Result<crate::onboard_bindings::Report> {
         use crate::onboard_bindings::{patch, validate_info, Report};
         crate::onboard_bindings::validate_target(self).map_err(Error::Other)?;
+        self.verify_native_identity(t, &settings.expected_device)?;
         if settings.changes.is_empty() || settings.changes.len() > 32 {
             return Err(Error::Other("select 1..32 bindings".into()));
         }
@@ -516,12 +531,14 @@ impl Device {
             active_reloaded: false,
             reload_note: None,
         };
+        self.verify_native_identity(t, &settings.expected_device)?;
         if bytes_changed == 0 {
             return Ok(report);
         }
         let outcome = self
             .write_sector(t, sector, &patched)
-            .and_then(|()| self.read_sector(t, sector, info.sector_size));
+            .and_then(|()| self.read_sector(t, sector, info.sector_size))
+            .and_then(|bytes| { self.verify_native_identity(t, &settings.expected_device)?; Ok(bytes) });
         let error = match outcome {
             Ok(readback) if readback == patched => None,
             Ok(_) => Some("the stored profile differs from the submitted bindings".to_string()),
@@ -530,6 +547,7 @@ impl Device {
         if let Some(error) = error {
             // Do not restore into a sector whose directory ownership changed.
             let ownership = (|| -> Result<()> {
+                self.verify_native_identity(t, &settings.expected_device)?;
                 let now = self.onboard_info(t)?;
                 if (
                     now.memory_model,
@@ -570,6 +588,7 @@ impl Device {
         // Persisting a slot does not force board mode or activate another slot.
         // A reload error is distinct from a verified successful flash write.
         let reload = (|| -> Result<bool> {
+            self.verify_native_identity(t, &settings.expected_device)?;
             let mode = self.call(t, ONBOARD_PROFILES, 2, &[])?;
             if mode.first() != Some(&1) {
                 return Ok(false);
@@ -581,12 +600,14 @@ impl Device {
             if active[1] != settings.slot {
                 return Ok(false);
             }
+            self.verify_native_identity(t, &settings.expected_device)?;
             self.call(
                 t,
                 ONBOARD_PROFILES,
                 func::SET_ACTIVE_PROFILE,
                 &[0, settings.slot],
             )?;
+            self.verify_native_identity(t, &settings.expected_device)?;
             Ok(true)
         })();
         match reload {
@@ -601,6 +622,8 @@ impl Device {
     /// Writes backed-up sectors (directory and user profiles only) back to
     /// the mouse, skipping those already identical. Returns how many changed.
     pub fn restore_sectors(&self, t: &dyn FeatureRequest, sectors: &[(u16, Vec<u8>)]) -> Result<usize> {
+        crate::onboard_bindings::validate_target(self).map_err(Error::Other)?;
+        self.verify_native_identity(t, &self.profile_key)?;
         let info = self.onboard_info(t)?;
         if let Some((sector, data)) = sectors.iter().find(|(_, d)| d.len() != usize::from(info.sector_size)) {
             return Err(Error::Other(format!(
@@ -648,7 +671,7 @@ mod tests {
     #[test]
     fn patch_changes_only_managed_bytes_and_fixes_crc() {
         let original = sample_sector();
-        let settings = SlotSettings { slot: 1, dpi_levels: vec![800, 1600, 3200], default_index: 1, report_rate_hz: 500 };
+        let settings = SlotSettings { expected_device: "session:patch-only".into(), sector: 1, slot: 1, dpi_levels: vec![800, 1600, 3200], default_index: 1, report_rate_hz: 500 };
         let patched = patch_profile_sector(&original, &settings).unwrap();
         assert!(sector_crc_ok(&patched));
         assert_eq!(patched[0], 2); // 500 Hz = 2 ms
@@ -663,11 +686,11 @@ mod tests {
     #[test]
     fn patch_rejects_unstorable_values() {
         let original = sample_sector();
-        let rate = SlotSettings { slot: 1, dpi_levels: vec![800], default_index: 0, report_rate_hz: 8000 };
+        let rate = SlotSettings { expected_device: "session:patch-only".into(), sector: 1, slot: 1, dpi_levels: vec![800], default_index: 0, report_rate_hz: 8000 };
         assert!(patch_profile_sector(&original, &rate).is_err());
-        let index = SlotSettings { slot: 1, dpi_levels: vec![800], default_index: 1, report_rate_hz: 1000 };
+        let index = SlotSettings { expected_device: "session:patch-only".into(), sector: 1, slot: 1, dpi_levels: vec![800], default_index: 1, report_rate_hz: 1000 };
         assert!(patch_profile_sector(&original, &index).is_err());
-        let count = SlotSettings { slot: 1, dpi_levels: vec![1; 6], default_index: 0, report_rate_hz: 1000 };
+        let count = SlotSettings { expected_device: "session:patch-only".into(), sector: 1, slot: 1, dpi_levels: vec![1; 6], default_index: 0, report_rate_hz: 1000 };
         assert!(patch_profile_sector(&original, &count).is_err());
     }
 

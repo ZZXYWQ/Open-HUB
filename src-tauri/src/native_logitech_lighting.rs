@@ -269,14 +269,7 @@ struct Owner {
     profile: Option<Vec<u8>>,
 }
 fn owner(d: &Device, t: &dyn FeatureRequest) -> Result<Option<Owner>> {
-    if d.profile_key.starts_with("unit:") {
-        let reply = d.call_unpadded(t, crate::device::feature::DEVICE_INFO, 0, &[])?;
-        if crate::profile_routing::logitech_unit(&reply).as_ref() != Some(&d.profile_key) {
-            return Err(fail(
-                "mouse unit changed; no further effect or restoration was sent",
-            ));
-        }
-    }
+    d.verify_native_identity(t, &d.profile_key)?;
     if !d.has(crate::device::feature::ONBOARD_PROFILES) {
         return Ok(None);
     }

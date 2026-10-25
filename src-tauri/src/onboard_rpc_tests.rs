@@ -21,6 +21,12 @@ struct State {
     corrupt_readback: bool,
     committed: bool,
     small_reply: bool,
+    unit: [u8; 4],
+    identity_reads: usize,
+    short_identity: bool,
+    change_unit_on_fault: bool,
+    switch_after_read: Option<usize>,
+    read_count: usize,
 }
 struct Memory(Mutex<State>);
 fn crc(mut b: Vec<u8>) -> Vec<u8> {
@@ -79,6 +85,7 @@ fn device() -> Device {
 fn settings(m: &Memory) -> Settings {
     let s = m.0.lock().unwrap();
     Settings {
+        expected_device: device().profile_key,
         slot: 1,
         sector: 1,
         changes: vec![
@@ -109,6 +116,13 @@ impl FeatureRequest for Memory {
         p: &[u8],
         timeout: Duration,
     ) -> Result<Vec<u8>> {
+        if feature==0x11 {
+            assert_eq!((device,function),(0xff,0));
+            let mut s=self.0.lock().unwrap();
+            s.identity_reads+=1;
+            if s.short_identity { return Ok(vec![0;3]); }
+            let mut r=vec![0;16];r[1..5].copy_from_slice(&s.unit);return Ok(r);
+        }
         assert_eq!(
             (device, feature),
             (0xff, 0x12),
@@ -136,6 +150,8 @@ impl FeatureRequest for Memory {
                 s.active = p[1];
             }
             5 => {
+                s.read_count+=1;
+                if s.switch_after_read==Some(s.read_count) {s.unit=[9;4];}
                 assert_eq!(p.len(), 4);
                 let sector = u16::from_be_bytes([p[0], p[1]]);
                 let at = usize::from(u16::from_be_bytes([p[2], p[3]]));
@@ -175,6 +191,7 @@ impl FeatureRequest for Memory {
                 s.seen += 1;
                 if s.seen == nth {
                     s.fault = None;
+                    if s.change_unit_on_fault {s.unit=[9;4];}
                     if s.change_directory_on_fault {
                         let mut dir = s.sectors[&0].clone();
                         dir[1] = 2;
@@ -348,10 +365,13 @@ fn native_logitech_onboard_fixture_export() {
         });
         d.write_slot_bindings(&m, &edited).unwrap();
         let (after_snapshot, _) = d.onboard_snapshot(&m).unwrap();
+        let mut dpi=dpi_settings(&d);dpi.dpi_levels=vec![400,2400];dpi.default_index=1;
+        d.write_slot_settings(&m,&dpi).unwrap();
+        let (after_dpi_snapshot,_)=d.onboard_snapshot(&m).unwrap();
         std::fs::write(
             path,
             serde_json::to_vec_pretty(
-                &serde_json::json!({"device":summary,"snapshot":snapshot,"after_snapshot":after_snapshot,"hardware_tested":false}),
+                &serde_json::json!({"device":summary,"snapshot":snapshot,"after_snapshot":after_snapshot,"after_dpi_snapshot":after_dpi_snapshot,"hardware_tested":false}),
             )
             .unwrap(),
         )
@@ -392,4 +412,64 @@ fn receiver_or_other_brand_never_writes_through_reused_hidpp_index() {
         assert!(d.write_slot_bindings(&m, &settings).is_err());
     }
     assert!(m.0.lock().unwrap().calls.is_empty());
+}
+
+fn unit_device(m:&Memory)->Device{
+    m.0.lock().unwrap().unit=[1,2,3,4];
+    let mut d=device();d.profile_key="unit:046d:01020304".into();
+    d.features.insert(crate::device::feature::DEVICE_INFO,FeatureInfo{id:crate::device::feature::DEVICE_INFO,index:0x11,version:0,flags:0,name:"Device info"});d
+}
+fn unit_settings(m:&Memory,d:&Device)->Settings{let mut s=settings(m);s.expected_device=d.profile_key.clone();s}
+fn dpi_settings(d:&Device)->SlotSettings{SlotSettings{expected_device:d.profile_key.clone(),sector:1,slot:1,dpi_levels:vec![400,800],default_index:0,report_rate_hz:500}}
+#[test]
+fn stale_preview_keys_reject_button_and_dpi_edits_before_even_reading_memory(){
+    let m=memory();let d=device();let mut b=settings(&m);b.expected_device="session:another-connection".into();
+    assert!(d.write_slot_bindings(&m,&b).unwrap_err().to_string().contains("connection changed"));
+    let mut dpi=dpi_settings(&d);dpi.expected_device=b.expected_device;
+    assert!(d.write_slot_settings(&m,&dpi).is_err());assert!(m.0.lock().unwrap().calls.is_empty());
+    let json=serde_json::json!({"slot":1,"sector":1,"changes":[]});assert!(serde_json::from_value::<Settings>(json).is_err());
+}
+#[test]
+fn same_unit_native_bindings_dpi_and_snapshot_keep_a_verified_preview_identity(){
+    let m=memory();let d=unit_device(&m);let (snapshot,_)=d.onboard_snapshot(&m).unwrap();assert_eq!(snapshot.device_key,d.profile_key);
+    let b=unit_settings(&m,&d);d.write_slot_bindings(&m,&b).unwrap();let dpi=dpi_settings(&d);d.write_slot_settings(&m,&dpi).unwrap();
+    let s=m.0.lock().unwrap();assert!(s.identity_reads>=12);assert_eq!(s.sectors[&1][0],2);assert_eq!(&s.sectors[&1][3..7],&[0x90,1,0x20,3]);
+}
+#[test]
+fn changed_or_truncated_unit_blocks_bindings_dpi_restore_and_snapshot_without_flash_writes(){
+    for short in [false,true]{
+        let m=memory();let d=unit_device(&m);let b=unit_settings(&m,&d);let dpi=dpi_settings(&d);let bytes=m.0.lock().unwrap().sectors[&1].clone();
+        {let mut s=m.0.lock().unwrap();s.unit=[9;4];s.short_identity=short;}
+        assert!(d.write_slot_bindings(&m,&b).is_err());assert!(d.write_slot_settings(&m,&dpi).is_err());assert!(d.restore_sectors(&m,&[(1,bytes)]).is_err());assert!(d.onboard_snapshot(&m).is_err());assert!(m.0.lock().unwrap().calls.is_empty());
+    }
+}
+#[test]
+fn a_unit_change_during_preview_or_prewrite_reads_is_detected_before_first_write(){
+    for snapshot in [false,true]{let m=memory();let d=unit_device(&m);let b=unit_settings(&m,&d);m.0.lock().unwrap().switch_after_read=Some(20);
+      if snapshot{assert!(d.onboard_snapshot(&m).is_err());}else{assert!(d.write_slot_bindings(&m,&b).is_err());}
+      assert!(!m.0.lock().unwrap().calls.iter().any(|(f,_)|matches!(f,3|6|7|8)));
+    }
+}
+#[test]
+fn a_unit_change_after_an_uncertain_write_blocks_rollback_and_slot_reload(){
+    for fault in [(6,1),(7,1),(8,1)]{let m=memory();let d=unit_device(&m);let b=unit_settings(&m,&d);
+      {let mut s=m.0.lock().unwrap();s.fault=Some(fault);s.change_unit_on_fault=true;}
+      let e=d.write_slot_bindings(&m,&b).unwrap_err().to_string();assert!(e.contains("no blind retry"),"{fault:?} {e}");
+      let s=m.0.lock().unwrap();assert_eq!(s.calls.iter().filter(|(f,_)|*f==6).count(),1);assert!(!s.calls.iter().any(|(f,_)|*f==3));
+    }
+}
+#[test]
+fn dpi_directory_reassignment_and_receiver_restore_are_rejected(){
+    let m=memory();let d=device();let mut dpi=dpi_settings(&d);dpi.sector=2;assert!(d.write_slot_settings(&m,&dpi).is_err());
+    let mut receiver=d.clone();receiver.index=1;let b=m.0.lock().unwrap().sectors[&1].clone();assert!(receiver.restore_sectors(&m,&[(1,b)]).is_err());
+    assert!(!m.0.lock().unwrap().calls.iter().any(|(f,_)|matches!(f,3|6|7|8)));
+}
+
+#[test]
+#[ignore="requires current per-mouse on-board slot UI output"]
+fn browser_logitech_dpi_slot_keeps_private_mouse_scope_and_native_target_identity(){
+    let path=std::env::var_os("OPEN_HUB_LOGITECH_SLOT_UI_SETTINGS").unwrap();let s:SlotSettings=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+    let m=memory();let d=device();assert_eq!(s.expected_device,d.profile_key);assert_eq!((s.slot,s.sector),(1,1));assert_eq!(s.dpi_levels,vec![400,2400]);assert_eq!(s.default_index,0);
+    let before=m.0.lock().unwrap().sectors.clone();let result=d.write_slot_settings(&m,&s).unwrap();assert!(!result.unchanged);
+    let now=m.0.lock().unwrap();assert_eq!(now.sectors[&0],before[&0]);assert_eq!(now.sectors[&2],before[&2]);assert_eq!(&now.sectors[&1][3..7],&[0x90,1,0x60,9]);assert_eq!(&now.sectors[&1][0x0d..254],&before[&1][0x0d..254]);
 }

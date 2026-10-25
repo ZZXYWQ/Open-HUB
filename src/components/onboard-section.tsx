@@ -1,5 +1,5 @@
 import {OnboardBindingsEditor} from "@/components/onboard-bindings-editor";
-import { useState } from "react";
+import { useState,useEffect,useRef } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { Download, HardDrive, Pencil, RefreshCw, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -66,6 +66,8 @@ function ProfileCard({ profile, active, onEdit,onEditBindings }: { profile: Onbo
 
 /** Profiles stored in the mouse: view, edit DPI/report rate per slot, back up and restore. */
 export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary; supportedDpi: number[] }) {
+  const readGeneration=useRef(0);
+  useEffect(()=>{readGeneration.current++;setSnapshot(null);setEditing(null);setEditingBindings(null);setRestorePath(null);},[device.id]);
   const [snapshot, setSnapshot] = useState<OnboardSnapshot | null>(null);
   const [reading, setReading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -109,10 +111,10 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
   };
 
   const restore = async () => {
-    if (!restorePath) return;
+    if (!restorePath||!snapshot?.device_key) return;
     setRestoring(true);
     try {
-      const result = await api.restoreOnboardBackup(device.id, restorePath);
+      const result = await api.restoreOnboardBackup(device.id, restorePath,snapshot.device_key);
       setSnapshot(result.snapshot);
       toast.success(
         result.sectors_written === 0 ? "The mouse already matches this backup" : `Restored ${result.sectors_written} sector(s) from the backup`,
@@ -128,8 +130,10 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
 
   const read = async () => {
     setReading(true);
+    const generation=++readGeneration.current;
     try {
-      setSnapshot(await api.onboardSnapshot(device.id));
+      const next=await api.onboardSnapshot(device.id);
+      if(generation===readGeneration.current)setSnapshot(next);
     } catch (e) {
       toast.error(`Could not read on-board memory: ${e}`);
     } finally {
@@ -169,7 +173,7 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
         <Button variant="ghost" onClick={backup} disabled={saving}>
           <Download /> {saving ? "Saving…" : "Save backup…"}
         </Button>
-        <Button variant="ghost" onClick={pickRestore} disabled={restoring}>
+        <Button variant="ghost" onClick={pickRestore} disabled={restoring||!snapshot?.device_key||!snapshot?.info.bindings_writable}>
           <Upload /> Restore from backup…
         </Button>
       </div>
@@ -185,13 +189,13 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
           {!snapshot.directory_crc_valid && (
             <p className="text-xs text-destructive">The profile directory failed its checksum; the mouse is using its factory profile.</p>
           )}
-          {info.bindings_writable===false&&<p className="text-xs text-muted-foreground">此连接的独立按键写入尚未开放；这项实验功能目前使用有线 USB。现有板载读取和 DPI 编辑仍可使用。</p>}
+          {info.bindings_writable===false&&<p className="text-xs text-muted-foreground">此连接目前仅开放板载读取；按键、DPI 及备份恢复需要经过身份核对的有线 USB 连接。</p>}
           {snapshot.profiles.map((p) => (
             <ProfileCard
               key={`u${p.slot}`}
               profile={p}
               active={snapshot.active_profile === p.slot}
-              onEdit={p.crc_valid ? () => setEditing(p) : undefined}
+              onEdit={p.crc_valid&&info.bindings_writable ? () => setEditing(p) : undefined}
               onEditBindings={p.crc_valid&&info.bindings_writable&&info.memory_model===1&&info.profile_format>=1&&info.profile_format<=5&&info.macro_format===1&&info.button_count>0&&info.button_count<=16?()=>setEditingBindings(p):undefined}
             />
           ))}
@@ -201,8 +205,8 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
         </div>
       )}
 
-      <OnboardBindingsEditor device={device} profile={editingBindings} info={snapshot?.info??null} onClose={()=>setEditingBindings(null)} onSave={writeBindings}/>
-      <OnboardSlotEditor profile={editing} supportedDpi={supportedDpi} onClose={() => setEditing(null)} onSave={writeSlot} />
+      <OnboardBindingsEditor device={device} deviceKey={snapshot?.device_key??''} profile={editingBindings} info={snapshot?.info??null} onClose={()=>setEditingBindings(null)} onSave={writeBindings}/>
+      <OnboardSlotEditor profile={editing} deviceKey={snapshot?.device_key??''} supportedDpi={supportedDpi} onClose={() => setEditing(null)} onSave={writeSlot} />
 
       <Dialog open={restorePath !== null} onOpenChange={(o) => !o && setRestorePath(null)}>
         <DialogContent className="sm:max-w-md">

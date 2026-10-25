@@ -114,6 +114,7 @@ pub fn validate_info(info: &Info) -> Result<(), String> {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Settings {
+    pub expected_device: String,
     pub slot: u8,
     pub sector: u16,
     pub changes: Vec<Change>,

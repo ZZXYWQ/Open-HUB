@@ -13,6 +13,7 @@ const MAX_LEVELS = 5;
 
 interface Props {
   profile: OnboardProfile | null;
+  deviceKey:string;
   /** Valid DPI values for this mouse, to snap typed values. */
   supportedDpi: number[];
   onClose: () => void;
@@ -24,7 +25,7 @@ function nearest(list: number[], v: number): number {
 }
 
 /** Edits DPI levels, starting level and report rate of one on-board slot. */
-export function OnboardSlotEditor({ profile, supportedDpi, onClose, onSave }: Props) {
+export function OnboardSlotEditor({ profile, deviceKey, supportedDpi, onClose, onSave }: Props) {
   const [levels, setLevels] = useState<number[]>([]);
   const [start, setStart] = useState(0);
   const [rate, setRate] = useState(1000);
@@ -42,7 +43,8 @@ export function OnboardSlotEditor({ profile, supportedDpi, onClose, onSave }: Pr
   const snap = (v: number) => nearest(supportedDpi, Math.max(1, Math.round(v)));
   const fromActiveProfile = async () => {
     const view = await api.profiles();
-    const active = view.profiles.find((p) => p.id === view.active_id);
+    const activeId=view.device_profiles?.[deviceKey]?.active_id;
+    const active = view.profiles.find((p) => p.id === activeId && view.profile_owners?.[p.id]===deviceKey);
     if (!active) return;
     const next = active.levels.slice(0, MAX_LEVELS).map((l) => snap(l.x));
     setLevels(next);
@@ -52,7 +54,7 @@ export function OnboardSlotEditor({ profile, supportedDpi, onClose, onSave }: Pr
 
   const save = async () => {
     setSaving(true);
-    const ok = await onSave({ slot: profile.slot, dpi_levels: levels.map(snap), default_index: start, report_rate_hz: rate });
+    const ok = await onSave({ expected_device:deviceKey,sector:profile.sector,slot: profile.slot, dpi_levels: levels.map(snap), default_index: start, report_rate_hz: rate });
     setSaving(false);
     if (ok) onClose();
   };
@@ -73,7 +75,7 @@ export function OnboardSlotEditor({ profile, supportedDpi, onClose, onSave }: Pr
             <div className="flex items-center justify-between">
               <Label>DPI levels</Label>
               <Button variant="link" size="sm" className="h-auto p-0" onClick={fromActiveProfile}>
-                Use my active Open HUB profile
+                使用此鼠标的当前配置
               </Button>
             </div>
             <div className="flex flex-wrap items-center gap-2">

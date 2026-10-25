@@ -240,6 +240,22 @@ fn transport_model_ids(index:u8, product_id:u16, mut models:Vec<u16>) -> Vec<u16
 }
 
 impl Device {
+    /// Bind a reviewed operation to this unit or this live connection. Unit-id
+    /// replies are kept unpadded so an absent/truncated identity cannot match.
+    pub fn verify_native_identity(&self, t: &dyn FeatureRequest, expected: &str) -> Result<()> {
+        if expected.is_empty() || expected != self.profile_key {
+            return Err(Error::Other("mouse connection changed since preview; read it again".into()));
+        }
+        if self.profile_key.starts_with("unit:") {
+            let reply = self.call_unpadded(t, DEVICE_INFO, 0, &[])?;
+            if crate::profile_routing::logitech_unit(&reply).as_ref() != Some(&self.profile_key) {
+                return Err(Error::Other("mouse unit changed; no further write or restoration was sent".into()));
+            }
+        } else if !self.profile_key.starts_with("session:") {
+            return Err(Error::Other("mouse has no verified unit or live-connection identity".into()));
+        }
+        Ok(())
+    }
     /// Pings `index` on `transport`, then discovers the device's features.
     pub fn probe(
         transport: &Transport,

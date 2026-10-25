@@ -18,7 +18,7 @@ function currentBinding(button:OnboardProfile['buttons'][number]){
  if(button.kind==='mouse'){const mask=raw[2]<<8|raw[3],bit=Array.from({length:16},(_,i)=>i).find(i=>mask===(1<<i));return bit!=null?['左键','右键','中键','后退','前进'][bit]??`鼠标按键 ${bit+1}`:'原厂鼠标组合（保留）';}
  if(button.kind==='special')return Object.values(specials)[raw[1]-1]??'其他原厂功能（保留）';return '原厂动作（保留）';
 }
-export function OnboardBindingsEditor({device,profile,info,onClose,onSave}:{device:DeviceSummary;profile:OnboardProfile|null;info:OnboardInfo|null;onClose:()=>void;onSave:(s:OnboardBindingSettings)=>Promise<boolean>}){
+export function OnboardBindingsEditor({device,deviceKey,profile,info,onClose,onSave}:{device:DeviceSummary;deviceKey:string;profile:OnboardProfile|null;info:OnboardInfo|null;onClose:()=>void;onSave:(s:OnboardBindingSettings)=>Promise<boolean>}){
  const [changes,setChanges]=useState<OnboardBindingChange[]>([]),[layer,setLayer]=useState<'Normal'|'GShift'>('Normal'),[busy,setBusy]=useState(false);
  useEffect(()=>{setChanges([]);setLayer('Normal');},[profile]);
  if(!profile||!info)return null;
@@ -34,6 +34,6 @@ export function OnboardBindingsEditor({device,profile,info,onClose,onSave}:{devi
     {typeof action==='object'&&'Consumer'in action&&<select className={style} aria-label={`罗技${layer}按键${index+1}媒体键`} value={action.Consumer} onChange={e=>put(index,{Consumer:Number(e.target.value)})}>{media.map(([v,name])=><option key={v} value={v}>{name}</option>)}</select>}
     {typeof action==='object'&&'Special'in action&&<select className={style} aria-label={`罗技${layer}按键${index+1}鼠标功能`} value={action.Special} onChange={e=>put(index,{Special:e.target.value as keyof typeof specials})}>{Object.entries(specials).filter(([value])=>value!=='GShift'||shifted).filter(([value])=>value!=='DpiShift'||dpiShift).filter(([value])=>!value.startsWith('Profile')||info.profile_count>1).map(([v,name])=><option key={v} value={v}>{name}</option>)}</select>}
    </div><p className="pl-0 text-xs text-muted-foreground sm:pl-28">当前：{currentBinding(button)}</p></div>})}</section>
-   <p className="text-xs text-muted-foreground">至少保留一个普通层实体按键作为左键。保存前检查绑定是否已被外部修改，先备份可读目录与配置扇区，再写入和读回校验；原厂宏内容不包含在此备份中；不会强制切换到另一个板载槽。</p><div className="flex justify-end gap-3"><Button variant="ghost" onClick={onClose}>取消</Button><Button disabled={!changes.length} onClick={async()=>{setBusy(true);try{if(await onSave({slot:profile.slot,sector:profile.sector,changes}))onClose();}finally{setBusy(false);}}}><Save size={14}/>{busy?'正在保存…':`保存 ${changes.length} 项按键修改`}</Button></div>
+   <p className="text-xs text-muted-foreground">至少保留一个普通层实体按键作为左键。保存前检查绑定是否已被外部修改，先备份可读目录与配置扇区，再写入和读回校验；原厂宏内容不包含在此备份中；不会强制切换到另一个板载槽。</p><div className="flex justify-end gap-3"><Button variant="ghost" onClick={onClose}>取消</Button><Button disabled={!changes.length} onClick={async()=>{setBusy(true);try{if(await onSave({expected_device:deviceKey,slot:profile.slot,sector:profile.sector,changes}))onClose();}finally{setBusy(false);}}}><Save size={14}/>{busy?'正在保存…':`保存 ${changes.length} 项按键修改`}</Button></div>
   </fieldset></DialogContent></Dialog>;
 }

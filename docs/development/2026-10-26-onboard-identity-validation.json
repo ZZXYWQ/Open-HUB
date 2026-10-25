@@ -1,0 +1,22 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "native Logitech on-board preview identity, transaction-boundary unit guards, private-profile DPI source and reviewed restore target",
+  "default_application_tests": 437,
+  "explicit_cross_tests": 16,
+  "new_native_tests": 6,
+  "targeted_headless_ui_suites": 4,
+  "headless_ui_suites_available": 30,
+  "previous_full_headless_ui_suites": 29,
+  "identity": "strict actual unit-id when available; otherwise current direct-connection session only",
+  "checks": "snapshot start/end, before flash transaction, after commit/readback, before restoration and reload",
+  "interleaved_flash_identity_queries": false,
+  "receiver_flash_writes_enabled": false,
+  "frontend_js_gzip_kb": 219.28,
+  "development_exe_memory_transports": 32,
+  "development_exe_sha256": "e9904e5b52d2902fc42b37c6c5d3849fc074e73202e08542e7e9dfe1512762e8",
+  "new_runtime_dependencies": false,
+  "new_physical_mice_tested": false,
+  "accepted_full_models": 0,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}
