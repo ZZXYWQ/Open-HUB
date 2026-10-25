@@ -238,5 +238,12 @@
     "detail": "Unmodified GPL-2.0 Piper SVG",
     "bytes": 50362,
     "sha256": "bb0e29a09ff44debfb0cd05d542ad2d2bfbaeec8119b24a422ded20b53a1ba65"
+  },
+  {
+    "file": "/devices/basilisk-v3-pro.svg",
+    "source": "Open HUB original SVG structural illustration; not a manufacturer photograph",
+    "detail": "Exact AA/AB series only; structural illustration labelled in UI",
+    "bytes": 1244,
+    "sha256": "44c911ada1c40a00581982e2e6498f3f034b28faf5bf4068f1b0ca8a6dff8b86"
   }
 ]

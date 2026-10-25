@@ -47,6 +47,7 @@ pub struct RazerDevice {
     online: bool,
     battery_interval: Duration,
     last_battery_poll: Option<Instant>,
+    board:Option<u8>,
 }
 
 impl RazerDevice {
@@ -55,6 +56,8 @@ impl RazerDevice {
     /// Serial and firmware are best effort: a sleeping wireless mouse does not
     /// answer, which must not stop it from being listed.
     pub fn open(model: &'static Model, mut link: Link, iface: &HidInterfaceInfo) -> Result<Self> {
+        let basilisk=crate::basilisk::supported(VID_RAZER,model.pid);
+        if basilisk{link.strict_basilisk();}
         let wireless = model.connection == Connection::Wireless;
         let serial = identity(link.exec(commands::serial()), wireless)?
             .and_then(|r| commands::parse_serial(&r));
@@ -65,8 +68,9 @@ impl RazerDevice {
             .clone()
             .or_else(|| iface.serial.clone())
             .unwrap_or_else(|| iface.path.clone());
+        let board=if basilisk{Some(Self::active_board(&mut link)?)}else{None};
         let desc = DeviceDescriptor {
-            id: format!("razer:{:04x}:{unique}", model.pid),
+            id: format!("razer:{:04x}:{unique}{}", model.pid,board.map(|n|format!(":board:{n}")).unwrap_or_default()),
             model_key: DeviceDescriptor::model_key_for(Vendor::Razer, model.pid),
             vendor: Vendor::Razer,
             kind: model.kind,
@@ -87,7 +91,37 @@ impl RazerDevice {
             online: true,
             battery_interval: BATTERY_INTERVAL,
             last_battery_poll: None,
+            board,
         })
+    }
+
+    fn active_board(link:&mut Link)->Result<u8>{
+        let r=link.exec(Report::new(5,0x84,0,&[]))?;
+        if !(1..=5).contains(&r.args[0]){return Err(Error::protocol("Basilisk active onboard profile outside 1..5"));}Ok(r.args[0])
+    }
+    fn check_board(&mut self,write:bool)->Result<()>{
+        if let Some(board)=self.board{
+            if write&&self.link.exec(Report::new(0,0x84,2,&[]))?.args[0]!=0{return Err(Error::protocol("Close Synapse and restore normal mouse mode before applying"));}
+            if Self::active_board(&mut self.link)?!=board{return Err(Error::protocol("Basilisk onboard profile changed; switch back or rescan before applying/restoring"));}
+        }Ok(())
+    }
+    fn basilisk_button(&mut self,id:u16)->Result<Report>{
+        let board=self.board.ok_or(Error::Unsupported("Basilisk board context"))?;
+        self.link.exec(Report::new(2,0x8c,10,&[board,id as u8,0]))
+    }
+    fn set_basilisk_button(&mut self,id:u16,action:&ButtonAction)->Result<()>{
+        let block=crate::basilisk::encode(id,action)?;
+        self.check_board(true)?;
+        let original=self.basilisk_button(id)?;
+        if crate::basilisk::decode(id,&original.args[3..10]).is_none(){return Err(Error::Unsupported("Unknown original Basilisk binding retained"));}
+        let mut args=original.args;args[3..10].copy_from_slice(&block);
+        self.check_board(true)?;
+        let result=self.link.exec(Report::new(2,0x0c,10,&args[..10])).and_then(|_|self.basilisk_button(id)).and_then(|r|if r.args[..10]==args[..10]{Ok(())}else{Err(Error::protocol("Basilisk button readback mismatch"))}).and_then(|_|self.check_board(false));
+        if let Err(error)=result{
+            // Never restore into a changed active profile/mode. Preserve exact raw original.
+            let restore=self.check_board(true).and_then(|_|self.link.exec(Report::new(2,0x0c,10,&original.args[..10]))).and_then(|_|self.basilisk_button(id)).and_then(|r|if r.args[..10]==original.args[..10]{Ok(())}else{Err(Error::protocol("original button restore readback mismatch"))});
+            return Err(Error::protocol(format!("{error}; original Basilisk record restoration: {restore:?}")));
+        }Ok(())
     }
 
     #[cfg(test)]
@@ -125,6 +159,7 @@ impl RazerDevice {
     }
 
     fn write_dpi(&mut self, d: &DpiState) -> Result<()> {
+        self.check_board(true)?;
         if self.model.dpi.is_some_and(|s| s.stages) {
             self.link.exec(commands::set_dpi_stages(d))?;
         } else {
@@ -144,6 +179,7 @@ impl RazerDevice {
     }
 
     fn set_button(&mut self, id:u16, action:&ButtonAction) -> Result<()> {
+        if self.board.is_some(){return self.set_basilisk_button(id,action);}
         if !matches!(self.model.pid,0x00c0|0x00c1) || !matches!(id,2|4|5|9|10|0x60) {
             return Err(Error::Unsupported("exact Viper V3 Pro remappable control"));
         }
@@ -202,6 +238,7 @@ impl RazerDevice {
             .filter(|_| p.rates.contains(&hz))
             .ok_or_else(|| Error::invalid(format!("{hz} Hz polling rate")))?;
         for r in requests {
+            self.check_board(true)?;
             self.link.exec(r)?;
         }
         Ok(())
@@ -223,8 +260,10 @@ impl RazerDevice {
                 st.brightness
             )));
         }
+        self.check_board(true)?;
         self.link
             .exec(commands::effect(zone, &st.effect, self.model.wave))?;
+        self.check_board(true)?;
         self.link
             .exec(commands::set_brightness(zone, st.brightness))?;
         Ok(())
@@ -318,7 +357,13 @@ impl Device for RazerDevice {
     }
 
     fn read_state(&mut self) -> Result<DeviceState> {
+        self.check_board(false)?;
         let mut s = self.state.clone();
+        if self.board.is_some(){
+            s.buttons.clear();
+            for cap in &mut self.caps.buttons{cap.remappable=false;}
+            for (id,_) in crate::basilisk::BUTTONS{if let Ok(r)=self.basilisk_button(id){if let Some(action)=crate::basilisk::decode(id,&r.args[3..10]){s.buttons.insert(id,action);if let Some(c)=self.caps.buttons.iter_mut().find(|c|c.id==id){c.remappable=id!=1;}}}}
+        }
         if matches!(self.model.pid,0x00c0|0x00c1) {
             s.buttons.clear();
             for cap in &mut self.caps.buttons{cap.remappable=false;}
@@ -362,12 +407,14 @@ impl Device for RazerDevice {
                 s.game_mode = Some(g);
             }
         }
+        self.check_board(false)?;
         self.online = true;
         self.state = s.clone();
         Ok(s)
     }
 
     fn apply(&mut self, setting: &Setting) -> Result<()> {
+        self.check_board(true)?;
         match setting {
             Setting::Dpi(d) => self.set_dpi(d)?,
             Setting::DpiActiveStage(i) => self.set_active_stage(*i)?,
@@ -430,12 +477,12 @@ fn capabilities(model: &Model) -> Capabilities {
         dpi: model.dpi.map(|d| DpiCaps {
             min: 100,
             max: d.max,
-            step: if matches!(model.pid,0x007a|0x007b|0x00a5|0x00a6|0x00c0|0x00c1){1}else{50},
+            step: if matches!(model.pid,0x007a|0x007b|0x00a5|0x00a6|0x00c0|0x00c1|0x00aa|0x00ab){1}else{50},
             max_stages: if d.stages { MAX_STAGES as u8 } else { 1 },
             separate_xy: true,
         }),
         report_rates: model.polling.rates.to_vec(),
-        buttons: if matches!(model.pid,0x00c0|0x00c1) {
+        buttons: if crate::basilisk::supported(VID_RAZER,model.pid){crate::basilisk::BUTTONS.into_iter().map(|(id,name)|ButtonCaps{id,name:name.into(),remappable:id!=1,default_action:crate::basilisk::decode(id,&crate::basilisk::default_block(id).unwrap()).unwrap(),hotspot:None}).collect()}else if matches!(model.pid,0x00c0|0x00c1) {
             [(1,"左键"),(2,"右键"),(4,"后退"),(5,"前进"),(9,"滚轮向上"),(10,"滚轮向下"),(0x60,"底部 DPI 键")].into_iter().map(|(id,name)|ButtonCaps{id,name:name.into(),remappable:id!=1,default_action:viper_decode(id as u8,&viper_default(id as u8).unwrap()).unwrap(),hotspot:None}).collect()
         } else {Vec::new()},
         lighting: model
@@ -495,6 +542,7 @@ mod tests {
     /// `open` is dropped from the returned log.
     fn open(pid: u16, fake: &Fake) -> (RazerDevice, Log) {
         let model = models::find(pid).unwrap();
+        let fake=if crate::basilisk::supported(VID_RAZER,pid){fake.clone().on(5,0x84,2,&[1])}else{fake.clone()};
         let (io, log) = fake.transport();
         let link = Link::new(Box::new(io), model.transaction_id, INSTANT);
         let iface = HidInterfaceInfo {
@@ -1045,7 +1093,7 @@ mod tests {
 
     #[test]
     fn capabilities_follow_the_model_table() {
-        let (dev, _) = open(0x00ab, &Fake::default()); // Basilisk V3 Pro (wireless)
+        let (dev, _) = open(0x00ab, &Fake::default().on(5,0x84,2,&[1])); // Basilisk V3 Pro (wireless)
         let c = dev.capabilities();
         let dpi = c.dpi.as_ref().unwrap();
         assert_eq!(

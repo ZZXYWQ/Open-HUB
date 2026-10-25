@@ -30,3 +30,5 @@ Haste SVG 仅去除独立标注引线层并收紧画布，主体路径未改；�
 Five wired model adapters: libratbag MIT reference, fixed source and scope in [FIVE-BRAND-ADAPTERS.md](FIVE-BRAND-ADAPTERS.md), bundled copyright notices in Wired-Protocol-MIT.txt. Two additional unmodified Piper SVGs retain GPL-2.0; three original lightweight structural illustrations are labelled as illustrations.
 
 Pulsar Nordic keyboard shortcut records: independently implemented using the MIT reference by Packerlschupfer, fixed commit a18ed8fb963a296d4c5493f51017df32f30e975c of https://github.com/packerlschupfer/pulsar-mouse-linux . Copyright and MIT permission text are bundled in Pulsar-Nordic-MIT.txt. No Python/GTK runtime or official vendor application is bundled.
+
+Basilisk V3 Pro button protocol: independently implemented from kev-landry/basilisk-configurator commit 2bb8b3c81a201465e2b888bafa46b6cbb05ad9ae (MIT, Kevin Landry). Scope and evidence in BASILISK-ADAPTER.md; original license bundled as Basilisk-Configurator-MIT.txt. No vendor runtime or application bundled.

@@ -1,5 +1,5 @@
 export interface MultiDpi {stages:Array<{x:number;y:number}>;active:number}
-export type MultiAction='Default'|'Disabled'|{Mouse:'Left'|'Right'|'Middle'|'Back'|'Forward'}|{Key:{usage:number;mods:number}}|{Dpi:'Cycle'|'Up'|'Down'|{Shift:number}}|{Macro:string};
+export type MultiAction='Default'|'Disabled'|{Mouse:'Left'|'Right'|'Middle'|'Back'|'Forward'|'WheelLeft'|'WheelRight'}|{Key:{usage:number;mods:number}}|{Dpi:'Cycle'|'Up'|'Down'|{Shift:number}}|{Macro:string};
 export interface MultiColor {r:number;g:number;b:number}
 export type MultiEffect='Off'|{Static:{color:MultiColor}}|{Breathing:{color:MultiColor;period_ms:number}}|{ColorCycle:{period_ms:number}}|{Wave:{period_ms:number;direction:'LeftToRight'|'RightToLeft'}}|{Reactive:{color:MultiColor;duration_ms:number}};
 export interface MultiZoneState {effect:MultiEffect;brightness:number}
@@ -14,3 +14,5 @@ export function multiProfile(plan:MultiPlan,name:string){const dpi=plan.settings
 export interface MultiSource {vendor:number;product:number;path:string}
 export type MultiStep={KeyDown:number}|{KeyUp:number}|{Delay:number}|{MouseDown:'Left'|'Right'|'Middle'|'Back'|'Forward'}|{MouseUp:'Left'|'Right'|'Middle'|'Back'|'Forward'}|{Text:string}|{KeyTap:{usage:number;mods:number}}|'WaitForRelease';
 export interface MultiMacro {id:string;name:string;mode:'Once'|'WhileHeld'|'Toggle';steps:MultiStep[]}
+
+export function basiliskPro(v:number,p:number){return v===0x1532&&[0x00aa,0x00ab].includes(p);}

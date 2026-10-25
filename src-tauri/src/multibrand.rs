@@ -18,6 +18,9 @@ pub use session_plan::SessionView;
 #[path="import_execution_tests.rs"]
 mod import_execution_tests;
 #[cfg(test)]
+#[path="basilisk_models.rs"]
+mod basilisk_models;
+#[cfg(test)]
 #[path="viper_models.rs"]
 mod viper_models;
 
@@ -51,7 +54,7 @@ pub fn choose_profile_device(ids:&[String],selected:Option<&str>)->Result<String
  match matches.as_slice(){[id]=>Ok((*id).clone()),[]=>Err("未连接所选配置对应的具体鼠标，请重新选择".into()),_=>Err("连接了多只同型号鼠标，请先选择目标；本次未向任何一只应用".into())}
 }
 pub fn supported(v: u16, p: u16) -> bool {
-    crate::legacy::supported(v,p) || crate::atk::supported(v,p) || crate::hyperx::supported(v,p) || matches!(
+    gearwise_razer::basilisk::supported(v,p) || crate::legacy::supported(v,p) || crate::atk::supported(v,p) || crate::hyperx::supported(v,p) || matches!(
         (v, p),
         (0x1532, 0x0084) | (0x1532, 0x00b4) | (0x1532, 0x007a | 0x007b | 0x00a5 | 0x00a6 | 0x00c0 | 0x00c1) | (0x1b1c, 0x1b2e) | (0x1038, 0x1720)
     )
@@ -373,6 +376,7 @@ pub fn validate(p: &Plan) -> Result<(), String> {
                 if p.vendor==0x1532&&!gearwise_razer::models::find(p.product).is_some_and(|model|model.zones.iter().any(|z|u16::from(z.led)==u16::from(*zone)&&z.effects.contains(&state.effect.kind()))){return Err("此雷蛇型号不支持该灯区或光效".into());}
             }
             Setting::Button { id, action } => {
+                if gearwise_razer::basilisk::supported(p.vendor,p.product){if matches!(action,ButtonAction::Macro(_)){if *id==1||gearwise_razer::basilisk::default_block(*id).is_none(){return Err("未知或受保护的巴塞利斯蛇按键".into());}}else{gearwise_razer::basilisk::encode(*id,action).map_err(|e|e.to_string())?;}continue;}
                 if p.vendor==0x1532&&matches!(p.product,0x00c0|0x00c1){validate_viper_button(*id,action)?;continue;}
                 if p.vendor==0x1532&&p.product==0x00b4{if !crate::naga::known_button(*id){return Err("未知 Naga 按键".into());}match action{ButtonAction::Default|ButtonAction::Mouse(_)|ButtonAction::Macro(_)=>{},ButtonAction::Key{usage,..} if (4..=0xa4).contains(usage)=>{},_=>return Err("Naga 不支持此板载动作".into())}if *id==1{return Err("保留左键原始点击".into());}continue;}
                 if p.vendor==0x1b1c&&p.product==0x1b2e{if !(2..=8).contains(id){return Err("保留左键，且只允许 M65 PRO 已知按键".into());}match action{ButtonAction::Default|ButtonAction::Disabled|ButtonAction::Mouse(_)|ButtonAction::Macro(_)|ButtonAction::Dpi(DpiFunction::Up|DpiFunction::Down|DpiFunction::Cycle)=>{},ButtonAction::Dpi(DpiFunction::Shift(d)) if (100..=12000).contains(d)=>{},ButtonAction::Key{usage,..} if (4..=0xa4).contains(usage)=>{},_=>return Err("M65 PRO 按键动作无效".into())}continue;}
@@ -519,6 +523,7 @@ fn simulated(
         (v,p) if crate::legacy::supported(v,p)=>crate::legacy::simulated(v,p).map_err(|e|e.to_string()),
         (v,p) if crate::atk::supported(v,p)=>crate::atk::simulated(product).map_err(|e|e.to_string()),
         (v,p) if crate::hyperx::supported(v,p)=>crate::hyperx::simulated(product).map_err(|e|e.to_string()),
+        (v,p) if gearwise_razer::basilisk::supported(v,p)=>gearwise_razer::simulated_basilisk(p).map_err(|e|e.to_string()),
         (0x1532, 0x0084) => Ok(gearwise_razer::simulated_deathadder_v2()),
         (0x1532, 0x007a|0x007b|0x00a5|0x00a6|0x00c0|0x00c1) => gearwise_razer::simulated_viper(product).map_err(|e|e.to_string()),
         (0x1532, 0x00b4) => Ok(crate::naga::simulated()),
@@ -528,7 +533,7 @@ fn simulated(
     }
 }
 pub fn templates() -> Result<Vec<View>, String> {
-    crate::legacy::models().iter().map(|m|(m.vendor,m.product)).chain(crate::atk::models().iter().map(|m|(m.vendor,m.product))).chain([(0x03f0,0x048e),(0x03f0,0x028e),(0x1532, 0x0084), (0x1532, 0x00b4), (0x1b1c, 0x1b2e), (0x1038, 0x1720),(0x1532,0x007a),(0x1532,0x007b),(0x1532,0x00a5),(0x1532,0x00a6),(0x1532,0x00c0),(0x1532,0x00c1)].into_iter())
+    crate::legacy::models().iter().map(|m|(m.vendor,m.product)).chain(crate::atk::models().iter().map(|m|(m.vendor,m.product))).chain([(0x03f0,0x048e),(0x03f0,0x028e),(0x1532, 0x0084), (0x1532, 0x00b4), (0x1b1c, 0x1b2e), (0x1038, 0x1720),(0x1532,0x007a),(0x1532,0x007b),(0x1532,0x00a5),(0x1532,0x00a6),(0x1532,0x00c0),(0x1532,0x00c1),(0x1532,0x00aa),(0x1532,0x00ab)].into_iter())
         .map(|(v, p)| {
             let (mut d, _) = simulated(v, p)?;
             let mut out = view(d.as_mut())?;
@@ -610,6 +615,12 @@ pub struct Compiled {
  pub dpi_actions:std::collections::BTreeMap<u16,DpiFunction>,
 }
 fn native_macros(v:u16,p:u16)->bool{crate::legacy::native_macros(v,p)||crate::atk::model(v,p).is_some_and(|m|m.native_macros)||crate::hyperx::supported(v,p)}
+pub(crate) fn same_hardware_context(v:u16,p:u16,a:&str,b:&str)->bool{
+ let bank=|id:&str|id.rsplit_once(":board:").and_then(|(_,v)|v.parse::<u8>().ok());
+ if crate::atk::is_pulsar(v,p){let first=bank(a).filter(|n|*n<4);return first.is_some()&&first==bank(b);}
+ if gearwise_razer::basilisk::supported(v,p){let first=bank(a).filter(|n|(1..=5).contains(n));return first.is_some()&&first==bank(b);}
+ true
+}
 fn readable_host_buttons(v:u16,p:u16)->bool{v==0x1532||crate::atk::is_pulsar(v,p)}
 fn validate_pulsar_button(id:u16,action:&ButtonAction)->Result<(),String>{
  if !(2..=5).contains(&id){return Err("Pulsar 保留左键，只开放右/中/后退/前进".into());}
@@ -623,10 +634,12 @@ fn validate_viper_button(id:u16,action:&ButtonAction)->Result<(),String>{
 pub fn compile(plan:&Plan)->Result<Compiled,String>{
  use gearwise_core::profile::{Macro,MacroMode,MacroStep};
  let pulsar=crate::atk::is_pulsar(plan.vendor,plan.product);
+ let basilisk=gearwise_razer::basilisk::supported(plan.vendor,plan.product);
  let corsair=(plan.vendor,plan.product)==(0x1b1c,0x1b2e);
  let software_input=corsair&&plan.settings.iter().any(|s|matches!(s,Setting::Button{action,..} if !matches!(action,ButtonAction::Default)));
  let mut native=Vec::new();let mut bindings=Vec::new();let mut keys=std::collections::BTreeMap::new();let mut buttons=Vec::new();let mut dpi_actions=std::collections::BTreeMap::new();
  let mut definitions=std::collections::HashMap::new();if plan.macros.len()>32{return Err("最多保存 32 个软件宏".into());}
+ if basilisk&&plan.macros.iter().any(|m|m.mode==MacroMode::WhileHeld){return Err("巴塞利斯蛇本轮开放单次和再次按下停止软件宏；按住循环仍待实机验证".into());}
  if pulsar&&plan.macros.iter().any(|m|m.mode==MacroMode::WhileHeld){return Err("Pulsar 快捷键是点按触发，软件宏支持单次或再次按下停止，不支持按住循环".into());}
  for m in &plan.macros{crate::host_macros::validate(m)?;if crate::legacy::supported(plan.vendor,plan.product){crate::legacy::validate_macro(plan.vendor,plan.product,m).map_err(|e|e.to_string())?;}if crate::hyperx::supported(plan.vendor,plan.product){crate::hyperx::validate_macro(m).map_err(|e|e.to_string())?;}if crate::atk::model(plan.vendor,plan.product).is_some_and(|m|m.native_macros){crate::atk::validate_macro(m).map_err(|e|e.to_string())?;}if definitions.insert(m.id.as_str(),m).is_some(){return Err("宏标识重复".into());}}
  if let Some(source)=&plan.source{if source.vendor!=plan.vendor||source.product!=plan.product{return Err("软件宏来源与方案品牌/型号不一致".into());}}
@@ -655,7 +668,7 @@ pub fn compile(plan:&Plan)->Result<Compiled,String>{
   }
 
   if let Setting::Button{id,action:ButtonAction::Macro(macro_id)}=s{
-   if !pulsar&&!matches!((plan.vendor,plan.product),(0x1532,0x00b4)|(0x1038,0x1720)){return Err("该型号的软件宏输入尚未接通".into());}
+   if !pulsar&&!basilisk&&!matches!((plan.vendor,plan.product),(0x1532,0x00b4)|(0x1038,0x1720)){return Err("该型号的软件宏输入尚未接通".into());}
    if *id==1{return Err("保留左键原始点击".into());}
    let m=definitions.get(macro_id.as_str()).ok_or("按键引用的宏内容缺失")?;
    if bindings.len()>=12{return Err("同时最多绑定 12 个软件宏按钮（F13–F24）".into());}

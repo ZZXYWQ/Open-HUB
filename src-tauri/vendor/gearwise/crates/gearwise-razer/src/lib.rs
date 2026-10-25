@@ -4,8 +4,9 @@
 //! reports on one of their interfaces. This crate speaks
 //! that protocol for DPI and DPI stages, polling rate, battery, Chroma
 //! lighting (zone effects and per-key frames) and keyboard game mode. Button
-//! remapping is limited to captured Standard-layer mouse actions on the exact
-//! Viper V3 Pro ids. Keyboard actions, macros and other models are not inferred.
+//! remapping covers captured Standard-layer mouse actions on the exact Viper
+//! V3 Pro ids and independently documented Basilisk V3 Pro AA/AB bindings.
+//! Other model layouts and native macro flash protocols are not inferred.
 //!
 //! * [`models`] lists the supported products and how each one differs.
 //! * [`RazerDriver`] plugs into the device manager.
@@ -13,6 +14,7 @@
 //! Protocol facts (byte layouts, command ids, product ids) were taken from
 //! the openrazer and OpenRGB projects as references; the code is original.
 
+pub mod basilisk;
 mod commands;
 mod device;
 mod keymap;
@@ -23,6 +25,10 @@ mod report;
 mod simulation;
 #[cfg(any(test, feature = "simulation"))]
 pub use simulation::mouse as simulated_viper;
+#[cfg(any(test,feature="simulation"))]
+mod basilisk_sim;
+#[cfg(any(test,feature="simulation"))]
+pub use basilisk_sim::mouse as simulated_basilisk;
 #[cfg(any(test, feature = "simulation"))]
 mod testutil;
 

@@ -1,6 +1,6 @@
 # Open HUB 鼠标接入范围
 
-当前版本：2026-10-25，Open HUB 0.3.4 新增 ASUS、Roccat、G.Skill、Etekcity、Mars Gaming 五个品牌的各一款限定有线型号。除迈从 A7 V3 Ultra+ 与 MagDock 外，新增型号均以生产驱动和合成设备测试，尚未实机验证。
+当前版本：2026-10-25，Open HUB 0.3.7 延续 0.3.4 新增 ASUS、Roccat、G.Skill、Etekcity、Mars Gaming 五个品牌的各一款限定有线型号。除迈从 A7 V3 Ultra+ 与 MagDock 外，新增型号均以生产驱动和合成设备测试，尚未实机验证。
 
 ## 当前品牌与型号
 
@@ -8,7 +8,7 @@
 |---|---|---|
 |罗技 / Logitech|原有 HID++ 识别目录，按探测能力显示|保留既有控制；G HUB 导入 DPI、回报率和应用关联，暂不转换官方按键、宏和灯效|
 |迈从 / MCHOSE|A7 V3 Ultra+、MagDock 底座|DPI、性能、按键、宏、板载组；底座原厂灯效与同步。M HUB 导入三组板载名称与引用，不复制设备已有参数|
-|雷蛇 / Razer|Naga V2 HyperSpeed、DeathAdder V2、Viper Ultimate、Viper V2 Pro、Viper V3 Pro|能力因型号而异，见下文；Synapse 可执行转换目前仅支持 Naga 的已实现格式|
+|雷蛇 / Razer|Naga V2 HyperSpeed、DeathAdder V2、Viper Ultimate、Viper V2 Pro、Viper V3 Pro、Basilisk V3 Pro 00AA/00AB|能力因型号而异，见下文；Synapse 可执行转换目前仅支持 Naga 的已实现格式|
 |海盗船 / Corsair|M65 PRO RGB（1B1C:1B2E）|DPI、回报率、支持的按键/软件宏、iCUE 转换；部分状态来自缓存，回报率重连需核对续接|
 |赛睿 / SteelSeries|Rival 310（1038:1720）|两组 CPI、回报率、支持的按键/软件宏、GG 数据库转换；部分状态来自写入缓存|
 |HyperX|Pulsefire Haste 03F0:048E / Haste Wireless 03F0:028E|五档 DPI、回报率、已知按键、单次键盘板载宏、常亮/关闭滚轮灯和只读板载导入；不解析 NGENUITY；原厂宏/灯效不可读回；仅模拟验证，见 HYPERX-ADAPTER.md|
@@ -41,6 +41,8 @@ SinoWealth 通道的以下指定型号/固件支持 DPI、回报率、按键、�
 以上涉及 23 个品牌的部分型号，不是全品牌兼容。SinoWealth 的 8 个品牌共有 11 条型号/固件记录，不能把固件或有线/无线 PID 重复计为新鼠标。
 
 雷蛇能力按型号区分：
+
+- Basilisk V3 Pro：00AA/00AB 五档 XY DPI、回报率、12 个独立控制及快捷键、单次/开关软件宏和 Logo/滚轮灯区。仅当前槽普通层，未知原厂宏锁定，未实机；见 [BASILISK-ADAPTER.md](BASILISK-ADAPTER.md)。
 
 - Naga V2 HyperSpeed：当前支持的 DPI、回报率、按键、软件宏与有限制的 Synapse 转换。
 - DeathAdder V2：DPI、回报率和已实现灯效；按键及宏未启用。

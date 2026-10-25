@@ -6,10 +6,10 @@
 
 **基于 [abidr/open-ghub（Open GHub）](https://github.com/abidr/open-ghub) 修改的多品牌鼠标控制实验项目。**
 
-**[⬇ 下载 Windows x64 EXE 安装包 · 0.3.6 实验版（约 37 MiB）](https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.6-experimental.1/Open-HUB-0.3.6-x64-setup.exe)**
+**[⬇ 下载 Windows x64 EXE 安装包 · 0.3.7 实验版（约 37 MiB）](https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.7-experimental.1/Open-HUB-0.3.7-x64-setup.exe)**
 
-[版本说明与全部附件](https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.6-experimental.1) ·
-[对应源码 ZIP](https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.6-experimental.1/Open-HUB-0.3.6-source.zip) ·
+[版本说明与全部附件](https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.7-experimental.1) ·
+[对应源码 ZIP](https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.7-experimental.1/Open-HUB-0.3.7-source.zip) ·
 [完整适配范围](MOUSE-BRAND-SUPPORT.md) · [验证记录](RELEASE-VALIDATION.md)
 
 </div>
@@ -25,7 +25,7 @@
 
 本项目与各硬件厂商及上游作者均无官方隶属或背书关系。
 
-本轮增加 Pulsar 板载快捷键及逐设备软件宏，并修正同型号多鼠标的配置目标选择，仍为 23 个品牌的限定范围；[按键支持与限制](BUTTON-COMPATIBILITY.md)。跨品牌和 SinoWealth 方案在多只同型号设备连接时必须选择一个目标，自动切换遇到歧义会跳过。保留逐设备按键配置，不加入全局重映射。
+本轮新增 Basilisk V3 Pro 有线/2.4G 的 12 个独立控制、键盘快捷键、单次/开关软件宏、DPI、灯效和对应界面，仍为 23 个品牌的限定范围；[按键支持与限制](BUTTON-COMPATIBILITY.md)。跨品牌和 SinoWealth 方案在多只同型号设备连接时必须选择一个目标，自动切换遇到歧义会跳过。保留逐设备按键配置，不加入全局重映射。
 
 ## 哪些设备适配到什么程度
 
@@ -35,7 +35,7 @@
 |---|---|---|---|
 |罗技 Logitech|原有 HID++ 2.0 路径，按能力显示|保留原功能；G HUB 导入 DPI、回报率和应用关联，不转换官方按键、宏、灯效|保留上游实现、自动化隔离检查；未做罗技实机回归|
 |迈从 MCHOSE|A7 V3 Ultra+、MagDock|DPI、性能、按键、板载宏、三组板载配置；底座原厂效果与软件同步；M HUB 板载名称/引用导入|**使用这款鼠标和底座实机验证**；不代表全部功能/固件均已认证|
-|雷蛇 Razer|Naga V2 HyperSpeed；DeathAdder V2；Viper Ultimate / V2 Pro / V3 Pro|Naga 的 DPI、回报率、支持的按键/软件宏及有限 Synapse 转换；其余型号能力不同|生产驱动 + 模拟，未实机验证|
+|雷蛇 Razer|Naga V2 HyperSpeed；DeathAdder V2；Viper Ultimate / V2 Pro / V3 Pro；Basilisk V3 Pro|Naga 的 DPI、回报率、支持的按键/软件宏及有限 Synapse 转换；Basilisk 的 12 控制及独立软件宏、DPI/RGB；其余型号能力不同|生产驱动 + 模拟，未实机验证|
 |海盗船 Corsair|M65 PRO RGB，1B1C:1B2E|DPI、回报率、支持的按键/软件宏、有限 iCUE 转换；部分状态来自缓存，重连需核对|生产驱动 + 模拟，未实机验证|
 |赛睿 SteelSeries|Rival 310，1038:1720|两组 CPI、回报率、支持的按键/软件宏、有限 GG 数据库转换；部分状态来自写入缓存|生产驱动 + 模拟，未实机验证|
 |HyperX|Pulsefire Haste / Haste Wireless，03F0:048E / 028E|DPI、回报率、已知按键、单次键盘板载宏、常亮/关闭灯光和板载读取；原厂宏/灯效不可读回|生产驱动 + 模拟与公开抓包核对，未实机验证|
@@ -59,6 +59,8 @@
 
 SinoWealth 范围：仅表中型号/固件的 DPI、回报率、按键、程序记录的板载宏和板载读取。原厂宏内容不可读回，灯光另取决于实际接口。以上 8 个品牌为 11 条型号/固件记录，不能把固件和有线/无线 PID 重复计作新鼠标。
 
+[Basilisk V3 Pro 精确范围](BASILISK-ADAPTER.md)：仅 00AA/00AB、普通层、当前板载槽；原厂宏/Hypershift 保留，尚未实机。Synapse 私有导入仍仅支持 Naga 的已实现格式。
+
 雷蛇型号之间也不同：DeathAdder V2 和 Viper Ultimate 未启用按键/宏；Viper V2 Pro 无 RGB、未启用按键/宏；Viper V3 Pro 支持指定物理键的鼠标动作映射，以及滚轮方向和底部 DPI 键的原动作恢复/禁用，无键盘动作/宏/RGB。Naga 的转换能力不适用于这些 Viper。新增六款 VXE/VGN 的 MID 白名单及边界见 [COMPX 适配说明](COMPX-ADAPTER.md)。新增 [HyperX 范围](HYPERX-ADAPTER.md) 和 [Pulsar 范围](PULSAR-ADAPTER.md)；精确 USB ID、DPI、回报率和灯效边界见 [完整适配表](MOUSE-BRAND-SUPPORT.md)、[ATK 说明](ATK-ADAPTER.md)、[SinoWealth 说明](SINO-ADAPTER.md)。
 
 **尚未接入：** AULA 狼蛛 SC620 / SC580 及未明确列出的其他型号。研究表或灯光引擎中出现品牌名称不等于完成 DPI、按键、宏和官方配置适配。ATK X1 无线接收器、A9 2.0、新 BITMOUSE/FF05 协议也不在本版范围。
@@ -71,7 +73,7 @@ SinoWealth 范围：仅表中型号/固件的 DPI、回报率、按键、程序�
 
 ## 外观
 
-设备中心、原生设置、离线方案编辑和已识别的鼠标灯光界面按型号显示产品图或对应轮廓。28 张 WebP + 24 张 SVG 共约 759 KiB，未知型号不套用其他鼠标图片；配色选择仅影响展示。详见 [外观资源与来源](docs/DEVICE-ARTWORK.md)。
+设备中心、原生设置、离线方案编辑和已识别的鼠标灯光界面按型号显示产品图或对应轮廓。28 张 WebP + 25 张 SVG 共约 761 KiB，未知型号不套用其他鼠标图片；配色选择仅影响展示。详见 [外观资源与来源](docs/DEVICE-ARTWORK.md)。
 
 齿轮 → **外观与设置**：4 组预设、主题/背景/面板颜色、透明或半透明、圆角和小型皮肤导入/导出。皮肤是最多 8 KiB 的严格 JSON，不加载任意脚本、图片包或 CSS。新图标为抽象 Z 字轨迹；**图标六色切换尚未实现**。见 [外观说明](APPEARANCE.md)。
 
@@ -79,20 +81,20 @@ SinoWealth 范围：仅表中型号/固件的 DPI、回报率、按键、程序�
 
 当前覆盖 **23 个品牌的限定型号**；本次补充已有型号的按键能力，品牌数不变。上一批五款有线鼠标的范围见 [五品牌说明](FIVE-BRAND-ADAPTERS.md)。
 
-本次 0.3.6 的检查：
+本次 0.3.7 的检查：
 
 - **321 项主程序原生测试通过**（316 项默认回归 + 5 项提供输入的交叉测试）。覆盖 Pulsar 快捷键完整校验、每阶段短写恢复、原厂未知记录保留、两只同型号鼠标的宏隔离、切组恢复保护、配置单目标校验和界面保存方案重新执行。
 - **21 组浏览器界面回归通过**，浏览器模拟 Tauri；生产驱动使用内存 HID。61 个目录身份的图片加载检查不等于新增 61 款硬件支持。
 - 公开 HyperX 原始抓包独立核对回报率、按键输出及宏布局，原始文件哈希和提取报文保留；仍不能替代 Windows 实机验证。
-- Windows 生产 EXE、安装包载荷和签名检查见 [验证摘要](docs/releases/0.3.6-validation.json)。应用内更新继续由用户选择下载与安装；开发者本机按用户明确要求在每次发布后升级，个人配置备份记录不公开。公开 EXE 已匿名完整下载核对哈希，生产程序验证签名、篡改拒绝和版本绑定均通过，见 [发布后验收](docs/releases/0.3.6-public-verification.json)。
+- Windows 生产 EXE、安装包载荷和签名检查见 [验证摘要](docs/releases/0.3.7-validation.json)。应用内更新继续由用户选择下载与安装；开发者本机按用户明确要求在每次发布后升级，个人配置备份记录不公开。公开 EXE 已匿名完整下载核对哈希，生产程序验证签名、篡改拒绝和版本绑定均通过，见 [发布后验收](docs/releases/0.3.7-public-verification.json)。
 - 历史共享驱动检查为 289 个单元测试 + 1 个文档测试；Synapse 解析器为 148 个单元测试 + 3 个集成测试，作为历史回归证据列出。
 
-**未覆盖：** 其他鼠标实机、全新 Windows / 新用户、缺失 WebView2 的联网补装、所有固件变体、桌面透明效果的完整人工视觉验证。测试通过不构成全品牌兼容或稳定性保证。见 [公开验证摘要](docs/releases/0.3.6-validation.json) 和 [测试边界](RELEASE-VALIDATION.md)。
+**未覆盖：** 其他鼠标实机、全新 Windows / 新用户、缺失 WebView2 的联网补装、所有固件变体、桌面透明效果的完整人工视觉验证。测试通过不构成全品牌兼容或稳定性保证。见 [公开验证摘要](docs/releases/0.3.7-validation.json) 和 [测试边界](RELEASE-VALIDATION.md)。
 
 ## 安装与校验
 
-1. 点击主页顶部 **EXE 下载**，或进入 [实验版 Release](https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.6-experimental.1)。
-2. 运行 `Open-HUB-0.3.6-x64-setup.exe`，按当前用户安装到 `%LOCALAPPDATA%\Programs\Open HUB`。
+1. 点击主页顶部 **EXE 下载**，或进入 [实验版 Release](https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.7-experimental.1)。
+2. 运行 `Open-HUB-0.3.7-x64-setup.exe`，按当前用户安装到 `%LOCALAPPDATA%\Programs\Open HUB`。
 3. 从开始菜单打开 Open HUB。测试设备前先退出对应官方控制中心，避免反复覆盖设置。
 
 Windows 10 / 11 x64，需要 Microsoft Edge WebView2。约 37 MiB 的常规包复用系统 WebView2，缺少时联网补装，不携带完整浏览器运行库。**本实验 EXE 未代码签名**，不继承上游 SignPath 认证；自 0.3.2 起提供本仓库 GitHub 更新：启动后自动查询，可关闭；下载和安装分两次由用户选择，安装前验证版本绑定签名。0.3.1 旧客户端首次需手动安装新版。见 [更新说明](docs/UPDATES.md)。

@@ -54,15 +54,16 @@ fn native_key_down(vkey:u16)->bool{
  #[cfg(all(windows,not(test)))]{unsafe{windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow().is_null()||windows_sys::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(i32::from(vkey)) as u16&0x8000!=0}}
  #[cfg(any(not(windows),test))]{let _=vkey;false}
 }
-fn verify_pulsar_serial(source:&Source,expected:Option<&str>,actual:Option<&str>)->Result<(),String>{
- if crate::atk::is_pulsar(source.vendor,source.product){let expected=expected.filter(|s|!s.trim().is_empty()).ok_or("Pulsar 软件宏需要可核验的鼠标序列号；当前仍可使用板载按键和快捷键")?;if actual.filter(|s|!s.trim().is_empty())!=Some(expected){return Err("Pulsar 输入接口序列号与目标鼠标不一致或不可读，未启用软件宏".into());}}Ok(())
+fn serial_required(source:&Source)->bool{crate::atk::is_pulsar(source.vendor,source.product)||gearwise_razer::basilisk::supported(source.vendor,source.product)}
+fn verify_required_serial(source:&Source,expected:Option<&str>,actual:Option<&str>)->Result<(),String>{
+ if serial_required(source){let expected=expected.filter(|s|!s.trim().is_empty()).ok_or("此型号软件宏需要可核验的鼠标序列号；当前仍可使用板载按键和快捷键")?;if actual.filter(|s|!s.trim().is_empty())!=Some(expected){return Err("鼠标输入接口序列号与目标鼠标不一致或不可读，未启用软件宏".into());}}Ok(())
 }
 fn verify_input_source(sources:Vec<SourceInfo>,source:&Source,serial:Option<&str>)->Result<SourceInfo,String>{
   let candidate=sources.iter().cloned().find(|v|v.source==*source).ok_or("未找到配置指定的输入来源；请重新选择此鼠标的输入设备")?;
   let expected_kind=if source.vendor==0x1b1c{"Vendor HID"}else{"Keyboard report"};if candidate.kind!=expected_kind{return Err(format!("此方案需要选择 {expected_kind} 输入接口"));}
   if let(Some(expected),Some(actual))=(serial.filter(|s|!s.is_empty()),candidate.serial.as_deref().filter(|s|!s.is_empty())){if expected!=actual{return Err("输入来源序列号与当前鼠标不一致".into());}}
-  verify_pulsar_serial(source,serial,candidate.serial.as_deref())?;
-  if crate::atk::is_pulsar(source.vendor,source.product)&&sources.iter().filter(|s|s.source.vendor==source.vendor&&s.source.product==source.product&&s.kind=="Keyboard report"&&s.serial.as_deref()==serial).count()!=1{return Err("Pulsar 序列号对应多个键盘输入接口，无法确定独立鼠标，未启用软件宏".into());}
+  verify_required_serial(source,serial,candidate.serial.as_deref())?;
+  if serial_required(source)&&sources.iter().filter(|s|s.source.vendor==source.vendor&&s.source.product==source.product&&s.kind=="Keyboard report"&&s.serial.as_deref()==serial).count()!=1{return Err("鼠标序列号对应多个键盘输入接口，无法确定独立鼠标，未启用软件宏".into());}
   Ok(candidate)
 }
 #[derive(Clone,Default)]pub struct Runtime(Arc<Mutex<Option<Native>>>);
@@ -123,11 +124,16 @@ impl Runtime{
 
 #[cfg(test)]mod pulsar_identity_tests{
  use super::*;
- #[test]fn pulsar_host_macros_require_matching_readable_serials(){let s=Source{vendor:0x3554,product:0xf507,path:"keyboard-a".into()};assert!(verify_pulsar_serial(&s,Some("unit-a"),Some("unit-a")).is_ok());for(expected,actual)in[(None,None),(Some("unit-a"),None),(None,Some("unit-a")),(Some("unit-a"),Some("unit-b")),(Some(""),Some(""))]{assert!(verify_pulsar_serial(&s,expected,actual).is_err());}}
+ #[test]fn pulsar_host_macros_require_matching_readable_serials(){let s=Source{vendor:0x3554,product:0xf507,path:"keyboard-a".into()};assert!(verify_required_serial(&s,Some("unit-a"),Some("unit-a")).is_ok());for(expected,actual)in[(None,None),(Some("unit-a"),None),(None,Some("unit-a")),(Some("unit-a"),Some("unit-b")),(Some(""),Some(""))]{assert!(verify_required_serial(&s,expected,actual).is_err());}}
 }
 
 #[cfg(test)]mod source_inventory_tests{
  use super::*;
  fn info(path:&str,serial:&str,kind:&str)->SourceInfo{SourceInfo{source:Source{vendor:0x3554,product:0xf507,path:path.into()},kind:kind.into(),serial:Some(serial.into())}}
  #[test]fn serial_inventory_distinguishes_two_mice_and_refuses_ambiguous_serial_or_wrong_collection(){let a=info("keyboard-a","a","Keyboard report");let b=info("keyboard-b","b","Keyboard report");assert!(verify_input_source(vec![a.clone(),b.clone()],&a.source,Some("a")).is_ok());assert!(verify_input_source(vec![a.clone(),b.clone()],&b.source,Some("a")).is_err());let duplicate=info("other-keyboard-a","a","Keyboard report");assert!(verify_input_source(vec![a.clone(),duplicate],&a.source,Some("a")).is_err());let vendor=info("vendor-a","a","Vendor HID");assert!(verify_input_source(vec![a.clone(),vendor.clone()],&a.source,Some("a")).is_ok());assert!(verify_input_source(vec![vendor.clone()],&vendor.source,Some("a")).is_err());}
+}
+
+#[cfg(test)]mod basilisk_source_tests{
+ use super::*;
+ #[test]fn basilisk_keyboard_source_must_be_unique_and_serial_verified(){for product in [0x00aa,0x00ab]{let s=Source{vendor:0x1532,product,path:"keyboard-a".into()};let a=SourceInfo{source:s.clone(),serial:Some("a".into()),kind:"Keyboard report".into()};assert!(verify_input_source(vec![a.clone()],&s,Some("a")).is_ok());assert!(verify_input_source(vec![a.clone()],&s,None).is_err());let mut other=a.clone();other.serial=None;assert!(verify_input_source(vec![other],&s,Some("a")).is_err());let mut duplicate=a.clone();duplicate.source.path="duplicate".into();assert!(verify_input_source(vec![a.clone(),duplicate],&s,Some("a")).is_err());let mut b=a.clone();b.serial=Some("b".into());assert!(verify_input_source(vec![b],&s,Some("a")).is_err());}}
 }

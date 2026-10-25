@@ -765,5 +765,23 @@
         "src": "/devices/piper/marsgaming-mm4.svg"
       }
     ]
+  },
+  {
+    "id": "razer-basilisk-v3-pro",
+    "label": "Razer Basilisk V3 Pro",
+    "vendor": 5426,
+    "products": [
+      170,
+      171
+    ],
+    "names": [
+      "Razer Basilisk V3 Pro"
+    ],
+    "images": [
+      {
+        "label": "结构示意",
+        "src": "/devices/basilisk-v3-pro.svg"
+      }
+    ]
   }
 ]

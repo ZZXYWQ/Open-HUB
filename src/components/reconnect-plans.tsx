@@ -19,7 +19,7 @@ function settingLabel(s:MultiSetting,plan:MultiPlan){
   if(typeof a==='string')action=a==='Default'?'默认动作':'禁用';
   else if('Macro'in a)action=`软件宏“${plan.macros?.find(m=>m.id===a.Macro)?.name??a.Macro}”`;
   else if('Key'in a){const modifiers=['左 Ctrl','左 Shift','左 Alt','左 Win','右 Ctrl','右 Shift','右 Alt','右 Win'].filter((_,i)=>a.Key.mods&(1<<i));action=`键盘 ${[...modifiers,KEY_NAMES.find(([k])=>k===a.Key.usage)?.[1]??String(a.Key.usage)].join(' + ')}`;}
-  else if('Mouse'in a)action=`鼠标 ${{Left:'左键',Right:'右键',Middle:'中键',Back:'后退',Forward:'前进'}[a.Mouse]}`;
+  else if('Mouse'in a)action=`鼠标 ${{Left:'左键',Right:'右键',Middle:'中键',Back:'后退',Forward:'前进',WheelLeft:'滚轮左倾',WheelRight:'滚轮右倾'}[a.Mouse]}`;
   else action=typeof a.Dpi==='string'?`DPI ${{Cycle:'循环档位',Up:'提高一档',Down:'降低一档'}[a.Dpi]}`:`按住狙击 DPI ${a.Dpi.Shift}`;
   return `按键 ${s.Button.id}：${action}`;
  }

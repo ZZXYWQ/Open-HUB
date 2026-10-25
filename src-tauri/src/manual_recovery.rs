@@ -25,7 +25,7 @@ fn target(record:&Record,descriptor:&DeviceDescriptor,source:Option<&Source>)->R
     if record.serial.as_deref().filter(|s|!s.trim().is_empty()).is_some_and(|s|descriptor.serial.as_deref()!=Some(s)){
         return Err("恢复记录序列号与所选鼠标不一致，未写入".into());
     }
-    if crate::atk::is_pulsar(record.source.vendor,record.source.product)&&!record.matches(descriptor){return Err("Pulsar 恢复记录对应其他板载组；请切回原组后重新扫描，未写入".into());}
+    if (crate::atk::is_pulsar(record.source.vendor,record.source.product)||gearwise_razer::basilisk::supported(record.source.vendor,record.source.product))&&!record.matches(descriptor){return Err("恢复记录的板载组或序列号不能核对；请切回原组并重新扫描，未写入".into());}
     if source.is_some_and(|s|(s.vendor,s.product)!=(descriptor.vendor_id,descriptor.product_id)||s.path.is_empty()||s.path.len()>4096){
         return Err("恢复输入来源与所选型号不一致".into());
     }
@@ -184,4 +184,9 @@ impl Service {
         s.with(|m|{m.remove_virtual();m.add_virtual(vec![Box::new(Fault{inner:device,descriptor,fail:Arc::new(AtomicBool::new(false))})]);Ok(())}).unwrap();log.lock().unwrap().clear();
         assert!(s.restore_recovery_from(&dir,&id,&r.key,&r.revision,&source,true,&runtime).unwrap_err().contains("目标鼠标已更换"));assert!(log.lock().unwrap().is_empty());assert_eq!(macro_recovery::load(&dir).0.len(),1);runtime.shutdown();cleanup(&dir);
     }
+}
+
+#[cfg(test)]mod bank_identity_tests{
+ use super::*;
+ #[test]fn bank_scoped_manual_recovery_never_relaxes_serial_requirements(){for(v,p)in[(0x3554,0xf507),(0x1532,0x00aa),(0x1532,0x00ab)]{let(mut device,_)=super::super::simulated(v,p).unwrap();let _=device.read_state().unwrap();let mut d=device.descriptor().clone();let mut r=Record{version:1,device_id:d.id.clone(),serial:None,source:Source{vendor:v,product:p,path:"simulation:manual".into()},settings:vec![],expected:Default::default(),software_input:false,shift:None};d.serial=None;assert!(target(&r,&d,None).is_err());d.serial=Some("a".into());r.serial=d.serial.clone();assert!(target(&r,&d,None).is_ok());r.device_id="old:board:6".into();assert!(target(&r,&d,None).is_err());}}
 }
