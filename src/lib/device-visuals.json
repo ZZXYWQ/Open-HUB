@@ -837,5 +837,23 @@
         "src": "/devices/piper/steelseries-rival.svg"
       }
     ]
+  },
+  {
+    "id": "steelseries-sensei-ten",
+    "label": "SteelSeries Sensei Ten",
+    "vendor": 4152,
+    "products": [
+      6194
+    ],
+    "names": [
+      "SteelSeries Sensei Ten",
+      "Sensei Ten"
+    ],
+    "images": [
+      {
+        "label": "原厂轮廓",
+        "src": "/devices/piper/steelseries-senseiten.svg"
+      }
+    ]
   }
 ]

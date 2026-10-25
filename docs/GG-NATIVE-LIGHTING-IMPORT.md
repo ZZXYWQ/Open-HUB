@@ -15,3 +15,5 @@ UI 的转换说明及品牌条目包含灯效范围。导入后可查看两灯�
 半百分比位置的编码、旧整数 JSON 兼容及拒绝规则详见 NATIVE-GRADIENT-PRECISION.md。
 
 Rival 300 使用独立旧版布局，详见 GG-RIVAL300-IMPORT.md；不会借用这里的平面渐变字段。
+
+后续增量以原厂工厂 6755 / 10232 确认 Sensei Ten `1832` 使用相同两区灯效布局，配合其独立五档 CPI 解析；详见 SENSEI-TEN.md。未据此开放其他鼠标或配色版本。

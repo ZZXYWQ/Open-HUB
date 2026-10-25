@@ -10,6 +10,8 @@ use std::{collections::{BTreeMap,HashSet},path::Path};
 
 #[path="gg_lighting.rs"]
 mod lighting;
+#[path="gg_sensei_ten.rs"]
+mod sensei_ten;
 
 const LIMIT:usize=1024*1024;
 fn number(v:&Value)->Result<u32,String>{v.as_u64().and_then(|v|v.try_into().ok()).ok_or("GG 字段不是有效的非负整数".into())}
@@ -36,7 +38,7 @@ fn read(conn:&Connection)->Result<Prepared,String>{
   if !ids.insert(id.clone()){return Err("GG 配置标识重复".into());}
   let mut c=Candidate{model:format!("{model} · {name}"),profile:None,issues:vec![],notes:vec!["按原始事件转换 DPI、按钮和软件宏。灯效按已核对字段转换，未实现行为会拦截并说明；尚未实机验证。".into(),"导入与保存只处理文件；应用软件动作前请在编辑器选择此鼠标的输入来源。".into()]};
   let p=(||{
-   let pid=match(product,model.as_str()){(0x10381710,"rival_300")=>0x1710,(0x10381720,"rival_310")=>0x1720,(0x10381722,"sensei_310")=>0x1722,_=>return Err("此配置不是已核对的 Rival 300 / Rival 310 / Sensei 310，不能借用其他型号的物理布局".into())};
+   let pid=match(product,model.as_str()){(0x10381710,"rival_300")=>0x1710,(0x10381720,"rival_310")=>0x1720,(0x10381722,"sensei_310")=>0x1722,(0x10381832,"sensei_ten")=>0x1832,_=>return Err("此配置不是已核对的 Rival 300 / Rival 310 / Sensei 310 / Sensei Ten，不能借用其他型号的物理布局".into())};
    if id.is_empty()||id.len()>80||name.is_empty()||name.len()>256{return Err("GG 配置名称或标识无效".into());}
    let source=json(&text)?;let(plan,levels,active,rate)=convert(conn,&id,pid,&source,&mut c.notes)?;
    let app_path=associated_program(conn,&id)?;
@@ -52,18 +54,22 @@ fn associated_program(conn:&Connection,id:&str)->Result<Option<String>,String>{
  let(same,path)=&rows[0];if !same{return Err("GG 应用关联与配置所属设备不一致".into());}let path=path.as_ref().filter(|p|!p.trim().is_empty()&&p.len()<=4096&&!p.chars().any(char::is_control)).ok_or("GG 应用路径缺失或无效，不能静默丢失自动切换条件")?;Ok(Some(path.clone()))
 }
 fn convert(conn:&Connection,id:&str,pid:u16,s:&Value,notes:&mut Vec<String>)->Result<(Plan,Vec<Level>,usize,u16),String>{
- let physical_buttons=match pid{0x1710|0x1720=>6,0x1722=>8,_=>return Err("此 GG 型号没有已核对的按键布局".into())};
- let allowed=["resolution_1","resolution_2","raw_cpi","resolution_level","polling_rate","exact_accel","exact_aim","free_move","button_mappings","wheel_mappings","logo_lighting","wheel_lighting","logo_element","wheel_element","logo_color","wheel_color","logo_pulsation","wheel_pulsation","rival_logo_color_sequence","rival_wheel_color_sequence"];
+ let physical_buttons=match pid{0x1710|0x1720=>6,0x1722|0x1832=>8,_=>return Err("此 GG 型号没有已核对的按键布局".into())};
+ let allowed=["batch_resolution","resolution_1","resolution_2","raw_cpi","resolution_level","polling_rate","exact_accel","exact_aim","free_move","button_mappings","wheel_mappings","logo_lighting","wheel_lighting","logo_element","wheel_element","logo_color","wheel_color","logo_pulsation","wheel_pulsation","rival_logo_color_sequence","rival_wheel_color_sequence"];
  for key in s.as_object().ok_or("GG 配置不是对象")?.keys(){if !allowed.contains(&key.as_str()){return Err(format!("GG 设置 {key} 尚未转换，不能保存为完整的鼠标参数方案"));}}
  let legacy=pid==0x1710;
  for key in if legacy{&["logo_lighting","wheel_lighting","logo_element","wheel_element"][..]}else{&["logo_color","wheel_color","logo_pulsation","wheel_pulsation","rival_logo_color_sequence","rival_wheel_color_sequence"][..]}{if s.get(key).is_some(){return Err("GG 灯效布局与当前精确型号不一致".into());}}
  for name in ["exact_accel","exact_aim","free_move"]{if s.get(name).is_some_and(|v|v.get("level").and_then(Value::as_u64)!=Some(0)){return Err(format!("{name} 的非默认性能行为尚未转换"));}}
- let mut stages=Vec::new();for index in 1..=2{let source=s.get(format!("resolution_{index}")).ok_or("缺少 GG CPI 档位")?;if field(source,"dcpi")?!=0{return Err("GG 额外 CPI 修正标志尚未转换".into());}let resolution=field(source,"resolution")?;let value=if legacy{if !(1..=130).contains(&resolution){return Err("Rival 300 CPI 编码超出已核对范围".into());}(resolution*50)as u16}else{if resolution>119{return Err("310 CPI 编码超出范围".into());}((resolution+1)*100)as u16};
+ let (stages,active)=if pid==0x1832{if ["resolution_1","resolution_2","resolution_level"].iter().any(|k|s.get(*k).is_some()){return Err("Sensei Ten 不能使用其他型号的两档 CPI 布局".into());}sensei_ten::dpi(s,notes)?}else{
+  if s.get("batch_resolution").is_some(){return Err("当前型号不能使用 Sensei Ten 的五档 CPI 布局".into());}
+  let mut stages=Vec::new();for index in 1..=2{let source=s.get(format!("resolution_{index}")).ok_or("缺少 GG CPI 档位")?;if field(source,"dcpi")?!=0{return Err("GG 额外 CPI 修正标志尚未转换".into());}let resolution=field(source,"resolution")?;let value=if legacy{if !(1..=130).contains(&resolution){return Err("Rival 300 CPI 编码超出已核对范围".into());}(resolution*50)as u16}else{if resolution>119{return Err("310 CPI 编码超出范围".into());}((resolution+1)*100)as u16};
   if let Some(raw)=s.get("raw_cpi").and_then(|v|v.get(format!("level{index}"))){let raw=number(raw)?;if raw!=0&&raw!=u32::from(value){return Err("GG 显示 CPI 与设备 CPI 编码不一致，请先在 GG 核对原始值".into());}}
   stages.push(DpiStage::uniform(value));
  }
  let active=match s.get("resolution_level"){Some(v)=>match field(v,"level")?{1=>0,2=>1,_=>return Err("GG 当前 CPI 档位无效".into())},None=>{notes.push("来源没有记录当前 CPI 档位；当前型号由实体 CPI 键切档，预览使用第 1 档。".into());0}};
- let rate=match field(s.get("polling_rate").ok_or("缺少 GG 回报率")?,"level")?{1=>1000,2=>500,3=>250,4=>125,_=>return Err("此 Rival 310 回报率编码尚未验证".into())};
+  (stages,active)
+ };
+ let rate=match field(s.get("polling_rate").ok_or("缺少 GG 回报率")?,"level")?{1=>1000,2=>500,3=>250,4=>125,_=>return Err("此 GG 鼠标回报率编码尚未验证".into())};
  let source_buttons=s.pointer("/button_mappings/buttons").and_then(Value::as_array).ok_or("缺少 GG 物理按键映射")?;if source_buttons.len()!=physical_buttons{return Err(format!("GG 按键表不匹配当前型号的 {physical_buttons} 键布局"));}
  let wheel=s.pointer("/wheel_mappings/wheels").and_then(Value::as_array).ok_or("缺少 GG 滚轮映射")?;if wheel.len()!=2{return Err("GG 滚轮映射数量无效".into());}for(i,v)in wheel.iter().enumerate(){if field(v,"function")?!=49+i as u32||!zero_codes(v)?{return Err("GG 自定义滚轮动作尚未转换".into());}}
  let mut buttons=BTreeMap::new();let mut macros=Vec::new();

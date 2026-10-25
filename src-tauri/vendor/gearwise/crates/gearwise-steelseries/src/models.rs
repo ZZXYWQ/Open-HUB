@@ -697,7 +697,7 @@ const SENSEI_310: Spec = Spec {
 
 const SENSEI_TEN: Spec = Spec {
     dpi: DpiSpec {
-        cpi: cpi::LINEAR_18000,
+        cpi: cpi::SENSEI_TEN,
         stages: 5,
         defaults: &[400, 800, 1200, 2400, 3200],
         proto: DpiProto::Block {

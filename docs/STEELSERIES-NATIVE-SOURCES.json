@@ -77,6 +77,21 @@
       "path": "doc/devices/_rgbgradient.rst",
       "sha256": "224ad2603f5efca86bbc73df748d47bfc0704bdacb6f0f5310304d4855622c87",
       "bytes": 3090
+    },
+    {
+      "path": "rivalcfg/devices/sensei_ten.py",
+      "sha256": "08585ab0b40664ec8e29ca945f2da5605b18a2a5d9c11da5ba29364a7a093023",
+      "bytes": 4936
+    },
+    {
+      "path": "test/devices/old_specs/test_sensei_ten.py",
+      "sha256": "21aa7065866afc21c5a357802bf7587cd9e8f1298a9135dc62b2bd822f25c0d6",
+      "bytes": 6200
+    },
+    {
+      "path": "doc/devices/sensei_ten.rst",
+      "sha256": "b2356321b4088bf21659d9d14e557b7740707d1497e86aac481521361c569aa4",
+      "bytes": 523
     }
   ],
   "use": "Protocol facts and independent byte vectors; downloaded Python was parsed/read only, never imported or run."

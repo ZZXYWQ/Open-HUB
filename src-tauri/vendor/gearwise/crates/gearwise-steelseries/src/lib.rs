@@ -206,5 +206,5 @@ pub fn validate_setting(pid:u16,setting:&gearwise_core::Setting)->Result<()>{
 }
 #[cfg(feature="simulation")]
 pub fn simulated_model(pid:u16)->Result<(Box<dyn Device>,std::sync::Arc<std::sync::Mutex<Vec<gearwise_core::transport::MockRecord>>>)>{
- if !matches!(pid,0x1710|0x1720|0x1722){return Err(Error::Unsupported("unreviewed bridge SteelSeries simulation"));}Ok(testutil::silent(pid))
+ if !matches!(pid,0x1710|0x1720|0x1722|0x1832){return Err(Error::Unsupported("unreviewed bridge SteelSeries simulation"));}Ok(testutil::silent(pid))
 }

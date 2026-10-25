@@ -46,14 +46,14 @@ fn complete(plan: &Plan) -> Result<(), String> {
         .collect::<Vec<_>>();
     if !crate::steelseries::complete_table(plan.product, &buttons)
         || dpi.len() != 1
-        || !matches!(dpi[0],Setting::Dpi(d)if d.stages.len()==2)
+        || !matches!(dpi[0],Setting::Dpi(d)if crate::steelseries::fixed_dpi_stages(plan.product).is_none_or(|n|d.stages.len()==n))
         || rates != 1
         || zones.len() != 2
         || !zones.contains(&0)
         || !zones.contains(&1)
         || plan.settings.len() != buttons.len() + 4
     {
-        return Err("板载保存需要先应用完整两档 DPI、回报率、全部已知按键和两个灯区".into());
+        return Err("板载保存需要先应用此型号的完整 DPI、回报率、全部已知按键和两个灯区".into());
     }
     Ok(())
 }
@@ -260,6 +260,10 @@ mod tests {
                     },
                 });
             }
+            if pid==0x1832 {
+                plan.settings.retain(|s|!matches!(s,Setting::Dpi(_)));
+                plan.settings.push(Setting::Dpi(DpiState{stages:[50,800,1200,2400,18000].into_iter().map(DpiStage::uniform).collect(),active:4}));
+            }
             let service = Service::default();
             *service.0.lock().unwrap() = Some(manager(d));
             let runtime = crate::macro_runtime::Runtime::simulation(Arc::new(Mutex::new(Silent)));
@@ -308,7 +312,7 @@ mod tests {
         }
     }
     #[test]
-    fn exact_three_models_save_only_after_complete_apply_and_one_explicit_native_command() {
+    fn exact_four_models_save_only_after_complete_apply_and_one_explicit_native_command() {
         let mut fixtures = Vec::new();
         for pid in crate::steelseries::PRODUCTS {
             let c = Case::new(pid);
@@ -334,6 +338,16 @@ mod tests {
         if let Some(path) = std::env::var_os("OPEN_HUB_STEELSERIES_SAVE_FIXTURE") {
             std::fs::write(path, serde_json::to_vec_pretty(&fixtures).unwrap()).unwrap();
         }
+    }
+    #[test]
+    fn sensei_ten_complete_five_stage_plan_persists_current_stage_once_and_rejects_invalid_sixth() {
+        let mut c=Case::new(0x1832);
+        c.plan.settings.retain(|s|!matches!(s,Setting::Dpi(_)));
+        c.plan.settings.push(Setting::Dpi(DpiState{stages:[50,800,1200,2400,18000].into_iter().map(DpiStage::uniform).collect(),active:4}));
+        assert!(c.save().is_err());assert_eq!(c.saves(),0);c.apply();
+        let result=c.save().unwrap();assert!(result.command_sent&&!result.readback_confirmed);assert_eq!(c.saves(),1);assert!(c.save().is_err());assert_eq!(c.saves(),1);
+        if let Some(Setting::Dpi(d))=c.plan.settings.iter_mut().find(|s|matches!(s,Setting::Dpi(_))){d.stages.push(DpiStage::uniform(800));}
+        assert!(c.save().is_err());assert_eq!(c.saves(),1);
     }
     #[test]
     fn missing_duplicate_invalid_or_host_macro_plan_cannot_emit_any_save() {
@@ -570,7 +584,7 @@ mod tests {
             &std::fs::read(std::env::var_os("OPEN_HUB_STEELSERIES_SAVE_FIXTURE").unwrap()).unwrap(),
         )
         .unwrap();
-        assert_eq!(requests.len(), 3);
+        assert_eq!(requests.len(), 4);
         for request in requests {
             let pid = request.plan.product;
             let original = fixtures

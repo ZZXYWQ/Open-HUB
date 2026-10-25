@@ -185,7 +185,7 @@ fn legacy(settings:&Value)->Result<Option<Vec<Setting>>,String>{
 }
 pub(super) fn parse(pid: u16, settings: &Value) -> Result<Option<Vec<Setting>>, String> {
     if pid==0x1710{return legacy(settings);}
-    if ![0x1720, 0x1722].contains(&pid) {
+    if ![0x1720, 0x1722, 0x1832].contains(&pid) {
         return Err("此 GG 灯效没有已核对的精确型号".into());
     }
     let logo = settings.get("logo_lighting");

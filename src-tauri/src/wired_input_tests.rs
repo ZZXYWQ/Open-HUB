@@ -259,8 +259,9 @@ fn serialless_same_model_pairs_apply_only_to_own_collection_and_stop_one_without
 }
 #[test]
 fn missing_keyboard_and_reopened_control_keep_journal_and_never_restore_to_replacement() {
+    for pid in crate::steelseries::PRODUCTS {
     for read_first in [false, true] {
-        let c = Case::new(0x1722);
+        let c = Case::new(pid);
         c.apply(0, &c.plan(0)).unwrap();
         let replacement_logs = c.replace();
         let replacement = c
@@ -306,7 +307,7 @@ fn missing_keyboard_and_reopened_control_keep_journal_and_never_restore_to_repla
         c.press(0);
         assert!(c.rec.0.lock().unwrap().is_empty());
     }
-    let c = Case::new(0x1722);
+    let c = Case::new(pid);
     c.apply(0, &c.plan(0)).unwrap();
     let mut missing = c.fixture.clone();
     missing.sources.remove(0);
@@ -328,6 +329,7 @@ fn missing_keyboard_and_reopened_control_keep_journal_and_never_restore_to_repla
     );
     c.press(0);
     assert!(c.rec.0.lock().unwrap().is_empty());
+    }
 }
 #[test]
 fn serialless_restart_never_auto_restores_and_reviewed_manual_recovery_keeps_every_custom_button() {

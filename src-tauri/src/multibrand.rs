@@ -354,7 +354,7 @@ impl gearwise_core::HidBackend for ExactBackend {
 }
 pub fn validate(p: &Plan) -> Result<(), String> {
     if crate::x11::supported(p.vendor,p.product){return crate::x11::validate_plan(p);}
-    if p.settings.iter().any(|s|matches!(s,Setting::Lighting{state:gearwise_core::model::ZoneState{effect:gearwise_core::model::LightingEffect::Gradient{..},..},..}))&&!matches!((p.vendor,p.product),(0x1038,0x1720|0x1722)){return Err("此具体型号尚未实现原生自定义渐变".into());}
+    if p.settings.iter().any(|s|matches!(s,Setting::Lighting{state:gearwise_core::model::ZoneState{effect:gearwise_core::model::LightingEffect::Gradient{..},..},..}))&&!matches!((p.vendor,p.product),(0x1038,0x1720|0x1722|0x1832)){return Err("此具体型号尚未实现原生自定义渐变".into());}
     let _compiled=compile(p)?;
     if !supported(p.vendor, p.product) {
         return Err("尚未实现该具体型号".into());

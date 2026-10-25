@@ -49,7 +49,7 @@ impl Record {
             }
         }
         if full_table {
-            let count=if self.source.product==0x1722{8}else{6};
+            let count=crate::steelseries::button_count(self.source.product).ok_or("恢复型号按键数量未知")?;
             if ids!=(2..=count).collect()||self.expected.is_empty()||self.expected.keys().any(|id|!ids.contains(id)) {
                 return Err("赛睿恢复记录必须包含完整已知按键表和宏触发键归属".into());
             }

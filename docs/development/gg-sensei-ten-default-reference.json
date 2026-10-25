@@ -1,0 +1,430 @@
+{
+  "source": "SteelSeries GG 122.0.0 inert engine migration 3.16.0/20190829161346_squash.sql",
+  "migration_sha256": "8ccb81f2303ea5b8c91359948c55e1d9781b5c1deaffaad0dab2af0485350048",
+  "product_id": 272111666,
+  "model": "sensei_ten",
+  "settings": {
+    "batch_resolution": {
+      "enable_mask": 31,
+      "active_level": 1,
+      "resolution_1": 8,
+      "resolution_2": 16,
+      "resolution_3": 24,
+      "resolution_4": 48,
+      "resolution_5": 64
+    },
+    "raw_cpi": {
+      "level1": 400,
+      "level2": 800,
+      "level3": 1200,
+      "level4": 2400,
+      "level5": 3200
+    },
+    "polling_rate": {
+      "level": 1
+    },
+    "exact_accel": {
+      "level": 0
+    },
+    "exact_aim": {
+      "level": 0
+    },
+    "free_move": {
+      "level": 0
+    },
+    "button_mappings": {
+      "buttons": [
+        {
+          "function": 1,
+          "key_codes": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "function": 2,
+          "key_codes": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "function": 3,
+          "key_codes": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "function": 4,
+          "key_codes": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "function": 5,
+          "key_codes": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "function": 81,
+          "key_codes": [
+            78,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "function": 81,
+          "key_codes": [
+            75,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "function": 48,
+          "key_codes": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "no_live_deploy": 1
+    },
+    "wheel_mappings": {
+      "wheels": [
+        {
+          "function": 49,
+          "key_codes": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "function": 50,
+          "key_codes": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "no_live_deploy": 1
+    },
+    "logo_lighting": {
+      "type": 1,
+      "has_direction": 0,
+      "direction_type": 0,
+      "direction_inverted": 0,
+      "focal_x": 0,
+      "focal_y": 0,
+      "speed": 1000,
+      "scale": 1,
+      "num_colors": 3,
+      "colors": [
+        {
+          "r": 255,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 255,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 255
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        }
+      ],
+      "positions": [
+        {
+          "pos": 0
+        },
+        {
+          "pos": 33
+        },
+        {
+          "pos": 66
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        }
+      ],
+      "initial_color": {
+        "r": 255,
+        "g": 0,
+        "b": 0
+      },
+      "react_color": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "time": 0
+      },
+      "trigger_mask": 7,
+      "settings_mask": 0
+    },
+    "wheel_lighting": {
+      "type": 1,
+      "has_direction": 0,
+      "direction_type": 0,
+      "direction_inverted": 0,
+      "focal_x": 0,
+      "focal_y": 0,
+      "speed": 1000,
+      "scale": 1,
+      "num_colors": 3,
+      "colors": [
+        {
+          "r": 255,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 255,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 255
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        }
+      ],
+      "positions": [
+        {
+          "pos": 0
+        },
+        {
+          "pos": 33
+        },
+        {
+          "pos": 66
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        }
+      ],
+      "initial_color": {
+        "r": 255,
+        "g": 0,
+        "b": 0
+      },
+      "react_color": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "time": 0
+      },
+      "trigger_mask": 7,
+      "settings_mask": 0
+    },
+    "logo_element": {
+      "pos": {
+        "x": 0,
+        "y": 0
+      },
+      "effect_index": 0
+    },
+    "wheel_element": {
+      "pos": {
+        "x": 0,
+        "y": 0
+      },
+      "effect_index": 1
+    }
+  }
+}

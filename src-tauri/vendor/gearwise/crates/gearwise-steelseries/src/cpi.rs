@@ -233,3 +233,7 @@ mod tests {
         ));
     }
 }
+
+/// Sensei TEN's independent profile uses 50–18000 DPI / 50, codes 1–360.
+/// This is distinct from the 100-unit offset map used by other sensors.
+pub const SENSEI_TEN:Cpi=Cpi{min:50,max:18000,step:50,map:Map::Linear{divisor:50,offset:0}};

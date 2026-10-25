@@ -1,0 +1,24 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "Sensei Ten exact 1832 sensor correction, five active CPI stages, eight controls, per-physical input proof, two zones, original artwork, explicit save and GG batch-CPI import",
+  "default_application_tests": 529,
+  "explicit_cross_tests": 32,
+  "vendor_unit_tests": 303,
+  "vendor_doc_tests": 1,
+  "headless_UI_suites_last_complete_run": 43,
+  "latest_targeted_UI_suites": [
+    "steelseries-save (four native DTOs)"
+  ],
+  "latest_targeted_UI_status": "all-passed",
+  "development_exe_memory_transports": 35,
+  "development_exe_sha256": "e67ee2ef14f900204ee8e5dbd335abb43b3a6c9c67ee4a9cfc2c9abd0bbbae00",
+  "frontend_JS_gzip_kB": 225.96,
+  "original_SQL_executed": false,
+  "physical_hardware_tested": false,
+  "new_fully_accepted_models": 0,
+  "new_runtime_dependencies": false,
+  "artwork_raw_bytes": 27924,
+  "artwork_gzip_bytes": 4641,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}

@@ -1,7 +1,10 @@
 //! Exact wired SteelSeries bridge scope, independently checked against fixed
 //! rivalcfg native profiles and byte vectors. Settings are write-only cached.
 use gearwise_core::{Setting,model::{ButtonAction,Modifiers,MouseButton}};
-pub const PRODUCTS:[u16;3]=[0x1710,0x1720,0x1722];
+pub const FIXED_PRODUCTS:[u16;3]=[0x1710,0x1720,0x1722];
+pub const PRODUCTS:[u16;4]=[0x1710,0x1720,0x1722,0x1832];
+pub fn button_count(product:u16)->Option<u16>{match product{0x1710|0x1720=>Some(6),0x1722|0x1832=>Some(8),_=>None}}
+pub fn fixed_dpi_stages(product:u16)->Option<usize>{FIXED_PRODUCTS.contains(&product).then_some(2)}
 pub fn supported(v:u16,p:u16)->bool{v==0x1038&&PRODUCTS.contains(&p)}
 pub fn validate_setting(product:u16,setting:&Setting)->Result<(),String>{
  if !PRODUCTS.contains(&product){return Err("此赛睿具体型号尚未核对".into());}
@@ -15,7 +18,7 @@ pub fn validate_setting(product:u16,setting:&Setting)->Result<(),String>{
 /// Version-2 recovery stores every non-primary key, because the native command
 /// always writes the complete table and a reopened driver only has templates.
 pub fn complete_table(product:u16,settings:&[Setting])->bool{
- if !PRODUCTS.contains(&product){return false;}let count=if product==0x1722{8}else{6};
+ if !PRODUCTS.contains(&product){return false;}let count=button_count(product).unwrap();
  let ids=settings.iter().filter_map(|s|if let Setting::Button{id,..}=s{Some(*id)}else{None}).collect::<std::collections::BTreeSet<_>>();
  settings.len()==usize::from(count-1)&&ids==(2..=count).collect()
 }
