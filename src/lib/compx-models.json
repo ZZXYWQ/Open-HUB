@@ -20,7 +20,8 @@
     "min_dpi": 100,
     "max_stages": 8,
     "separate_xy": true,
-    "native_macros": true
+    "native_macros": true,
+    "native_buttons": true
   },
   {
     "vendor": 14139,
@@ -43,7 +44,8 @@
     "min_dpi": 100,
     "max_stages": 8,
     "separate_xy": true,
-    "native_macros": true
+    "native_macros": true,
+    "native_buttons": true
   },
   {
     "vendor": 14139,
@@ -69,7 +71,8 @@
     "min_dpi": 50,
     "max_stages": 8,
     "separate_xy": true,
-    "native_macros": true
+    "native_macros": true,
+    "native_buttons": true
   },
   {
     "vendor": 13652,
@@ -93,7 +96,8 @@
     "min_dpi": 100,
     "max_stages": 8,
     "separate_xy": true,
-    "native_macros": true
+    "native_macros": true,
+    "native_buttons": true
   },
   {
     "vendor": 13652,
@@ -117,7 +121,8 @@
     "min_dpi": 100,
     "max_stages": 8,
     "separate_xy": true,
-    "native_macros": true
+    "native_macros": true,
+    "native_buttons": true
   },
   {
     "vendor": 14139,
@@ -140,7 +145,8 @@
     "min_dpi": 100,
     "max_stages": 8,
     "separate_xy": true,
-    "native_macros": true
+    "native_macros": true,
+    "native_buttons": true
   },
   {
     "vendor": 14139,
@@ -163,7 +169,8 @@
     "min_dpi": 100,
     "max_stages": 8,
     "separate_xy": true,
-    "native_macros": true
+    "native_macros": true,
+    "native_buttons": true
   },
   {
     "vendor": 13652,
@@ -187,7 +194,8 @@
     "min_dpi": 100,
     "max_stages": 8,
     "separate_xy": true,
-    "native_macros": true
+    "native_macros": true,
+    "native_buttons": true
   },
   {
     "vendor": 13652,
@@ -211,7 +219,8 @@
     "min_dpi": 100,
     "max_stages": 8,
     "separate_xy": true,
-    "native_macros": true
+    "native_macros": true,
+    "native_buttons": true
   },
   {
     "vendor": 13652,
@@ -232,7 +241,8 @@
       250,
       500,
       1000
-    ]
+    ],
+    "native_buttons": true
   },
   {
     "vendor": 13652,
@@ -253,6 +263,7 @@
       250,
       500,
       1000
-    ]
+    ],
+    "native_buttons": true
   }
 ]

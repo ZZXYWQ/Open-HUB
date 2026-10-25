@@ -18,6 +18,19 @@ use crate::link::Link;
 use crate::models::Model;
 use crate::report::Report;
 
+// Standard-layer records independently transcribed from the pinned OpenMouse
+// Viper V3 Pro button fixtures. Scroll Click/keyboard/Hypershift remain unverified.
+pub(crate) fn viper_default(id:u8)->Option<[u8;10]>{
+ let mut args=[0;10];args[..3].copy_from_slice(&[1,id,0]);
+ match id{1|2|4|5|9|10=>args[3..6].copy_from_slice(&[1,1,id]),0x60=>args[3..6].copy_from_slice(&[6,1,6]),_=>return None};Some(args)
+}
+pub(crate) fn viper_decode(id:u8,args:&[u8])->Option<ButtonAction>{
+ if args.len()<10||args[..3]!=[1,id,0]||args[6..10]!=[0;4]{return None;}
+ if args[3..6]==[0;3]{return Some(ButtonAction::Disabled);}
+ if matches!(id,9|10|0x60){return (args[..10]==viper_default(id)?).then_some(ButtonAction::Default);}
+ match args[3..6]{[1,1,1]=>Some(MouseButton::Left),[1,1,2]=>Some(MouseButton::Right),[1,1,4]=>Some(MouseButton::Back),[1,1,5]=>Some(MouseButton::Forward),_=>None}.map(ButtonAction::Mouse)
+}
+
 /// How often `poll_events` asks wireless/battery devices for their charge.
 const BATTERY_INTERVAL: Duration = Duration::from_secs(30);
 
@@ -131,23 +144,20 @@ impl RazerDevice {
     }
 
     fn set_button(&mut self, id:u16, action:&ButtonAction) -> Result<()> {
-        if !matches!(self.model.pid,0x00c0|0x00c1) || !matches!(id,2|4|5) {
-            return Err(Error::Unsupported("exact Viper V3 Pro remappable button"));
+        if !matches!(self.model.pid,0x00c0|0x00c1) || !matches!(id,2|4|5|9|10|0x60) {
+            return Err(Error::Unsupported("exact Viper V3 Pro remappable control"));
         }
-        let target=match action {
-            ButtonAction::Default=>Some(id as u8),
-            ButtonAction::Disabled=>None,
-            ButtonAction::Mouse(MouseButton::Left)=>Some(1),
-            ButtonAction::Mouse(MouseButton::Right)=>Some(2),
-            ButtonAction::Mouse(MouseButton::Back)=>Some(4),
-            ButtonAction::Mouse(MouseButton::Forward)=>Some(5),
-            _=>return Err(Error::Unsupported("Viper action: only captured mouse actions and Disabled")),
-        };
-        // Protocol facts independently transcribed from the Viper V3 Pro
-        // Standard-layer hardware notes, not inferred from Naga's report 3.
+        let mut args=viper_default(id as u8).ok_or(Error::Unsupported("unverified Viper control"))?;
+        match action{
+            ButtonAction::Default=>{},
+            ButtonAction::Disabled=>args[3..].fill(0),
+            ButtonAction::Mouse(target) if matches!(id,2|4|5)=>{
+                args[5]=match target{MouseButton::Left=>1,MouseButton::Right=>2,MouseButton::Back=>4,MouseButton::Forward=>5,_=>return Err(Error::Unsupported("unverified Viper mouse target"))};
+            },
+            _=>return Err(Error::Unsupported("Viper: captured mouse actions, or enable/disable scroll and sensitivity controls")),
+        }
         let original=self.read_button(id as u8)?;
-        let mut args=[0;10];args[..3].copy_from_slice(&[1,id as u8,0]);
-        if let Some(target)=target{args[3..6].copy_from_slice(&[1,1,target]);}
+        if viper_decode(id as u8,&original.args).is_none(){return Err(Error::Unsupported("unknown original Viper binding retained"));}
         let write=self.link.exec_with_id(Report::new(2,0x0c,10,&args),0x10);
         let verify=write.and_then(|_|self.read_button(id as u8)).and_then(|r|{
             if r.args[..10]==args{Ok(())}else{Err(Error::protocol("Viper button did not read back"))}
@@ -311,19 +321,16 @@ impl Device for RazerDevice {
         let mut s = self.state.clone();
         if matches!(self.model.pid,0x00c0|0x00c1) {
             s.buttons.clear();
-            for id in [1,2,4,5] {
+            for cap in &mut self.caps.buttons{cap.remappable=false;}
+            for id in [1,2,4,5,9,10,0x60] {
                 let Ok(response)=self.read_button(id) else {continue};
-                let action=match (response.args[3],response.args[4],response.args[5]) {
-                    (0,0,0)=>Some(ButtonAction::Disabled),
-                    (1,1,1)=>Some(ButtonAction::Mouse(MouseButton::Left)),
-                    (1,1,2)=>Some(ButtonAction::Mouse(MouseButton::Right)),
-                    (1,1,4)=>Some(ButtonAction::Mouse(MouseButton::Back)),
-                    (1,1,5)=>Some(ButtonAction::Mouse(MouseButton::Forward)),
-                    _=>None, // Unknown original shortcuts are not labelled Default.
-                };
-                if let Some(action)=action{s.buttons.insert(u16::from(id),action);}
+                if let Some(action)=viper_decode(id,&response.args){
+                    s.buttons.insert(u16::from(id),action);
+                    if let Some(cap)=self.caps.buttons.iter_mut().find(|b|b.id==u16::from(id)){cap.remappable=id!=1;}
+                }
             }
         }
+
         if self.caps.dpi.is_some() {
             if let Some(d) = soft(self.read_dpi())? {
                 s.dpi = Some(d);
@@ -429,7 +436,7 @@ fn capabilities(model: &Model) -> Capabilities {
         }),
         report_rates: model.polling.rates.to_vec(),
         buttons: if matches!(model.pid,0x00c0|0x00c1) {
-            [(1,"左键",MouseButton::Left),(2,"右键",MouseButton::Right),(4,"后退",MouseButton::Back),(5,"前进",MouseButton::Forward)].into_iter().map(|(id,name,action)|ButtonCaps{id,name:name.into(),remappable:id!=1,default_action:ButtonAction::Mouse(action),hotspot:None}).collect()
+            [(1,"左键"),(2,"右键"),(4,"后退"),(5,"前进"),(9,"滚轮向上"),(10,"滚轮向下"),(0x60,"底部 DPI 键")].into_iter().map(|(id,name)|ButtonCaps{id,name:name.into(),remappable:id!=1,default_action:viper_decode(id as u8,&viper_default(id as u8).unwrap()).unwrap(),hotspot:None}).collect()
         } else {Vec::new()},
         lighting: model
             .zones

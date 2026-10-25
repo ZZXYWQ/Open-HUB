@@ -1,3 +1,13 @@
+# Open HUB 0.3.5 按键修复验证 — 2026-10-25
+
+只保留每只鼠标的独立配置，没有加入全局鼠标映射。本次补充 Pulsar X2 V2 Mini 的基础按键，以及 Viper V3 Pro 的滚轮方向/底部 DPI 原动作恢复和禁用；具体范围见 [按键说明](BUTTON-COMPATIBILITY.md)。这不是全部鼠标或全部按键兼容。
+
+299 项主程序默认测试、5 项公开输入/界面保存方案交叉验证、79 项雷蛇库测试通过。新增用例核对独立公开按键向量、回读失败恢复、未知原动作锁定、错误动作拒绝、同型号其他实例保持原配置。界面使用生产驱动生成的当前 DTO，HyperX/Pulsar 六份、Viper 六份、上一批五品牌十份保存方案交回原生驱动执行。完整 20 组浏览器回归通过，IPC 模拟不代表实机。
+
+EXE/安装包载荷、当前前端嵌入、独立版本绑定签名与公开下载记录见 [本版验证](docs/releases/0.3.5-validation.json) 和发布后的 [公开验收](docs/releases/0.3.5-public-verification.json)。没有新增型号实机测试。本机升级按用户授权执行，配置备份保持私有；其他用户仍自行选择下载及安装。
+
+## 历史验证记录
+
 # Open HUB 0.3.4 验证 — 2026-10-25
 
 新增五个品牌各一款有线型号：ASUS ROG Strix Impact、Roccat Kone Pure、G.Skill MX-780、Etekcity Scroll Alpha、Mars Gaming MM4。精确 USB ID 和功能限制见 FIVE-BRAND-ADAPTERS.md；合计 23 个品牌的限定型号。未新增实机验收，不作整品牌兼容声明。

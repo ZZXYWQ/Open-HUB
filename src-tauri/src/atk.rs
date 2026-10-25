@@ -40,7 +40,7 @@ pub struct Model {
     pub vendor: u16, pub product: u16, pub mids: Vec<u8>, pub brand: String,
     pub name: String, pub max_dpi: u16, pub buttons: u16, pub indicator: bool,
     pub wireless: bool, pub rates: Vec<u16>,
-    pub min_dpi:u16,pub max_stages:u8,pub separate_xy:bool,pub native_macros:bool,
+    pub min_dpi:u16,pub max_stages:u8,pub separate_xy:bool,pub native_macros:bool,pub native_buttons:bool,
 }
 pub fn models() -> &'static [Model] {
     static MODELS: std::sync::LazyLock<Vec<Model>> = std::sync::LazyLock::new(||
@@ -365,7 +365,7 @@ impl Atk {
                         name: ["左键", "右键", "中键", "后退", "前进", "底部 DPI"]
                             [(id - 1) as usize]
                             .into(),
-                        remappable: id != 1&&model.native_macros,
+                        remappable: id != 1&&model.native_buttons,
                         default_action: factory(id).unwrap(),
                         hotspot: None,
                     })
@@ -535,7 +535,7 @@ impl Atk {
                     }
                 }
             }
-            self.caps.buttons[(id - 1) as usize].remappable = id != 1 && known && self.model.native_macros;
+            self.caps.buttons[(id - 1) as usize].remappable = id != 1 && known && self.model.native_buttons;
         }
         if !self.caps.lighting.is_empty() {
             let row = self.read(76, 8)?;
@@ -617,16 +617,18 @@ impl Device for Atk {
                 }
             }
             Setting::Button { id, action } => {
-                if !self.model.native_macros || !(2..=self.model.buttons).contains(id) {
+                if !self.model.native_buttons || !(2..=self.model.buttons).contains(id) {
                     return Err(Error::invalid(
                         "ATK protects left click and unknown buttons",
                     ));
                 }
                 match action {
                     ButtonAction::Key { usage, mods } => {
+                        if !self.model.native_macros{return Err(Error::Unsupported("Pulsar keyboard payload not verified"));}
                         native_macro::encode(&native_macro::keyboard(*usage, *mods))?;
                     }
                     ButtonAction::Macro(key) => {
+                        if !self.model.native_macros{return Err(Error::Unsupported("Pulsar native macro payload not verified"));}
                         native_macro::encode(
                             self.definitions
                                 .get(key)
@@ -685,7 +687,7 @@ impl Device for Atk {
             }
             Setting::Button { id, action } => {
                 let old = self.read(96 + (id - 1) * 4, 4)?;
-                if self.read_action(&old).is_none() {
+                if (if self.model.native_macros{self.read_action(&old).map(|v|v.0)}else{decode_button(&old)}).is_none() {
                     return Err(Error::invalid("ATK unknown original action retained; native macro/shortcut is not overwritten"));
                 }
                 self.write_verified(96 + (id - 1) * 4, &button_bytes(action, *id)?)?;
@@ -1278,9 +1280,32 @@ mod dpi_limits_tests {
 
 #[cfg(test)]mod pulsar_tests{
  use super::*;
- #[test]fn pulsar_real_driver_dpi_indicator_and_rate_roundtrip(){for product in [0xf507,0xf508]{let(mut d,l)=memory_device(product).unwrap();l.lock().unwrap().clear();let next=DpiState{stages:vec![DpiStage::uniform(50),DpiStage::uniform(12800),DpiStage::uniform(26000)],active:2};d.apply(&Setting::Dpi(next.clone())).unwrap();d.apply(&Setting::ReportRate(500)).unwrap();let color=Rgb{r:19,g:61,b:97};d.apply(&Setting::Lighting{zone:0,state:ZoneState{effect:LightingEffect::Static{color},brightness:100}}).unwrap();let state=d.read_state().unwrap();assert_eq!(state.dpi,Some(next));assert_eq!(state.report_rate,Some(500));assert_eq!(state.lighting[&0].effect,LightingEffect::Static{color});assert!(d.caps.buttons.iter().all(|b|!b.remappable));assert!(l.lock().unwrap().iter().all(|r|!matches!(r,gearwise_core::transport::MockRecord::Write(p)if p[1]==0x10)));}}
+ #[test]fn pulsar_real_driver_dpi_indicator_and_rate_roundtrip(){for product in [0xf507,0xf508]{let(mut d,l)=memory_device(product).unwrap();l.lock().unwrap().clear();let next=DpiState{stages:vec![DpiStage::uniform(50),DpiStage::uniform(12800),DpiStage::uniform(26000)],active:2};d.apply(&Setting::Dpi(next.clone())).unwrap();d.apply(&Setting::ReportRate(500)).unwrap();let color=Rgb{r:19,g:61,b:97};d.apply(&Setting::Lighting{zone:0,state:ZoneState{effect:LightingEffect::Static{color},brightness:100}}).unwrap();let state=d.read_state().unwrap();assert_eq!(state.dpi,Some(next));assert_eq!(state.report_rate,Some(500));assert_eq!(state.lighting[&0].effect,LightingEffect::Static{color});assert!(d.caps.buttons.iter().all(|b|b.remappable==(b.id!=1)));assert!(l.lock().unwrap().iter().all(|r|!matches!(r,gearwise_core::transport::MockRecord::Write(p)if p[1]==0x10)));}}
  #[test]fn pulsar_shared_codec_matches_public_known_vectors(){assert_eq!(encode_dpi(50,50,26000).unwrap(),[0,0,0,85]);assert_eq!(encode_dpi(12800,12800,26000).unwrap(),[255,255,0,87]);assert_eq!(encode_dpi(26000,26000,26000).unwrap(),[7,7,136,191]);for dpi in (50..=26000).step_by(50){assert_eq!(decode_dpi(&encode_dpi(dpi,dpi,26000).unwrap(),26000).unwrap(),DpiStage::uniform(dpi));}}
- #[test]fn pulsar_rejects_extra_stages_xy_buttons_and_macros_before_io(){let(mut d,l)=memory_device(0xf507).unwrap();for setting in [Setting::Dpi(DpiState{stages:vec![DpiStage{x:800,y:1600}],active:0}),Setting::Dpi(DpiState{stages:vec![DpiStage::uniform(800);5],active:0}),Setting::Button{id:4,action:ButtonAction::Disabled}]{l.lock().unwrap().clear();assert!(d.apply(&setting).is_err());assert!(l.lock().unwrap().is_empty());}}
+ #[test]fn pulsar_rejects_extra_stages_xy_keyboard_and_macros_before_io(){let(mut d,l)=memory_device(0xf507).unwrap();for setting in [Setting::Dpi(DpiState{stages:vec![DpiStage{x:800,y:1600}],active:0}),Setting::Dpi(DpiState{stages:vec![DpiStage::uniform(800);5],active:0}),Setting::Button{id:4,action:ButtonAction::Key{usage:4,mods:gearwise_core::model::Modifiers(0)}}]{l.lock().unwrap().clear();assert!(d.apply(&setting).is_err());assert!(l.lock().unwrap().is_empty());}}
  #[test]fn pulsar_profile_change_blocks_writes_instead_of_touching_other_bank(){let(mut d,l)=memory_device(0xf508).unwrap();d.profile=Some(1);l.lock().unwrap().clear();assert!(d.apply(&Setting::ReportRate(500)).unwrap_err().to_string().contains("profile changed"));assert!(!l.lock().unwrap().iter().any(|r|matches!(r,gearwise_core::transport::MockRecord::Write(p)if p[1]==7)));}
+ #[test]fn pulsar_all_known_button_actions_roundtrip_without_macro_memory(){
+  let actions=vec![ButtonAction::Disabled,ButtonAction::Mouse(MouseButton::Left),ButtonAction::Mouse(MouseButton::Right),ButtonAction::Mouse(MouseButton::Middle),ButtonAction::Mouse(MouseButton::Back),ButtonAction::Mouse(MouseButton::Forward),ButtonAction::Dpi(DpiFunction::Cycle),ButtonAction::Dpi(DpiFunction::Up),ButtonAction::Dpi(DpiFunction::Down)];
+  for product in [0xf507,0xf508]{let(mut d,l)=memory_device(product).unwrap();l.lock().unwrap().clear();for id in 2..=5{for action in &actions{d.apply(&Setting::Button{id,action:action.clone()}).unwrap();assert_eq!(&d.read_state().unwrap().buttons[&id],action);}}
+   assert!(l.lock().unwrap().iter().filter_map(|r|if let gearwise_core::transport::MockRecord::Write(p)=r{Some(p)}else{None}).filter(|p|p[1]==7).all(|p|p[3]==0&&(100..=112).contains(&p[4])&&p[5]==4));
+   for id in [0,1,6,255]{l.lock().unwrap().clear();assert!(d.apply(&Setting::Button{id,action:ButtonAction::Disabled}).is_err());assert!(l.lock().unwrap().is_empty());}
+  }
+ }
+ #[test]fn pulsar_button_records_match_independent_public_vectors(){
+  for(action,expected)in[(ButtonAction::Mouse(MouseButton::Back),[1,8,0,0x4c]),(ButtonAction::Mouse(MouseButton::Forward),[1,16,0,0x44]),(ButtonAction::Disabled,[0,0,0,0x55]),(ButtonAction::Dpi(DpiFunction::Cycle),[2,1,0,0x52])]{assert_eq!(button_bytes(&action,4).unwrap(),expected);assert_eq!(decode_button(&expected),Some(action));}
+ }
+ #[test]fn pulsar_unknown_original_custom_record_remains_locked(){
+  let(mut d,l)=memory_device(0xf507).unwrap();let original=[5,0,0,0x50];d.io.write(&frame(7,108,4,&original).unwrap()).unwrap();assert!(!d.read_state().unwrap().buttons.contains_key(&4));assert!(!d.capabilities().buttons.iter().find(|b|b.id==4).unwrap().remappable);l.lock().unwrap().clear();assert!(d.apply(&Setting::Button{id:4,action:ButtonAction::Disabled}).is_err());assert!(!l.lock().unwrap().iter().any(|r|matches!(r,gearwise_core::transport::MockRecord::Write(p)if p[1]==7)));assert_eq!(d.read(108,4).unwrap(),original);
+ }
+ struct CorruptOnce{inner:Box<dyn HidTransport>,pending:bool,used:bool}
+ impl HidTransport for CorruptOnce{
+  fn write(&mut self,p:&[u8])->Result<usize>{let n=self.inner.write(p)?;if p.len()==17&&p[1]==7&&!self.used{self.pending=true;}Ok(n)}
+  fn read_timeout(&mut self,p:&mut[u8],ms:i32)->Result<usize>{let n=self.inner.read_timeout(p,ms)?;if self.pending&&n==17&&p[1]==8{p[6]^=1;p[16]=0x55u8.wrapping_sub(sum(&p[..16]));self.pending=false;self.used=true;}Ok(n)}
+  fn send_feature_report(&mut self,p:&[u8])->Result<()>{self.inner.send_feature_report(p)}
+  fn get_feature_report(&mut self,p:&mut[u8])->Result<usize>{self.inner.get_feature_report(p)}
+ }
+ #[test]fn pulsar_failed_button_readback_restores_exact_original(){
+  let(mut d,l)=memory_device(0xf508).unwrap();let old=d.read(108,4).unwrap();d.io=Box::new(CorruptOnce{inner:d.io,pending:false,used:false});l.lock().unwrap().clear();assert!(d.apply(&Setting::Button{id:4,action:ButtonAction::Disabled}).is_err());assert_eq!(d.read(108,4).unwrap(),old);let log=l.lock().unwrap();let writes=log.iter().filter_map(|r|if let gearwise_core::transport::MockRecord::Write(p)=r{Some(p)}else{None}).filter(|p|p[1]==7).collect::<Vec<_>>();assert_eq!(writes.len(),2);assert_eq!(&writes[1][6..10],old.as_slice());
+ }
  #[test]fn pulsar_exact_control_interface_not_other_3554_mice(){let mut i=HidInterfaceInfo{vendor_id:0x3554,product_id:0xf507,interface_number:1,usage_page:0xff02,..Default::default()};assert!(AtkDriver.probe(&i));i.interface_number=0;assert!(!AtkDriver.probe(&i));i.interface_number=1;i.product_id=0xf509;assert!(!AtkDriver.probe(&i));}
 }

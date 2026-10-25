@@ -319,7 +319,7 @@ pub fn validate(p: &Plan) -> Result<(), String> {
         if !seen.insert(k) {
             return Err("同一项设置不能重复".into());
         }
-        if crate::atk::model(p.vendor,p.product).is_some_and(|m|!m.native_macros){match s{Setting::Dpi(d)=>crate::atk::validate_dpi(d,p.product).map_err(|e|e.to_string())?,Setting::ReportRate(r)if crate::atk::model(p.vendor,p.product).unwrap().rates.contains(r)=>{},Setting::Lighting{zone:0,state}if state.brightness==100&&matches!(state.effect,gearwise_core::model::LightingEffect::Off|gearwise_core::model::LightingEffect::Static{..})=>{},_=>return Err("Pulsar 当前仅接通 DPI、回报率和常亮/关闭指示灯；按键与宏暂不写入".into())}continue;}
+        if crate::atk::model(p.vendor,p.product).is_some_and(|m|!m.native_macros){match s{Setting::Dpi(d)=>crate::atk::validate_dpi(d,p.product).map_err(|e|e.to_string())?,Setting::ReportRate(r)if crate::atk::model(p.vendor,p.product).unwrap().rates.contains(r)=>{},Setting::Lighting{zone:0,state}if state.brightness==100&&matches!(state.effect,gearwise_core::model::LightingEffect::Off|gearwise_core::model::LightingEffect::Static{..})=>{},Setting::Button{id,action} if (2..=crate::atk::model(p.vendor,p.product).unwrap().buttons).contains(id) && matches!(action,ButtonAction::Default|ButtonAction::Disabled|ButtonAction::Mouse(gearwise_core::model::MouseButton::Left|gearwise_core::model::MouseButton::Right|gearwise_core::model::MouseButton::Middle|gearwise_core::model::MouseButton::Back|gearwise_core::model::MouseButton::Forward)|ButtonAction::Dpi(DpiFunction::Cycle|DpiFunction::Up|DpiFunction::Down))=>{},_=>return Err("Pulsar 已接通基础鼠标动作、DPI 动作及禁用；键盘和板载宏格式仍待验证".into())}continue;}
         if let Some(model)=crate::legacy::model(p.vendor,p.product){crate::legacy::validate_setting(model,s).map_err(|e|e.to_string())?;continue;}
         if crate::hyperx::supported(p.vendor,p.product){crate::hyperx::validate_setting(s).map_err(|e|e.to_string())?;continue;}
         match s {
@@ -367,11 +367,7 @@ pub fn validate(p: &Plan) -> Result<(), String> {
                 if p.vendor==0x1532&&!gearwise_razer::models::find(p.product).is_some_and(|model|model.zones.iter().any(|z|u16::from(z.led)==u16::from(*zone)&&z.effects.contains(&state.effect.kind()))){return Err("此雷蛇型号不支持该灯区或光效".into());}
             }
             Setting::Button { id, action } => {
-                if p.vendor==0x1532&&matches!(p.product,0x00c0|0x00c1){
-                    if !matches!(id,2|4|5){return Err("蝰蛇 V3 Pro 仅开放已核对的右键、后退和前进；保留左键".into());}
-                    if !matches!(action,ButtonAction::Default|ButtonAction::Disabled|ButtonAction::Mouse(gearwise_core::model::MouseButton::Left|gearwise_core::model::MouseButton::Right|gearwise_core::model::MouseButton::Back|gearwise_core::model::MouseButton::Forward)){return Err("蝰蛇 V3 Pro 当前仅接通原生鼠标动作与禁用，键盘和宏协议仍待验证".into());}
-                    continue;
-                }
+                if p.vendor==0x1532&&matches!(p.product,0x00c0|0x00c1){validate_viper_button(*id,action)?;continue;}
                 if p.vendor==0x1532&&p.product==0x00b4{if !crate::naga::known_button(*id){return Err("未知 Naga 按键".into());}match action{ButtonAction::Default|ButtonAction::Mouse(_)|ButtonAction::Macro(_)=>{},ButtonAction::Key{usage,..} if (4..=0xa4).contains(usage)=>{},_=>return Err("Naga 不支持此板载动作".into())}if *id==1{return Err("保留左键原始点击".into());}continue;}
                 if p.vendor==0x1b1c&&p.product==0x1b2e{if !(2..=8).contains(id){return Err("保留左键，且只允许 M65 PRO 已知按键".into());}match action{ButtonAction::Default|ButtonAction::Disabled|ButtonAction::Mouse(_)|ButtonAction::Macro(_)|ButtonAction::Dpi(DpiFunction::Up|DpiFunction::Down|DpiFunction::Cycle)=>{},ButtonAction::Dpi(DpiFunction::Shift(d)) if (100..=12000).contains(d)=>{},ButtonAction::Key{usage,..} if (4..=0xa4).contains(usage)=>{},_=>return Err("M65 PRO 按键动作无效".into())}continue;}
                 if crate::atk::supported(p.vendor,p.product) {if !(2..=crate::atk::model(p.vendor,p.product).unwrap().buttons).contains(id)||!matches!(action,ButtonAction::Default|ButtonAction::Disabled|ButtonAction::Key{..}|ButtonAction::Macro(_)|ButtonAction::Mouse(gearwise_core::model::MouseButton::Left|gearwise_core::model::MouseButton::Right|gearwise_core::model::MouseButton::Middle|gearwise_core::model::MouseButton::Back|gearwise_core::model::MouseButton::Forward)|ButtonAction::Dpi(DpiFunction::Cycle|DpiFunction::Up|DpiFunction::Down)){return Err("该精确型号仅开放已实现的基础按键、键盘点按和板载宏；未知原厂动作保持不变".into());}continue;}
@@ -608,6 +604,11 @@ pub struct Compiled {
  pub dpi_actions:std::collections::BTreeMap<u16,DpiFunction>,
 }
 fn native_macros(v:u16,p:u16)->bool{crate::legacy::native_macros(v,p)||crate::atk::model(v,p).is_some_and(|m|m.native_macros)||crate::hyperx::supported(v,p)}
+fn validate_viper_button(id:u16,action:&ButtonAction)->Result<(),String>{
+ if matches!(id,9|10|0x60){return if matches!(action,ButtonAction::Default|ButtonAction::Disabled){Ok(())}else{Err("蝰蛇滚轮方向与底部 DPI 键目前只支持启用原动作或禁用".into())};}
+ if !matches!(id,2|4|5){return Err("蝰蛇 V3 Pro 仅开放已核对的右键、后退、前进和滚轮/DPI 控制；保留左键".into());}
+ if !matches!(action,ButtonAction::Default|ButtonAction::Disabled|ButtonAction::Mouse(gearwise_core::model::MouseButton::Left|gearwise_core::model::MouseButton::Right|gearwise_core::model::MouseButton::Back|gearwise_core::model::MouseButton::Forward)){return Err("蝰蛇 V3 Pro 键盘和宏协议仍待验证".into());}Ok(())
+}
 pub fn compile(plan:&Plan)->Result<Compiled,String>{
  use gearwise_core::profile::{Macro,MacroMode,MacroStep};
  let corsair=(plan.vendor,plan.product)==(0x1b1c,0x1b2e);
@@ -631,9 +632,10 @@ pub fn compile(plan:&Plan)->Result<Compiled,String>{
    if let Some(steps)=steps{let action=Macro{id:format!("openhub-remap-{id}"),name:format!("按住按键 {id}"),mode:MacroMode::WhileHeld,steps};crate::host_macros::validate(&action)?;bindings.push(crate::host_macros::Binding{button:*id,action});buttons.push(*id);}
    native.push(s.clone());continue;
   }}
+  if plan.vendor==0x1532&&matches!(plan.product,0x00c0|0x00c1){if let Setting::Button{id,action}=s{validate_viper_button(*id,action)?;native.push(s.clone());continue;}}
   if let Some(model)=crate::legacy::model(plan.vendor,plan.product){crate::legacy::validate_setting(model,s).map_err(|e|e.to_string())?;if let Setting::Button{action:ButtonAction::Macro(id),..}=s{crate::legacy::validate_macro(plan.vendor,plan.product,definitions.get(id.as_str()).ok_or("板载宏内容缺失")?).map_err(|e|e.to_string())?;}native.push(s.clone());continue;}
   if crate::hyperx::supported(plan.vendor,plan.product){crate::hyperx::validate_setting(s).map_err(|e|e.to_string())?;if let Setting::Button{action:ButtonAction::Macro(id),..}=s{crate::hyperx::validate_macro(definitions.get(id.as_str()).ok_or("HyperX 板载宏定义缺失")?).map_err(|e|e.to_string())?;}native.push(s.clone());continue;}
-  if crate::atk::supported(plan.vendor,plan.product) {if let Setting::Button{action:ButtonAction::Key{usage,mods},..}=s{crate::atk::validate_key(*usage,*mods).map_err(|e|e.to_string())?;}if let Setting::Button{action:ButtonAction::Macro(id),..}=s{let definition=definitions.get(id.as_str()).ok_or("ATK 板载宏定义缺失")?;crate::atk::validate_macro(definition).map_err(|e|e.to_string())?;}native.push(s.clone());continue;}
+  if let Some(model)=crate::atk::model(plan.vendor,plan.product) {if let Setting::Button{action:ButtonAction::Key{usage,mods},..}=s{if !model.native_macros{return Err("Pulsar 键盘格式仍待验证".into());}crate::atk::validate_key(*usage,*mods).map_err(|e|e.to_string())?;}if let Setting::Button{action:ButtonAction::Macro(id),..}=s{if !model.native_macros{return Err("Pulsar 板载宏格式仍待验证".into());}let definition=definitions.get(id.as_str()).ok_or("ATK 板载宏定义缺失")?;crate::atk::validate_macro(definition).map_err(|e|e.to_string())?;}native.push(s.clone());continue;}
   if let Setting::Button{id,action:ButtonAction::Macro(macro_id)}=s{
    if !matches!((plan.vendor,plan.product),(0x1532,0x00b4)|(0x1038,0x1720)){return Err("该型号的软件宏输入尚未接通".into());}
    if *id==1{return Err("保留左键原始点击".into());}
@@ -831,7 +833,7 @@ fn resolve_defaults(compiled:&mut Compiled,before:&View)->Result<(),String>{
  #[test]fn export_hyperx_pulsar_native_dtos_and_execute_saved_plans(){
   let mut fixtures=Vec::new();for(v,p)in[(0x03f0,0x048e),(0x03f0,0x028e),(0x3554,0xf507),(0x3554,0xf508)]{
    let(mut device,_)=simulated(v,p).unwrap();let base=view(device.as_mut()).unwrap();let mut settings=vec![Setting::Dpi(DpiState{stages:vec![DpiStage::uniform(800),DpiStage::uniform(1600)],active:1}),Setting::ReportRate(500),Setting::Lighting{zone:0,state:ZoneState{effect:LightingEffect::Static{color:Rgb{r:20,g:40,b:80}},brightness:100}}];let mut macros=Vec::new();
-   if v==0x03f0{macros.push(Macro{id:"fixture-hyperx".into(),name:"HyperX test chord".into(),mode:MacroMode::Once,steps:vec![MacroStep::KeyDown(4),MacroStep::Delay(50),MacroStep::KeyUp(4)]});device.set_macro_definitions(&macros).unwrap();settings.push(Setting::Button{id:4,action:ButtonAction::Macro(macros[0].id.clone())});}
+   if v==0x03f0{macros.push(Macro{id:"fixture-hyperx".into(),name:"HyperX test chord".into(),mode:MacroMode::Once,steps:vec![MacroStep::KeyDown(4),MacroStep::Delay(50),MacroStep::KeyUp(4)]});device.set_macro_definitions(&macros).unwrap();settings.push(Setting::Button{id:4,action:ButtonAction::Macro(macros[0].id.clone())});}else{settings.push(Setting::Button{id:4,action:ButtonAction::Mouse(gearwise_core::model::MouseButton::Middle)});}
    let plan=Plan{vendor:v,product:p,source:None,macros,settings};validate(&plan).unwrap();let encoded=serde_json::to_vec(&plan).unwrap();let loaded:Plan=serde_json::from_slice(&encoded).unwrap();simulate(&loaded).unwrap();for s in &loaded.settings{device.apply(s).unwrap();}let configured=view(device.as_mut()).unwrap();assert_eq!(configured.state.dpi.as_ref().unwrap().stages[1].x,1600);assert_eq!(configured.state.report_rate,Some(500));fixtures.push(serde_json::json!({"base":base,"configured":configured}));
   }
   if let Some(dir)=std::env::var_os("OPEN_HUB_NEW_BRANDS_FIXTURE_DIR"){let dir=std::path::PathBuf::from(dir);std::fs::create_dir_all(&dir).unwrap();std::fs::write(dir.join("native-views.json"),serde_json::to_vec_pretty(&fixtures).unwrap()).unwrap();}
@@ -843,5 +845,18 @@ fn resolve_defaults(compiled:&mut Compiled,before:&View)->Result<(),String>{
  #[test]#[ignore="requires explicit OPEN_HUB_NEW_BRANDS_UI_PROFILES from browser regression"]fn browser_saved_profiles_validate_reload_and_execute_native_drivers(){
   let path=std::env::var_os("OPEN_HUB_NEW_BRANDS_UI_PROFILES").expect("set UI-created profile fixture path");let profiles:Vec<crate::profiles::Profile>=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();assert_eq!(profiles.len(),6);
   for profile in profiles{crate::profile_transfer::validate(&profile).unwrap();let loaded:crate::profiles::Profile=serde_json::from_slice(&serde_json::to_vec(&profile).unwrap()).unwrap();let p=loaded.multi.as_ref().unwrap();assert!(supported(p.vendor,p.product));let r=simulate(p).unwrap();assert!(r["packet_count"].as_u64().unwrap()>0);assert!(!loaded.targets(0x046d,&[p.product]));assert!(!loaded.targets(0x3837,&[p.product]));}
+ }
+}
+
+#[cfg(test)]mod scoped_button_plans{
+ use super::*;
+ #[test]fn pulsar_basic_buttons_and_viper_captured_controls_execute_independently(){
+  for(vendor,product,id)in[(0x3554,0xf507,4),(0x3554,0xf508,3),(0x1532,0x00c0,9),(0x1532,0x00c1,0x60)]{
+   let p=Plan{vendor,product,settings:vec![Setting::Button{id,action:ButtonAction::Disabled}],macros:vec![],source:None};validate(&p).unwrap();let loaded:Plan=serde_json::from_slice(&serde_json::to_vec(&p).unwrap()).unwrap();assert!(simulate(&loaded).unwrap()["packet_count"].as_u64().unwrap()>0);
+   let(mut target,_)=simulated(vendor,product).unwrap();let(mut other,_)=simulated(vendor,product).unwrap();let before=other.read_state().unwrap();for s in &p.settings{target.apply(s).unwrap();}assert_eq!(target.read_state().unwrap().buttons[&id],ButtonAction::Disabled);assert_eq!(other.read_state().unwrap().buttons,before.buttons);
+  }
+ }
+ #[test]fn pulsar_keyboard_and_viper_toggle_keyboard_are_rejected_in_both_compile_and_validation(){
+  for(vendor,product,id)in[(0x3554,0xf507,4),(0x1532,0x00c1,9)]{let p=Plan{vendor,product,settings:vec![Setting::Button{id,action:ButtonAction::Key{usage:4,mods:gearwise_core::model::Modifiers(0)}}],macros:vec![],source:None};assert!(validate(&p).is_err());assert!(compile(&p).is_err());}
  }
 }

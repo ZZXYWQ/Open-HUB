@@ -50,3 +50,10 @@ fn plan(pid:u16)->Plan{Plan{vendor:0x1532,product:pid,settings:vec![Setting::Dpi
  }
  if let Some(path)=std::env::var_os("OPEN_HUB_VIPER_FIXTURE"){std::fs::write(path,serde_json::to_vec_pretty(&fixtures).unwrap()).unwrap();}
 }
+
+#[test]fn viper_scroll_and_bottom_dpi_controls_match_captured_vectors(){
+ for pid in [0x00c0,0x00c1]{let(mut d,log)=simulated(0x1532,pid).unwrap();for(id,expected)in[(9,[1,9,0,1,1,9,0,0,0,0]),(10,[1,10,0,1,1,10,0,0,0,0]),(96,[1,96,0,6,1,6,0,0,0,0])]{for action in [ButtonAction::Disabled,ButtonAction::Default]{let p=Plan{settings:vec![Setting::Button{id,action:action.clone()}],..plan(pid)};validate(&p).unwrap();log.lock().unwrap().clear();d.apply(&p.settings[0]).unwrap();assert_eq!(d.read_state().unwrap().buttons[&id],action);let wanted=if action==ButtonAction::Default{expected}else{[1,id as u8,0,0,0,0,0,0,0,0]};assert!(log.lock().unwrap().iter().any(|r|matches!(r,MockRecord::SetFeature(b)if b[7..9]==[2,0x0c]&&b[2]==0x10&&b[9..19]==wanted)));}}}
+}
+#[test]#[ignore="requires OPEN_HUB_VIPER_UI_PROFILES from current browser regression"]fn browser_viper_profiles_execute_independent_native_controls(){
+ let path=std::env::var_os("OPEN_HUB_VIPER_UI_PROFILES").expect("provide saved UI fixtures");let profiles:Vec<crate::profiles::Profile>=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();assert_eq!(profiles.len(),6);for profile in profiles{crate::profile_transfer::validate(&profile).unwrap();let p=profile.multi.unwrap();let r=simulate(&p).unwrap();assert!(r["packet_count"].as_u64().unwrap()>0);}
+}
