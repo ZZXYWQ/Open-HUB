@@ -11,7 +11,7 @@ import { PanelSection } from "@/components/panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { api, type DeviceSummary, type OnboardButton, type OnboardProfile, type OnboardSnapshot, type SlotSettings,type OnboardBindingSettings } from "@/lib/api";
+import { api, type DeviceSummary, type OnboardButton, type OnboardProfile, type OnboardSnapshot, type SlotSettings,type OnboardBindingSettings,type OnboardRestorePreview } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 /** Buttons that do something other than their own mouse button. */
@@ -70,7 +70,7 @@ function ProfileCard({ profile, active, onEdit,onEditBindings,onNewMacro }: { pr
 /** Profiles stored in the mouse: view, edit DPI/report rate per slot, back up and restore. */
 export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary; supportedDpi: number[] }) {
   const readGeneration=useRef(0);
-  useEffect(()=>{readGeneration.current++;setSnapshot(null);setEditing(null);setEditingBindings(null);setComposing(null);setRestorePath(null);},[device.id]);
+  useEffect(()=>{readGeneration.current++;setSnapshot(null);setEditing(null);setEditingBindings(null);setComposing(null);setRestorePath(null);setRestorePreview(null);setRestoreError('');setRestoring(false);},[device.id]);
   const [snapshot, setSnapshot] = useState<OnboardSnapshot | null>(null);
   const [reading, setReading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -79,6 +79,8 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
   const [composing,setComposing]=useState<OnboardProfile|null>(null);
   const [restorePath, setRestorePath] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
+  const [restorePreview,setRestorePreview]=useState<OnboardRestorePreview|null>(null);
+  const [restoreError,setRestoreError]=useState('');
 
   const refreshMacro=async()=>{
     if(!composing||!snapshot)throw Error('请先读取当前鼠标');
@@ -116,30 +118,35 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
   };
 
   const pickRestore = async () => {
+    const generation=readGeneration.current;
     const path = await open({
       title: "Restore on-board memory from backup",
       multiple: false,
       directory: false,
       filters: [{ name: "Backup", extensions: ["json"] }],
     });
-    if (typeof path === "string") setRestorePath(path);
+    if(typeof path!=="string"||!snapshot||generation!==readGeneration.current)return;
+    setRestorePath(path);setRestorePreview(null);setRestoreError('');setRestoring(true);
+    try{const preview=await api.previewOnboardRestore(device.id,path,snapshot.device_key,snapshot.connection_key);if(generation===readGeneration.current)setRestorePreview(preview);}catch(e){if(generation===readGeneration.current)setRestoreError(String(e));}finally{if(generation===readGeneration.current)setRestoring(false);}
   };
 
   const restore = async () => {
-    if (!restorePath||!snapshot?.device_key) return;
+    if (!restorePath||!snapshot?.device_key||!restorePreview) return;
     setRestoring(true);
+    const generation=readGeneration.current;
     try {
-      const result = await api.restoreOnboardBackup(device.id, restorePath,snapshot.device_key,snapshot.connection_key);
+      const result = await api.restoreOnboardBackup(device.id, restorePath,snapshot.device_key,snapshot.connection_key,restorePreview.digest);
+      if(generation!==readGeneration.current)return;
       setSnapshot(result.snapshot);
-      toast.success(
+      if(result.refresh_note)toast.warning("板载配置已恢复并校验",{description:result.refresh_note});else toast.success(
         result.sectors_written === 0 ? "The mouse already matches this backup" : `Restored ${result.sectors_written} sector(s) from the backup`,
         { description: `The previous state was backed up to ${result.backup_path}` },
       );
-      setRestorePath(null);
+      setRestorePath(null);setRestorePreview(null);
     } catch (e) {
-      toast.error(String(e));
+      if(generation===readGeneration.current){setRestorePreview(null);setRestoreError(String(e));toast.error(String(e));}
     } finally {
-      setRestoring(false);
+      if(generation===readGeneration.current)setRestoring(false);
     }
   };
 
@@ -225,7 +232,7 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
       <OnboardBindingsEditor device={device} deviceKey={snapshot?.device_key??''} connectionKey={snapshot?.connection_key??''} profile={editingBindings} info={snapshot?.info??null} onClose={()=>setEditingBindings(null)} onSave={writeBindings}/>
       <OnboardSlotEditor profile={editing} deviceKey={snapshot?.device_key??''} connectionKey={snapshot?.connection_key??''} supportedDpi={supportedDpi} onClose={() => setEditing(null)} onSave={writeSlot} />
 
-      <Dialog open={restorePath !== null} onOpenChange={(o) => !o && setRestorePath(null)}>
+      <Dialog open={restorePath !== null} onOpenChange={(o) => !o && !restoring && setRestorePath(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Restore on-board memory?</DialogTitle>
@@ -235,11 +242,15 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
             </DialogDescription>
           </DialogHeader>
           <p className="font-mono text-xs break-all text-muted-foreground">{restorePath}</p>
+          {restoreError&&<p role="alert" className="text-sm text-destructive">{restoreError}</p>}
+          {restoring&&!restorePreview&&!restoreError&&<p role="status">正在检查备份型号与内容…</p>}
+          {restorePreview&&<section aria-label="板载恢复内容预览" className="space-y-2"><p className="font-medium">{restorePreview.device_name} · {restorePreview.profiles.length} 个板载配置</p>{restorePreview.profiles.map(p=><div key={p.slot} className="rounded-lg border p-3 text-sm"><b>槽 {p.slot}{p.name?` · ${p.name}`:''}</b><p className="mt-1 text-muted-foreground">{p.dpi_levels.join(' / ')} DPI · {p.report_rate_hz} Hz{p.enabled?'':' · 未启用'}</p></div>)}{restorePreview.macro_references>0&&<p className="text-xs text-amber-500">含 {restorePreview.macro_references} 项板载宏引用。此操作恢复目录和配置槽；宏内容继续使用鼠标当前存储。</p>}</section>}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setRestorePath(null)}>
+            <Button variant="ghost" disabled={restoring} onClick={() => setRestorePath(null)}>
               Cancel
             </Button>
-            <Button onClick={restore} disabled={restoring}>
+            {restoreError&&<Button variant="outline" onClick={pickRestore} disabled={restoring}>重新选择备份</Button>}
+            <Button onClick={restore} disabled={restoring||!restorePreview}>
               <Upload /> {restoring ? "Restoring…" : "Restore"}
             </Button>
           </DialogFooter>

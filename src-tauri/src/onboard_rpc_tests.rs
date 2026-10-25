@@ -44,6 +44,8 @@ fn profile() -> Vec<u8> {
     b[3..13].copy_from_slice(&[0x20, 3, 0x40, 6, 0x80, 12, 0, 0, 0, 0]);
     b[0x20..0x24].copy_from_slice(&[128, 1, 0, 1]);
     b[0x30..0x34].copy_from_slice(&[0, 3, 0, 5]);
+    b[0xa0..0xd0].fill(0);
+    for (at,unit) in "协议模拟配置".encode_utf16().enumerate(){b[0xa0+at*2..0xa2+at*2].copy_from_slice(&unit.to_le_bytes());}
     crc(b)
 }
 fn memory() -> Memory {
@@ -168,7 +170,7 @@ impl FeatureRequest for Memory {
                 assert_eq!(p.len(), 6);
                 assert_eq!(&p[2..4], &[0, 0]);
                 let sector = u16::from_be_bytes([p[0], p[1]]);
-                assert!((1..0x100).contains(&sector));
+                assert!((0..0x100).contains(&sector));
                 s.staging = Some((
                     sector,
                     usize::from(u16::from_be_bytes([p[4], p[5]])),
@@ -379,10 +381,11 @@ fn native_logitech_onboard_fixture_export() {
         let macro_preview=prepared.preview();let macro_saved=crate::onboard_macro_plan::commit(&planning_device,&planning_mem,&prepared).unwrap();
         let(after_macro_snapshot,_)=planning_device.onboard_snapshot(&planning_mem).unwrap();
         let long_mem=planning_memory();let long_device=unit_device(&long_mem);let long_request=long_macro_request(&long_device);let long_prepared=crate::onboard_macro_plan::prepare(&long_device,&long_mem,&long_request).unwrap();let long_macro_preview=long_prepared.preview();let long_macro_saved=crate::onboard_macro_plan::commit(&long_device,&long_mem,&long_prepared).unwrap();let(after_long_macro_snapshot,_)=long_device.onboard_snapshot(&long_mem).unwrap();
+        let restore_file=restore_file();let restore_bytes=serde_json::to_vec_pretty(&restore_file).unwrap();let restore_digest=backup_digest(&restore_bytes);let restore_preview=restore_preview(&restore_file,&d.model_ids,&snapshot.info,&d.name,restore_digest.clone()).unwrap();
         std::fs::write(
             path,
             serde_json::to_vec_pretty(
-                &serde_json::json!({"long_macro_preview":long_macro_preview,"long_macro_saved":long_macro_saved,"after_long_macro_snapshot":after_long_macro_snapshot,"planning_snapshot":planning_snapshot,"macro_preview":macro_preview,"macro_saved":macro_saved,"after_macro_snapshot":after_macro_snapshot,"macro_trace":macro_trace,"device":summary,"snapshot":snapshot,"after_snapshot":after_snapshot,"after_dpi_snapshot":after_dpi_snapshot,"hardware_tested":false}),
+                &serde_json::json!({"restore_backup":restore_file,"restore_backup_digest":restore_digest,"restore_preview":restore_preview,"long_macro_preview":long_macro_preview,"long_macro_saved":long_macro_saved,"after_long_macro_snapshot":after_long_macro_snapshot,"planning_snapshot":planning_snapshot,"macro_preview":macro_preview,"macro_saved":macro_saved,"after_macro_snapshot":after_macro_snapshot,"macro_trace":macro_trace,"device":summary,"snapshot":snapshot,"after_snapshot":after_snapshot,"after_dpi_snapshot":after_dpi_snapshot,"hardware_tested":false}),
             )
             .unwrap(),
         )
@@ -589,4 +592,47 @@ fn browser_long_native_macro_request_uses_production_cross_page_allocation_and_r
 #[ignore="requires current reconnection-preserved macro UI request"]
 fn browser_reconnected_macro_draft_preserves_definition_but_uses_only_the_fresh_connection(){
  let path=std::env::var_os("OPEN_HUB_LOGITECH_RECONNECTED_MACRO_UI_REQUEST").unwrap();let request:crate::onboard_macro_plan::Request=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();let m=planning_memory();let mut d=unit_device(&m);d.connection_key="connection:reconnected".into();assert_eq!(request.selection.expected_connection,d.connection_key);assert_eq!(request.definition.name,"重连保留的宏草稿");let prepared=crate::onboard_macro_plan::prepare(&d,&m,&request).unwrap();crate::onboard_macro_plan::commit(&d,&m,&prepared).unwrap();let mut selection=request.selection;selection.expected=[0,5,0,0];let trace=crate::onboard_macros::read(&d,&m,&selection).unwrap();assert!(trace.complete);assert_eq!(trace.steps[0].action,crate::onboard_macros::Action::KeyDown{usage:6,modifiers:17});
+}
+
+fn restore_file()->serde_json::Value{
+ let m=planning_memory();let d=unit_device(&m);{let mut state=m.0.lock().unwrap();let mut p=state.sectors[&1].clone();p[0]=2;p[0xa0..0xd0].fill(0);for(at,u)in "备份桌面".encode_utf16().enumerate(){p[0xa0+at*2..0xa2+at*2].copy_from_slice(&u.to_le_bytes());}state.sectors.insert(1,crc(p));let mut p=state.sectors[&2].clone();p[0x0d]=42;p[0xa0..0xd0].fill(0);for(at,u)in "备份游戏".encode_utf16().enumerate(){p[0xa0+at*2..0xa2+at*2].copy_from_slice(&u.to_le_bytes());}state.sectors.insert(2,crc(p));let mut dir=state.sectors[&0].clone();dir[6]=0;state.sectors.insert(0,crc(dir));}
+ let(snapshot,mut raw)=d.onboard_snapshot(&m).unwrap();raw.push(RawSector{sector:3,crc_valid:Some(true),hex:hex(&crc(vec![0x55;256]))});
+ serde_json::json!({"format":"open-ghub-onboard-backup/1","model_ids":["c08b"],"snapshot":snapshot,"sectors":raw})
+}
+#[test]fn scoped_restore_uses_model_and_layout_and_only_directory_referenced_profile_pages(){
+ let file=restore_file();let m=planning_memory();let d=unit_device(&m);let before=m.0.lock().unwrap().sectors.clone();let info=d.onboard_info(&m).unwrap();let sectors=scoped_restore(&file,&d.model_ids,&info).unwrap();assert_eq!(sectors.iter().map(|(s,_)|*s).collect::<Vec<_>>(),vec![1,2,0]);assert_eq!(d.restore_sectors(&m,&sectors).unwrap(),3);
+ let state=m.0.lock().unwrap();assert_eq!(state.sectors[&1][0],2);assert_eq!(state.sectors[&2][0x0d],42);assert_eq!(state.sectors[&0][6],0);for sector in [3,4,5,6,7]{assert_eq!(state.sectors[&sector],before[&sector]);}
+ assert_eq!(state.calls.iter().filter(|(f,_)|*f==6).map(|(_,p)|u16::from_be_bytes([p[0],p[1]])).collect::<Vec<_>>(),vec![1,2,0]);
+}
+#[test]fn restore_rejects_wrong_missing_or_malformed_model_tags_and_memory_layout(){
+ let m=memory();let d=device();let info=d.onboard_info(&m).unwrap();
+ for tag in [serde_json::json!([]),serde_json::json!(["C09D"]),serde_json::json!(["GGGG"]),serde_json::json!([1]),serde_json::json!(["FFFF"])]{let mut file=restore_file();file["model_ids"]=tag;assert!(scoped_restore(&file,&d.model_ids,&info).is_err());}
+ for field in ["memory_model","profile_format","macro_format","profile_count","button_count","sector_count","sector_size","mechanical_layout"]{let mut file=restore_file();file["snapshot"]["info"][field]=serde_json::json!(255);assert!(scoped_restore(&file,&d.model_ids,&info).is_err(),"{field}");}
+ let mut file=restore_file();file.as_object_mut().unwrap().remove("model_ids");assert!(scoped_restore(&file,&d.model_ids,&info).is_err());let mut file=restore_file();file["format"]=serde_json::json!("diagnostic-dump");assert!(scoped_restore(&file,&d.model_ids,&info).is_err());
+}
+#[test]fn restore_rejects_ambiguous_incomplete_and_corrupt_sector_containers(){
+ let m=memory();let d=device();let info=d.onboard_info(&m).unwrap();
+ let mut file=restore_file();let duplicate=file["sectors"][1].clone();file["sectors"].as_array_mut().unwrap().push(duplicate);assert!(scoped_restore(&file,&d.model_ids,&info).is_err());
+ let mut file=restore_file();file["sectors"].as_array_mut().unwrap().retain(|s|s["sector"]!=2);assert!(scoped_restore(&file,&d.model_ids,&info).is_err());
+ let mut file=restore_file();file["sectors"][0]["crc_valid"]=serde_json::json!(false);assert!(scoped_restore(&file,&d.model_ids,&info).is_err());
+ let mut file=restore_file();file["sectors"][1]["hex"]=serde_json::json!("00".repeat(256));assert!(scoped_restore(&file,&d.model_ids,&info).is_err());
+}
+#[test]fn restore_core_rejects_late_invalid_inputs_and_reads_all_preimages_before_first_write(){
+ for case in 0..3{let m=memory();let d=device();let good=crc(vec![0xff;256]);let mut bad=good.clone();bad[9]^=1;let sectors=match case{0=>vec![(8,good)],1=>vec![(1,good.clone()),(1,good)],_=>vec![(1,good),(2,bad)]};assert!(d.restore_sectors(&m,&sectors).is_err());assert!(!m.0.lock().unwrap().calls.iter().any(|(f,_)|matches!(f,6|7|8)));}
+ let m=memory();let d=device();let good=crc(vec![0xff;256]);m.0.lock().unwrap().fault=Some((5,17));assert!(d.restore_sectors(&m,&[(1,good.clone()),(2,good)]).is_err());assert!(!m.0.lock().unwrap().calls.iter().any(|(f,_)|matches!(f,6|7|8)));
+}
+
+#[test]fn native_profile_names_decode_utf16_without_guessing_or_replacing_opaque_bytes(){
+ for name in ["协议模拟配置","桌面 🎮","Open HUB"]{let mut bytes=vec![0u8;48];for(at,u)in name.encode_utf16().enumerate(){bytes[at*2..at*2+2].copy_from_slice(&u.to_le_bytes());}assert_eq!(decode_name(&bytes).as_deref(),Some(name));}
+ assert_eq!(decode_name(&[255;48]),None);assert_eq!(decode_name(&[0;48]),None);assert_eq!(decode_name(&[0,0xd8,0,0]),None);
+}
+#[test]fn restore_preview_decodes_verified_raw_profiles_and_pins_original_file_bytes(){
+ assert_eq!(backup_digest(b"abc"),"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+ let m=planning_memory();let d=unit_device(&m);let info=d.onboard_info(&m).unwrap();let mut file=restore_file();file["snapshot"]["profiles"][0]["name"]=serde_json::json!("untrusted metadata name");let bytes=serde_json::to_vec_pretty(&file).unwrap();let digest=backup_digest(&bytes);let preview=restore_preview(&file,&d.model_ids,&info,&d.name,digest.clone()).unwrap();assert_eq!(preview.digest,digest);assert_eq!(preview.profiles[0].name.as_deref(),Some("备份桌面"));assert_eq!(preview.profiles[1].name.as_deref(),Some("备份游戏"));assert_eq!(preview.profiles[0].report_rate_hz,500);assert!(!preview.profiles[1].enabled);assert!(preview.macro_references>0);
+ let mut changed=bytes.clone();changed.push(b' ');assert_ne!(backup_digest(&changed),digest);assert_eq!(serde_json::from_slice::<serde_json::Value>(&changed).unwrap(),file);
+}
+#[test]
+#[ignore="requires current backup restore preview browser request"]
+fn browser_reviewed_restore_request_uses_selected_unit_connection_and_exact_backup_bytes(){
+ let path=std::env::var_os("OPEN_HUB_LOGITECH_RESTORE_UI_REQUEST").unwrap();let request:serde_json::Value=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();let m=memory();let d=device();d.verify_native_preview(&m,request["expectedDevice"].as_str().unwrap(),request["expectedConnection"].as_str().unwrap()).unwrap();assert_eq!(request["id"],d.id);let file=restore_file();let digest=backup_digest(&serde_json::to_vec_pretty(&file).unwrap());assert_eq!(request["expectedBackupDigest"],digest);let plan=scoped_restore(&file,&d.model_ids,&d.onboard_info(&m).unwrap()).unwrap();assert_eq!(d.restore_sectors(&m,&plan).unwrap(),3);assert_eq!(d.onboard_snapshot(&m).unwrap().0.profiles[0].name.as_deref(),Some("备份桌面"));
 }

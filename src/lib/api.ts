@@ -226,10 +226,13 @@ export interface OnboardWriteResult {
   snapshot: OnboardSnapshot;
 }
 
+export interface OnboardRestorePreview{digest:string;device_name:string;profiles:OnboardProfile[];macro_references:number}
+
 export interface OnboardRestoreResult {
   sectors_written: number;
   backup_path: string;
-  snapshot: OnboardSnapshot;
+  snapshot: OnboardSnapshot | null;
+  refresh_note: string | null;
 }
 
 /** Report rates the on-board format can store. */
@@ -291,8 +294,9 @@ export const api = {
   writeOnboardBindings:(id:string,settings:OnboardBindingSettings)=>invoke<OnboardBindingWriteResult>("write_onboard_bindings",{id,settings}),
   writeOnboardSlot: (id: string, settings: SlotSettings) =>
     invoke<OnboardWriteResult>("write_onboard_slot", { id, settings }),
-  restoreOnboardBackup: (id: string, path: string, expectedDevice:string,expectedConnection:string) =>
-    invoke<OnboardRestoreResult>("restore_onboard_backup", { id, path,expectedDevice,expectedConnection }),
+  previewOnboardRestore:(id:string,path:string,expectedDevice:string,expectedConnection:string)=>invoke<OnboardRestorePreview>("preview_onboard_restore",{id,path,expectedDevice,expectedConnection}),
+  restoreOnboardBackup: (id: string, path: string, expectedDevice:string,expectedConnection:string,expectedBackupDigest:string) =>
+    invoke<OnboardRestoreResult>("restore_onboard_backup", { id, path,expectedDevice,expectedConnection,expectedBackupDigest }),
 
   appInfo: () => invoke<AppInfo>("get_app_info"),
   setAppSettings: (settings: AppSettings) => invoke<void>("set_app_settings", { settings }),

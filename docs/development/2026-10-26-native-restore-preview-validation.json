@@ -1,0 +1,23 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "scoped native backup restoration, raw decoded content preview, SHA256 file identity and UTF16 names",
+  "default_application_tests": 475,
+  "explicit_cross_tests": 21,
+  "headless_ui_suites": 35,
+  "headless_ui_status": "all-passed",
+  "development_exe_memory_transports": 32,
+  "development_exe_sha256": "7d0a76aa97fda8c233519efc1dade62302878cc82f47b0bef81b63562c0746bd",
+  "frontend_js_gzip_kb": 222.94,
+  "backup_scope": [
+    "directory",
+    "directory-referenced user profiles"
+  ],
+  "macro_content_restored": false,
+  "whole_transaction_recovery": false,
+  "new_locked_packages": 0,
+  "direct_dependency_reuses_existing_locked_package": "sha2 0.10.9",
+  "physical_Logitech_tested": false,
+  "accepted_full_models": 0,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}

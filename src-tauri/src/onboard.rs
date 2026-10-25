@@ -239,25 +239,13 @@ pub fn decode_binding(raw: [u8; 4]) -> ButtonBinding {
     ButtonBinding { raw, kind, description }
 }
 
-/// Profile name: all 0xFF means "use the default name". Names written as
-/// UTF-16LE (every other byte zero) and as plain UTF-8 are both seen.
-fn decode_name(raw: &[u8]) -> Option<String> {
-    if raw.iter().all(|&b| b == 0xFF) {
-        return None;
-    }
-    let utf16 = raw.chunks(2).take_while(|c| c != &[0, 0]).all(|c| c[1] == 0);
-    let text = if utf16 {
-        let units: Vec<u16> = raw
-            .chunks(2)
-            .map(|c| u16::from_le_bytes([c[0], c[1]]))
-            .take_while(|&u| u != 0 && u != 0xFFFF)
-            .collect();
-        String::from_utf16_lossy(&units)
-    } else {
-        let end = raw.iter().position(|&b| b == 0 || b == 0xFF).unwrap_or(raw.len());
-        String::from_utf8_lossy(&raw[..end]).into_owned()
-    };
-    Some(text.trim().to_string()).filter(|s| !s.is_empty())
+/// The native name field is 24 UTF-16LE units (also for non-ASCII names).
+/// An all-FF field requests the firmware default. Invalid UTF-16 stays unnamed
+/// rather than guessing a different encoding or replacing opaque bytes.
+fn decode_name(raw:&[u8])->Option<String>{
+    if raw.iter().all(|b|*b==0xff){return None;}
+    let units=raw.chunks_exact(2).map(|c|u16::from_le_bytes([c[0],c[1]])).take_while(|u|*u!=0&&*u!=0xffff).collect::<Vec<_>>();
+    String::from_utf16(&units).ok().map(|s|s.trim().to_string()).filter(|s|!s.is_empty())
 }
 
 fn parse_profile(slot: u8, sector: u16, rom: bool, enabled: bool, data: &[u8], button_count: usize) -> Profile {
@@ -318,6 +306,51 @@ pub fn restorable_sectors(raw: &[RawSector]) -> std::result::Result<Vec<(u16, Ve
         return Err("the backup contains no restorable sectors".into());
     }
     Ok(out)
+}
+
+
+/// A profile restore is scoped by model tags and the exact memory layout.
+/// Original raw macro/ROM pages may be retained in the file; this legacy
+/// restore operation changes the directory and referenced user profiles only.
+pub fn scoped_restore(file:&serde_json::Value,current_models:&[u16],info:&Info)->std::result::Result<Vec<(u16,Vec<u8>)>,String>{
+    crate::onboard_bindings::validate_info(info)?;
+    if info.sector_count==0{return Err("mouse did not report live memory geometry".into());}
+    if file.get("format").and_then(|v|v.as_str())!=Some("open-ghub-onboard-backup/1"){return Err("not an Open HUB on-board restore backup".into());}
+    let tags:Vec<String>=serde_json::from_value(file.get("model_ids").cloned().unwrap_or_default()).map_err(|_|"backup model metadata is missing or malformed")?;
+    if tags.is_empty()||tags.len()>16{return Err("backup model identity is missing or unverified".into());}
+    let ids=tags.iter().map(|s|{if s.len()!=4||!s.is_ascii(){return Err("backup model ID is malformed");}u16::from_str_radix(s,16).map_err(|_|"backup model ID is malformed")}).collect::<std::result::Result<Vec<_>,_>>()?;
+    if !ids.iter().any(|id|*id!=0&&*id!=0xffff&&current_models.contains(id)){return Err("backup belongs to a different or unknown mouse model".into());}
+    let layout=file.pointer("/snapshot/info").ok_or("backup layout metadata is missing")?;
+    for (field,value) in [("memory_model",u64::from(info.memory_model)),("profile_format",u64::from(info.profile_format)),("macro_format",u64::from(info.macro_format)),("profile_count",u64::from(info.profile_count)),("button_count",u64::from(info.button_count)),("sector_count",u64::from(info.sector_count)),("sector_size",u64::from(info.sector_size)),("mechanical_layout",u64::from(info.mechanical_layout))]{
+        if layout.get(field).and_then(|v|v.as_u64())!=Some(value){return Err(format!("backup {field} differs from this mouse; no restore was sent"));}
+    }
+    let raw:Vec<RawSector>=serde_json::from_value(file.get("sectors").cloned().unwrap_or_default()).map_err(|e|format!("backup sectors are unreadable: {e}"))?;
+    let mut seen=std::collections::BTreeSet::new();if raw.iter().any(|r|!seen.insert(r.sector)){return Err("backup contains duplicate sector records".into());}
+    let valid=restorable_sectors(&raw)?.into_iter().collect::<std::collections::BTreeMap<_,_>>();
+    if valid.iter().any(|(sector,data)|*sector>=u16::from(info.sector_count)||data.len()!=usize::from(info.sector_size)){return Err("backup live-sector geometry differs from this mouse".into());}
+    let directory=valid.get(&0).ok_or("backup has no verified profile directory")?;
+    let mut selected=Vec::new();let mut profiles=std::collections::BTreeSet::new();
+    for slot in 0..usize::from(info.profile_count){let at=slot*4;let sector=u16::from_be_bytes([directory[at],directory[at+1]]);if sector==0xffff{break;}
+        if sector==0||sector>=u16::from(info.sector_count)||!profiles.insert(sector){return Err("backup directory has an unverified or aliased user profile".into());}
+        let bytes=valid.get(&sector).ok_or("backup is missing a verified referenced user profile")?;selected.push((sector,bytes.clone()));
+    }
+    selected.push((0,directory.clone()));Ok(selected)
+}
+
+
+#[derive(Debug,Serialize)]pub struct RestorePreview{pub digest:String,pub device_name:String,pub profiles:Vec<Profile>,pub macro_references:usize}
+pub fn backup_digest(bytes:&[u8])->String{use sha2::Digest;sha2::Sha256::digest(bytes).iter().map(|b|format!("{b:02x}")).collect()}
+pub fn read_restore_file(path:&std::path::Path)->std::result::Result<(serde_json::Value,String),String>{
+    let bytes=std::fs::read(path).map_err(|e|format!("could not read {}: {e}",path.display()))?;
+    let value=serde_json::from_slice(&bytes).map_err(|e|format!("not an Open HUB backup file: {e}"))?;Ok((value,backup_digest(&bytes)))
+}
+pub fn restore_preview(file:&serde_json::Value,models:&[u16],info:&Info,name:&str,digest:String)->std::result::Result<RestorePreview,String>{
+    let sectors=scoped_restore(file,models,info)?;let directory=&sectors.iter().find(|(s,_)|*s==0).unwrap().1;let mut profiles=Vec::new();let mut macro_references=0;
+    for slot in 0..usize::from(info.profile_count){let at=slot*4;let sector=u16::from_be_bytes([directory[at],directory[at+1]]);if sector==0xffff{break;}let bytes=&sectors.iter().find(|(s,_)|*s==sector).unwrap().1;
+        for base in [0x20,0x60]{for button in 0..16{if bytes[base+button*4]==0{macro_references+=1;}}}
+        profiles.push(parse_profile(slot as u8+1,sector,false,directory[at+2]!=0,bytes,usize::from(info.button_count)));
+    }
+    Ok(RestorePreview{digest,device_name:name.into(),profiles,macro_references})
 }
 
 impl Device {
@@ -627,6 +660,9 @@ impl Device {
         crate::onboard_bindings::validate_target(self).map_err(Error::Other)?;
         self.verify_native_identity(t, &self.profile_key)?;
         let info = self.onboard_info(t)?;
+        crate::onboard_bindings::validate_info(&info).map_err(Error::Other)?;
+        let mut seen=std::collections::BTreeSet::new();
+        if sectors.is_empty()||sectors.iter().any(|(sector,data)|*sector>=u16::from(info.sector_count)||!seen.insert(*sector)||!sector_crc_ok(data)){return Err(Error::Other("invalid, duplicate or unverified restore sector".into()));}
         if let Some((sector, data)) = sectors.iter().find(|(_, d)| d.len() != usize::from(info.sector_size)) {
             return Err(Error::Other(format!(
                 "backup sector 0x{sector:04x} is {} bytes but this mouse uses {}",
@@ -634,13 +670,16 @@ impl Device {
                 info.sector_size
             )));
         }
+        // Read every preimage before the first flash write. A bad last sector
+        // must not leave earlier sectors already changed.
+        let mut before=Vec::new();
+        for (sector,data) in sectors {before.push((*sector,data,self.read_sector(t,*sector,info.sector_size)?));}
+        self.verify_native_identity(t,&self.profile_key)?;
+        before.sort_by_key(|(sector,_,_)|(*sector==0,*sector));
         let mut written = 0;
-        for (sector, data) in sectors {
-            let current = self.read_sector(t, *sector, info.sector_size)?;
-            if &current == data {
-                continue;
-            }
-            self.write_sector_verified(t, *sector, data, &current)?;
+        for (sector, data, current) in before {
+            if &current == data {continue;}
+            self.write_sector_verified(t, sector, data, &current)?;
             written += 1;
         }
         Ok(written)

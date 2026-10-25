@@ -671,42 +671,41 @@ fn write_onboard_slot(
 struct OnboardRestoreResult {
     sectors_written: usize,
     backup_path: String,
-    snapshot: onboard::Snapshot,
+    snapshot: Option<onboard::Snapshot>,
+    refresh_note: Option<String>,
 }
 
 /// Restores the directory and user profiles from a backup file made for the
 /// same mouse model. The current state is backed up first.
 #[tauri::command(async)]
-fn restore_onboard_backup(app: AppHandle, state: State<AppState>, id: String, path: String, expected_device: String, expected_connection:String) -> Result<OnboardRestoreResult, String> {
+fn preview_onboard_restore(state:State<AppState>,id:String,path:String,expected_device:String,expected_connection:String)->Result<onboard::RestorePreview,String>{
+ let(file,digest)=onboard::read_restore_file(std::path::Path::new(&path))?;let guard=manager(&state)?;guard.as_ref().expect("manager initialised").with_device(&id,|d,t|{
+  onboard_bindings::validate_target(d).map_err(hidpp::Error::Other)?;d.verify_native_preview(t,&expected_device,&expected_connection)?;let info=d.onboard_info(t)?;onboard::restore_preview(&file,&d.model_ids,&info,&d.name,digest).map_err(hidpp::Error::Other)
+ }).map_err(|e|e.to_string())
+}
+#[tauri::command(async)]
+fn restore_onboard_backup(app: AppHandle, state: State<AppState>, id: String, path: String, expected_device: String, expected_connection:String,expected_backup_digest:String) -> Result<OnboardRestoreResult, String> {
     if ghub_agent_running() {
         return Err(GHUB_RUNNING.into());
     }
-    let file: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).map_err(|e| format!("could not read {path}: {e}"))?)
-        .map_err(|e| format!("not a backup file: {e}"))?;
-    if file.get("format").and_then(|f| f.as_str()) != Some("open-ghub-onboard-backup/1") {
-        return Err("not an Open HUB on-board backup".into());
-    }
-    let raw: Vec<onboard::RawSector> =
-        serde_json::from_value(file.get("sectors").cloned().unwrap_or_default()).map_err(|e| format!("backup sectors are unreadable: {e}"))?;
-    let sectors = onboard::restorable_sectors(&raw)?;
-    let backup_models: Vec<String> = serde_json::from_value(file.get("model_ids").cloned().unwrap_or_default()).unwrap_or_default();
-
+    let(file,digest)=onboard::read_restore_file(std::path::Path::new(&path))?;
+    if digest!=expected_backup_digest{return Err("backup file changed since preview; select it again before restoring".into());}
     let guard = manager(&state)?;
     let manager = guard.as_ref().expect("manager initialised");
     manager
         .with_device(&id, |d, t| {
             onboard_bindings::validate_target(d).map_err(hidpp::Error::Other)?;
             d.verify_native_preview(t,&expected_device,&expected_connection)?;
-            let models: Vec<String> = d.model_ids.iter().map(|m| format!("{m:04X}")).collect();
-            if !backup_models.is_empty() && !backup_models.iter().any(|m| models.contains(m)) {
-                return Err(hidpp::Error::Other(format!("this backup is for a different mouse ({})", backup_models.join(", "))));
-            }
             let (before, current_raw) = d.onboard_snapshot(t)?;
+            let sectors=onboard::scoped_restore(&file,&d.model_ids,&before.info).map_err(hidpp::Error::Other)?;
             let backup = auto_backup_path(&app, d).map_err(hidpp::Error::Other)?;
             write_onboard_backup(&app.package_info().version.to_string(), &backup, d, &before, &current_raw).map_err(hidpp::Error::Other)?;
             let sectors_written = d.restore_sectors(t, &sectors)?;
-            let (snapshot, _) = d.onboard_snapshot(t)?;
-            Ok(OnboardRestoreResult { sectors_written, backup_path: backup.display().to_string(), snapshot })
+            let (snapshot, refresh_note) = match d.onboard_snapshot(t) {
+                Ok((snapshot,_)) => (Some(snapshot),None),
+                Err(e) => (None,Some(format!("Restore was read-back verified, but refreshing the view failed: {e}"))),
+            };
+            Ok(OnboardRestoreResult { sectors_written, backup_path: backup.display().to_string(), snapshot, refresh_note })
         })
         .map_err(|e| e.to_string())
 }
@@ -859,6 +858,7 @@ fn onboard_dump(backup_path: Option<String>) {
     if let Err(e) = manager.scan() {
         return eprintln!("scan failed: {e}");
     }
+    if backup_path.is_some()&&manager.devices().iter().filter(|d|d.has(device::feature::ONBOARD_PROFILES)).count()!=1{return eprintln!("a backup file needs one specific device; select that mouse in Open HUB");}
     for d in manager.devices() {
         if !d.has(device::feature::ONBOARD_PROFILES) {
             continue;
@@ -867,13 +867,7 @@ fn onboard_dump(backup_path: Option<String>) {
             Ok((snapshot, raw)) => {
                 println!("{}", serde_json::to_string_pretty(&serde_json::json!({ "device": d.name, "snapshot": snapshot })).unwrap_or_default());
                 if let Some(path) = &backup_path {
-                    let backup = serde_json::json!({
-                        "device": d.name, "model_ids": d.model_ids, "info": snapshot.info, "sectors": raw,
-                    });
-                    match std::fs::write(path, serde_json::to_vec_pretty(&backup).unwrap_or_default()) {
-                        Ok(()) => eprintln!("raw sectors written to {path}"),
-                        Err(e) => eprintln!("could not write {path}: {e}"),
-                    }
+                    match write_onboard_backup(env!("CARGO_PKG_VERSION"),std::path::Path::new(path),d,&snapshot,&raw){Ok(())=>eprintln!("backup written to {path}"),Err(e)=>eprintln!("could not write {path}: {e}")}
                 }
             }
             Err(e) => eprintln!("{}: {e}", d.name),
@@ -1011,10 +1005,12 @@ fn main() {
         let path = std::env::args().nth(pos + 1).unwrap_or_default();
         return onboard_cli(move |d, t| {
             let file: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-            let raw: Vec<onboard::RawSector> = serde_json::from_value(file["sectors"].clone()).map_err(|e| e.to_string())?;
-            let sectors = onboard::restorable_sectors(&raw)?;
+            let (before,raw)=d.onboard_snapshot(t).map_err(|e|e.to_string())?;
+            let sectors=onboard::scoped_restore(&file,&d.model_ids,&before.info)?;
+            let source=std::path::Path::new(&path);let backup=source.with_file_name(format!("open-hub-before-restore-{}.json",profiles::new_id()));
+            write_onboard_backup(env!("CARGO_PKG_VERSION"),&backup,d,&before,&raw)?;
             let written = d.restore_sectors(t, &sectors).map_err(|e| e.to_string())?;
-            Ok(format!("restored {written} sector(s)"))
+            Ok(format!("restored {written} sector(s); previous state backed up to {}",backup.display()))
         });
     }
     // Read-only: print what an import from G HUB would produce, without saving.
@@ -1123,6 +1119,7 @@ fn main() {
             write_onboard_macro,
             read_logitech_lighting,apply_logitech_lighting,
             restore_onboard_backup,
+            preview_onboard_restore,
             get_app_info,
             set_app_settings,
             appearance::export_ui_skin,
