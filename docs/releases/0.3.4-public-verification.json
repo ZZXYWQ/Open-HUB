@@ -1,0 +1,63 @@
+{
+  "version": "0.3.4",
+  "tag": "v0.3.4-experimental.1",
+  "verified_at": "2026-10-25T08:32:45.100269+00:00",
+  "release_url": "https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.4-experimental.1",
+  "source_commit": "339a6d2b5d77718579c8a0b1ee536e39866e83c4",
+  "source_zip": {
+    "name": "Open-HUB-0.3.4-source.zip",
+    "bytes": 41337409,
+    "sha256": "f249d6d9052eda70d1ea05ec875a8b3d00f217810f14b566ce355a333dffed9e"
+  },
+  "source_archive_files_verified": 442,
+  "source_archive_matches_git": true,
+  "initial_github_asset_digests_matched": 6,
+  "anonymous_initial_checks": [
+    {
+      "name": "Open-HUB-0.3.4-x64-setup.exe",
+      "status": 200
+    },
+    {
+      "name": "Open-HUB-0.3.4-source.zip",
+      "status": 200
+    },
+    {
+      "name": "latest.json",
+      "status": 200
+    },
+    {
+      "name": "validation.json",
+      "status": 200
+    }
+  ],
+  "anonymous_full_download": {
+    "url": "https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.4-experimental.1/Open-HUB-0.3.4-x64-setup.exe",
+    "status": 200,
+    "bytes": 38792147,
+    "sha256": "1085bd7e9d3963207d0309acf2c8c47ad1768cbe51edc4871cc11b5dd9c7c4c5",
+    "matched_local": true
+  },
+  "readme_direct_exe_link_verified": true,
+  "public_feed_version": "0.3.4",
+  "production_update_verification": {
+    "bytes": 38792147,
+    "download_signature_valid": true,
+    "hardware_accessed": false,
+    "installed": false,
+    "passed": true,
+    "release_url": "https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.4-experimental.1",
+    "signed_version_mismatch_rejected": true,
+    "tamper_rejected": true,
+    "version": "0.3.4"
+  },
+  "local_upgrade": {
+    "explicitly_authorized": true,
+    "installed_version": "0.3.4",
+    "installed_payload_files_verified": 50,
+    "configuration_and_preferences_preserved_before_first_start": true,
+    "application_started_and_responding": true,
+    "personal_backup_or_paths_published": false
+  },
+  "experimental": true,
+  "new_mouse_hardware_tested": false
+}
