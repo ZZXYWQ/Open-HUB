@@ -1,4 +1,4 @@
-Open HUB 0.3.2
+Open HUB 0.3.3
 本地个人适配版，基于 abidr/open-ghub（GPL-3.0-or-later）。
 原生迈从协议与灯光引擎由本适配版独立实现。本软件与迈从、罗技均无隶属关系。
 官方型号图片来自 https://cdn.mchose.com.cn/configCenter/static/images/ ，仅作为本地设备识别展示，图片权利属于原权利人。
@@ -17,3 +17,5 @@ SinoWealth 原生协议参考遵循 libratbag 的 MIT 许可；Marian Beermann �
 
 新增型号产品图见 型号外观来源.json，权利属于原权利人，仅用于设备识别，不表示厂商背书。Piper 的未修改 SVG 轮廓保留独立 GPL-2.0 许可与可编辑源文件，见 Piper-SVG-COPYING.txt 与源码 docs/PIPER-ARTWORK.md；不包含 Piper 或 GTK 运行库。
 GitHub 更新自动查询本仓库版本元数据；下载和安装都由用户选择，更新包使用独立签名并绑定版本。Windows EXE 尚无 Authenticode 代码签名。
+
+HyperX/Pulsar 协议参考保留 MIT 作者许可；HyperX 原作者 SVG 和公开抓包提取载荷保留 GPL-3.0 许可。详见 HyperX-Protocol-MIT.txt、Pulsar-Protocol-MIT.txt、HyperX-Source-GPL-3.0.txt 与对应适配说明。

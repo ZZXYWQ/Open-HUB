@@ -1,0 +1,209 @@
+{
+  "product": "Open HUB",
+  "version": "0.3.3",
+  "tag": "v0.3.3-experimental.1",
+  "experimental": true,
+  "date": "2026-10-25T01:53:19.335059+00:00",
+  "origin": {
+    "repository": "https://github.com/abidr/open-ghub",
+    "author": "Abidur Rahman",
+    "license": "GPL-3.0-or-later",
+    "base": "2853a6251a31a376a0f7287c1c846bd9bff97198"
+  },
+  "scope": {
+    "brands_with_partial_support": 18,
+    "new_brands": [
+      "HyperX",
+      "Pulsar"
+    ],
+    "new_mouse_models": 3,
+    "new_exact_transports": 4,
+    "whole_brand_support": false
+  },
+  "native_tests": {
+    "passed": 276,
+    "default_suite": 273,
+    "explicit_input_tests": 3,
+    "failed": 0,
+    "final_affected_driver_rerun": {
+      "passed": 22,
+      "failed": 0,
+      "includes_disabled_dpi_restore_validation": true
+    }
+  },
+  "ui_tests": {
+    "passed": true,
+    "suites": 19,
+    "ipc_mocked": true,
+    "suite_results": [
+      {
+        "name": "test-appearance-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-atk-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-brand-imports-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-compx-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-device-art-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-gg-import-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-icue-import-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-manual-recovery-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-multi-macros-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-new-brands-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-reconnect-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-session-plan-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-sino-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-synapse-import-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-synapse-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-three-brand-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-ui-integration.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-updater-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-viper-ui.cjs",
+        "passed": true
+      }
+    ],
+    "new_brand_controls": {
+      "passed": true,
+      "native_fixture_transports": 4,
+      "hardware_tested": false,
+      "checks": [
+        "HyperX and Pulsar named sources",
+        "two exact transports per brand",
+        "foreign reply blocked",
+        "selection change clears preview",
+        "no automatic hardware apply",
+        "DPI/rate/allowed bindings/known macros preserved",
+        "no fake HyperX initial light readback",
+        "HyperX single-play keyboard macro UI",
+        "Pulsar button and macro writes absent",
+        "four exact local images load",
+        "source DTOs emitted by native adapters",
+        "six UI-saved profiles exported for native validation"
+      ]
+    }
+  },
+  "artwork_tests": {
+    "passed": true,
+    "catalog_cases": 56,
+    "logitech_names": 25,
+    "sino_records": 11,
+    "compx_transports": 11,
+    "other_native_models": 9,
+    "hardware_tested": false,
+    "checks": [
+      "every named native mouse has matching local artwork",
+      "all WebP and SVG images decode",
+      "grid and list use model artwork",
+      "Naga and Viper have distinct bodies",
+      "unknown future model cannot borrow another photo"
+    ]
+  },
+  "production_executable_selftest": {
+    "passed": true,
+    "simulated_transport_identities": 23,
+    "hardware_accessed": false
+  },
+  "installer": {
+    "passed": true,
+    "version": "0.3.3",
+    "installer_bytes": 38724738,
+    "installer_sha256": "aa4691515d74db45f6378acd58aa92b1162d43ca03137f146f128741e1f3751b",
+    "application_sha256": "a38f4367413e0172c431ec50ceb145cda71f015948d7078f748cc84499c44149",
+    "payload_files_verified": 48,
+    "current_frontend_embedded": true,
+    "installed": false,
+    "registry_changed": false,
+    "user_configuration_touched": false
+  },
+  "installer_migration": {
+    "passed": true,
+    "checks": [
+      "nested/unicode backups copied; source/newer/prior snapshots unchanged; registers restored",
+      "repeat migration reserves new snapshot without overwriting any prior file",
+      "destination failure returns nonzero before uninstall continuation and preserves source",
+      "real sharing violation during copy returns nonzero before uninstall continuation; source preserved",
+      "missing source is a successful no-op; registers restored"
+    ],
+    "helper_sha256": "63c41eeb53ab7802ec16f170fb8afbcd26279fc579fe40072e609a884f76b3fa",
+    "scope": "Real NSIS compiler/runtime; workspace fixtures only; no registry or installed software"
+  },
+  "update_package": {
+    "independent_key": true,
+    "version_bound_signature_generated": true,
+    "private_key_included": false,
+    "windows_authenticode": "NotSigned",
+    "automatic_download": false,
+    "automatic_install": false,
+    "download_and_install_are_separate_explicit_actions": true
+  },
+  "hardware_validation": {
+    "new_hyperx_physical_tests": false,
+    "new_pulsar_physical_tests": false,
+    "existing_physical_mouse": "MCHOSE A7 V3 Ultra+",
+    "existing_physical_dock": "MagDock",
+    "hardware_accessed_this_release": false,
+    "current_installed_version": "0.3.2",
+    "installed_this_release": false
+  },
+  "limits": [
+    "Exact models/USB transports only; no whole-brand compatibility claim",
+    "Simulation and public captures do not verify Windows physical compatibility",
+    "HyperX: keyboard single-play macros only; factory macro content and actual lighting cannot be read back",
+    "HyperX: native macro binding readback verifies assignment, not macro payload execution; unreferenced slot contents may be replaced",
+    "Pulsar: DPI, polling and static/off indicator only; no button/macro writes",
+    "No NGENUITY/Fusion private-file conversion",
+    "No fresh-Windows or missing-WebView2 installation validation",
+    "No local upgrade performed by this release task"
+  ]
+}

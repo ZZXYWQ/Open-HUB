@@ -195,9 +195,9 @@
     "url": "https://hyperx.com/pages/ngenuity",
     "title": "",
     "reachable": false,
-    "checked": "2026-10-22",
-    "support": "待核对具体型号；不能视为已原生适配",
-    "verification": "当前无法核实官网页面"
+    "checked": "2026-10-25",
+    "support": "仅 HyperX Pulsefire Haste/Haste Wireless HP USB ID；见 HYPERX-ADAPTER.md",
+    "verification": "生产驱动与模拟验证，未实机验证；官方私有配置文件未解析"
   },
   {
     "brand": "Keychron",
@@ -295,9 +295,9 @@
     "url": "https://www.pulsar.gg/pages/download",
     "title": "",
     "reachable": false,
-    "checked": "2026-10-22",
-    "support": "待核对具体型号；不能视为已原生适配",
-    "verification": "当前无法核实官网页面"
+    "checked": "2026-10-25",
+    "support": "仅 X2 V2 Mini F507/F508；DPI/回报率/指示灯，按键宏暂不写入；见 PULSAR-ADAPTER.md",
+    "verification": "生产驱动与模拟验证，未实机验证；官方私有配置文件未解析"
   },
   {
     "brand": "RAPOO",

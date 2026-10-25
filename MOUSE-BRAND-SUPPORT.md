@@ -1,6 +1,6 @@
 # Open HUB 鼠标接入范围
 
-当前版本：2026-10-25，Open HUB 0.3.2 加入 VXE/VGN 首批适配与按型号外观，具体安装升级证据见输出 verification.json。除迈从 A7 V3 Ultra+ 与 MagDock 外，新增型号均以生产驱动和合成设备测试，尚未实机验证。
+当前版本：2026-10-25，Open HUB 0.3.3 新增 HyperX Haste 与 Pulsar X2 V2 Mini 的限定适配，具体安装升级证据见输出 verification.json。除迈从 A7 V3 Ultra+ 与 MagDock 外，新增型号均以生产驱动和合成设备测试，尚未实机验证。
 
 ## 当前品牌与型号
 
@@ -11,8 +11,9 @@
 |雷蛇 / Razer|Naga V2 HyperSpeed、DeathAdder V2、Viper Ultimate、Viper V2 Pro、Viper V3 Pro|能力因型号而异，见下文；Synapse 可执行转换目前仅支持 Naga 的已实现格式|
 |海盗船 / Corsair|M65 PRO RGB（1B1C:1B2E）|DPI、回报率、支持的按键/软件宏、iCUE 转换；部分状态来自缓存，回报率重连需核对续接|
 |赛睿 / SteelSeries|Rival 310（1038:1720）|两组 CPI、回报率、支持的按键/软件宏、GG 数据库转换；部分状态来自写入缓存|
+|HyperX|Pulsefire Haste 03F0:048E / Haste Wireless 03F0:028E|五档 DPI、回报率、已知按键、单次键盘板载宏、常亮/关闭滚轮灯和只读板载导入；不解析 NGENUITY；原厂宏/灯效不可读回；仅模拟验证，见 HYPERX-ADAPTER.md|
+|Pulsar|X2 V2 Mini 3554:F507 / F508|四档统一 XY DPI、回报率、指示灯关闭/常亮与读取导入；按键宏写入关闭；仅模拟验证，见 PULSAR-ADAPTER.md|
 |ATK|A9 Plus NK（373B:1115 / 10C9）、X1 Pro Max USB（373B:1017）|八档 XY DPI、对应回报率、基础按键/键盘点按/板载宏、板载配置读取导入；X1 指示灯关闭/常亮。仅模拟验证，完整边界见 ATK-ADAPTER.md|
-
 |蜻蜓 / VXE|R1、R1 Pro、MAD R、MAD R+ 的精确 USB/CID/MID|DPI、回报率、按键/键盘点按/板载宏、板载读取导入；R1 系列 DPI 指示灯；仅模拟验证，见 COMPX-ADAPTER.md|
 |VGN|蜻蜓 F1 Pro、F1 Pro Max 的精确 USB/CID/MID|同上；当前档位指示灯关闭/常亮；仅模拟验证|
 
@@ -32,7 +33,7 @@ SinoWealth 通道的以下指定型号/固件支持 DPI、回报率、按键、�
 |T-Dagger|T-Dagger Imperial T-TGM310|2642|
 |Marvo|Marvo Scorpion G961|9677|
 
-以上涉及 16 个品牌的部分型号，不是全品牌兼容。SinoWealth 的 8 个品牌共有 11 条型号/固件记录，不能把固件或有线/无线 PID 重复计为新鼠标。
+以上涉及 18 个品牌的部分型号，不是全品牌兼容。SinoWealth 的 8 个品牌共有 11 条型号/固件记录，不能把固件或有线/无线 PID 重复计为新鼠标。
 
 雷蛇能力按型号区分：
 
@@ -59,7 +60,7 @@ SinoWealth 通道的以下指定型号/固件支持 DPI、回报率、按键、�
 
 常规安装程序复用系统 WebView2，缺少时联网补装，使用 LZMA 压缩；完整离线运行库为可选构建。共享 RGB 组件及对应源码/许可保留，见 PACKAGING.md。官方软件研究文件、开发工具和历史安装包不进入应用资源。
 
-AULA SC620/SC580 目前只有官方驱动静态研究，尚无可交付适配。ROG、HyperX、VGN 等也不能因为调查表中列有名称就宣称已接入。下面是调查线索，区别于当前支持清单。
+AULA SC620/SC580 目前只有官方驱动静态研究，尚无可交付适配。ROG 等未列出的型号不能因为调查表中有名称就宣称已接入。下面是调查线索，区别于当前支持清单。
 
 ## 官方软件调查
 

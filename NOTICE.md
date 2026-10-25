@@ -10,6 +10,8 @@
 |Gearwise|https://github.com/Dhiva-Labs/gearwise ；MIT|src-tauri/vendor/gearwise、Gearwise-MIT.txt|
 |Sidearm Synapse parser|MIT，原始署名保留|src-tauri/vendor/sidearm-synapse-parser、Sidearm-MIT.txt|
 |libratbag SinoWealth 参考|MIT；Marian Beermann © 2020|libratbag-MIT-license.txt、参考源文件|
+|HyperX Haste 协议|Evan Razzaque；MIT 驱动参考，另行核对其 GPL-3.0 公开抓包/协议事实|HYPERX-ADAPTER.md、HyperX-Protocol-MIT.txt、HyperX-Source-GPL-3.0.txt|
+|Pulsar X2 V2 Mini 协议|Andrew Rabert；MIT|PULSAR-ADAPTER.md、Pulsar-Protocol-MIT.txt|
 |OpenRGB 1.1|GPL-2.0-or-later，未修改可携组件|src-tauri/resources/rgb-engine、OpenRGB-LICENSE.txt、OpenRGB-1.1-source.tar.gz|
 |Qt 等 OpenRGB 动态组件|保留原组件许可；Qt 源码 https://download.qt.io/archive/qt/ |随包第三方组件说明和动态库|
 |MCHOSE 设备图片|官方 CDN；权利属于原权利人，用于设备识别|public 与随包第三方组件说明|
@@ -20,3 +22,7 @@ ATK 协议按官方公开网页驱动和协议事实独立实现，来源与边�
 Windows EXE 尚未取得 Authenticode 代码签名。0.3.2 起从本仓库 GitHub 更新源检查版本，下载与安装都由用户选择；更新包使用独立密钥与版本绑定签名，上游 SignPath 声明不适用。
 
 型号产品图的来源、权利说明与哈希见 docs/DEVICE-ARTWORK.md 和 docs/DEVICE-ARTWORK-SOURCES.json。Piper 的 18 张未修改 SVG 按其原 GPL-2.0 单独保留许可与可编辑源文件，见 docs/PIPER-ARTWORK.md 和 Piper-SVG-COPYING.txt；没有重许可为应用代码许可，也没有包含 Piper/GTK 运行库。
+
+HyperX Haste SVG 的 GPL-3.0 许可与可编辑源文件单独保留，协议作者及固定提交见 HYPERX-ADAPTER.md。公开 USB 抓包只提取报文与来源哈希，未包含用户私有输入记录。
+
+Haste SVG 仅去除独立标注引线层并收紧画布，主体路径未改；原始 SVG 另存 docs/upstream/HyperX-Pulsefire-Haste-original.svg，保留原作者与 GPL-3.0 许可。

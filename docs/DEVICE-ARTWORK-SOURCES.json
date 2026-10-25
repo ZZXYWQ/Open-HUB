@@ -173,5 +173,35 @@
     "detail": "https://maddog.pl/files/thumbs/produkty_nowy_header_2025/353567.png/798_692_crop.png?pn=new-card-hero-thumb&ts=1747395000",
     "bytes": 14840,
     "sha256": "5db414f732b7de511bda2a99949d7a683b370fd5ad7a6ee7075d50ca3b96595a"
+  },
+  {
+    "file": "/devices/hyperx-haste-wireless-white.webp",
+    "source": "https://cdn.shopify.com/s/files/1/0561/8345/5901/files/hyperx_pulsefire_haste_wireless_white_1_top_down.jpg?v=1771872998",
+    "source_sha256": "f3e197137da7e5cef83ae1382a8df9e4c8babab75cdcaef74cda29c9bb06e6ac",
+    "bytes": 9896,
+    "sha256": "007f0bef286ba955566c2b2c34ab371f69622216318c332fe92e11ff9b46cb79"
+  },
+  {
+    "file": "/devices/pulsar-x2v2-mini-black.webp",
+    "source": "https://cdn.shopify.com/s/files/1/0455/0914/8840/products/X2V2gamingmouse_mini_Black_Top_12b44160-e168-42e6-8ccc-d3d59fd72186-677459.png?v=1718795896",
+    "source_sha256": "66d4ccd20fbad135098fc42c78d106b8375ec031486fcebe9ae698d4c70bb1d6",
+    "bytes": 7084,
+    "sha256": "103689db3170c2f42cebfe439e1ec552b594a18bd6e257de4f8e1c20982df58b"
+  },
+  {
+    "file": "/devices/pulsar-x2v2-mini-white.webp",
+    "source": "https://cdn.shopify.com/s/files/1/0455/0914/8840/products/X2V2gamingmouse_mini_White_Top_2e620b2b-c4af-4514-b784-f982684f57b1-978476.png?v=1718795907",
+    "source_sha256": "01c3b2c4c390102249fb86ea10c4e89ebd80ba5bedb491df61b96bd707918ead",
+    "bytes": 3964,
+    "sha256": "2a9cfdb94b6324a1dce56791a8b342d87ffdbafd9d224401acc24145a6899fab"
+  },
+  {
+    "file": "/devices/hyperx-haste.svg",
+    "source": "https://raw.githubusercontent.com/evan-razzaque/open-pulsefire-haste/294f7f0edf6d8f4e1db668d08a85828c452c9f69/hyperx-pulsefire-haste.svg",
+    "source_sha256": "532881d91cfbd86ad203d2769a744a1b7184864cb6059a3461ca2fd1cacc133a",
+    "sha256": "78c6f496255020edfa8c27176b61d241fc4c9ece864e3e78462732f496ba7833",
+    "bytes": 12558,
+    "license": "GPL-3.0",
+    "changes": "Removed separate button/LED annotation layers and fit viewBox to device; body paths unchanged. Original source retained in docs/upstream/HyperX-Pulsefire-Haste-original.svg"
   }
 ]

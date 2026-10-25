@@ -621,5 +621,64 @@
         "src": "/devices/maddog-gm905.webp"
       }
     ]
+  },
+  {
+    "id": "hyperx-haste-wireless",
+    "label": "HyperX Pulsefire Haste Wireless",
+    "vendor": 1008,
+    "products": [
+      654
+    ],
+    "names": [
+      "HyperX Pulsefire Haste Wireless",
+      "Pulsefire Haste Wireless"
+    ],
+    "images": [
+      {
+        "label": "白色",
+        "src": "/devices/hyperx-haste-wireless-white.webp"
+      }
+    ]
+  },
+  {
+    "id": "pulsar-x2v2-mini",
+    "label": "Pulsar X2 V2 Mini",
+    "vendor": 13652,
+    "products": [
+      62727,
+      62728
+    ],
+    "names": [
+      "Pulsar X2 V2 Mini",
+      "X2 V2 Mini"
+    ],
+    "images": [
+      {
+        "label": "白色",
+        "src": "/devices/pulsar-x2v2-mini-white.webp"
+      },
+      {
+        "label": "黑色",
+        "src": "/devices/pulsar-x2v2-mini-black.webp"
+      }
+    ]
+  },
+  {
+    "id": "hyperx-haste",
+    "label": "HyperX Pulsefire Haste",
+    "vendor": 1008,
+    "products": [
+      1166
+    ],
+    "names": [
+      "HyperX Pulsefire Haste",
+      "Pulsefire Haste"
+    ],
+    "images": [
+      {
+        "label": "原型示意",
+        "src": "/devices/hyperx-haste.svg"
+      }
+    ]
   }
 ]

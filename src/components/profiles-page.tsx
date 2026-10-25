@@ -1,4 +1,5 @@
-import {compxModel,compxBrand,type CompxBrand} from '@/lib/compx';
+import {compxModel,compxBrand} from '@/lib/compx';
+import {type BoardImportBrand} from '@/lib/native-models';
 import {AtkProfileImport} from '@/components/atk-profile-import';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from "@/components/ui/dialog";
 import {BrandProfileImports} from '@/components/brand-profile-imports';
@@ -51,8 +52,8 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
   const brandKey=(p:Profile)=>p.sino?'sino:'+p.sino.model.brand:p.multi&&compxModel(p.multi.vendor,p.multi.product)?'compx:'+compxModel(p.multi.vendor,p.multi.product)!.brand:String(profileVendor(p));
   const brandLabel=(v:string)=>v.startsWith('sino:')?v.slice(5):v.startsWith('compx:')?compxBrand(v.slice(6)):brandName(v==='null'?null:Number(v));
   const [importChooser,setImportChooser]=useState(false);
-  const chooseImport=(source:string,models:SinoModel[])=>{setImportChooser(false);setImportModels(models);if(source==='synapse')setSynapsePreview(true);else if(source==='icue')setIcueImport(true);else if(source==='gg')setGgImport(true);else if(source==='atk'||source==='vxe'||source==='vgn')setAtkImport(source);else setImportSource(source);};
-  const [atkImport,setAtkImport]=useState<CompxBrand|null>(null);
+  const chooseImport=(source:string,models:SinoModel[])=>{setImportChooser(false);setImportModels(models);if(source==='synapse')setSynapsePreview(true);else if(source==='icue')setIcueImport(true);else if(source==='gg')setGgImport(true);else if(source==='atk'||source==='vxe'||source==='vgn'||source==='hyperx'||source==='pulsar')setAtkImport(source);else setImportSource(source);};
+  const [atkImport,setAtkImport]=useState<BoardImportBrand|null>(null);
   const [importModels,setImportModels]=useState<SinoModel[]>([]);
   const [importSource,setImportSource]=useState<string|null>(null),[vendor,setVendor]=useState('all');
   const exportPack=async()=>{try{const path=await save({defaultPath:'Open-HUB-配置包.json',filters:[{name:'Open HUB 配置包',extensions:['json']}]});if(path){await api.exportProfilePack(path,view.profiles.filter(p=>vendor==='all'||brandKey(p)===vendor));toast.success('配置包已导出');}}catch(e){toast.error(String(e));}};

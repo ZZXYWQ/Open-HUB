@@ -16,7 +16,11 @@
       250,
       500,
       1000
-    ]
+    ],
+    "min_dpi": 100,
+    "max_stages": 8,
+    "separate_xy": true,
+    "native_macros": true
   },
   {
     "vendor": 14139,
@@ -35,7 +39,11 @@
       250,
       500,
       1000
-    ]
+    ],
+    "min_dpi": 100,
+    "max_stages": 8,
+    "separate_xy": true,
+    "native_macros": true
   },
   {
     "vendor": 14139,
@@ -57,7 +65,11 @@
       2000,
       4000,
       8000
-    ]
+    ],
+    "min_dpi": 50,
+    "max_stages": 8,
+    "separate_xy": true,
+    "native_macros": true
   },
   {
     "vendor": 13652,
@@ -77,7 +89,11 @@
       250,
       500,
       1000
-    ]
+    ],
+    "min_dpi": 100,
+    "max_stages": 8,
+    "separate_xy": true,
+    "native_macros": true
   },
   {
     "vendor": 13652,
@@ -97,7 +113,11 @@
       250,
       500,
       1000
-    ]
+    ],
+    "min_dpi": 100,
+    "max_stages": 8,
+    "separate_xy": true,
+    "native_macros": true
   },
   {
     "vendor": 14139,
@@ -116,7 +136,11 @@
       250,
       500,
       1000
-    ]
+    ],
+    "min_dpi": 100,
+    "max_stages": 8,
+    "separate_xy": true,
+    "native_macros": true
   },
   {
     "vendor": 14139,
@@ -135,7 +159,11 @@
       250,
       500,
       1000
-    ]
+    ],
+    "min_dpi": 100,
+    "max_stages": 8,
+    "separate_xy": true,
+    "native_macros": true
   },
   {
     "vendor": 13652,
@@ -155,7 +183,11 @@
       250,
       500,
       1000
-    ]
+    ],
+    "min_dpi": 100,
+    "max_stages": 8,
+    "separate_xy": true,
+    "native_macros": true
   },
   {
     "vendor": 13652,
@@ -170,6 +202,52 @@
     "buttons": 6,
     "indicator": true,
     "wireless": false,
+    "rates": [
+      125,
+      250,
+      500,
+      1000
+    ],
+    "min_dpi": 100,
+    "max_stages": 8,
+    "separate_xy": true,
+    "native_macros": true
+  },
+  {
+    "vendor": 13652,
+    "product": 62727,
+    "mids": [],
+    "brand": "pulsar",
+    "name": "Pulsar X2 V2 Mini · USB",
+    "max_dpi": 26000,
+    "min_dpi": 50,
+    "max_stages": 4,
+    "separate_xy": false,
+    "native_macros": false,
+    "buttons": 5,
+    "indicator": true,
+    "wireless": false,
+    "rates": [
+      125,
+      250,
+      500,
+      1000
+    ]
+  },
+  {
+    "vendor": 13652,
+    "product": 62728,
+    "mids": [],
+    "brand": "pulsar",
+    "name": "Pulsar X2 V2 Mini · 1K receiver",
+    "max_dpi": 26000,
+    "min_dpi": 50,
+    "max_stages": 4,
+    "separate_xy": false,
+    "native_macros": false,
+    "buttons": 5,
+    "indicator": true,
+    "wireless": true,
     "rates": [
       125,
       250,

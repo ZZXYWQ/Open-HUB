@@ -20,11 +20,12 @@ use std::{
 
 pub fn validate_dpi(d: &DpiState, product: u16) -> Result<()> {
     let (_, _, max) = identity(product).ok_or(Error::Unsupported("ATK model"))?;
-    if d.stages.is_empty() || d.stages.len() > 8 || usize::from(d.active) >= d.stages.len() {
+    if d.stages.is_empty() || d.stages.len() > models().iter().find(|m|m.product==product).unwrap().max_stages as usize || usize::from(d.active) >= d.stages.len() {
         return Err(Error::invalid("ATK DPI stages"));
     }
     for stage in &d.stages {
         encode_dpi(stage.x, stage.y, max)?;
+        let spec=models().iter().find(|m|m.product==product).unwrap();if !spec.separate_xy&&stage.x!=stage.y{return Err(Error::invalid("Pulsar requires equal X/Y DPI"));}
     }
     Ok(())
 }
@@ -39,6 +40,7 @@ pub struct Model {
     pub vendor: u16, pub product: u16, pub mids: Vec<u8>, pub brand: String,
     pub name: String, pub max_dpi: u16, pub buttons: u16, pub indicator: bool,
     pub wireless: bool, pub rates: Vec<u16>,
+    pub min_dpi:u16,pub max_stages:u8,pub separate_xy:bool,pub native_macros:bool,
 }
 pub fn models() -> &'static [Model] {
     static MODELS: std::sync::LazyLock<Vec<Model>> = std::sync::LazyLock::new(||
@@ -50,7 +52,7 @@ pub fn model(v: u16, p: u16) -> Option<&'static Model> {
 }
 pub fn supported(v: u16, p: u16) -> bool { model(v,p).is_some() }
 fn identity(p: u16) -> Option<(u8, &'static str, u16)> {
-    models().iter().find(|m|m.product==p).map(|m|(m.mids[0],m.name.as_str(),m.max_dpi))
+    models().iter().find(|m|m.product==p).map(|m|(m.mids.first().copied().unwrap_or(0),m.name.as_str(),m.max_dpi))
 }
 fn sum(data: &[u8]) -> u8 {
     data.iter().fold(0u8, |a, b| a.wrapping_add(*b))
@@ -104,7 +106,7 @@ fn rate_value(code: u8) -> Result<u16> {
 }
 fn encode_dpi(x: u16, y: u16, max: u16) -> Result<[u8; 4]> {
     let axis = |v: u16| -> Result<(u8, u8)> {
-        if v < if max == 36000 { 50 } else { 100 }
+        if v < if matches!(max,36000|26000) { 50 } else { 100 }
             || v > max
             || v % 50 != 0
             || (v > 30000 && v % 100 != 0)
@@ -224,6 +226,7 @@ struct Atk {
     max: u16,
     mid: u8,
     model: &'static Model,
+    profile:Option<u8>,
     definitions: HashMap<String, Macro>,
     read_macros: Vec<Macro>,
 }
@@ -274,6 +277,11 @@ impl Atk {
         Ok(out)
     }
     fn identify(&mut self) -> Result<()> {
+        if self.model.brand=="pulsar" {
+            if self.exchange(3,0,0)?.first()!=Some(&1){return Err(Error::invalid("Pulsar receiver has no awake mouse"));}
+            let profile=self.exchange(0x0e,0,0)?;let current=*profile.first().ok_or(Error::invalid("Pulsar active profile reply"))?;
+            if self.profile.is_some_and(|p|p!=current){return Err(Error::invalid("Pulsar active profile changed; reopen device before writing"));}self.profile=Some(current);return Ok(());
+        }
         let r = self.exchange(0x10, 0, 0)?;
         if r.len() < 2 || r[..2] != [2, self.mid] {
             return Err(Error::invalid(
@@ -283,6 +291,7 @@ impl Atk {
         Ok(())
     }
     fn write_verified(&mut self, address: u16, next: &[u8]) -> Result<()> {
+        self.identify()?;
         let before = self.read(address, next.len())?;
         if before == next {
             return Ok(());
@@ -308,12 +317,13 @@ impl Atk {
     }
     fn open(io: Box<dyn HidTransport>, i: &HidInterfaceInfo) -> Result<Self> {
         let model = model(i.vendor_id,i.product_id).ok_or(Error::Unsupported("COMPX exact model"))?;
-        let (mid, name, max) = (model.mids[0],model.name.as_str(),model.max_dpi);
+        let (mid, name, max) = (model.mids.first().copied().unwrap_or(0),model.name.as_str(),model.max_dpi);
         let mut this = Self {
             io,
             mid,
             max,
             model,
+            profile:None,
             definitions: HashMap::new(),
             read_macros: Vec::new(),
             desc: DeviceDescriptor {
@@ -342,11 +352,11 @@ impl Atk {
             },
             caps: Capabilities {
                 dpi: Some(DpiCaps {
-                    min: if max == 36000 { 50 } else { 100 },
+                    min: model.min_dpi,
                     max,
                     step: 50,
-                    max_stages: 8,
-                    separate_xy: true,
+                    max_stages: model.max_stages,
+                    separate_xy: model.separate_xy,
                 }),
                 report_rates: model.rates.clone(),
                 buttons: (1..=model.buttons)
@@ -355,7 +365,7 @@ impl Atk {
                         name: ["左键", "右键", "中键", "后退", "前进", "底部 DPI"]
                             [(id - 1) as usize]
                             .into(),
-                        remappable: id != 1,
+                        remappable: id != 1&&model.native_macros,
                         default_action: factory(id).unwrap(),
                         hotspot: None,
                     })
@@ -376,11 +386,13 @@ impl Atk {
         };
         // PID alone is ambiguous: R1/SE and F1 Pro Max/MOBA share IDs.
         // Accept only the explicitly catalogued CID/MID, then pin that identity.
-        let identity = this.exchange(0x10,0,0)?;
-        if identity.len()<2 || identity[0]!=2 || !model.mids.contains(&identity[1]) {
-            return Err(Error::invalid("COMPX unknown CID/MID for this USB model; no settings written"));
+        if model.brand=="pulsar" {this.identify()?;}else{
+            let identity = this.exchange(0x10,0,0)?;
+            if identity.len()<2 || identity[0]!=2 || !model.mids.contains(&identity[1]) {
+                return Err(Error::invalid("COMPX unknown CID/MID for this USB model; no settings written"));
+            }
+            this.mid=identity[1];
         }
-        this.mid=identity[1];
         this.refresh()?;
         Ok(this)
     }
@@ -498,7 +510,7 @@ impl Atk {
         let system = self.read(0, 10)?;
         let count = checked_pair(&system[2..4])?;
         let active = checked_pair(&system[4..6])?;
-        if !(1..=8).contains(&count) || active >= count {
+        if !(1..=self.model.max_stages).contains(&count) || active >= count {
             return Err(Error::invalid("ATK DPI stage metadata"));
         }
         let mut stages = Vec::new();
@@ -513,7 +525,7 @@ impl Atk {
         self.read_macros.clear();
         for id in 1..=self.model.buttons {
             let raw = self.read(96 + (id - 1) * 4, 4)?;
-            let decoded = self.read_action(&raw);
+            let decoded = if self.model.native_macros{self.read_action(&raw)}else{decode_button(&raw).map(|a|(a,None))};
             let known = decoded.is_some();
             if let Some((action, definition)) = decoded {
                 state.buttons.insert(id, action);
@@ -523,7 +535,7 @@ impl Atk {
                     }
                 }
             }
-            self.caps.buttons[(id - 1) as usize].remappable = id != 1 && known;
+            self.caps.buttons[(id - 1) as usize].remappable = id != 1 && known && self.model.native_macros;
         }
         if !self.caps.lighting.is_empty() {
             let row = self.read(76, 8)?;
@@ -562,6 +574,7 @@ impl Atk {
 }
 impl Device for Atk {
     fn set_macro_definitions(&mut self, definitions: &[Macro]) -> Result<()> {
+        if !self.model.native_macros&&!definitions.is_empty(){return Err(Error::Unsupported("Pulsar native macro writes are not verified"));}
         let mut parsed = HashMap::new();
         for m in definitions {
             native_macro::encode(m)?;
@@ -589,16 +602,14 @@ impl Device for Atk {
         match s {
             Setting::Dpi(d) => {
                 if d.stages.is_empty()
-                    || d.stages.len() > 8
+                    || d.stages.len() > self.model.max_stages as usize
                     || usize::from(d.active) >= d.stages.len()
                 {
                     return Err(Error::invalid("ATK DPI stage count/index"));
                 }
-                for stage in &d.stages {
-                    encode_dpi(stage.x, stage.y, self.max)?;
-                }
+                validate_dpi(d,self.model.product)?;
             }
-            Setting::DpiActiveStage(n) if *n < 8 => {}
+            Setting::DpiActiveStage(n) if *n < self.model.max_stages => {}
             Setting::ReportRate(hz) => {
                 rate_code(*hz)?;
                 if !self.caps.report_rates.contains(hz) {
@@ -606,7 +617,7 @@ impl Device for Atk {
                 }
             }
             Setting::Button { id, action } => {
-                if !(2..=self.model.buttons).contains(id) {
+                if !self.model.native_macros || !(2..=self.model.buttons).contains(id) {
                     return Err(Error::invalid(
                         "ATK protects left click and unknown buttons",
                     ));
@@ -719,7 +730,7 @@ impl Driver for AtkDriver {
         Vendor::Other
     }
     fn probe(&self, i: &HidInterfaceInfo) -> bool {
-        supported(i.vendor_id, i.product_id) && i.usage_page == 0xff02 && i.usage == 2
+        supported(i.vendor_id,i.product_id)&&i.bus==gearwise_core::transport::BusKind::Usb&&if model(i.vendor_id,i.product_id).is_some_and(|m|m.brand=="pulsar"){i.interface_number==1&&i.usage_page>=0xff00}else{i.usage_page==0xff02&&i.usage==2}
     }
     fn open(&self, i: &HidInterfaceInfo, b: &dyn HidBackend) -> Result<Vec<Box<dyn Device>>> {
         if !self.probe(i) {
@@ -768,6 +779,7 @@ fn memory_device(
         }
         let data = match req[1] {
             0x10 => vec![2, mid],
+            3=>vec![1],0x0e=>vec![0],
             8 => eeprom[addr..addr + count].to_vec(),
             7 => {
                 eeprom[addr..addr + count].copy_from_slice(&req[6..6 + count]);
@@ -788,6 +800,7 @@ fn memory_device(
         product_id: product,
         usage_page: 0xff02,
         usage: 2,
+        interface_number:1,
         ..Default::default()
     };
     let mut device = Atk::open(Box::new(io), &info)?;
@@ -1198,7 +1211,7 @@ mod dpi_limits_tests {
     #[test]
     fn compx_new_models_use_real_dpi_button_macro_and_indicator_packets(){
       use gearwise_core::profile::{MacroMode,MacroStep};
-      for spec in models().iter().filter(|m|m.brand!="atk"){
+      for spec in models().iter().filter(|m|matches!(m.brand.as_str(),"vxe"|"vgn")){
         let (mut d,log)=memory_device(spec.product).unwrap();
         assert_eq!(d.descriptor().vendor_id,spec.vendor);
         assert!(d.descriptor().id.starts_with(&format!("{}:",spec.brand)));
@@ -1241,7 +1254,7 @@ mod dpi_limits_tests {
     }
     #[test]
     fn compx_all_allowed_color_identities_open_but_swapped_identity_blocks_writes(){
-      for spec in models().iter().filter(|m|m.brand!="atk"){
+      for spec in models().iter().filter(|m|matches!(m.brand.as_str(),"vxe"|"vgn")){
         for &mid in &spec.mids{
           let (d,log)=memory_device(spec.product).unwrap();
           let info=HidInterfaceInfo{vendor_id:spec.vendor,product_id:spec.product,usage_page:0xff02,usage:2,..Default::default()};
@@ -1261,4 +1274,13 @@ mod dpi_limits_tests {
       assert!(!supported(0x373b,0x124c));assert!(!supported(0xa8a4,0x2255));
     }
 
+}
+
+#[cfg(test)]mod pulsar_tests{
+ use super::*;
+ #[test]fn pulsar_real_driver_dpi_indicator_and_rate_roundtrip(){for product in [0xf507,0xf508]{let(mut d,l)=memory_device(product).unwrap();l.lock().unwrap().clear();let next=DpiState{stages:vec![DpiStage::uniform(50),DpiStage::uniform(12800),DpiStage::uniform(26000)],active:2};d.apply(&Setting::Dpi(next.clone())).unwrap();d.apply(&Setting::ReportRate(500)).unwrap();let color=Rgb{r:19,g:61,b:97};d.apply(&Setting::Lighting{zone:0,state:ZoneState{effect:LightingEffect::Static{color},brightness:100}}).unwrap();let state=d.read_state().unwrap();assert_eq!(state.dpi,Some(next));assert_eq!(state.report_rate,Some(500));assert_eq!(state.lighting[&0].effect,LightingEffect::Static{color});assert!(d.caps.buttons.iter().all(|b|!b.remappable));assert!(l.lock().unwrap().iter().all(|r|!matches!(r,gearwise_core::transport::MockRecord::Write(p)if p[1]==0x10)));}}
+ #[test]fn pulsar_shared_codec_matches_public_known_vectors(){assert_eq!(encode_dpi(50,50,26000).unwrap(),[0,0,0,85]);assert_eq!(encode_dpi(12800,12800,26000).unwrap(),[255,255,0,87]);assert_eq!(encode_dpi(26000,26000,26000).unwrap(),[7,7,136,191]);for dpi in (50..=26000).step_by(50){assert_eq!(decode_dpi(&encode_dpi(dpi,dpi,26000).unwrap(),26000).unwrap(),DpiStage::uniform(dpi));}}
+ #[test]fn pulsar_rejects_extra_stages_xy_buttons_and_macros_before_io(){let(mut d,l)=memory_device(0xf507).unwrap();for setting in [Setting::Dpi(DpiState{stages:vec![DpiStage{x:800,y:1600}],active:0}),Setting::Dpi(DpiState{stages:vec![DpiStage::uniform(800);5],active:0}),Setting::Button{id:4,action:ButtonAction::Disabled}]{l.lock().unwrap().clear();assert!(d.apply(&setting).is_err());assert!(l.lock().unwrap().is_empty());}}
+ #[test]fn pulsar_profile_change_blocks_writes_instead_of_touching_other_bank(){let(mut d,l)=memory_device(0xf508).unwrap();d.profile=Some(1);l.lock().unwrap().clear();assert!(d.apply(&Setting::ReportRate(500)).unwrap_err().to_string().contains("profile changed"));assert!(!l.lock().unwrap().iter().any(|r|matches!(r,gearwise_core::transport::MockRecord::Write(p)if p[1]==7)));}
+ #[test]fn pulsar_exact_control_interface_not_other_3554_mice(){let mut i=HidInterfaceInfo{vendor_id:0x3554,product_id:0xf507,interface_number:1,usage_page:0xff02,..Default::default()};assert!(AtkDriver.probe(&i));i.interface_number=0;assert!(!AtkDriver.probe(&i));i.interface_number=1;i.product_id=0xf509;assert!(!AtkDriver.probe(&i));}
 }
