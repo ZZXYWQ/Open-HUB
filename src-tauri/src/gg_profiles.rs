@@ -8,6 +8,9 @@ use rusqlite::{Connection,OpenFlags};
 use serde_json::Value;
 use std::{collections::{BTreeMap,HashSet},path::Path};
 
+#[path="gg_lighting.rs"]
+mod lighting;
+
 const LIMIT:usize=1024*1024;
 fn number(v:&Value)->Result<u32,String>{v.as_u64().and_then(|v|v.try_into().ok()).ok_or("GG 字段不是有效的非负整数".into())}
 fn integer_text(v:&Value)->Result<u32,String>{if let Some(s)=v.as_str(){s.parse().map_err(|_|"GG 宏播放数值无效".into())}else{number(v)}}
@@ -31,7 +34,7 @@ fn read(conn:&Connection)->Result<Prepared,String>{
  let mut ids=HashSet::new();let mut candidates=Vec::new();
  for(id,name,product,model,text)in rows{
   if !ids.insert(id.clone()){return Err("GG 配置标识重复".into());}
-  let mut c=Candidate{model:format!("{model} · {name}"),profile:None,issues:vec![],notes:vec!["按原始事件转换 DPI、按钮和软件宏。灯效、加速度等未转换项目会单独提示；尚未实机验证。".into(),"导入与保存只处理文件；应用软件动作前请在编辑器选择此鼠标的输入来源。".into()]};
+  let mut c=Candidate{model:format!("{model} · {name}"),profile:None,issues:vec![],notes:vec!["按原始事件转换 DPI、按钮和软件宏。灯效按已核对字段转换，未实现行为会拦截并说明；尚未实机验证。".into(),"导入与保存只处理文件；应用软件动作前请在编辑器选择此鼠标的输入来源。".into()]};
   let p=(||{
    let pid=match(product,model.as_str()){(0x10381720,"rival_310")=>0x1720,(0x10381722,"sensei_310")=>0x1722,_=>return Err("此配置不是已核对的 Rival 310 / Sensei 310，不能借用其他型号的物理布局".into())};
    if id.is_empty()||id.len()>80||name.is_empty()||name.len()>256{return Err("GG 配置名称或标识无效".into());}
@@ -86,8 +89,8 @@ fn convert(conn:&Connection,id:&str,pid:u16,s:&Value,notes:&mut Vec<String>)->Re
  if buttons.get(&1)!=Some(&ButtonAction::Mouse(MouseButton::Left)){return Err("GG 原始配置修改了主左键，当前导入保留主左键点击".into());}buttons.remove(&1);
  // A custom binding replaces a direct held chord; omit its now-unused body.
  macros.retain(|m|buttons.values().any(|a|a==&ButtonAction::Macro(m.id.clone())));
- if s.get("logo_lighting").is_some()||s.get("wheel_lighting").is_some(){notes.push("GG 原始灯效和指示色尚未自动转换；保留原数据库，可在灯光同步中另行设置。".into());}
- let levels=stages.iter().map(|s|Level{x:s.x,y:Some(s.y)}).collect();let mut settings=vec![Setting::Dpi(DpiState{stages,active:active as u8}),Setting::ReportRate(rate)];settings.extend(buttons.into_iter().map(|(id,action)|Setting::Button{id,action}));let plan=Plan{vendor:0x1038,product:pid,settings,macros,source:None};crate::multibrand::validate(&plan)?;Ok((plan,levels,active,rate))
+ let lights=lighting::parse(pid,s)?;if lights.is_some(){notes.push("GG 原始灯效两灯区已转换；周期按 GG 界面计算，实物尚未验证。原厂未激活的调色历史不导入。".into());}else{notes.push("来源未包含灯效记录，仅导入已记录的 DPI、按键与宏。".into());}
+ let levels=stages.iter().map(|s|Level{x:s.x,y:Some(s.y)}).collect();let mut settings=vec![Setting::Dpi(DpiState{stages,active:active as u8}),Setting::ReportRate(rate)];settings.extend(buttons.into_iter().map(|(id,action)|Setting::Button{id,action}));if let Some(lights)=lights{settings.extend(lights);}let plan=Plan{vendor:0x1038,product:pid,settings,macros,source:None};crate::multibrand::validate(&plan)?;Ok((plan,levels,active,rate))
 }
 fn codes(v:&Value)->Result<Vec<u8>,String>{let list=v.get("key_codes").and_then(Value::as_array).ok_or("缺少 GG 四字节键码")?;if list.len()!=4{return Err("GG 键码长度不是已验证的四字节布局".into());}list.iter().map(|v|number(v)?.try_into().map_err(|_|"GG HID 键码超出范围".into())).collect()}
 fn zero_codes(v:&Value)->Result<bool,String>{Ok(codes(v)?.iter().all(|v|*v==0))}
@@ -127,6 +130,20 @@ fn macro_body(id:String,name:String,text:&str,playback:&Value)->Result<Macro,Str
   let data=json(&entry[first..end]).unwrap();let c=fixture();c.execute("UPDATE configurations SET settings=?1",[data.to_string()]).unwrap();let prepared=read(&c).unwrap();let p=prepared.candidates[0].profile.as_ref().unwrap_or_else(||panic!("{:?}",prepared.candidates[0].issues));assert_eq!(p.report_rate_hz,Some(1000));assert_eq!(p.levels[0],Level{x:800,y:Some(800)});assert_eq!(p.levels[1],Level{x:1600,y:Some(1600)});assert!(prepared.candidates[0].notes.iter().any(|n|n.contains("原始灯效")));assert!(crate::multibrand::simulate(p.multi.as_ref().unwrap()).unwrap()["packet_count"].as_u64().unwrap()>0);
  }
  fn sensei_fixture()->Connection{let c=fixture();c.execute("UPDATE devices SET product_id=272111394,name='sensei_310'",[]).unwrap();let mut source=settings();let b=source["button_mappings"]["buttons"].as_array_mut().unwrap();b[5]=json!({"function":81,"key_codes":[78,0,0,0]});b.push(json!({"function":81,"key_codes":[75,0,0,0]}));b.push(json!({"function":48,"key_codes":[0,0,0,0]}));c.execute("UPDATE configurations SET settings=?1",[source.to_string()]).unwrap();c}
+
+ fn native_lighting_source(mode:&str)->Value{
+  let reference:Value=serde_json::from_str(include_str!("../../docs/development/gg-flat-lighting-default-reference.json")).unwrap();let mut source=reference["settings"].clone();
+  if mode=="steady-off"{for key in["logo_lighting","wheel_lighting"]{source[key]["type"]=json!(0);source[key]["settings_mask"]=json!(1);}source["logo_lighting"]["initial_color"]=json!({"r":18,"g":52,"b":86});source["wheel_lighting"]["initial_color"]=json!({"r":0,"g":0,"b":0});}
+  if mode=="breathing-even"{source["logo_lighting"]["type"]=json!(2);source["logo_lighting"]["num_colors"]=json!(2);source["logo_lighting"]["positions"][1]["pos"]=json!(50);}
+  source
+ }
+ fn add_lighting(c:&Connection,source:&Value,name:&str){let text:String=c.query_row("SELECT settings FROM configurations",[],|r|r.get(0)).unwrap();let mut settings=json(&text).unwrap();settings.as_object_mut().unwrap().extend(source.as_object().unwrap().clone());c.execute("UPDATE configurations SET settings=?1,name=?2,id=?3",rusqlite::params![settings.to_string(),name,name.replace(' ',"-")]).unwrap();c.execute("UPDATE bindings SET config_id=?1",[name.replace(' ',"-")]).unwrap();}
+ #[test]fn gg_private_lighting_import_keeps_two_zones_modes_period_and_original_macros_through_production_store(){
+  let mut candidates=Vec::new();for pid in[0x1720,0x1722]{for mode in["default-shift","steady-off","breathing-even"]{let c=if pid==0x1720{fixture()}else{sensei_fixture()};let name=format!("GG {pid:04X} {mode}");add_lighting(&c,&native_lighting_source(mode),&name);let mut prepared=read(&c).unwrap();let p=prepared.candidates[0].profile.as_ref().unwrap_or_else(||panic!("{:?}",prepared.candidates[0].issues));let plan=p.multi.as_ref().unwrap();let lights=plan.settings.iter().filter(|s|matches!(s,Setting::Lighting{..})).collect::<Vec<_>>();assert_eq!(lights.len(),2);assert_eq!(plan.macros[0].steps.len(),5);assert_eq!(crate::multibrand::simulate(plan).unwrap()["hardware_tested"],false);let mut store=crate::profiles::ProfileStore::default();crate::profile_transfer::merge(&mut store,vec![p.clone()]).unwrap();let file=std::env::temp_dir().join(format!("gg-lighting-{}.json",crate::profiles::new_id()));store.save(&file).unwrap();let loaded=crate::profiles::ProfileStore::load(&file);std::fs::remove_file(file).unwrap();assert_eq!(loaded.get(&p.id).unwrap().multi.as_ref().unwrap(),plan);candidates.append(&mut prepared.candidates);}}
+  let unsupported=fixture();let mut bad=native_lighting_source("default-shift");bad["logo_lighting"]["settings_mask"]=json!(8);add_lighting(&unsupported,&bad,"GG unsupported-reactive");candidates.extend(read(&unsupported).unwrap().candidates);
+  if let Some(path)=std::env::var_os("OPEN_HUB_GG_LIGHTING_FIXTURE"){let prepared=Prepared{name:"GG 原厂灯效配置".into(),source_kind:"GG SQLite",candidates};std::fs::write(path,serde_json::to_vec_pretty(&prepared).unwrap()).unwrap();}
+ }
+ #[test]fn gg_unsupported_lighting_never_silently_saves_only_the_rest_of_the_profile(){for case in 0..5{let c=fixture();let mut source=native_lighting_source("default-shift");match case{0=>source["logo_lighting"]["settings_mask"]=json!(8),1=>source["wheel_lighting"]["has_direction"]=json!(1),2=>source["logo_lighting"]["colors"][0]["r"]=json!(999),3=>{source["logo_lighting"]["type"]=json!(2);},_=>source["logo_element"]["effect_index"]=json!(1)}add_lighting(&c,&source,"Unsupported active light");let p=read(&c).unwrap();assert!(p.candidates[0].profile.is_none(),"case {case}");assert!(!p.candidates[0].issues.is_empty());}}
  #[test]fn gg_sensei_eight_controls_preserve_native_right_side_keys_and_last_button_macro(){
   let c=sensei_fixture();c.execute("UPDATE bindings SET trigger_data=?1",[json!({"hidCode":8,"page":1,"type":0,"direction":1}).to_string()]).unwrap();let prepared=read(&c).unwrap();let p=prepared.candidates[0].profile.as_ref().unwrap_or_else(||panic!("{:?}",prepared.candidates[0].issues));assert_eq!(p.target_model,Some(0x1722));assert!(p.id.starts_with("gg:1038:1722:"));let plan=p.multi.as_ref().unwrap();assert_eq!(plan.settings.iter().filter(|s|matches!(s,Setting::Button{..})).count(),7);for(id,usage)in[(6,78),(7,75)]{assert!(plan.settings.contains(&Setting::Button{id,action:ButtonAction::Key{usage,mods:Modifiers(0)}}));}assert!(plan.settings.iter().any(|s|matches!(s,Setting::Button{id:8,action:ButtonAction::Macro(_)})));assert!(!p.targets(0x1038,&[0x1720]));assert_eq!(crate::multibrand::simulate(plan).unwrap()["software_macros"][0]["virtual_delay_ms"],23);
   if let Some(path)=std::env::var_os("OPEN_HUB_GG_SENSEI_FIXTURE"){std::fs::write(path,serde_json::to_vec_pretty(&prepared).unwrap()).unwrap();}
@@ -145,6 +162,17 @@ fn macro_body(id:String,name:String,text:&str,playback:&Value)->Result<Macro,Str
  #[ignore="requires current native Sensei GG editor output"]
  fn browser_sensei_gg_import_saves_reloads_merges_and_executes_the_eighth_key_macro(){
   let path=std::env::var_os("OPEN_HUB_GG_SENSEI_UI_PROFILE").unwrap();let p:Profile=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();assert_eq!(p.target_model,Some(0x1722));assert_eq!(p.name,"Sensei GG 八键方案");let mut store=crate::profiles::ProfileStore::default();crate::profile_transfer::merge(&mut store,vec![p.clone()]).unwrap();let file=std::env::temp_dir().join(format!("open-hub-sensei-{}.json",crate::profiles::new_id()));store.save(&file).unwrap();let loaded=crate::profiles::ProfileStore::load(&file);std::fs::remove_file(file).unwrap();let restored=loaded.get(&p.id).unwrap();let plan=restored.multi.as_ref().unwrap();assert_eq!(plan.settings.iter().filter(|s|matches!(s,Setting::Button{..})).count(),7);assert_eq!(plan.macros[0].name,"Sensei 导入原始宏");assert!(plan.settings.iter().any(|s|matches!(s,Setting::Button{id:8,action:ButtonAction::Macro(id)}if id==&plan.macros[0].id)));let result=crate::multibrand::simulate(plan).unwrap();assert_eq!(result["software_macros"][0]["virtual_delay_ms"],23);assert_eq!(result["hardware_tested"],false);assert!(!restored.targets(0x1038,&[0x1720]));assert!(!restored.targets(0x046d,&[0x1722]));
+ }
+
+ #[test]
+ #[ignore="requires six current native GG lighting browser saves"]
+ fn browser_gg_lighting_profiles_reload_merge_and_compile_original_macros_and_both_native_zones(){
+  let profiles:Vec<Profile>=serde_json::from_slice(&std::fs::read(std::env::var_os("OPEN_HUB_GG_LIGHTING_UI_PROFILES").unwrap()).unwrap()).unwrap();assert_eq!(profiles.len(),6);assert_eq!(profiles.iter().map(|p|&p.id).collect::<HashSet<_>>().len(),6);let mut store=crate::profiles::ProfileStore::default();crate::profile_transfer::merge(&mut store,profiles.clone()).unwrap();let file=std::env::temp_dir().join(format!("gg-ui-lights-{}.json",crate::profiles::new_id()));store.save(&file).unwrap();let loaded=crate::profiles::ProfileStore::load(&file);std::fs::remove_file(file).unwrap();
+  for source in profiles{let p=loaded.get(&source.id).unwrap();let plan=p.multi.as_ref().unwrap();assert!([0x1720,0x1722].contains(&plan.product));assert_eq!(plan.settings.iter().filter(|s|matches!(s,Setting::Lighting{..})).count(),2);assert_eq!(plan.macros[0].steps,vec![MacroStep::KeyDown(4),MacroStep::MouseDown(MouseButton::Right),MacroStep::Delay(23),MacroStep::KeyUp(4),MacroStep::MouseUp(MouseButton::Right)]);let result=crate::multibrand::simulate(plan).unwrap();assert_eq!(result["hardware_tested"],false);assert_eq!(result["software_macros"][0]["virtual_delay_ms"],23);
+   let setting=plan.settings.iter().find(|s|matches!(s,Setting::Lighting{zone:0,..})).unwrap();let(mut device,log)=gearwise_steelseries::simulated_model(plan.product).unwrap();device.apply(setting).unwrap();let ops=log.lock().unwrap();let gearwise_core::transport::MockRecord::SetFeature(bytes)=&ops[0]else{panic!()};
+   if p.name.contains("steady-off"){assert_eq!(&bytes[29..32],&[171,205,239]);assert!(plan.settings.iter().any(|s|matches!(s,Setting::Lighting{zone:1,state:gearwise_core::model::ZoneState{effect:gearwise_core::model::LightingEffect::Off,..}})));}else{assert_eq!(&bytes[4..6],&12340u16.to_le_bytes());assert_eq!(&bytes[29..32],&[255,0,0]);if p.name.contains("breathing-even"){assert_eq!(bytes[28],5);assert_eq!([bytes[35],bytes[39],bytes[43],bytes[47],bytes[51]],[0,63,64,64,64]);}else{assert_eq!(bytes[28],4);}}
+   assert!(!p.targets(0x046d,&[plan.product]));assert!(!p.targets(0x1038,&[if plan.product==0x1720{0x1722}else{0x1720}]));
+  }
  }
 
 }

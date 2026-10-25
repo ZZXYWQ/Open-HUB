@@ -1,0 +1,301 @@
+{
+  "format": "open-hub-gg-flat-lighting-reference/1",
+  "source_migration_sha256": "541fbdba0bba8889d74323aa314da58829dd6b5aac8f0dbeb175c3a303720e80",
+  "source_row": "Rival 310 / 1038:1720 default JSON literal; not SQL execution",
+  "settings": {
+    "logo_lighting": {
+      "type": 1,
+      "has_direction": 0,
+      "direction_type": 0,
+      "direction_inverted": 0,
+      "focal_x": 0,
+      "focal_y": 0,
+      "speed": 1000,
+      "scale": 1,
+      "num_colors": 3,
+      "colors": [
+        {
+          "r": 255,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 255,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 255
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        }
+      ],
+      "positions": [
+        {
+          "pos": 0
+        },
+        {
+          "pos": 33
+        },
+        {
+          "pos": 66
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        }
+      ],
+      "initial_color": {
+        "r": 255,
+        "g": 0,
+        "b": 0
+      },
+      "react_color": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "time": 0
+      },
+      "trigger_mask": 7,
+      "settings_mask": 0
+    },
+    "wheel_lighting": {
+      "type": 1,
+      "has_direction": 0,
+      "direction_type": 0,
+      "direction_inverted": 0,
+      "focal_x": 0,
+      "focal_y": 0,
+      "speed": 1000,
+      "scale": 1,
+      "num_colors": 3,
+      "colors": [
+        {
+          "r": 255,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 255,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 255
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        }
+      ],
+      "positions": [
+        {
+          "pos": 0
+        },
+        {
+          "pos": 33
+        },
+        {
+          "pos": 66
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        },
+        {
+          "pos": 0
+        }
+      ],
+      "initial_color": {
+        "r": 255,
+        "g": 0,
+        "b": 0
+      },
+      "react_color": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "time": 0
+      },
+      "trigger_mask": 7,
+      "settings_mask": 0
+    },
+    "logo_element": {
+      "pos": {
+        "x": 0,
+        "y": 0
+      },
+      "effect_index": 0
+    },
+    "wheel_element": {
+      "pos": {
+        "x": 0,
+        "y": 0
+      },
+      "effect_index": 1
+    }
+  }
+}

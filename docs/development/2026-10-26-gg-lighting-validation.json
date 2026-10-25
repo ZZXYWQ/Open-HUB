@@ -1,0 +1,29 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "exact flat GG Rival/Sensei two-zone native lighting conversion and actual UI save/store replay",
+  "default_application_tests": 519,
+  "explicit_cross_tests": 28,
+  "vendor_tests_last_validated_unchanged": 301,
+  "vendor_doc_tests_last_validated_unchanged": 1,
+  "headless_UI_suites_available": 41,
+  "headless_UI_suites_last_complete_run": 40,
+  "latest_targeted_UI_suites": [
+    "gg-import",
+    "gg-sensei-import",
+    "gg-lighting-import",
+    "steelseries-models",
+    "brand-imports"
+  ],
+  "latest_targeted_UI_status": "all-passed",
+  "development_exe_memory_transports": 34,
+  "development_exe_sha256": "1eed99f50cf8041d762dbc1e9d00a3b3426ace486c294780f092aea67ade1d66",
+  "frontend_JS_gzip_kB": 225.8,
+  "vendor_JS_or_SQL_executed": false,
+  "vendor_JS_bundled": false,
+  "timing_scope": "GG OEM widget calculation preserved; physical timing equivalence not measured",
+  "physical_hardware_tested": false,
+  "new_fully_accepted_models": 0,
+  "new_runtime_dependencies": false,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}

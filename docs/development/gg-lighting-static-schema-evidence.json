@@ -1,0 +1,59 @@
+{
+  "source": "SteelSeries GG122 official installer, already extracted inert JavaScript and migration JSON",
+  "vendor_code_executed": false,
+  "app_asar_sha256": "9b9d2a5f8675dbf3e8bc674838ccbb804f94d0282310a7e73a280e743190da06",
+  "members": [
+    {
+      "member": "render/166.js",
+      "bytes": 1401032,
+      "sha256": "332006380a03f9ef332999aaecd23d5c6ab6c9feb4ae76b47f5a940763395d10"
+    },
+    {
+      "member": "render/363.js",
+      "bytes": 9250803,
+      "sha256": "3ee4e184361d4e4e33b5f898c4ba8c5cc400de89fa4ffde80a50af6a2f65e13b"
+    },
+    {
+      "member": "render/377.js",
+      "bytes": 46427,
+      "sha256": "2cb1a209a95941caf9d27bd5217eeee92c0ef4325015e6f4253ca669d89c291a"
+    }
+  ],
+  "factories": {
+    "166:99244": "model to configuration decorator mapping",
+    "166:86117": "Rival310 six controls -> base98871",
+    "166:88576": "Sensei310 eight controls -> base98871",
+    "166:98871": "flat logo/wheel lighting fields; maxColorshiftStops10",
+    "377:55489": "effect names: steady0, colorshift1, breathe2, reactive3, disabled6; distinct from stored effect subtype",
+    "166:25763": "steady/disabled mask1 with subtype0; active colorShift mask0 subtype1; breathe mask0 subtype2; reactive mask8; colors/percent stops",
+    "363:48386": "observable mode/mask application, disabled initial RGB black, percent preview and period calculation"
+  },
+  "conversion_scope": {
+    "models": [
+      "1038:1720",
+      "1038:1722"
+    ],
+    "flat_color_table_entries": 14,
+    "flat_percent_table_entries": 14,
+    "element_indices": {
+      "Logo": 0,
+      "Wheel": 1
+    },
+    "element_coordinate": "pos.x=0,pos.y=0",
+    "supported": "mask1/subtype0 static or black off; mask0/subtype1 1–10 ordered colors; mask0/subtype2 1–4 colors with exact integer black midpoint positions",
+    "preview_period_ms": "round(max(330*color_count*(breathe?2:1),10*stored_speed)); speed33..3000",
+    "timing_evidence_limit": "OEM UI calculation is proven; physical GG-to-native timing equivalence is not measured",
+    "not_converted": [
+      "reactive",
+      "host stream",
+      "override initial color",
+      "spatial/directional modes",
+      "fractional black midpoint percentages",
+      "inactive color history"
+    ]
+  },
+  "migration_reference": "gg-flat-lighting-default-reference.json",
+  "independent_native_vectors": "steelseries-independent-gradient-vectors.json",
+  "public_vendor_JS_bundled": false,
+  "hardware_tested": false
+}
