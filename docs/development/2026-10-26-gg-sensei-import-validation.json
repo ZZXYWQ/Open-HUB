@@ -1,0 +1,28 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "exact Sensei310 GG private eight-key conversion and native DTO editor/save/reload replay",
+  "target_products": [
+    "1038:1720",
+    "1038:1722"
+  ],
+  "default_application_tests": 493,
+  "explicit_cross_tests": 25,
+  "headless_UI_suites_available": 38,
+  "headless_UI_suites_last_complete_run": 37,
+  "latest_targeted_UI_suites": [
+    "gg-import",
+    "gg-sensei-import",
+    "steelseries-models"
+  ],
+  "latest_targeted_UI_status": "all-passed",
+  "development_exe_memory_transports": 34,
+  "development_exe_sha256": "8e743e0afcc751585edd5d8e4d6e66ab8fd14d05991d838980b5292b01e76a63",
+  "frontend_JS_gzip_kB": 224.95,
+  "new_runtime_dependencies": false,
+  "official_migration_executed": false,
+  "GG_lighting_conversion_completed": false,
+  "physical_hardware_tested": false,
+  "new_fully_accepted_models": 0,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}

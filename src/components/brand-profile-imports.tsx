@@ -17,7 +17,7 @@ const sources = [
   {id:'mhub',brand:'迈从 / MCHOSE',software:'M HUB',label:'M HUB 板载配置导入',models:'A7 V3 Ultra+',scope:'三组板载名称与引用'},
   {id:'synapse',brand:'雷蛇 / Razer',software:'Synapse',label:'导入 Synapse 配置',models:'Naga V2 HyperSpeed · Synapse 4',scope:'预览 DPI、按键和可转换的宏'},
   {id:'icue',brand:'海盗船 / Corsair',software:'iCUE',label:'导入 iCUE 配置',models:'M65 PRO RGB',scope:'预览 DPI、按键和可转换的宏'},
-  {id:'gg',brand:'赛睿 / SteelSeries',software:'GG',label:'导入 GG 配置',models:'Rival 310',scope:'预览 DPI、按键和可转换的宏'},
+  {id:'gg',brand:'赛睿 / SteelSeries',software:'GG',label:'导入 GG 配置',models:'Rival 310 / Sensei 310',scope:'预览 DPI、按键和可转换的宏'},
 ] as const;
 
 export function BrandProfileImports({onChoose}:{onChoose:(source:string,models:SinoModel[])=>void}) {

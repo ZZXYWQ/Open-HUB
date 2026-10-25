@@ -9,7 +9,7 @@ interface Candidate {model:string;profile:Profile|null;issues:string[];notes:str
 interface Prepared {name:string;source_kind:string;candidates:Candidate[]}
 const sources={
  icue:{label:'iCUE',command:'prepare_icue_import',title:'海盗船 iCUE 鼠标配置导入',choose:'选择 iCUE 导出文件',description:'转换 M65 PRO RGB 的 DPI、按键和支持的原始宏事件。读取文件后可编辑、模拟并保存；保存后由你选择是否应用到匹配鼠标。',filter:{name:'Corsair iCUE 配置',extensions:['cueprofile']}},
- gg:{label:'GG',command:'prepare_gg_import',title:'赛睿 GG 鼠标配置导入',choose:'选择 GG 配置数据库',description:'只读导入 SteelSeries GG 的 Rival 310 配置数据库：CPI、回报率、按键和支持的原始宏事件。先核对并模拟，再保存到配置中心。尚未实机验证。',filter:{name:'SteelSeries GG 配置数据库',extensions:['db','sqlite','sqlite3']}},
+ gg:{label:'GG',command:'prepare_gg_import',title:'赛睿 GG 鼠标配置导入',choose:'选择 GG 配置数据库',description:'只读导入 SteelSeries GG 的 Rival 310 / Sensei 310 配置数据库：CPI、回报率、按键和支持的原始宏事件。先核对并模拟，再保存到配置中心。尚未实机验证。',filter:{name:'SteelSeries GG 配置数据库',extensions:['db','sqlite','sqlite3']}},
 };
 export function VendorProfileImport({kind,onClose,onSave}:{kind:keyof typeof sources;onClose:()=>void;onSave:(p:Profile)=>Promise<boolean>}){
  const source=sources[kind];

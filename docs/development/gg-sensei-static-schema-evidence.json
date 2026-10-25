@@ -1,0 +1,30 @@
+{
+  "source_kind": "official GG122 inert migration, previously extracted for read-only protocol research",
+  "artifact_relative_path": "apps/engine/db/migrations/3.10.5/20170602152332_squash.sql",
+  "sha256": "541fbdba0bba8889d74323aa314da58829dd6b5aac8f0dbeb175c3a303720e80",
+  "bytes": 465290,
+  "migration_executed": false,
+  "observed_device_rows": [
+    {
+      "id": 250,
+      "product_id": 272111392,
+      "name": "rival_310",
+      "physical_buttons": 6
+    },
+    {
+      "id": 251,
+      "product_id": 272111394,
+      "name": "sensei_310",
+      "physical_buttons": 8
+    }
+  ],
+  "converted_scope": [
+    "CPI",
+    "polling",
+    "native buttons",
+    "supported software macro events and playback",
+    "supported app association"
+  ],
+  "lighting_conversion": false,
+  "physical_hardware_verified": false
+}
