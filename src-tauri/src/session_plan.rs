@@ -3,8 +3,8 @@
 use super::*;
 use crate::macro_runtime::Runtime;
 
-#[derive(Clone)]pub(super) struct Session {connection_key:Option<String>,descriptor:DeviceDescriptor,plan:Plan,needs_software:bool}
-#[derive(Clone,Serialize)]pub struct SessionView {pub plan:Plan,pub software_state:&'static str,pub temporary_dpi:bool}
+#[derive(Clone)]pub(super) struct Session {save_attempted:bool,hardware_state:Option<DeviceState>,connection_key:Option<String>,descriptor:DeviceDescriptor,plan:Plan,needs_software:bool}
+#[derive(Clone,Serialize)]pub struct SessionView {pub hardware_save_attempted:bool,pub plan:Plan,pub software_state:&'static str,pub temporary_dpi:bool}
 fn same_device(a:&DeviceDescriptor,b:&DeviceDescriptor)->bool{
  (a.vendor_id,a.product_id,a.id.as_str(),a.serial.as_deref())==(b.vendor_id,b.product_id,b.id.as_str(),b.serial.as_deref())
 }
@@ -14,8 +14,16 @@ fn put(settings:&mut Vec<Setting>,value:Setting){
 }
 impl Service {
  pub(super) fn remember_session(&self,out:&View,plan:&Plan,needs_software:bool)->Result<(),String>{
-  let session=Session{connection_key:out.connection_key.clone(),descriptor:out.descriptor.clone(),plan:plan.clone(),needs_software};
+  let session=Session{save_attempted:false,hardware_state:crate::steelseries::supported(plan.vendor,plan.product).then(||out.state.clone()),connection_key:out.connection_key.clone(),descriptor:out.descriptor.clone(),plan:plan.clone(),needs_software};
   self.3.lock().map_err(|_|"会话方案锁异常")?.insert(out.descriptor.id.clone(),session);Ok(())
+ }
+ pub(super) fn take_hardware_save(&self,out:&View,plan:&Plan)->Result<(),String>{
+  let mut sessions=self.3.lock().map_err(|_|"会话方案锁异常")?;let session=sessions.get_mut(&out.descriptor.id).ok_or("请先应用完整硬件方案，再保存到鼠标")?;
+  if !same_device(&session.descriptor,&out.descriptor)||session.connection_key!=out.connection_key{return Err("鼠标连接已变化，请重新读取并应用方案".into());}
+  if session.needs_software{return Err("当前方案使用软件宏，请解除宏绑定并重新应用硬件方案后保存".into());}
+  if &session.plan!=plan||session.hardware_state.as_ref()!=Some(&out.state){return Err("编辑内容或当前会话状态已变化，请先重新应用完整硬件方案".into());}
+  if session.save_attempted{return Err("这次应用已经发出过板载保存请求；如需再次保存，请先重新应用方案".into());}
+  session.save_attempted=true;Ok(())
  }
  pub(super) fn attach_session(&self,out:&mut View,runtime:&Runtime)->Result<(),String>{
   let cached=self.3.lock().map_err(|_|"会话方案锁异常")?.get(&out.descriptor.id).cloned();
@@ -41,7 +49,7 @@ impl Service {
   if plan.settings.iter().any(|s|matches!(s,Setting::AngleSnapping(_))){if let Some(angle)=out.state.angle_snapping{put(&mut plan.settings,Setting::AngleSnapping(angle));}}
   if let Some(live)=out.state.tuning.as_ref(){if let Some(Setting::Tuning(selected))=plan.settings.iter_mut().find(|s|matches!(s,Setting::Tuning(_))){selected.refresh_selected(live);}}
   let software_state=if !session.needs_software{"hardware"}else if plan.source.as_ref().is_some_and(|s|runtime.is_armed(s))&&cleanup.as_ref().is_some_and(|c|!c.cancelled.load(Ordering::Acquire)){"running"}else{"stopped"};
-  out.session=Some(SessionView{plan,software_state,temporary_dpi});Ok(())
+  out.session=Some(SessionView{hardware_save_attempted:session.save_attempted,plan,software_state,temporary_dpi});Ok(())
  }
 }
 

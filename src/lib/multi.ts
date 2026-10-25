@@ -12,7 +12,7 @@ export type MultiEffect={Gradient:MultiGradient}|'Off'|{Static:{color:MultiColor
 export interface MultiZoneState {effect:MultiEffect;brightness:number}
 export type MultiSetting={Dpi:MultiDpi}|{ReportRate:number}|{Button:{id:number;action:MultiAction}}|{Lighting:{zone:number;state:MultiZoneState}}|{Tuning:MouseTuning}|{LiftOff:number}|{AngleSnapping:boolean}|{VendorProfile:{schema:string;data:X11Profile}};
 export interface MultiPlan {vendor:number;product:number;settings:MultiSetting[];macros?:MultiMacro[];source?:MultiSource|null}
-export interface MultiView {descriptor:{id:string;name:string;vendor_id:number;product_id:number;serial?:string|null;simulated:boolean};capabilities:{vendor_profile?:string;lift_off?:string[];angle_snapping?:boolean;tuning?:TuningCaps;dpi:{min:number;max:number;step:number;max_stages:number;separate_xy:boolean}|null;report_rates:number[];buttons:Array<{id:number;name:string;remappable:boolean;default_action?:MultiAction}>;lighting:Array<{id:number;name:string;effects:string[];brightness?:boolean}>};state:{battery?:{percent:number|null;charging:boolean}|null;vendor_profile?:X11Profile;lift_off?:number|null;angle_snapping?:boolean|null;tuning?:MouseTuning;dpi:MultiDpi|null;report_rate:number|null;buttons:Record<string,MultiAction>;lighting:Record<string,MultiZoneState>};readback:string;hardware_tested:boolean;native_macros?:MultiMacro[];session?:{plan:MultiPlan;software_state:'hardware'|'running'|'stopped';temporary_dpi:boolean}}
+export interface MultiView {write_connection?:string|null;descriptor:{id:string;name:string;vendor_id:number;product_id:number;serial?:string|null;simulated:boolean};capabilities:{vendor_profile?:string;lift_off?:string[];angle_snapping?:boolean;tuning?:TuningCaps;dpi:{min:number;max:number;step:number;max_stages:number;separate_xy:boolean}|null;report_rates:number[];buttons:Array<{id:number;name:string;remappable:boolean;default_action?:MultiAction}>;lighting:Array<{id:number;name:string;effects:string[];brightness?:boolean}>};state:{battery?:{percent:number|null;charging:boolean}|null;vendor_profile?:X11Profile;lift_off?:number|null;angle_snapping?:boolean|null;tuning?:MouseTuning;dpi:MultiDpi|null;report_rate:number|null;buttons:Record<string,MultiAction>;lighting:Record<string,MultiZoneState>};readback:string;hardware_tested:boolean;native_macros?:MultiMacro[];session?:{hardware_save_attempted?:boolean;plan:MultiPlan;software_state:'hardware'|'running'|'stopped';temporary_dpi:boolean}}
 export function fromMulti(v:MultiView):MultiPlan{
  if(v.session){const p=v.session.plan;if(p.vendor!==v.descriptor.vendor_id||p.product!==v.descriptor.product_id)throw Error('会话方案与鼠标型号不一致，未载入旧方案');return JSON.parse(JSON.stringify(p)) as MultiPlan;}
  if(isX11(v.descriptor.vendor_id,v.descriptor.product_id))return {vendor:v.descriptor.vendor_id,product:v.descriptor.product_id,macros:[],source:null,settings:v.state.vendor_profile?[{VendorProfile:{schema:X11_SCHEMA,data:v.state.vendor_profile}}]:[]};
@@ -36,3 +36,10 @@ export type MultiStep={KeyDown:number}|{KeyUp:number}|{Delay:number}|{MouseDown:
 export interface MultiMacro {id:string;name:string;mode:'Once'|'WhileHeld'|'Toggle';steps:MultiStep[]}
 
 export function basiliskPro(v:number,p:number){return v===0x1532&&[0x00aa,0x00ab].includes(p);}
+
+// Stable equality for a draft and its native round trip. JSON field order and
+// absent optional fields do not turn an unchanged applied plan into a new one.
+export function multiPlanSignature(plan:MultiPlan|null):string{
+ const ordered=(value:unknown):unknown=>Array.isArray(value)?value.map(ordered):value!==null&&typeof value==='object'?Object.fromEntries(Object.entries(value).filter(([,v])=>v!==undefined).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>[k,ordered(v)])):value;
+ return JSON.stringify(ordered(plan?{...plan,macros:plan.macros??[],source:plan.source??null}:null));
+}

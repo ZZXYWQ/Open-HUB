@@ -14,6 +14,8 @@ pub use rate_reconnect::{PendingList,PendingCandidates};
 #[path="session_plan.rs"]
 mod session_plan;
 pub use session_plan::SessionView;
+#[path="steelseries_persistence.rs"]mod steelseries_persistence;
+pub use steelseries_persistence::Saved;
 #[cfg(test)]
 #[path="import_execution_tests.rs"]
 mod import_execution_tests;
@@ -44,7 +46,7 @@ pub struct Plan {
 }
 #[derive(Clone, Serialize)]
 pub struct View {
-    #[serde(skip)]
+    #[serde(rename="write_connection",skip_serializing_if="Option::is_none")]
     connection_key:Option<String>,
     pub descriptor: DeviceDescriptor,
     pub capabilities: Capabilities,

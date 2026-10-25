@@ -129,6 +129,8 @@ fn multi_templates()->Result<Vec<multibrand::View>,String>{multibrand::templates
 #[tauri::command(async)]
 fn multi_simulate(plan:multibrand::Plan)->Result<serde_json::Value,String>{multibrand::simulate(&plan)}
 #[tauri::command(async)]
+fn multi_save_hardware(service:State<multibrand::Service>,id:String,plan:multibrand::Plan,expected_connection:String)->Result<multibrand::Saved,String>{service.save_native_hardware(&id,&plan,&expected_connection)}
+#[tauri::command(async)]
 fn multi_macro_simulate(source:host_macros::Source,button:u16,action:gearwise_core::profile::Macro)->Result<serde_json::Value,String>{host_macros::simulate(source,button,action)}
 #[tauri::command(async)]
 fn multi_input_sources(service:State<multibrand::Service>,id:Option<String>)->Result<Vec<raw_input::SourceInfo>,String>{match id{Some(id)=>service.input_sources(&id),None=>raw_input::sources()}}
@@ -1125,7 +1127,7 @@ fn main() {
             activate_profile,
             import_ghub_profiles,
             import_mhub_profiles,
-            sino_read,sino_apply,sino_models,sino_simulate,multi_read,multi_battery,multi_apply,multi_templates,multi_simulate,multi_macro_simulate,multi_input_sources,multi_macro_status,multi_stop_macros,multi_stop_device_macros,multi_recovery_list,multi_recovery_observe,multi_recovery_restore,multi_reconnect_list,multi_reconnect_candidates,multi_reconnect_resume,multi_reconnect_retry,multi_reconnect_discard,preview_synapse_import,prepare_synapse_import,prepare_icue_import,prepare_gg_import,
+            sino_read,sino_apply,sino_models,sino_simulate,multi_read,multi_battery,multi_apply,multi_templates,multi_simulate,multi_macro_simulate,multi_input_sources,multi_save_hardware,multi_macro_status,multi_stop_macros,multi_stop_device_macros,multi_recovery_list,multi_recovery_observe,multi_recovery_restore,multi_reconnect_list,multi_reconnect_candidates,multi_reconnect_resume,multi_reconnect_retry,multi_reconnect_discard,preview_synapse_import,prepare_synapse_import,prepare_icue_import,prepare_gg_import,
             preview_profile_import,commit_profile_import,export_profile_pack,
             onboard_snapshot,
             save_onboard_backup,

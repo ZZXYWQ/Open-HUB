@@ -1,0 +1,29 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "explicit current-connection SteelSeries hardware save of complete applied native plans; host-trigger and uncertainty guards",
+  "target_products": [
+    "1038:1710",
+    "1038:1720",
+    "1038:1722"
+  ],
+  "default_application_tests": 513,
+  "explicit_cross_tests": 27,
+  "vendor_tests_last_validated_unchanged": 301,
+  "vendor_doc_tests_last_validated_unchanged": 1,
+  "headless_UI_suites": 40,
+  "headless_UI_status": "all-passed",
+  "development_exe_memory_transports": 34,
+  "development_exe_sha256": "52e77c307079a66d48806045f8e18bb3bc2fa2e4d5751bfa6190d3608e904614",
+  "frontend_JS_gzip_kB": 225.75,
+  "native_save_packets": {
+    "Rival300": "00 09 00",
+    "Rival310": "00 59 00",
+    "Sensei310": "00 59 00"
+  },
+  "flash_readback_confirmed": false,
+  "physical_hardware_tested": false,
+  "new_runtime_dependencies": false,
+  "new_fully_accepted_models": 0,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}

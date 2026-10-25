@@ -23,3 +23,5 @@
 协议来源为 [rivalcfg 固定提交](https://github.com/flozz/rivalcfg/tree/779ea52c68cbf8d21234d9e0d81718225f680819)：逐型号 profile、独立旧规格报文和 RGB gradient 文档；具体文件摘要见 STEELSERIES-NATIVE-SOURCES.json。按公开协议事实复用本项目已有 MIT 驱动，不运行参考工程，不分发其 Python 环境。原版 SVG 独立保留 Piper 的 GPL-2.0 源文件和许可，详见 PIPER-ARTWORK.md。
 
 后续开发增量已接入 Rival 310 / Sensei 310 的 14 点原生自定义渐变和独立周期编辑，详见 STEELSERIES-NATIVE-GRADIENT.md。私有 GG 对应效果转换及实物验收仍不因此完成。
+
+后续开发增量加入明确板载保存按钮和单次、当前连接及软件宏拦截，详见 STEELSERIES-HARDWARE-SAVE.md；这是保存命令发送覆盖，仍不是闪存回读或实物验证。
