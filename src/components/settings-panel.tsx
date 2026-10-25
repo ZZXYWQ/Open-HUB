@@ -1,3 +1,4 @@
+import {LogitechLighting} from "@/components/logitech-lighting";
 import { OnboardSection } from "@/components/onboard-section";
 import { PanelSection, PanelShell, StateErrors } from "@/components/panel";
 import { Label } from "@/components/ui/label";
@@ -53,6 +54,8 @@ export function SettingsPanel({ device, state, onModeChange }: Props) {
       )}
 
       {device.features.some((f) => f.id === 0x8100) && <OnboardSection device={device} supportedDpi={state.dpi?.supported ?? []} />}
+
+      {device.vendor_id===0x046d&&device.features.some(f=>f.id===0x8070)&&<PanelSection title="鼠标灯光"><LogitechLighting key={device.id} device={device}/></PanelSection>}
 
       <PanelSection title="Device info">
         <dl className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-2 text-[13px]">

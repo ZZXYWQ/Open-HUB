@@ -1,0 +1,28 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "Logitech 8070 discovered zones, direct-USB volatile off/fixed, readback, conditional recovery and actual settings UI",
+  "default_application_tests": 391,
+  "explicit_cross_tests": 12,
+  "native_lighting_default_tests": 8,
+  "native_lighting_UI_cross_tests": 1,
+  "UI_suites_rechecked": [
+    "test-logitech-lighting-ui.cjs",
+    "test-logitech-bindings-ui.cjs"
+  ],
+  "new_complete_models_accepted": 0,
+  "Logitech_physical_hardware_tested": false,
+  "short_reply_scope": "FeatureRequest boundary, legacy transport padding not yet changed",
+  "new_runtime_dependencies": 0,
+  "frontend_JS_raw_kB": 711.72,
+  "frontend_JS_gzip_kB": 217.75,
+  "installer_generated": false,
+  "installed_release_unchanged": "0.3.7",
+  "source": "../LOGITECH-NATIVE-LIGHTING.md",
+  "development_EXE_memory_selftest": {
+    "passed": true,
+    "transports": 32,
+    "hardware_accessed": false,
+    "installed": false,
+    "sha256": "c49564a8f318e0eb19f42ba958b448e2af261edfb185662bc90a249398c3b4e0"
+  }
+}

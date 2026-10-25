@@ -7,6 +7,7 @@ mod macro_runtime;
 mod raw_input;
 mod feature_transport;
 mod hid_container;
+mod native_logitech_lighting;
 mod naga;
 mod atk;
 mod hyperx;
@@ -558,6 +559,15 @@ struct OnboardBindingWriteResult {
     refresh_note: Option<String>,
 }
 #[tauri::command(async)]
+fn read_logitech_lighting(state:State<AppState>,id:String)->Result<native_logitech_lighting::View,String>{
+ let guard=manager(&state)?;guard.as_ref().expect("manager initialised").with_device(&id,|d,t|native_logitech_lighting::read(d,t)).map_err(|e|e.to_string())
+}
+#[tauri::command(async)]
+fn apply_logitech_lighting(state:State<AppState>,id:String,change:native_logitech_lighting::Change)->Result<native_logitech_lighting::Applied,String>{
+ if ghub_agent_running(){return Err(GHUB_RUNNING.into());}
+ let guard=manager(&state)?;guard.as_ref().expect("manager initialised").with_device(&id,|d,t|native_logitech_lighting::apply(d,t,&change)).map_err(|e|e.to_string())
+}
+#[tauri::command(async)]
 fn write_onboard_bindings(
     app: AppHandle,
     state: State<AppState>,
@@ -1041,6 +1051,7 @@ fn main() {
             save_onboard_backup,
             write_onboard_slot,
             write_onboard_bindings,
+            read_logitech_lighting,apply_logitech_lighting,
             restore_onboard_backup,
             get_app_info,
             set_app_settings,

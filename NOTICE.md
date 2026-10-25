@@ -34,3 +34,5 @@ Pulsar Nordic keyboard shortcut records: independently implemented using the MIT
 Basilisk V3 Pro button protocol: independently implemented from kev-landry/basilisk-configurator commit 2bb8b3c81a201465e2b888bafa46b6cbb05ad9ae (MIT, Kevin Landry). Scope and evidence in BASILISK-ADAPTER.md; original license bundled as Basilisk-Configurator-MIT.txt. No vendor runtime or application bundled.
 
 Attack Shark X11 codec, table and test capture reference: HarukaYamamoto0 (MIT), akawazak/attack-shark-x11-community-driver commit 49ecf8e6d3bd83bf71e231209d28c5e0e8b71d12. Original permission text: AttackShark-X11-MIT.txt. Scope, contradictions and readback limits: [docs/X11-ADAPTER.md](docs/X11-ADAPTER.md). No vendor runtime, WinUSB replacement, or factory application is bundled.
+
+Logitech native lighting protocol cross-reference: infinitysky/LogitechGDeviceInfo (MIT, copyright 2026 infinitySKYLi), fixed commit e19565d9f14d23c7e7c8eb6b674c3de907243515. Original permission text is bundled as Logitray-MIT.txt. Device discovery, per-device identity, recovery and UI are independently integrated; no third-party executable or runtime is bundled.
