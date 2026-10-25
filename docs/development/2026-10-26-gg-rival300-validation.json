@@ -1,0 +1,29 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "exact GG Rival300 legacy CPI/light layout and six native media actions for all three reviewed GG models",
+  "default_application_tests": 523,
+  "explicit_cross_tests": 30,
+  "vendor_unit_tests_last_validated_unchanged": 303,
+  "vendor_doc_tests_last_validated_unchanged": 1,
+  "headless_UI_suites_available": 42,
+  "headless_UI_suites_last_complete_run": 41,
+  "latest_targeted_UI_suites": [
+    "gg-import",
+    "gg-sensei-import",
+    "gg-lighting-import",
+    "gg-rival300-import",
+    "steelseries-models",
+    "brand-imports"
+  ],
+  "latest_targeted_UI_status": "all-passed",
+  "development_exe_memory_transports": 34,
+  "development_exe_sha256": "5a74fffc17c11fb3640477cf51e3a6504d488074eb64d52da66fcda0a79f5fd4",
+  "frontend_JS_gzip_kB": 225.81,
+  "original_SQL_executed": false,
+  "legacy_host_sequence_supported": false,
+  "physical_hardware_tested": false,
+  "new_fully_accepted_models": 0,
+  "new_runtime_dependencies": false,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}

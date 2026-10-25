@@ -170,7 +170,21 @@ fn zone(value: &Value) -> Result<ZoneState, String> {
         brightness: 100,
     })
 }
+fn legacy_zone(settings:&Value,name:&str)->Result<ZoneState,String>{
+ let color=settings.get(format!("{name}_color")).ok_or("旧版 GG 缺少灯区颜色")?;fields(color,&["red","green","blue"])?;
+ let channel=|k|->Result<u8,String>{field(color,k)?.try_into().map_err(|_|"旧版 GG 颜色超出 0–255".into())};let color=Rgb{r:channel("red")?,g:channel("green")?,b:channel("blue")?};
+ let pulsation=settings.get(format!("{name}_pulsation")).ok_or("旧版 GG 缺少固件呼吸模式")?;fields(pulsation,&["mode"])?;
+ let sequence=settings.get(format!("rival_{name}_color_sequence")).ok_or("旧版 GG 缺少主机颜色序列")?;fields(sequence,&["repeat","data"])?;
+ if sequence.get("data").and_then(Value::as_array).is_none_or(|v|!v.is_empty())||sequence.get("repeat").and_then(Value::as_str)!=Some(""){return Err("此 Rival 300 GG 主机颜色序列尚未转换，不能冒充板载灯效".into());}
+ let effect=match field(pulsation,"mode")?{1=>if color==Rgb::BLACK{LightingEffect::Off}else{LightingEffect::Static{color}},mode@2..=4=>LightingEffect::Breathing{color,period_ms:match mode{2=>7000,3=>5000,_=>3000}},_=>return Err("此 Rival 300 原厂灯效模式尚未核对".into())};Ok(ZoneState{effect,brightness:100})
+}
+fn legacy(settings:&Value)->Result<Option<Vec<Setting>>,String>{
+ let keys=["logo_color","wheel_color","logo_pulsation","wheel_pulsation","rival_logo_color_sequence","rival_wheel_color_sequence"];
+ if keys.iter().all(|k|settings.get(k).is_none()){return Ok(None);}
+ let mut out=Vec::new();for(zone,name)in["logo","wheel"].into_iter().enumerate(){let state=legacy_zone(settings,name).map_err(|e|format!("{name}：{e}"))?;let setting=Setting::Lighting{zone:zone as u8,state};crate::steelseries::validate_setting(0x1710,&setting)?;out.push(setting);}Ok(Some(out))
+}
 pub(super) fn parse(pid: u16, settings: &Value) -> Result<Option<Vec<Setting>>, String> {
+    if pid==0x1710{return legacy(settings);}
     if ![0x1720, 0x1722].contains(&pid) {
         return Err("此 GG 灯效没有已核对的精确型号".into());
     }
@@ -354,7 +368,7 @@ mod tests {
             }
             assert!(parse(0x1722, &s).is_err(), "case {case}");
         }
-        assert!(parse(0x1710, &settings()).is_err());
+        assert!(parse(0x1724, &settings()).is_err());
         assert!(parse(0x1722, &json!({})).unwrap().is_none());
     }
 }

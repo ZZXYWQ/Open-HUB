@@ -1,0 +1,135 @@
+{
+  "source_sha256": "23219eb702aee1b903cb455aaf2a11f61fb322bab22f34c8d744b824992ff136",
+  "settings": {
+    "logo_color": {
+      "red": 255,
+      "green": 24,
+      "blue": 0
+    },
+    "wheel_color": {
+      "red": 255,
+      "green": 24,
+      "blue": 0
+    },
+    "resolution_1": {
+      "resolution": 16,
+      "dcpi": 0
+    },
+    "resolution_2": {
+      "resolution": 32,
+      "dcpi": 0
+    },
+    "raw_cpi": {
+      "level1": 800,
+      "level2": 1600
+    },
+    "logo_pulsation": {
+      "mode": 1
+    },
+    "wheel_pulsation": {
+      "mode": 1
+    },
+    "polling_rate": {
+      "level": 1
+    },
+    "exact_accel": {
+      "level": 0
+    },
+    "exact_aim": {
+      "level": 0
+    },
+    "button_mappings": {
+      "buttons": [
+        {
+          "function": 1,
+          "key_codes": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "function": 2,
+          "key_codes": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "function": 3,
+          "key_codes": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "function": 4,
+          "key_codes": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "function": 5,
+          "key_codes": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "function": 48,
+          "key_codes": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "no_live_deploy": 1
+    },
+    "wheel_mappings": {
+      "wheels": [
+        {
+          "function": 49,
+          "key_codes": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "function": 50,
+          "key_codes": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "no_live_deploy": 1
+    },
+    "rival_logo_color_sequence": {
+      "repeat": "",
+      "data": []
+    },
+    "rival_wheel_color_sequence": {
+      "repeat": "",
+      "data": []
+    },
+    "free_move": {
+      "level": 0
+    }
+  }
+}

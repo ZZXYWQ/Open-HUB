@@ -1,6 +1,6 @@
 //! Read-only SteelSeries GG SQLite conversion. Schema/codec facts were checked
-//! against GG122 migrations and inert factories 98871/86737/55489/58576.
-//! Exact Rival310/Sensei310 schemas; model tags and six/eight physical records
+//! against GG122 migrations and inert factories 11090/98871/86737/30652/55489/58576.
+//! Exact Rival300/Rival310/Sensei310 schemas; model tags and six/eight physical records
 //! are checked separately, never inferred from a brand or similar settings.
 use crate::{icue_profiles::{Candidate,Prepared},multibrand::Plan,profiles::{Level,Profile}};
 use gearwise_core::{Setting,model::{ButtonAction,DpiFunction,DpiStage,DpiState,Modifiers,MouseButton},profile::{Macro,MacroMode,MacroStep}};
@@ -36,7 +36,7 @@ fn read(conn:&Connection)->Result<Prepared,String>{
   if !ids.insert(id.clone()){return Err("GG 配置标识重复".into());}
   let mut c=Candidate{model:format!("{model} · {name}"),profile:None,issues:vec![],notes:vec!["按原始事件转换 DPI、按钮和软件宏。灯效按已核对字段转换，未实现行为会拦截并说明；尚未实机验证。".into(),"导入与保存只处理文件；应用软件动作前请在编辑器选择此鼠标的输入来源。".into()]};
   let p=(||{
-   let pid=match(product,model.as_str()){(0x10381720,"rival_310")=>0x1720,(0x10381722,"sensei_310")=>0x1722,_=>return Err("此配置不是已核对的 Rival 310 / Sensei 310，不能借用其他型号的物理布局".into())};
+   let pid=match(product,model.as_str()){(0x10381710,"rival_300")=>0x1710,(0x10381720,"rival_310")=>0x1720,(0x10381722,"sensei_310")=>0x1722,_=>return Err("此配置不是已核对的 Rival 300 / Rival 310 / Sensei 310，不能借用其他型号的物理布局".into())};
    if id.is_empty()||id.len()>80||name.is_empty()||name.len()>256{return Err("GG 配置名称或标识无效".into());}
    let source=json(&text)?;let(plan,levels,active,rate)=convert(conn,&id,pid,&source,&mut c.notes)?;
    let app_path=associated_program(conn,&id)?;
@@ -52,15 +52,17 @@ fn associated_program(conn:&Connection,id:&str)->Result<Option<String>,String>{
  let(same,path)=&rows[0];if !same{return Err("GG 应用关联与配置所属设备不一致".into());}let path=path.as_ref().filter(|p|!p.trim().is_empty()&&p.len()<=4096&&!p.chars().any(char::is_control)).ok_or("GG 应用路径缺失或无效，不能静默丢失自动切换条件")?;Ok(Some(path.clone()))
 }
 fn convert(conn:&Connection,id:&str,pid:u16,s:&Value,notes:&mut Vec<String>)->Result<(Plan,Vec<Level>,usize,u16),String>{
- let physical_buttons=match pid{0x1720=>6,0x1722=>8,_=>return Err("此 GG 型号没有已核对的按键布局".into())};
- let allowed=["resolution_1","resolution_2","raw_cpi","resolution_level","polling_rate","exact_accel","exact_aim","free_move","button_mappings","wheel_mappings","logo_lighting","wheel_lighting","logo_element","wheel_element"];
+ let physical_buttons=match pid{0x1710|0x1720=>6,0x1722=>8,_=>return Err("此 GG 型号没有已核对的按键布局".into())};
+ let allowed=["resolution_1","resolution_2","raw_cpi","resolution_level","polling_rate","exact_accel","exact_aim","free_move","button_mappings","wheel_mappings","logo_lighting","wheel_lighting","logo_element","wheel_element","logo_color","wheel_color","logo_pulsation","wheel_pulsation","rival_logo_color_sequence","rival_wheel_color_sequence"];
  for key in s.as_object().ok_or("GG 配置不是对象")?.keys(){if !allowed.contains(&key.as_str()){return Err(format!("GG 设置 {key} 尚未转换，不能保存为完整的鼠标参数方案"));}}
+ let legacy=pid==0x1710;
+ for key in if legacy{&["logo_lighting","wheel_lighting","logo_element","wheel_element"][..]}else{&["logo_color","wheel_color","logo_pulsation","wheel_pulsation","rival_logo_color_sequence","rival_wheel_color_sequence"][..]}{if s.get(key).is_some(){return Err("GG 灯效布局与当前精确型号不一致".into());}}
  for name in ["exact_accel","exact_aim","free_move"]{if s.get(name).is_some_and(|v|v.get("level").and_then(Value::as_u64)!=Some(0)){return Err(format!("{name} 的非默认性能行为尚未转换"));}}
- let mut stages=Vec::new();for index in 1..=2{let source=s.get(format!("resolution_{index}")).ok_or("缺少 GG CPI 档位")?;if field(source,"dcpi")?!=0{return Err("GG 额外 CPI 修正标志尚未转换".into());}let resolution=field(source,"resolution")?;if resolution>119{return Err("Rival 310 CPI 编码超出范围".into());}let value=((resolution+1)*100)as u16;
+ let mut stages=Vec::new();for index in 1..=2{let source=s.get(format!("resolution_{index}")).ok_or("缺少 GG CPI 档位")?;if field(source,"dcpi")?!=0{return Err("GG 额外 CPI 修正标志尚未转换".into());}let resolution=field(source,"resolution")?;let value=if legacy{if !(1..=130).contains(&resolution){return Err("Rival 300 CPI 编码超出已核对范围".into());}(resolution*50)as u16}else{if resolution>119{return Err("310 CPI 编码超出范围".into());}((resolution+1)*100)as u16};
   if let Some(raw)=s.get("raw_cpi").and_then(|v|v.get(format!("level{index}"))){let raw=number(raw)?;if raw!=0&&raw!=u32::from(value){return Err("GG 显示 CPI 与设备 CPI 编码不一致，请先在 GG 核对原始值".into());}}
   stages.push(DpiStage::uniform(value));
  }
- let active=match s.get("resolution_level"){Some(v)=>match field(v,"level")?{1=>0,2=>1,_=>return Err("GG 当前 CPI 档位无效".into())},None=>{notes.push("来源没有记录当前 CPI 档位；预览选中档位 1，可在编辑器更改后应用。".into());0}};
+ let active=match s.get("resolution_level"){Some(v)=>match field(v,"level")?{1=>0,2=>1,_=>return Err("GG 当前 CPI 档位无效".into())},None=>{notes.push("来源没有记录当前 CPI 档位；当前型号由实体 CPI 键切档，预览使用第 1 档。".into());0}};
  let rate=match field(s.get("polling_rate").ok_or("缺少 GG 回报率")?,"level")?{1=>1000,2=>500,3=>250,4=>125,_=>return Err("此 Rival 310 回报率编码尚未验证".into())};
  let source_buttons=s.pointer("/button_mappings/buttons").and_then(Value::as_array).ok_or("缺少 GG 物理按键映射")?;if source_buttons.len()!=physical_buttons{return Err(format!("GG 按键表不匹配当前型号的 {physical_buttons} 键布局"));}
  let wheel=s.pointer("/wheel_mappings/wheels").and_then(Value::as_array).ok_or("缺少 GG 滚轮映射")?;if wheel.len()!=2{return Err("GG 滚轮映射数量无效".into());}for(i,v)in wheel.iter().enumerate(){if field(v,"function")?!=49+i as u32||!zero_codes(v)?{return Err("GG 自定义滚轮动作尚未转换".into());}}
@@ -69,6 +71,7 @@ fn convert(conn:&Connection,id:&str,pid:u16,s:&Value,notes:&mut Vec<String>)->Re
   0=>{if !zero_codes(v)?{return Err("禁用按钮含未知附加键码".into());}ButtonAction::Disabled},
   code@1..=5=>{if !zero_codes(v)?{return Err("鼠标动作含未知附加键码".into());}ButtonAction::Mouse(mouse(code)?)},
   48=>{if !zero_codes(v)?{return Err("CPI 切换含未知附加键码".into());}ButtonAction::Dpi(DpiFunction::Cycle)},
+  97=>{let keys=codes(v)?;if keys[0]==0||keys[1..].iter().any(|k|*k!=0){return Err("GG 媒体动作含空或多键记录，不能无损转换".into());}ButtonAction::Media(u16::from(keys[0]))},
   81=>{let keys=codes(v)?.into_iter().filter(|k|*k!=0).collect::<Vec<_>>();let mut seen=HashSet::new();if keys.is_empty()||keys.iter().any(|k|!seen.insert(*k)){return Err("GG 快捷键为空或重复".into());}
    let normal=keys.iter().copied().filter(|k|!(0xe0..=0xe7).contains(k)).collect::<Vec<_>>();if normal.len()==1{let mods=keys.iter().copied().filter(|k|(0xe0..=0xe7).contains(k)).fold(0,|m,k|m|1<<(k-0xe0));ButtonAction::Key{usage:normal[0],mods:Modifiers(mods)}}else{
     let mut steps=keys.iter().copied().map(MacroStep::KeyDown).collect::<Vec<_>>();steps.push(MacroStep::WaitForRelease);steps.extend(keys.iter().rev().copied().map(MacroStep::KeyUp));let body=Macro{id:format!("gg-key:{id}:{button}"),name:format!("按键 {button} 的原始按住组合"),mode:MacroMode::WhileHeld,steps};crate::host_macros::validate(&body)?;let action=ButtonAction::Macro(body.id.clone());macros.push(body);action
@@ -89,7 +92,7 @@ fn convert(conn:&Connection,id:&str,pid:u16,s:&Value,notes:&mut Vec<String>)->Re
  if buttons.get(&1)!=Some(&ButtonAction::Mouse(MouseButton::Left)){return Err("GG 原始配置修改了主左键，当前导入保留主左键点击".into());}buttons.remove(&1);
  // A custom binding replaces a direct held chord; omit its now-unused body.
  macros.retain(|m|buttons.values().any(|a|a==&ButtonAction::Macro(m.id.clone())));
- let lights=lighting::parse(pid,s)?;if lights.is_some(){notes.push("GG 原始灯效两灯区已转换；周期按 GG 界面计算，实物尚未验证。原厂未激活的调色历史不导入。".into());}else{notes.push("来源未包含灯效记录，仅导入已记录的 DPI、按键与宏。".into());}
+ let lights=lighting::parse(pid,s)?;if lights.is_some(){notes.push(if legacy{"GG 原始灯效两灯区已转换为固定固件模式；主机颜色序列不冒充板载效果，实物尚未验证。"}else{"GG 原始灯效两灯区已转换；周期按 GG 界面计算，实物尚未验证。原厂未激活的调色历史不导入。"}.into());}else{notes.push("来源未包含灯效记录，仅导入已记录的 DPI、按键与宏。".into());}
  let levels=stages.iter().map(|s|Level{x:s.x,y:Some(s.y)}).collect();let mut settings=vec![Setting::Dpi(DpiState{stages,active:active as u8}),Setting::ReportRate(rate)];settings.extend(buttons.into_iter().map(|(id,action)|Setting::Button{id,action}));if let Some(lights)=lights{settings.extend(lights);}let plan=Plan{vendor:0x1038,product:pid,settings,macros,source:None};crate::multibrand::validate(&plan)?;Ok((plan,levels,active,rate))
 }
 fn codes(v:&Value)->Result<Vec<u8>,String>{let list=v.get("key_codes").and_then(Value::as_array).ok_or("缺少 GG 四字节键码")?;if list.len()!=4{return Err("GG 键码长度不是已验证的四字节布局".into());}list.iter().map(|v|number(v)?.try_into().map_err(|_|"GG HID 键码超出范围".into())).collect()}
@@ -131,6 +134,22 @@ fn macro_body(id:String,name:String,text:&str,playback:&Value)->Result<Macro,Str
  }
  fn sensei_fixture()->Connection{let c=fixture();c.execute("UPDATE devices SET product_id=272111394,name='sensei_310'",[]).unwrap();let mut source=settings();let b=source["button_mappings"]["buttons"].as_array_mut().unwrap();b[5]=json!({"function":81,"key_codes":[78,0,0,0]});b.push(json!({"function":81,"key_codes":[75,0,0,0]}));b.push(json!({"function":48,"key_codes":[0,0,0,0]}));c.execute("UPDATE configurations SET settings=?1",[source.to_string()]).unwrap();c}
 
+
+ fn rival300_fixture(mode:&str)->Connection{
+  let c=fixture();c.execute("UPDATE devices SET product_id=272111376,name='rival_300'",[]).unwrap();let reference:Value=serde_json::from_str(include_str!("../../docs/development/gg-rival300-default-reference.json")).unwrap();let mut settings=reference["settings"].clone();
+  match mode{"breathing"=>{settings["logo_pulsation"]["mode"]=json!(3);settings["wheel_pulsation"]["mode"]=json!(2);settings["logo_color"]=json!({"red":18,"green":52,"blue":86});},"disabled"=>{for key in["logo_color","wheel_color"]{settings[key]=json!({"red":0,"green":0,"blue":0});}},"media"=>settings["button_mappings"]["buttons"][1]=json!({"function":97,"key_codes":[234,0,0,0]}),"software-sequence"=>settings["rival_logo_color_sequence"]["data"]=json!([{"r":1,"g":2,"b":3}]),_=>{}}
+  c.execute("UPDATE configurations SET settings=?1,name=?2,id=?3",rusqlite::params![settings.to_string(),format!("GG Rival300 {mode}"),format!("rival300-{mode}")]).unwrap();c.execute("UPDATE bindings SET config_id=?1",[format!("rival300-{mode}")]).unwrap();c
+ }
+ #[test]fn rival300_private_factory_schema_decodes_native_sensor_scale_firmware_lights_and_original_macros(){
+  let mut candidates=Vec::new();for mode in["factory","breathing","disabled","media","software-sequence"]{let c=rival300_fixture(mode);let mut prepared=read(&c).unwrap();let candidate=&prepared.candidates[0];if mode=="software-sequence"{assert!(candidate.profile.is_none());assert!(candidate.issues[0].contains("主机颜色序列"));}else{let profile=candidate.profile.as_ref().unwrap_or_else(||panic!("{:?}",candidate.issues));assert_eq!(profile.target_model,Some(0x1710));assert_eq!(profile.levels[0].x,800);assert_eq!(profile.levels[1].x,1600);assert_eq!(profile.report_rate_hz,Some(1000));let plan=profile.multi.as_ref().unwrap();assert_eq!(plan.settings.iter().filter(|s|matches!(s,Setting::Button{..})).count(),5);assert_eq!(plan.settings.iter().filter(|s|matches!(s,Setting::Lighting{..})).count(),2);assert_eq!(plan.macros[0].steps.len(),5);assert_eq!(crate::multibrand::simulate(plan).unwrap()["hardware_tested"],false);let(mut device,log)=gearwise_steelseries::simulated_model(0x1710).unwrap();for setting in plan.settings.iter().filter(|s|matches!(s,Setting::Dpi(_)|Setting::Lighting{..})){device.apply(setting).unwrap();}let ops=log.lock().unwrap();assert_eq!(ops[0],gearwise_core::transport::MockRecord::Write(vec![0,3,1,16]));if mode=="breathing"{assert!(ops.contains(&gearwise_core::transport::MockRecord::Write(vec![0,7,1,3])));assert!(ops.contains(&gearwise_core::transport::MockRecord::Write(vec![0,7,2,2])));}assert!(!profile.targets(0x1038,&[0x1720]));}candidates.append(&mut prepared.candidates);}
+  if let Some(path)=std::env::var_os("OPEN_HUB_GG_RIVAL300_FIXTURE"){std::fs::write(path,serde_json::to_vec_pretty(&Prepared{name:"GG Rival300 旧版布局".into(),source_kind:"GG SQLite",candidates}).unwrap()).unwrap();}
+ }
+ #[test]fn exact_three_gg_models_import_six_native_media_keys_and_reject_unknown_or_multi_key_records(){
+  for pid in[0x1710,0x1720,0x1722]{for usage in[0xb5,0xb6,0xcd,0xe2,0xe9,0xea]{let c=match pid{0x1710=>rival300_fixture("factory"),0x1720=>fixture(),_=>sensei_fixture()};let text:String=c.query_row("SELECT settings FROM configurations",[],|r|r.get(0)).unwrap();let mut source=json(&text).unwrap();source["button_mappings"]["buttons"][1]=json!({"function":97,"key_codes":[usage,0,0,0]});c.execute("UPDATE configurations SET settings=?1",[source.to_string()]).unwrap();let prepared=read(&c).unwrap();let profile=prepared.candidates[0].profile.as_ref().unwrap();let setting=profile.multi.as_ref().unwrap().settings.iter().find(|s|matches!(s,Setting::Button{id:2,..})).unwrap();assert_eq!(setting,&Setting::Button{id:2,action:ButtonAction::Media(usage)});let(mut device,log)=gearwise_steelseries::simulated_model(pid).unwrap();device.apply(setting).unwrap();let ops=log.lock().unwrap();let gearwise_core::transport::MockRecord::Write(bytes)=&ops[0]else{panic!()};assert_eq!(&bytes[8..13],&[0x61,usage as u8,0,0,0]);}
+   for keys in[vec![0,0,0,0],vec![0xb7,0,0,0],vec![0xea,0xe9,0,0]]{let c=match pid{0x1710=>rival300_fixture("factory"),0x1720=>fixture(),_=>sensei_fixture()};let text:String=c.query_row("SELECT settings FROM configurations",[],|r|r.get(0)).unwrap();let mut source=json(&text).unwrap();source["button_mappings"]["buttons"][1]=json!({"function":97,"key_codes":keys});c.execute("UPDATE configurations SET settings=?1",[source.to_string()]).unwrap();assert!(read(&c).unwrap().candidates[0].profile.is_none());}
+  }
+ }
+ #[test]fn rival300_wrong_model_layouts_ranges_or_unproven_legacy_modes_do_not_import_partial_state(){for case in 0..6{let c=rival300_fixture("factory");let text:String=c.query_row("SELECT settings FROM configurations",[],|r|r.get(0)).unwrap();let mut source=json(&text).unwrap();match case{0=>{c.execute("UPDATE devices SET name='rival_310'",[]).unwrap();},1=>source["logo_lighting"]=json!({}),2=>source["logo_pulsation"]["mode"]=json!(5),3=>source["resolution_1"]["resolution"]=json!(131),4=>source["raw_cpi"]["level1"]=json!(850),_=>{source.as_object_mut().unwrap().remove("wheel_color");}}c.execute("UPDATE configurations SET settings=?1",[source.to_string()]).unwrap();assert!(read(&c).unwrap().candidates[0].profile.is_none(),"case {case}");}}
  fn native_lighting_source(mode:&str)->Value{
   let reference:Value=serde_json::from_str(include_str!("../../docs/development/gg-flat-lighting-default-reference.json")).unwrap();let mut source=reference["settings"].clone();
   if mode=="steady-off"{for key in["logo_lighting","wheel_lighting"]{source[key]["type"]=json!(0);source[key]["settings_mask"]=json!(1);}source["logo_lighting"]["initial_color"]=json!({"r":18,"g":52,"b":86});source["wheel_lighting"]["initial_color"]=json!({"r":0,"g":0,"b":0});}
@@ -173,6 +192,18 @@ fn macro_body(id:String,name:String,text:&str,playback:&Value)->Result<Macro,Str
    if p.name.contains("steady-off"){assert_eq!(&bytes[29..32],&[171,205,239]);assert!(plan.settings.iter().any(|s|matches!(s,Setting::Lighting{zone:1,state:gearwise_core::model::ZoneState{effect:gearwise_core::model::LightingEffect::Off,..}})));}else{assert_eq!(&bytes[4..6],&12340u16.to_le_bytes());assert_eq!(&bytes[29..32],&[255,0,0]);if p.name.contains("breathing-"){assert_eq!(bytes[28],5);let expected=if p.name.contains("breathing-half"){[0,42,42,85,86]}else{[0,63,64,64,64]};assert_eq!([bytes[35],bytes[39],bytes[43],bytes[47],bytes[51]],expected);}else{assert_eq!(bytes[28],4);}}
    assert!(!p.targets(0x046d,&[plan.product]));assert!(!p.targets(0x1038,&[if plan.product==0x1720{0x1722}else{0x1720}]));
   }
+ }
+
+ #[test]
+ #[ignore="requires current Rival300 legacy GG browser profiles"]
+ fn browser_rival300_legacy_gg_profiles_persist_reload_and_execute_original_macros_and_fixed_firmware_effects(){
+  let profiles:Vec<Profile>=serde_json::from_slice(&std::fs::read(std::env::var_os("OPEN_HUB_GG_RIVAL300_UI_PROFILES").unwrap()).unwrap()).unwrap();assert_eq!(profiles.len(),4);let mut store=crate::profiles::ProfileStore::default();crate::profile_transfer::merge(&mut store,profiles.clone()).unwrap();let file=std::env::temp_dir().join(format!("rival300-ui-{}.json",crate::profiles::new_id()));store.save(&file).unwrap();let loaded=crate::profiles::ProfileStore::load(&file);std::fs::remove_file(file).unwrap();for source in profiles{let p=loaded.get(&source.id).unwrap();assert_eq!(p.target_model,Some(0x1710));assert_eq!(p.levels[0].x,900);let plan=p.multi.as_ref().unwrap();let result=crate::multibrand::simulate(plan).unwrap();assert_eq!(result["software_macros"][0]["virtual_delay_ms"],23);assert_eq!(result["hardware_tested"],false);let(mut device,log)=gearwise_steelseries::simulated_model(0x1710).unwrap();for s in plan.settings.iter().filter(|s|matches!(s,Setting::Dpi(_)|Setting::Lighting{..})){device.apply(s).unwrap();}let ops=log.lock().unwrap();assert!(ops.contains(&gearwise_core::transport::MockRecord::Write(vec![0,3,1,18])));if p.name.contains("breathing"){assert!(ops.contains(&gearwise_core::transport::MockRecord::Write(vec![0,7,1,4])));assert!(ops.contains(&gearwise_core::transport::MockRecord::Write(vec![0,7,2,2])));}else if p.name.contains("disabled"){assert!(ops.contains(&gearwise_core::transport::MockRecord::Write(vec![0,8,1,0,0,0])));}else{assert!(ops.contains(&gearwise_core::transport::MockRecord::Write(vec![0,8,1,171,205,239])));}if p.name.contains("media"){assert!(plan.settings.contains(&Setting::Button{id:2,action:ButtonAction::Media(0xcd)}));}assert!(!p.targets(0x1038,&[0x1720]));assert!(!p.targets(0x046d,&[0x1710]));}
+ }
+
+ #[test]
+ #[ignore="requires inert official GG122 Rival300 legacy migration source"]
+ fn official_rival300_migration_default_matches_the_embedded_reference_without_executing_vendor_sql(){
+  use sha2::{Digest,Sha256};let bytes=std::fs::read(std::env::var_os("OPEN_HUB_GG_RIVAL300_SQL").unwrap()).unwrap();assert_eq!(format!("{:x}",Sha256::digest(&bytes)),"23219eb702aee1b903cb455aaf2a11f61fb322bab22f34c8d744b824992ff136");let text=String::from_utf8(bytes).unwrap();let start=text.find("VALUES (51, 272111376, 'rival_300', 'Rival 300', 1,").unwrap();let entry=&text[start..];let first=entry.find("'{").unwrap()+1;let end=first+entry[first..].find("}',").unwrap()+1;let source=json(&entry[first..end]).unwrap();let reference:Value=serde_json::from_str(include_str!("../../docs/development/gg-rival300-default-reference.json")).unwrap();assert_eq!(source,reference["settings"]);let c=rival300_fixture("factory");c.execute("UPDATE configurations SET settings=?1",[source.to_string()]).unwrap();let prepared=read(&c).unwrap();let profile=prepared.candidates[0].profile.as_ref().unwrap();assert_eq!(profile.levels[0].x,800);assert_eq!(profile.levels[1].x,1600);assert_eq!(profile.target_model,Some(0x1710));assert_eq!(profile.multi.as_ref().unwrap().settings.iter().filter(|s|matches!(s,Setting::Lighting{..})).count(),2);assert_eq!(crate::multibrand::simulate(profile.multi.as_ref().unwrap()).unwrap()["hardware_tested"],false);
  }
 
 }

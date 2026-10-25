@@ -1,0 +1,29 @@
+{
+  "source": "inert GG122 official installer migration and renderer modules",
+  "vendor_code_executed": false,
+  "migration_member": "apps/engine/db/migrations/3.4.4/20150902111339_squash.sql",
+  "migration_bytes": 46077,
+  "migration_sha256": "23219eb702aee1b903cb455aaf2a11f61fb322bab22f34c8d744b824992ff136",
+  "row": {
+    "id": 51,
+    "combined_product_id": 272111376,
+    "name": "rival_300",
+    "type": 1
+  },
+  "renderer_member": "render/166.js",
+  "renderer_sha256": "332006380a03f9ef332999aaecd23d5c6ab6c9feb4ae76b47f5a940763395d10",
+  "factories": {
+    "4600": "Rival300 wrapper ->11090",
+    "11090": "50-unit CPI scale, six physical triggers, legacy colors/pulsation/sequences",
+    "90963": "legacy display from host sequence or firmware modes2/3/4",
+    "86737": "newer four-byte media function97",
+    "30652": "media action uses first key_codes entry; application copies four action keycodes"
+  },
+  "native_scope": [
+    "1038:1710 legacy import",
+    "6 verified native media usages on1038:1710/1720/1722"
+  ],
+  "host_color_sequences_converted": false,
+  "original_SQL_executed": false,
+  "physical_hardware_tested": false
+}

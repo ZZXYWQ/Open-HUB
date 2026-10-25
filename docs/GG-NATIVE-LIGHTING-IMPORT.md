@@ -13,3 +13,5 @@ UI 的转换说明及品牌条目包含灯效范围。导入后可查看两灯�
 验证包括原厂迁移中的惰性默认 LED JSON、独立完整原生报告、错误掩码/位置/颜色/方向/布局/周期、实际 SQLite 候选解析，以及两型号四种模式的八组实际 UI 编辑保存。保存后的 Profile 经生产存储重载/合并和真实驱动内存传输回放，两灯区和原始五步混合宏保留；未支持的响应模式候选没有保存入口。来源文件 SHA-256、工厂编号和限制见 development/gg-lighting-static-schema-evidence.json。厂商 JS 只作静态解析，未加入软件包。
 
 半百分比位置的编码、旧整数 JSON 兼容及拒绝规则详见 NATIVE-GRADIENT-PRECISION.md。
+
+Rival 300 使用独立旧版布局，详见 GG-RIVAL300-IMPORT.md；不会借用这里的平面渐变字段。
