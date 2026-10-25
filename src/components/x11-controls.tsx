@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
+import {invoke} from '@tauri-apps/api/core';
 import {Gauge,Mouse,Palette,Timer} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {DeviceArt} from '@/components/device-art';
@@ -11,6 +12,15 @@ const keyOptions=KEY_NAMES.filter(([k])=>k>=4&&k<=0x73);
 const macroKeys=KEY_NAMES.filter(([k])=>k>=4&&k<=0xa4||k>=0xe0&&k<=0xe7);
 export function X11Controls({plan,onChange,view,onRecording}:{plan:MultiPlan;onChange:(p:MultiPlan)=>void;view:MultiView;onRecording?:(b:boolean)=>void}){
  const [selected,setSelected]=useState(''),[recording,setRecording]=useState(false),[error,setError]=useState('');
+ const [battery,setBattery]=useState(view.state.battery??null);
+ useEffect(()=>{
+  setBattery(view.state.battery??null);
+  if(view.descriptor.simulated||plan.product!==0xfa60)return;
+  let current=true,reading=false;
+  const poll=async()=>{if(reading||document.visibilityState==='hidden')return;reading=true;try{const value=await invoke<MultiView['state']['battery']>('multi_battery',{id:view.descriptor.id});if(current)setBattery(value??null);}catch{if(current)setBattery(null);}finally{reading=false;}};
+  void poll();const timer=setInterval(()=>void poll(),2000);
+  return()=>{current=false;clearInterval(timer);};
+ },[view.descriptor.id,view.descriptor.simulated,view.state.battery,plan.product]);
  const eventsRef=useRef<X11Event[]>([]),held=useRef(new Set<number>()),last=useRef(0);
  const item=plan.settings.find(s=>'VendorProfile'in s),profile=item&&'VendorProfile'in item?item.VendorProfile.data:null;
  const put=(data:X11Profile)=>onChange({...plan,settings:[{VendorProfile:{schema:X11_SCHEMA,data}}],macros:[],source:null});
@@ -44,6 +54,7 @@ export function X11Controls({plan,onChange,view,onRecording}:{plan:MultiPlan;onC
    <DeviceArt kind="mouse" vendorId={plan.vendor} productId={plan.product} name={view.descriptor.name} className="h-56 w-40 shrink-0"/>
    <div className="max-w-lg space-y-3"><p className="text-xs tracking-widest text-cyan-400">ATTACK SHARK / X11</p><h2 className="text-2xl font-bold">{view.descriptor.name}</h2><div className="flex flex-wrap gap-2 text-xs">{['六档 DPI','八个独立控制','七种原生灯效','独立板载宏'].map(t=><span className="rounded-full border px-3 py-1" key={t}>{t}</span>)}</div><p className="text-sm text-muted-foreground">实验性 · 仅 X11 有线与 2.4G 接收器 · 模拟验证。蓝牙、独立充电底座和其他型号未接入。</p></div>
   </div>
+  <div role="status" aria-label="X11 电量" className="rounded-xl border bg-card/50 px-4 py-3 text-sm">{view.descriptor.simulated?'电量：离线配置':plan.product!==0xfa60?'有线模式：此接口不提供电量报告':battery?.percent!=null?`电量：${battery.percent}%`:'电量：等待鼠标报告'}{!view.descriptor.simulated&&plan.product===0xfa60&&<span className="ml-3 text-xs text-muted-foreground">电量单独刷新，保留正在编辑的设置</span>}</div>
   <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm leading-6">
    此鼠标无法读回完整配置。{view.descriptor.simulated?'现在编辑离线示例，未连接 USB。':view.state.vendor_profile?'当前显示本次发送的方案；传输完成不能证明固件已经接受。':'当前板载设置未知。'}应用会一起写入下方完整方案，包含全部八个控制、性能和灯效；原厂宏内容无法备份或校验。已有宏只有绑定新宏的对应槽会被写入。
   </div>

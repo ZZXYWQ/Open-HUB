@@ -556,6 +556,9 @@ pub fn decode(schema: &str, data: &serde_json::Value) -> Result<Profile> {
     serde_json::from_value(data.clone())
         .map_err(|e| Error::invalid(format!("X11 完整配置字段无效：{e}")))
 }
+#[path = "x11/battery.rs"]
+mod battery;
+
 #[path = "x11/driver.rs"]
 mod driver;
 pub use driver::{simulated, X11Driver};

@@ -9,6 +9,7 @@ struct X11Device {
     desc: DeviceDescriptor,
     caps: Capabilities,
     writer: Writer,
+    battery: battery::BatteryInput,
 }
 fn exact_collection(i: &HidInterfaceInfo) -> bool {
     // The pinned Windows HID implementation identifies the feature collection
@@ -51,10 +52,12 @@ impl X11Device {
             },
             caps: Capabilities {
                 vendor_profile: Some(SCHEMA.into()),
+                battery: i.product_id == WIRELESS,
                 onboard_profiles: 1,
                 ..Default::default()
             },
             writer: Writer::new(io, i.vendor_id, i.product_id)?,
+            battery: Default::default(),
         })
     }
 }
@@ -69,6 +72,10 @@ impl Device for X11Device {
         // Absence means UNKNOWN, never a factory read. DPI/rate remain inside this
         // atomic profile so session refresh cannot append conflicting partial edits.
         Ok(DeviceState {
+            battery: self.battery.poll(Instant::now()).map(|percent| Battery {
+                percent: Some(percent),
+                charging: false,
+            }),
             vendor_profile: self
                 .writer
                 .cached()
@@ -102,12 +109,30 @@ impl Driver for X11Driver {
         exact_collection(i)
     }
     fn open(&self, i: &HidInterfaceInfo, b: &dyn HidBackend) -> Result<Vec<Box<dyn Device>>> {
-        if !self.probe(i) {
-            return Err(invalid("错误的接口"));
-        }
-        Ok(vec![Box::new(X11Device::new(b.open(&i.path)?, i)?)])
+        open_with_container(i, b, crate::hid_container::id)
     }
 }
+fn open_with_container(
+    i: &HidInterfaceInfo,
+    b: &dyn HidBackend,
+    container: impl FnMut(&str) -> Option<[u8; 16]>,
+) -> Result<Vec<Box<dyn Device>>> {
+    if !exact_collection(i) {
+        return Err(invalid("错误的接口"));
+    }
+    let mut device = X11Device::new(b.open(&i.path)?, i)?;
+    if i.product_id == WIRELESS {
+        if let Ok(all) = b.enumerate() {
+            if let Some(input) = battery::choose_input(i, &all, container) {
+                // Missing/inaccessible input leaves battery UNKNOWN, without
+                // disabling the independent feature-output collection.
+                device.battery.io = b.open(&input.path).ok();
+            }
+        }
+    }
+    Ok(vec![Box::new(device)])
+}
+
 pub fn simulated(product: u16) -> Result<(Box<dyn Device>, Arc<Mutex<Vec<MockRecord>>>)> {
     let mock = MockTransport::new(|_| MockReply::none());
     let log = mock.log();
@@ -167,5 +192,71 @@ mod tests {
         assert!(log.lock().unwrap().is_empty());
         assert!(d.apply(&Setting::ReportRate(500)).is_err());
         assert!(log.lock().unwrap().is_empty());
+    }
+    #[test]
+    fn opened_driver_pairs_only_its_battery_collection_and_never_sends_a_battery_query() {
+        use gearwise_core::transport::MockBackend;
+        let control = |unit: &str| HidInterfaceInfo {
+            vendor_id: VID,
+            product_id: WIRELESS,
+            interface_number: 2,
+            path: format!("{unit}:mi_02:col04"),
+            bus: BusKind::Usb,
+            ..Default::default()
+        };
+        let input = |unit: &str| HidInterfaceInfo {
+            path: format!("{unit}:input"),
+            usage_page: 0x0a,
+            ..control(unit)
+        };
+        let a = control("A");
+        let b = control("B");
+        let opened = Arc::new(Mutex::new(vec![]));
+        let seen = opened.clone();
+        let backend = MockBackend::new(
+            vec![input("B"), input("A"), a.clone(), b.clone()],
+            move |path| {
+                let mut transport =
+                    MockTransport::new(|_| panic!("read_state must never send control reports"));
+                if path.ends_with(":input") {
+                    transport.push_input(vec![
+                        3,
+                        0x55,
+                        0x40,
+                        1,
+                        if path.starts_with('A') { 80 } else { 20 },
+                    ]);
+                }
+                seen.lock().unwrap().push(path.to_string());
+                Ok(Box::new(transport))
+            },
+        );
+        let group = |path: &str| {
+            Some(if path.starts_with('A') {
+                [1; 16]
+            } else {
+                [2; 16]
+            })
+        };
+        let mut da = open_with_container(&a, &backend, group).unwrap().remove(0);
+        let mut db = open_with_container(&b, &backend, group).unwrap().remove(0);
+        assert_eq!(da.read_state().unwrap().battery.unwrap().percent, Some(80));
+        assert_eq!(db.read_state().unwrap().battery.unwrap().percent, Some(20));
+        assert_eq!(
+            *opened.lock().unwrap(),
+            vec![
+                a.path.clone(),
+                "A:input".into(),
+                b.path.clone(),
+                "B:input".into()
+            ]
+        );
+        assert!(da.read_state().unwrap().vendor_profile.is_none());
+        opened.lock().unwrap().clear();
+        let mut unknown = open_with_container(&a, &backend, |_| None)
+            .unwrap()
+            .remove(0);
+        assert!(unknown.read_state().unwrap().battery.is_none());
+        assert_eq!(*opened.lock().unwrap(), vec![a.path]);
     }
 }

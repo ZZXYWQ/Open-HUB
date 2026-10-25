@@ -120,6 +120,9 @@ impl Service {
             ))
         })
     }
+    pub fn battery(&self, id: &str) -> Result<Option<gearwise_core::model::Battery>, String> {
+        self.with(|m| m.device_mut(raw_id(id)).ok_or_else(|| "鼠标已断开".to_string())?.read_state().map(|state|state.battery).map_err(|e|e.to_string()))
+    }
     pub fn peers(&self) -> Vec<DeviceDescriptor> {
         self.0
             .lock()

@@ -1,0 +1,41 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "date": "2026-10-26",
+  "installed_published_version_unchanged": "0.3.7",
+  "installer_generated": false,
+  "update_feed_changed": false,
+  "new_fully_accepted_models": 0,
+  "change": "passive X11 receiver battery with same Windows physical-container selection and independent UI refresh",
+  "validation": {
+    "default_application_tests": 382,
+    "explicit_configuration_and_metadata_tests": 11,
+    "changed_UI_suite": "test-x11-ui.cjs",
+    "UI_result": "pass with newly exported native DTOs; 80%, 0%, unknown, unsaved DPI preserved",
+    "frontend_typecheck": "pass",
+    "frontend_build": "pass",
+    "frontend_JS_raw_KB": 706.8,
+    "frontend_JS_gzip_KB": 216.28,
+    "previous_checkpoint_JS_gzip_KB": 215.95,
+    "local_windows_metadata_probe": {
+      "MCHOSE_interfaces": 6,
+      "nonzero_containers": 2,
+      "HID_IO_handles_opened": 0
+    },
+    "X11_physical_hardware_tested": false,
+    "development_EXE_memory_selftest": {
+      "transport_entries": 32,
+      "hardware_accessed": false,
+      "installed": false,
+      "sha256": "4a939259551f36b0b976c2a19408fa95097bf730f1c0190523c82e8203c9e0a5"
+    }
+  },
+  "runtime_new_dependencies": 0,
+  "limitations": [
+    "Windows input collection requires a unique verified container match",
+    "no X11 physical battery test",
+    "90 seconds without a report becomes unknown",
+    "receiver container is not a permanent paired-mouse serial",
+    "remaining OEM import, full firmware scope and OEM parity gaps remain"
+  ],
+  "source": "../X11-ADAPTER.md"
+}

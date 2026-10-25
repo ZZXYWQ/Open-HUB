@@ -6,6 +6,7 @@ use sidearm_synapse_parser as synapse_import;
 mod macro_runtime;
 mod raw_input;
 mod feature_transport;
+mod hid_container;
 mod naga;
 mod atk;
 mod hyperx;
@@ -110,6 +111,8 @@ fn list_devices(state: State<AppState>,sino:State<sinowealth::Service>,multi:Sta
 fn multi_summary(d:&gearwise_core::DeviceDescriptor)->DeviceSummary{DeviceSummary{vendor_id:d.vendor_id,id:format!("multi:{}",d.id),name:d.name.clone(),product:d.name.clone(),product_id:format!("{:04X}",d.product_id),kind:"mouse",firmware_name:d.firmware.clone().unwrap_or_default(),model_ids:vec![format!("{:04X}",d.product_id)],connection:format!("{:?}",d.connection),protocol:"Open HUB 型号驱动（未实机验证）".into(),features:vec![]}}
 #[tauri::command(async)]
 fn multi_read(service:State<multibrand::Service>,runtime:State<macro_runtime::Runtime>,id:String)->Result<multibrand::View,String>{service.read(&id,&runtime)}
+#[tauri::command(async)]
+fn multi_battery(service:State<multibrand::Service>,id:String)->Result<Option<gearwise_core::model::Battery>,String>{service.battery(&id)}
 #[tauri::command(async)]
 fn multi_apply(service:State<multibrand::Service>,runtime:State<macro_runtime::Runtime>,id:String,plan:multibrand::Plan)->Result<multibrand::View,String>{service.apply(&id,&plan,&runtime)}
 #[tauri::command(async)]
@@ -1031,7 +1034,7 @@ fn main() {
             activate_profile,
             import_ghub_profiles,
             import_mhub_profiles,
-            sino_read,sino_apply,sino_models,sino_simulate,multi_read,multi_apply,multi_templates,multi_simulate,multi_macro_simulate,multi_input_sources,multi_macro_status,multi_stop_macros,multi_stop_device_macros,multi_recovery_list,multi_recovery_observe,multi_recovery_restore,multi_reconnect_list,multi_reconnect_candidates,multi_reconnect_resume,multi_reconnect_retry,multi_reconnect_discard,preview_synapse_import,prepare_synapse_import,prepare_icue_import,prepare_gg_import,
+            sino_read,sino_apply,sino_models,sino_simulate,multi_read,multi_battery,multi_apply,multi_templates,multi_simulate,multi_macro_simulate,multi_input_sources,multi_macro_status,multi_stop_macros,multi_stop_device_macros,multi_recovery_list,multi_recovery_observe,multi_recovery_restore,multi_reconnect_list,multi_reconnect_candidates,multi_reconnect_resume,multi_reconnect_retry,multi_reconnect_discard,preview_synapse_import,prepare_synapse_import,prepare_icue_import,prepare_gg_import,
             preview_profile_import,commit_profile_import,export_profile_pack,
             onboard_snapshot,
             save_onboard_backup,

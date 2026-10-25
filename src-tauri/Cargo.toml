@@ -36,7 +36,7 @@ rusqlite = { version = "0.37", features = ["bundled"] }
 [target.'cfg(windows)'.dependencies]
 hidapi = { version = "2.6", default-features = false, features = ["windows-native"] }
 # Foreground-window hook (auto-switch) and device arrival notifications.
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Devices_HumanInterfaceDevice", "Win32_Storage_FileSystem", "Win32_Security", "Win32_UI_Input", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_LibraryLoader", "Win32_Graphics_Gdi", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging", "Win32_UI_Accessibility", "Win32_Devices_DeviceAndDriverInstallation"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Devices_HumanInterfaceDevice", "Win32_Storage_FileSystem", "Win32_Security", "Win32_UI_Input", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_LibraryLoader", "Win32_Graphics_Gdi", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging", "Win32_UI_Accessibility", "Win32_Devices_DeviceAndDriverInstallation", "Win32_Devices_Properties"] }
 
 [target.'cfg(not(windows))'.dependencies]
 hidapi = "2.6"

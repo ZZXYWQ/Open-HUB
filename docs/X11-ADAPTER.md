@@ -47,10 +47,21 @@ DPI 抓包中的字节 14/15 出现 `00 00` 与 `01 01`，公开资料未解释�
 
 ## 尚未达到完整兼容的缺口
 
-尚无本项目 X11 实机验证；固件范围、电量通知、原厂私有配置转换、Fire/Easy Aim 等动作、DPI 档位色的未知字段、原厂重置语义和专属充电底座协议仍需核实。没有原生实时灯光同步通道，不把电脑 OpenRGB 的识别当作 X11 原生同步。图为本分支小型原创结构示意，不能宣称原厂照片或已完成原厂级视觉验收。
+尚无本项目 X11 实机验证；固件范围、电量的实际固件验证、原厂私有配置转换、Fire/Easy Aim 等动作、DPI 档位色的未知字段、原厂重置语义和专属充电底座协议仍需核实。没有原生实时灯光同步通道，不把电脑 OpenRGB 的识别当作 X11 原生同步。图为本分支小型原创结构示意，不能宣称原厂照片或已完成原厂级视觉验收。
 
 ## 固定来源与许可
 
 [akawazak/attack-shark-x11-community-driver](https://github.com/akawazak/attack-shark-x11-community-driver/tree/49ecf8e6d3bd83bf71e231209d28c5e0e8b71d12)，提交 `49ecf8e6d3bd83bf71e231209d28c5e0e8b71d12`，MIT，原署名 HarukaYamamoto0。码表与抓包数据保留原许可；随应用附 `AttackShark-X11-MIT.txt`。
 
 独立抓包哈希及出处：`src-tauri/tests/fixtures/x11/SOURCE.json`。另核对 [libratbag PR #1822](https://github.com/libratbag/libratbag/pull/1822) 的 X11 Feature Report 布局、接口与时序事实。仅静态阅读源码与公开报文，不运行厂商程序或分发其应用。
+
+
+## 电量接入开发增量（2026-10-26）
+
+X11 2.4G 的被动输入 `03 55 40 01 XX` 现在接入原生驱动和对应 UI；不发送电量查询命令。协议参考固定在 MIT 社区实现 `49ecf8e6d3bd83bf71e231209d28c5e0e8b71d12` 的 [BatteryMonitor](https://github.com/akawazak/attack-shark-x11-community-driver/blob/49ecf8e6d3bd83bf71e231209d28c5e0e8b71d12/src/main/driver/core/BatteryMonitor.ts) 与 [电量说明](https://github.com/akawazak/attack-shark-x11-community-driver/blob/49ecf8e6d3bd83bf71e231209d28c5e0e8b71d12/docs/battery-status.md)。只解析电量百分比，没有从此报告推断充电标志。
+
+Windows 输入集合必须同时满足精确 VID/PID、USB 接口 2、usage page 0x0A，以及与控制集合相同的非空 `DEVPKEY_Device_ContainerId`。缺失、重复或无法打开时电量显示未知，继续保留原有配置控制；不从同 VID/PID 中任选一条输入路径。使用只读 SetupAPI 属性查询，按 [微软接口说明](https://learn.microsoft.com/en-us/windows/win32/api/setupapi/nf-setupapi-setupdigetdeviceinterfacedetailw) 获取所属设备，不拆解路径字符串猜配对。容器对应连接的 USB 设备，并不被称作新的配对鼠标永久序列号。
+
+电量读取为零等待且每次最多 16 条输入报告；0% 是有效值，超过 100%、签名错误或不完整报告均不采信。大于五个百分点的突变需要相同值重复确认；90 秒没有有效报告后恢复为未知，断开/读取失败会清掉旧值。有线和离线配置明确显示对应状态。界面每两秒单独读取电量，隐藏后停止，保留未保存的完整设备方案。
+
+已完成双同型号模拟输入集合、无身份/其他型号/重复候选拒绝、缺报告/断开/过期、跳变/0% 及 UI 80%→0%→未知且编辑不丢失测试。本机只读迈从枚举元数据检查验证了 Windows 查询方式：6 个接口归属 2 个非空容器，没有打开 HID 通信句柄；这不等于 X11 电量实机测试。尚无 X11 实机验证，其他未完成项目和完整兼容计数不因此改变。未新增运行依赖，Windows 属性绑定来自既有 windows-sys。
