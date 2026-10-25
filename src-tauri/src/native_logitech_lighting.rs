@@ -31,13 +31,25 @@ fn mouse(d: &Device) -> Result<()> {
 #[serde(deny_unknown_fields)]
 pub enum Effect {
     Off,
-    Fixed { color: [u8; 3] },
+    Fixed {
+        color: [u8; 3],
+    },
+    /// Uses current/native-advertised timing, without interpreting its unit.
+    Breathing {
+        color: [u8; 3],
+        brightness_percent: u8,
+    },
+    Cycle {
+        brightness_percent: u8,
+    },
 }
 impl Effect {
     fn id(&self) -> u16 {
         match self {
             Self::Off => 0,
             Self::Fixed { .. } => 1,
+            Self::Breathing { .. } => 10,
+            Self::Cycle { .. } => 3,
         }
     }
 }
@@ -60,6 +72,7 @@ pub struct Zone {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct View {
+    pub device_key: String,
     pub feature: u16,
     pub version: u8,
     pub nv_caps: u16,
@@ -131,17 +144,19 @@ pub fn read(d: &Device, t: &dyn FeatureRequest) -> Result<View> {
         zones.push(zone);
     }
     Ok(View {
+        device_key: d.profile_key.clone(),
         feature: COLOR,
         version,
         nv_caps,
         ext_caps,
-        writable: d.index == crate::hidpp::DIRECT && version <= 4 && can_read,
+        writable: d.index == crate::hidpp::DIRECT && version <= 4 && can_read && ext_caps & 8 == 0,
         zones,
     })
 }
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Change {
+    pub expected_device: String,
     pub zone: u8,
     pub expected: [u8; 11],
     pub effect: Effect,
@@ -185,12 +200,68 @@ fn compile(view: &View, change: &Change) -> Result<[u8; 13]> {
     let mut out = [0; 13];
     out[0] = zone.index;
     out[1] = slot.index;
-    if let Effect::Fixed { color } = change.effect {
-        out[2..5].copy_from_slice(&color);
-        out[5] = 2;
+    match &change.effect {
+        Effect::Off => {}
+        Effect::Fixed { color } => {
+            out[2..5].copy_from_slice(color);
+            out[5] = 2;
+        }
+        Effect::Breathing {
+            color,
+            brightness_percent,
+        } => {
+            let period = native_rhythm(zone, slot)?;
+            preserve_same_effect(zone, slot, &mut out);
+            out[2..5].copy_from_slice(color);
+            out[5..7].copy_from_slice(&period.to_be_bytes());
+            // Waveform and reserved bytes survive edits to an existing breath.
+            out[8] = intensity(*brightness_percent)?;
+        }
+        Effect::Cycle { brightness_percent } => {
+            let period = native_rhythm(zone, slot)?;
+            preserve_same_effect(zone, slot, &mut out);
+            out[7..9].copy_from_slice(&period.to_be_bytes());
+            out[9] = intensity(*brightness_percent)?;
+        }
     }
     // out[12] remains zero: RAM only. Never write flash while synchronizing.
     Ok(out)
+}
+fn intensity(percent: u8) -> Result<u8> {
+    if !(1..=100).contains(&percent) {
+        return Err(fail(
+            "brightness must be 1..100 percent; select Off to disable",
+        ));
+    }
+    Ok(if percent == 100 { 0 } else { percent })
+}
+fn is_current(zone: &Zone, slot: &Slot) -> bool {
+    zone.current.is_some_and(|raw| {
+        zone.effects
+            .iter()
+            .any(|s| s.index == raw[0] && s.effect_id == slot.effect_id)
+    })
+}
+fn native_rhythm(zone: &Zone, slot: &Slot) -> Result<u16> {
+    if is_current(zone, slot) {
+        let raw = zone.current.unwrap();
+        let offset = if slot.effect_id == 10 { 4 } else { 6 };
+        return Ok(u16be(&raw, offset));
+    }
+    if slot.period == 0 {
+        return Err(fail(
+            "mouse did not supply timing for this effect; original setting retained",
+        ));
+    }
+    // This is copied as a device-native value. No speed/ms conversion or
+    // assumption that another effect/model shares its units.
+    Ok(slot.period)
+}
+fn preserve_same_effect(zone: &Zone, slot: &Slot, out: &mut [u8; 13]) {
+    if is_current(zone, slot) {
+        out[1..12].copy_from_slice(&zone.current.unwrap());
+        out[1] = slot.index;
+    }
 }
 #[derive(Debug, PartialEq, Eq)]
 struct Owner {
@@ -198,6 +269,14 @@ struct Owner {
     profile: Option<Vec<u8>>,
 }
 fn owner(d: &Device, t: &dyn FeatureRequest) -> Result<Option<Owner>> {
+    if d.profile_key.starts_with("unit:") {
+        let reply = d.call_unpadded(t, crate::device::feature::DEVICE_INFO, 0, &[])?;
+        if crate::profile_routing::logitech_unit(&reply).as_ref() != Some(&d.profile_key) {
+            return Err(fail(
+                "mouse unit changed; no further effect or restoration was sent",
+            ));
+        }
+    }
     if !d.has(crate::device::feature::ONBOARD_PROFILES) {
         return Ok(None);
     }
@@ -229,6 +308,11 @@ fn same_caps(a: &View, b: &View) -> bool {
 }
 pub fn apply(d: &Device, t: &dyn FeatureRequest, change: &Change) -> Result<Applied> {
     mouse(d)?;
+    if change.expected_device != d.profile_key {
+        return Err(fail(
+            "mouse connection changed since preview; read it again",
+        ));
+    }
     if d.index != crate::hidpp::DIRECT {
         return Err(fail(
             "receiver writes require verified physical unit pinning; use direct USB",
@@ -237,13 +321,13 @@ pub fn apply(d: &Device, t: &dyn FeatureRequest, change: &Change) -> Result<Appl
     let before = read(d, t)?;
     let packet = compile(&before, change)?;
     let expected: [u8; 11] = packet[1..12].try_into().unwrap();
+    let ownership = owner(d, t)?;
     if change.expected == expected {
         return Ok(Applied {
             view: before,
             unchanged: true,
         });
     }
-    let ownership = owner(d, t)?;
     let write = (|| -> Result<()> {
         d.call_unpadded(t, COLOR, 3, &packet)?;
         if raw(d, t, change.zone)? != expected {

@@ -22,6 +22,8 @@ struct State {
     short_used: bool,
     bad_echo: bool,
     zones: u8,
+    effects: Vec<u16>,
+    period: u16,
     ext: u16,
     unknown_slot: bool,
 }
@@ -40,6 +42,8 @@ fn mem() -> Memory {
         short_used: false,
         bad_echo: false,
         zones: 2,
+        effects: vec![3, 1, 0, 0x99, 10],
+        period: 5000,
         ext: 1,
         unknown_slot: false,
     }))
@@ -116,10 +120,11 @@ impl FeatureRequest for Memory {
                 } else {
                     z + 1
                 };
-                Ok(vec![z, 0, loc, 4, 3])
+                Ok(vec![z, 0, loc, s.effects.len() as u8, 3])
             }
             2 => {
-                let id = [3u16, 1, 0, 0x99][usize::from(p[1])].to_be_bytes();
+                let id = s.effects[usize::from(p[1])].to_be_bytes();
+                let period = s.period.to_be_bytes();
                 Ok(vec![
                     p[0],
                     if s.bad_echo { p[1] + 1 } else { p[1] },
@@ -127,8 +132,8 @@ impl FeatureRequest for Memory {
                     id[1],
                     0,
                     0,
-                    0x13,
-                    0x88,
+                    period[0],
+                    period[1],
                 ])
             }
             14 => {
@@ -177,6 +182,7 @@ impl FeatureRequest for Memory {
 }
 fn change(m: &Memory) -> Change {
     Change {
+        expected_device: device().profile_key,
         zone: 1,
         expected: m.0.lock().unwrap().current[1],
         effect: Effect::Fixed {
@@ -196,7 +202,7 @@ fn discovered_effect_slots_and_original_opaque_state_are_used_not_fixed_numeric_
             .iter()
             .map(|s| s.effect_id)
             .collect::<Vec<_>>(),
-        vec![3, 1, 0, 0x99]
+        vec![3, 1, 0, 0x99, 10]
     );
     assert_eq!(v.zones[1].current, Some(change(&m).expected));
     assert!(v.writable);
@@ -319,6 +325,7 @@ fn malformed_discovery_and_huge_counts_are_rejected_without_mode_or_write_comman
     let d = device();
     let mut v = read(&d, &mem()).unwrap();
     let c = Change {
+        expected_device: device().profile_key,
         zone: 0,
         expected: v.zones[0].current.unwrap(),
         effect: Effect::Fixed { color: [1, 2, 3] },
@@ -353,11 +360,26 @@ fn native_logitech_light_fixture_export() {
     let m = mem();
     let view = read(&d, &m).unwrap();
     let applied = apply(&d, &m, &change(&m)).unwrap();
+    let mut breath = change(&m);
+    breath.effect = Effect::Breathing {
+        color: [254, 220, 186],
+        brightness_percent: 31,
+    };
+    let breath_view = apply(&d, &m, &breath).unwrap().view;
+    let cycle = Change {
+        expected_device: d.profile_key.clone(),
+        zone: 1,
+        expected: breath_view.zones[1].current.unwrap(),
+        effect: Effect::Cycle {
+            brightness_percent: 100,
+        },
+    };
+    let cycle_view = apply(&d, &m, &cycle).unwrap().view;
     if let Some(path) = std::env::var_os("OPEN_HUB_LOGITECH_LIGHTING_FIXTURE") {
         std::fs::write(
             path,
             serde_json::to_vec_pretty(
-                &serde_json::json!({"view":view,"applied_view":applied.view}),
+                &serde_json::json!({"view":view,"applied_view":applied.view,"breath_view":breath_view,"cycle_view":cycle_view}),
             )
             .unwrap(),
         )
@@ -406,4 +428,233 @@ fn lighting_and_onboard_reads_use_unpadded_transport_payloads() {
         .to_string()
         .contains("short feature response"));
     assert!(d.onboard_info(&Short).is_err());
+}
+
+#[test]
+fn native_breath_and_cycle_use_reported_slots_timing_and_percent_encoding() {
+    for (effect, expected) in [
+        (
+            Effect::Breathing {
+                color: [18, 52, 86],
+                brightness_percent: 37,
+            },
+            vec![1, 4, 18, 52, 86, 0x13, 0x88, 0, 37, 0, 0, 0, 0],
+        ),
+        (
+            Effect::Cycle {
+                brightness_percent: 100,
+            },
+            vec![1, 0, 0, 0, 0, 0, 0, 0x13, 0x88, 0, 0, 0, 0],
+        ),
+    ] {
+        let m = mem();
+        let old = m.0.lock().unwrap().current[0];
+        let mut c = change(&m);
+        c.effect = effect;
+        let result = apply(&device(), &m, &c).unwrap();
+        let s = m.0.lock().unwrap();
+        let packet = &s
+            .calls
+            .iter()
+            .find(|(f, n, _)| *f == 0x24 && *n == 3)
+            .unwrap()
+            .2;
+        assert_eq!(packet, &expected);
+        assert_eq!(s.current[0], old);
+        assert_eq!(s.writes, 1);
+        assert_eq!(
+            result.view.zones[1].current,
+            Some(expected[1..12].try_into().unwrap())
+        );
+    }
+}
+#[test]
+fn editing_current_rhythm_keeps_exact_timing_waveform_and_reserved_bytes() {
+    for (current, effect, expected) in [
+        (
+            [4, 10, 20, 30, 0, 7, 0xfe, 0, 0xaa, 0xbb, 0xcc],
+            Effect::Breathing {
+                color: [1, 2, 3],
+                brightness_percent: 62,
+            },
+            [4, 1, 2, 3, 0, 7, 0xfe, 62, 0xaa, 0xbb, 0xcc],
+        ),
+        (
+            [0, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0, 0, 0, 0x99, 0x88],
+            Effect::Cycle {
+                brightness_percent: 62,
+            },
+            [0, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0, 0, 62, 0x99, 0x88],
+        ),
+    ] {
+        let m = mem();
+        m.0.lock().unwrap().current[1] = current;
+        m.0.lock().unwrap().period = 0;
+        let mut c = change(&m);
+        c.effect = effect;
+        let result = apply(&device(), &m, &c).unwrap();
+        assert_eq!(result.view.zones[1].current, Some(expected));
+        c.expected = expected;
+        assert!(apply(&device(), &m, &c).unwrap().unchanged);
+        assert_eq!(m.0.lock().unwrap().writes, 1);
+    }
+}
+#[test]
+fn unadvertised_or_missing_timing_invalid_percent_and_monochrome_never_write() {
+    for case in 0..5 {
+        let m = mem();
+        let mut c = change(&m);
+        c.effect = Effect::Breathing {
+            color: [1, 2, 3],
+            brightness_percent: 50,
+        };
+        match case {
+            0 => m.0.lock().unwrap().effects.pop().map(|_| ()).unwrap(),
+            1 => m.0.lock().unwrap().period = 0,
+            2 => {
+                c.effect = Effect::Cycle {
+                    brightness_percent: 0,
+                }
+            }
+            3 => {
+                c.effect = Effect::Breathing {
+                    color: [1, 2, 3],
+                    brightness_percent: 101,
+                }
+            }
+            _ => m.0.lock().unwrap().ext = 9,
+        };
+        assert!(apply(&device(), &m, &c).is_err());
+        assert_eq!(m.0.lock().unwrap().writes, 0);
+    }
+    assert!(serde_json::from_str::<Effect>(
+        r#"{"Breathing":{"color":[1,2,3],"brightness_percent":50,"period_ms":5000}}"#
+    )
+    .is_err());
+}
+#[test]
+fn uncertain_native_rhythms_restore_only_the_selected_zone() {
+    for effect in [
+        Effect::Breathing {
+            color: [1, 2, 3],
+            brightness_percent: 35,
+        },
+        Effect::Cycle {
+            brightness_percent: 35,
+        },
+    ] {
+        let m = mem();
+        let before = m.0.lock().unwrap().current.clone();
+        m.0.lock().unwrap().fault = Fault::LostAck;
+        let mut c = change(&m);
+        c.effect = effect;
+        let error = apply(&device(), &m, &c).unwrap_err().to_string();
+        assert!(error.contains("restored/verified"));
+        assert_eq!(m.0.lock().unwrap().current, before);
+        assert_eq!(m.0.lock().unwrap().writes, 2);
+    }
+}
+
+#[test]
+fn a_different_connection_cookie_rejects_lighting_before_any_feature_call() {
+    let m = mem();
+    let mut c = change(&m);
+    c.expected_device = "session:another-mouse".into();
+    assert!(apply(&device(), &m, &c).is_err());
+    assert!(m.0.lock().unwrap().calls.is_empty());
+}
+#[test]
+fn unit_change_before_or_after_write_never_restores_to_another_mouse() {
+    struct Unit<'a> {
+        memory: &'a Memory,
+        changed_before: bool,
+    }
+    impl FeatureRequest for Unit<'_> {
+        fn request(
+            &self,
+            index: u8,
+            feature: u8,
+            function: u8,
+            p: &[u8],
+            timeout: Duration,
+        ) -> Result<Vec<u8>> {
+            if feature == 0x25 {
+                assert_eq!(function, 0);
+                let mut r = vec![0; 16];
+                r[0] = 1;
+                r[1..5].copy_from_slice(
+                    if self.changed_before || self.memory.0.lock().unwrap().writes > 0 {
+                        &[1, 2, 3, 5]
+                    } else {
+                        &[1, 2, 3, 4]
+                    },
+                );
+                return Ok(r);
+            }
+            self.memory.request(index, feature, function, p, timeout)
+        }
+    }
+    for changed_before in [true, false] {
+        let m = mem();
+        let mut d = device();
+        d.profile_key = "unit:046d:01020304".into();
+        d.features.insert(
+            crate::device::feature::DEVICE_INFO,
+            FeatureInfo {
+                id: 3,
+                index: 0x25,
+                version: 0,
+                flags: 0,
+                name: "Device Info",
+            },
+        );
+        let mut c = change(&m);
+        c.expected_device = d.profile_key.clone();
+        c.effect = Effect::Cycle {
+            brightness_percent: 50,
+        };
+        let io = Unit {
+            memory: &m,
+            changed_before,
+        };
+        let error = apply(&d, &io, &c).unwrap_err().to_string();
+        assert!(error.contains("unit changed"));
+        assert_eq!(
+            m.0.lock().unwrap().writes,
+            if changed_before { 0 } else { 1 }
+        );
+    }
+}
+#[test]
+#[ignore = "requires current native rhythm UI changes"]
+fn browser_breathing_and_cycle_use_production_native_transactions() {
+    let path = std::env::var_os("OPEN_HUB_LOGITECH_RHYTHM_UI_CHANGES").unwrap();
+    let calls: serde_json::Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+    let m = mem();
+    let d = device();
+    apply(&d, &m, &change(&m)).unwrap();
+    let other = m.0.lock().unwrap().current[0];
+    let changes = calls.as_array().unwrap();
+    assert_eq!(changes.len(), 2);
+    for (value, expected) in changes.iter().zip([
+        Effect::Breathing {
+            color: [254, 220, 186],
+            brightness_percent: 31,
+        },
+        Effect::Cycle {
+            brightness_percent: 100,
+        },
+    ]) {
+        let c: Change = serde_json::from_value(value["change"].clone()).unwrap();
+        assert_eq!(c.expected_device, d.profile_key);
+        assert_eq!(c.zone, 1);
+        assert_eq!(c.effect, expected);
+        apply(&d, &m, &c).unwrap();
+    }
+    assert_eq!(m.0.lock().unwrap().current[0], other);
+    assert_eq!(m.0.lock().unwrap().writes, 3);
+    assert_eq!(
+        m.0.lock().unwrap().current[1],
+        [0, 0, 0, 0, 0, 0, 0x13, 0x88, 0, 0, 0]
+    );
 }

@@ -1,0 +1,28 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "native 8070 breathing and color cycle with native timing and per-connection/unit guards",
+  "default_application_tests": 422,
+  "explicit_cross_tests": 14,
+  "new_native_tests": 6,
+  "targeted_headless_lighting_suites": 2,
+  "previous_full_headless_ui_suites": 27,
+  "headless_ui_suites_available": 28,
+  "timing": "preserve current effect timing or use advertised nonzero native effect value; no invented ms conversion or caller timing",
+  "brightness": "1..100 percent; 100 encodes as native zero; zero UI brightness rejected in favour of Off",
+  "preserved_fields": "current waveform, native timing, reserved parameters and all other zones",
+  "identity": "preview connection cookie plus strict HID++ unit checks before/after write and before restoration",
+  "monochrome": "read-only in this increment",
+  "new_runtime_dependencies": false,
+  "frontend_js_gzip_kb": 218.68,
+  "development_exe_memory_transports": 32,
+  "development_exe_sha256": "6442020f1e5ead39ed409961256ac12f3405f5846128e0a7c93f1b3b6d7ca9b5",
+  "physical_Logitech_tested": false,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7",
+  "accepted_full_models": 0,
+  "protocol_cross_references": {
+    "libratbag": "8235b5bb6032dea15901ab58a8218956f4494d08",
+    "LogitechGDeviceInfo": "e19565d9f14d23c7e7c8eb6b674c3de907243515",
+    "Solaar": "e7304c4c451cc9bb4f206a914844525e67856a28"
+  }
+}
