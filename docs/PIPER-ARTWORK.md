@@ -29,3 +29,5 @@ Separate, unmodified SVG artwork from https://github.com/libratbag/piper at 5d3c
 - `/devices/piper/steelseries-rival.svg`: https://raw.githubusercontent.com/libratbag/piper/5d3c8845b55643595ccb8029dfa5c7a2fb079e77/data/svgs/steelseries-rival.svg (Rival 300 USB 1710 shares the shell/database family, verified against libratbag `steelseries-rival.device`.)
 
 - `/devices/piper/steelseries-senseiten.svg`: https://raw.githubusercontent.com/libratbag/piper/5d3c8845b55643595ccb8029dfa5c7a2fb079e77/data/svgs/steelseries-senseiten.svg (Sensei Ten USB 1832; unmodified SVG source; SHA-256 `1b380f5ad8fef13deab8abae92e9bcdba67a843da6b45d251572ad62596ce8b2`).
+
+- `/devices/piper/steelseries-rival600.svg`: https://raw.githubusercontent.com/libratbag/piper/5d3c8845b55643595ccb8029dfa5c7a2fb079e77/data/svgs/steelseries-rival600.svg (Rival 600 USB 1724; unmodified SVG; SHA-256 `9058cb6cd7bb4efbe1020339ba2df47890d2be624a54ce4a1053fba0ae70e3ad`).

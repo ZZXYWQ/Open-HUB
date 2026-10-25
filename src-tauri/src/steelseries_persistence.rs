@@ -48,12 +48,11 @@ fn complete(plan: &Plan) -> Result<(), String> {
         || dpi.len() != 1
         || !matches!(dpi[0],Setting::Dpi(d)if crate::steelseries::fixed_dpi_stages(plan.product).is_none_or(|n|d.stages.len()==n))
         || rates != 1
-        || zones.len() != 2
-        || !zones.contains(&0)
-        || !zones.contains(&1)
-        || plan.settings.len() != buttons.len() + 4
+        || zones.len() != usize::from(crate::steelseries::zone_count(plan.product).unwrap())
+        || !(0..crate::steelseries::zone_count(plan.product).unwrap()).all(|zone|zones.contains(&zone))
+        || plan.settings.len() != buttons.len() + 2 + zones.len()
     {
-        return Err("板载保存需要先应用此型号的完整 DPI、回报率、全部已知按键和两个灯区".into());
+        return Err("板载保存需要先应用此型号的完整 DPI、回报率、全部已知按键和所有灯区".into());
     }
     Ok(())
 }
@@ -245,7 +244,7 @@ mod tests {
                         action: b.default_action.clone(),
                     }),
             );
-            for zone in 0..2 {
+            for zone in 0..crate::steelseries::zone_count(pid).unwrap() {
                 plan.settings.push(Setting::Lighting {
                     zone,
                     state: ZoneState {
@@ -312,7 +311,7 @@ mod tests {
         }
     }
     #[test]
-    fn exact_four_models_save_only_after_complete_apply_and_one_explicit_native_command() {
+    fn exact_five_models_save_only_after_complete_apply_and_one_explicit_native_command() {
         let mut fixtures = Vec::new();
         for pid in crate::steelseries::PRODUCTS {
             let c = Case::new(pid);
@@ -326,7 +325,7 @@ mod tests {
             assert_eq!(c.saves(), 1);
             assert_eq!(
                 c.log.lock().unwrap().last().unwrap(),
-                &MockRecord::Write(if pid == 0x1710 {
+                &MockRecord::Write(if matches!(pid,0x1710|0x1724) {
                     vec![0, 9, 0]
                 } else {
                     vec![0, 0x59, 0]
@@ -584,7 +583,7 @@ mod tests {
             &std::fs::read(std::env::var_os("OPEN_HUB_STEELSERIES_SAVE_FIXTURE").unwrap()).unwrap(),
         )
         .unwrap();
-        assert_eq!(requests.len(), 4);
+        assert_eq!(requests.len(), 5);
         for request in requests {
             let pid = request.plan.product;
             let original = fixtures
@@ -627,7 +626,7 @@ mod tests {
             assert!(saved.command_sent && !saved.readback_confirmed);
             assert_eq!(
                 c.log.lock().unwrap().as_slice(),
-                &[MockRecord::Write(if pid == 0x1710 {
+                &[MockRecord::Write(if matches!(pid,0x1710|0x1724) {
                     vec![0, 9, 0]
                 } else {
                     vec![0, 0x59, 0]

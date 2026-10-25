@@ -9,7 +9,7 @@ fn action()->Macro{Macro{id:"steel-macro".into(),name:"独立鼠标组合".into(
  let all=templates().unwrap();let views=all.into_iter().filter(|v|v.descriptor.vendor_id==0x1038&&crate::steelseries::FIXED_PRODUCTS.contains(&v.descriptor.product_id)).collect::<Vec<_>>();assert_eq!(views.len(),3);
  for v in &views{assert_eq!(v.capabilities.buttons.len(),if v.descriptor.product_id==0x1722{8}else{6});assert!(!v.capabilities.buttons[0].remappable);assert_eq!(v.capabilities.lighting.len(),2);assert_eq!(v.capabilities.dpi.as_ref().unwrap().max,if v.descriptor.product_id==0x1710{6500}else{12000});assert_eq!(v.readback,"write_only_cached");assert!(v.descriptor.simulated&&!v.hardware_tested);}
  if let Some(path)=std::env::var_os("OPEN_HUB_STEELSERIES_FIXTURE"){std::fs::write(path,serde_json::to_vec_pretty(&views).unwrap()).unwrap();}
- assert!(!supported(0x1038,0x1702));assert!(!supported(0x1038,0x1724));
+ assert!(!supported(0x1038,0x1702));assert!(!supported(0x1038,0x1726));
 }
 #[test]fn steelseries_native_dpi_rates_and_default_keyboard_media_tables_match_independent_vectors(){
  for pid in crate::steelseries::FIXED_PRODUCTS{let(mut d,log)=opened(pid);d.apply(&Setting::Dpi(DpiState{stages:vec![DpiStage::uniform(1000),DpiStage::uniform(2000)],active:0})).unwrap();d.apply(&Setting::ReportRate(250)).unwrap();d.apply(&Setting::Button{id:4,action:ButtonAction::Key{usage:6,mods:Modifiers(0x11)}}).unwrap();d.apply(&Setting::Button{id:5,action:ButtonAction::Media(0xea)}).unwrap();d.save_onboard().unwrap();let ops=log.lock().unwrap();
@@ -100,4 +100,35 @@ fn sensei_ten_dual_zone_gradients_match_its_independent_full_native_reference_an
  let vectors:serde_json::Value=serde_json::from_str(include_str!("../../docs/development/sensei-ten-independent-gradient-vectors.json")).unwrap();
  let(mut d,log)=opened(0x1832);for(zone,colors,period)in[(0,vec![(0,[255,0,0]),(33,[0,255,0]),(66,[0,0,255])],1000),(1,vec![(0,[17,34,51]),(25,[68,85,102]),(50,[119,136,153]),(75,[170,187,204])],5000)]{log.lock().unwrap().clear();let s=Setting::Lighting{zone,state:ZoneState{effect:gradient(&colors,period),brightness:100}};validate(&plan(0x1832,vec![s.clone()])).unwrap();d.apply(&s).unwrap();let hex=vectors["cases"][zone as usize]["hidapi_feature_hex"].as_str().unwrap();let expected=(0..hex.len()).step_by(2).map(|i|u8::from_str_radix(&hex[i..i+2],16).unwrap()).collect::<Vec<_>>();assert_eq!(log.lock().unwrap().as_slice(),&[MockRecord::SetFeature(expected)]);}
  log.lock().unwrap().clear();d.save_onboard().unwrap();assert_eq!(log.lock().unwrap().as_slice(),&[MockRecord::Write(vec![0,0x59,0])]);
+}
+
+#[test]
+fn rival600_complete_physical_layout_and_all_eight_independent_rgb_vectors_use_feature_reports() {
+ let(mut device,log)=opened(0x1724);let mut dto=view(device.as_mut()).unwrap();let cap=dto.capabilities.dpi.as_ref().unwrap();assert_eq!((cap.min,cap.max,cap.step,cap.max_stages),(100,12000,100,2));assert_eq!(dto.capabilities.buttons.len(),7);assert_eq!(dto.capabilities.buttons[5].id,6);assert!(dto.capabilities.buttons[5].remappable);assert_eq!(dto.capabilities.buttons[5].default_action,ButtonAction::Disabled);assert_eq!(dto.capabilities.lighting.len(),8);assert_eq!(dto.readback,"write_only_cached");assert!(!dto.hardware_tested);
+ let refs:serde_json::Value=serde_json::from_str(include_str!("../../docs/development/rival600-independent-gradient-vectors.json")).unwrap();
+ for item in refs["cases"].as_array().unwrap(){let hex=item["hidapi_feature_hex"].as_str().unwrap();let bytes=(0..hex.len()).step_by(2).map(|i|u8::from_str_radix(&hex[i..i+2],16).unwrap()).collect::<Vec<_>>();let zone=bytes[3];assert_eq!(bytes[8],zone);let period=u16::from_le_bytes([bytes[9],bytes[10]]);let setting=Setting::Lighting{zone,state:ZoneState{effect:gradient(&[(0,[255,0,0]),(33,[0,255,0]),(66,[0,0,255])],period),brightness:100}};validate(&plan(0x1724,vec![setting.clone()])).unwrap();log.lock().unwrap().clear();device.apply(&setting).unwrap();assert_eq!(log.lock().unwrap().as_slice(),&[MockRecord::SetFeature(bytes)]);}
+ log.lock().unwrap().clear();device.apply(&Setting::Dpi(DpiState{stages:vec![DpiStage::uniform(100),DpiStage::uniform(12000)],active:0})).unwrap();device.apply(&Setting::ReportRate(125)).unwrap();assert_eq!(log.lock().unwrap().as_slice(),&[MockRecord::Write(vec![0,3,0,1,0,0,0x42]),MockRecord::Write(vec![0,3,0,2,0x77,0,0x42]),MockRecord::Write(vec![0,4,0,4])]);
+ if let Some(path)=std::env::var_os("OPEN_HUB_RIVAL600_FIXTURE"){dto.descriptor.simulated=true;std::fs::write(path,serde_json::to_vec_pretty(&vec![dto]).unwrap()).unwrap();}
+ assert!(!supported(0x1038,0x172e));
+}
+#[test]
+fn rival600_third_side_key_and_dpi_key_are_real_native_slots_with_separate_host_macro_bindings() {
+ let(mut device,log)=opened(0x1724);device.apply(&Setting::Button{id:7,action:ButtonAction::Default}).unwrap();let mut expected=vec![0,0x31,0];for code in[1,2,3,4,5,0,0x30]{expected.extend_from_slice(&[code,0,0,0,0]);}assert_eq!(log.lock().unwrap().as_slice(),&[MockRecord::SetFeature(expected)]);
+ for id in 2..=7 {for action_value in[ButtonAction::Default,ButtonAction::Disabled,ButtonAction::Mouse(MouseButton::Forward),ButtonAction::Key{usage:6,mods:Modifiers(0x11)},ButtonAction::Media(0xea),ButtonAction::Dpi(DpiFunction::Cycle),ButtonAction::Macro("steel-macro".into())] {let is_macro=matches!(action_value,ButtonAction::Macro(_));let mut p=plan(0x1724,vec![Setting::Button{id,action:action_value}]);if is_macro{p.macros.push(action());}validate(&p).unwrap();let r=simulate(&p).unwrap();assert_eq!(r["software_macros"].as_array().unwrap().len(),usize::from(is_macro));assert_eq!(r["hardware_tested"],false);}}
+ log.lock().unwrap().clear();device.apply(&Setting::Button{id:6,action:ButtonAction::Key{usage:6,mods:Modifiers(0x11)}}).unwrap();let ops=log.lock().unwrap();let MockRecord::SetFeature(table)=&ops[0]else{panic!("Rival600 button table is feature transport")};assert_eq!(&table[28..33],&[0x51,0xe0,0xe4,6,0]);assert_eq!(&table[33..38],&[0x30,0,0,0,0]);assert_eq!(table.len(),38);drop(ops);
+ for setting in[Setting::Button{id:8,action:ButtonAction::Disabled},Setting::Lighting{zone:8,state:ZoneState{effect:LightingEffect::Off,brightness:100}},Setting::Dpi(DpiState{stages:vec![DpiStage::uniform(800),DpiStage::uniform(1600)],active:1})]{assert!(validate(&plan(0x1724,vec![Setting::ReportRate(250),setting])).is_err());}
+}
+struct FeatureFailure{calls:Arc<Mutex<usize>>}
+impl HidTransport for FeatureFailure{fn write(&mut self,_:&[u8])->gearwise_core::Result<usize>{panic!("no output expected")}fn send_feature_report(&mut self,_:&[u8])->gearwise_core::Result<()>{*self.calls.lock().unwrap()+=1;Err(gearwise_core::Error::Disconnected)}fn read_timeout(&mut self,_:&mut[u8],_:i32)->gearwise_core::Result<usize>{Ok(0)}fn get_feature_report(&mut self,_:&mut[u8])->gearwise_core::Result<usize>{Ok(0)}}
+#[test]
+fn rival600_feature_table_failure_is_sent_once_and_never_commits_template_cache() {
+ let info=iface(0x1724,"feature-failure");let calls=Arc::new(Mutex::new(0));let c=calls.clone();let backend=MockBackend::new(vec![info.clone()],move |_|Ok(Box::new(FeatureFailure{calls:c.clone()})));let mut device=gearwise_steelseries::SteelSeriesDriver::with_gap(std::time::Duration::ZERO).open(&info,&backend).unwrap().remove(0);let before=device.read_state().unwrap();assert!(device.apply(&Setting::Button{id:6,action:ButtonAction::Disabled}).is_err());assert_eq!(*calls.lock().unwrap(),1);assert_eq!(device.read_state().unwrap(),before);
+}
+
+#[test]
+#[ignore="requires Rival600 native browser profile"]
+fn browser_rival600_seven_keys_eight_zones_save_reload_import_and_run_actual_native_codec() {
+ let imported=roundtrip_browser_profiles("OPEN_HUB_RIVAL600_UI_PROFILES");assert_eq!(imported.len(),1);let profile=&imported[0];assert_eq!(profile.target_model,Some(0x1724));let p=profile.multi.as_ref().unwrap();assert_eq!(p.settings.iter().filter(|s|matches!(s,Setting::Button{..})).count(),6);assert_eq!(p.settings.iter().filter(|s|matches!(s,Setting::Lighting{..})).count(),8);assert_eq!(p.macros.len(),1);let result=simulate(p).unwrap();assert_eq!(result["hardware_tested"],false);assert_eq!(result["software_macros"].as_array().unwrap().len(),1);
+ let(mut device,log)=opened(0x1724);let key=p.settings.iter().find(|s|matches!(s,Setting::Button{id:7,..})).unwrap();device.apply(key).unwrap();let ops=log.lock().unwrap();let MockRecord::SetFeature(table)=&ops[0]else{panic!()};assert_eq!(&table[33..38],&[0x61,0xea,0,0,0]);drop(ops);
+ for zone in 0..8 {let setting=p.settings.iter().find(|s|matches!(s,Setting::Lighting{zone:z,..}if *z==zone)).unwrap();log.lock().unwrap().clear();device.apply(setting).unwrap();let ops=log.lock().unwrap();let MockRecord::SetFeature(bytes)=&ops[0]else{panic!()};assert_eq!((bytes[3],bytes[8]),(zone,zone));assert_eq!(u16::from_le_bytes([bytes[9],bytes[10]]),1000+u16::from(zone)*100);assert_eq!(&bytes[31..34],&[zone+1,0x22,0x33]);}
 }

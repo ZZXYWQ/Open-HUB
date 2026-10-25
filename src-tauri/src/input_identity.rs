@@ -263,7 +263,7 @@ mod tests {
             (0x1532, 0x00aa, true),
             (0x1b1c, 0x1b2e, true),
             (0x1038, 0x1722, false),
-            (0x1038, 0x1724, true),
+            (0x1038, 0x172e, true),
         ] {
             let mut t = target("A");
             t.vendor = v;

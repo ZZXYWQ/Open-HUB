@@ -731,8 +731,8 @@ const RIVAL_600_BUTTONS: &[Field] = &[
     B3,
     B4,
     B5,
-    // Button 6 is disabled out of the box and not documented.
-    UNUSED,
+    // Independently confirmed third side key, disabled in the factory table.
+    button(6, "Third side key", Preset::Disabled, (0.12, 0.30)),
     button(7, "DPI button", Preset::DpiCycle, DPI),
 ];
 

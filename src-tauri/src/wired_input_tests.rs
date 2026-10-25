@@ -240,9 +240,7 @@ fn serialless_same_model_pairs_apply_only_to_own_collection_and_stop_one_without
             .unwrap();
         let table = c.logs[0].lock().unwrap().clone();
         assert_eq!(table.len(), 1);
-        let MockRecord::Write(table) = &table[0] else {
-            panic!()
-        };
+        let table=match &table[0]{MockRecord::Write(v) if pid!=0x1724=>v,MockRecord::SetFeature(v) if pid==0x1724=>v,_=>panic!("wrong native button transport")};
         assert_eq!(&table[8..13], &[0x61, 0xea, 0, 0, 0]);
         assert_eq!(&table[18..23], &[4, 0, 0, 0, 0]);
         assert_eq!(&table[23..28], &[0x51, 0xe1, 7, 0, 0]);

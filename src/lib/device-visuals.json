@@ -855,5 +855,23 @@
         "src": "/devices/piper/steelseries-senseiten.svg"
       }
     ]
+  },
+  {
+    "id": "steelseries-rival600",
+    "label": "SteelSeries Rival 600",
+    "vendor": 4152,
+    "products": [
+      5924
+    ],
+    "names": [
+      "SteelSeries Rival 600",
+      "Rival 600"
+    ],
+    "images": [
+      {
+        "label": "原厂轮廓",
+        "src": "/devices/piper/steelseries-rival600.svg"
+      }
+    ]
   }
 ]

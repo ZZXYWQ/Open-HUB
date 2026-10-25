@@ -1,0 +1,20 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "Rival600 exact 1724 seven controls including third side key, eight native gradient zones, original artwork, per-mouse software input and explicit persistence",
+  "default_application_tests": 532,
+  "explicit_cross_tests": 33,
+  "vendor_unit_tests": 303,
+  "vendor_doc_tests": 1,
+  "headless_UI_suites": 44,
+  "development_exe_memory_transports": 36,
+  "development_exe_sha256": "23e8157d15e2fe2b8c17b29de785bc32ac33fb27b38638e0e0c820f3047c2903",
+  "physical_hardware_tested": false,
+  "new_fully_accepted_models": 0,
+  "new_runtime_dependencies": false,
+  "artwork_raw_bytes": 34237,
+  "artwork_gzip_bytes": 5840,
+  "GG_private_import_completed": false,
+  "lift_off_completed": false,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}
