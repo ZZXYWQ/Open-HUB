@@ -21,6 +21,9 @@ mod import_execution_tests;
 #[path="tuning_models.rs"]
 mod tuning_models;
 #[cfg(test)]
+#[path="steelseries_models.rs"]
+mod steelseries_models;
+#[cfg(test)]
 #[path="x11_models.rs"]
 mod x11_models;
 #[cfg(test)]
@@ -60,16 +63,17 @@ pub fn choose_profile_device(ids:&[String],selected:Option<&str>)->Result<String
  match matches.as_slice(){[id]=>Ok((*id).clone()),[]=>Err("未连接所选配置对应的具体鼠标，请重新选择".into()),_=>Err("连接了多只同型号鼠标，请先选择目标；本次未向任何一只应用".into())}
 }
 pub fn supported(v: u16, p: u16) -> bool {
-    crate::x11::supported(v,p) || gearwise_razer::basilisk::supported(v,p) || crate::legacy::supported(v,p) || crate::atk::supported(v,p) || crate::hyperx::supported(v,p) || matches!(
+    crate::steelseries::supported(v,p) || crate::x11::supported(v,p) || gearwise_razer::basilisk::supported(v,p) || crate::legacy::supported(v,p) || crate::atk::supported(v,p) || crate::hyperx::supported(v,p) || matches!(
         (v, p),
         (0x1532, 0x0084) | (0x1532, 0x00b4) | (0x1532, 0x007a | 0x007b | 0x00a5 | 0x00a6 | 0x00c0 | 0x00c1) | (0x1b1c, 0x1b2e) | (0x1038, 0x1720)
     )
 }
 fn view(d: &mut dyn gearwise_core::Device) -> Result<View, String> {
     let state = d.read_state().map_err(|e| e.to_string())?;
+    let mut caps=d.capabilities().clone();if crate::steelseries::supported(d.descriptor().vendor_id,d.descriptor().product_id){for b in &mut caps.buttons{if b.id==1{b.remappable=false;}}}
     Ok(View {
         descriptor: d.descriptor().clone(),
-        capabilities: d.capabilities().clone(),
+        capabilities: caps,
         state,
         readback: if crate::x11::supported(d.descriptor().vendor_id,d.descriptor().product_id){"write_only_session_cached"} else if d.descriptor().vendor_id == 0x1038 {
             "write_only_cached"
@@ -348,6 +352,7 @@ pub fn validate(p: &Plan) -> Result<(), String> {
         if let Setting::Tuning(tuning)=s{crate::atk::validate_tuning(p.vendor,p.product,tuning).map_err(|e|e.to_string())?;continue;}
         if crate::atk::is_pulsar(p.vendor,p.product){match s{Setting::Dpi(d)=>crate::atk::validate_dpi(d,p.product).map_err(|e|e.to_string())?,Setting::ReportRate(r)if crate::atk::model(p.vendor,p.product).unwrap().rates.contains(r)=>{},Setting::Lighting{zone:0,state}if state.brightness==100&&matches!(state.effect,gearwise_core::model::LightingEffect::Off|gearwise_core::model::LightingEffect::Static{..})=>{},Setting::Button{id,action}=>validate_pulsar_button(*id,action)?,_=>return Err("此 Pulsar 型号未实现该设置".into())}continue;}
 
+        if crate::steelseries::supported(p.vendor,p.product){crate::steelseries::validate_setting(p.product,s)?;continue;}
         if let Some(model)=crate::legacy::model(p.vendor,p.product){crate::legacy::validate_setting(model,s).map_err(|e|e.to_string())?;continue;}
         if crate::hyperx::supported(p.vendor,p.product){crate::hyperx::validate_setting(s).map_err(|e|e.to_string())?;continue;}
         match s {
@@ -552,12 +557,12 @@ fn simulated(
         (0x1532, 0x007a|0x007b|0x00a5|0x00a6|0x00c0|0x00c1) => gearwise_razer::simulated_viper(product).map_err(|e|e.to_string()),
         (0x1532, 0x00b4) => Ok(crate::naga::simulated()),
         (0x1b1c, 0x1b2e) => Ok(gearwise_corsair::simulated_m65_pro()),
-        (0x1038, 0x1720) => Ok(gearwise_steelseries::simulated_rival310()),
+        (v,p) if crate::steelseries::supported(v,p)=>gearwise_steelseries::simulated_model(p).map_err(|e|e.to_string()),
         _ => Err("未支持该模拟型号".into()),
     }
 }
 pub fn templates() -> Result<Vec<View>, String> {
-    crate::legacy::models().iter().map(|m|(m.vendor,m.product)).chain(crate::atk::models().iter().map(|m|(m.vendor,m.product))).chain([(0x1d57,0xfa55),(0x1d57,0xfa60),(0x03f0,0x048e),(0x03f0,0x028e),(0x1532, 0x0084), (0x1532, 0x00b4), (0x1b1c, 0x1b2e), (0x1038, 0x1720),(0x1532,0x007a),(0x1532,0x007b),(0x1532,0x00a5),(0x1532,0x00a6),(0x1532,0x00c0),(0x1532,0x00c1),(0x1532,0x00aa),(0x1532,0x00ab)].into_iter())
+    crate::legacy::models().iter().map(|m|(m.vendor,m.product)).chain(crate::atk::models().iter().map(|m|(m.vendor,m.product))).chain(crate::steelseries::PRODUCTS.into_iter().filter(|p|*p!=0x1720).map(|p|(0x1038,p))).chain([(0x1d57,0xfa55),(0x1d57,0xfa60),(0x03f0,0x048e),(0x03f0,0x028e),(0x1532, 0x0084), (0x1532, 0x00b4), (0x1b1c, 0x1b2e), (0x1038, 0x1720),(0x1532,0x007a),(0x1532,0x007b),(0x1532,0x00a5),(0x1532,0x00a6),(0x1532,0x00c0),(0x1532,0x00c1),(0x1532,0x00aa),(0x1532,0x00ab)].into_iter())
         .map(|(v, p)| {
             let (mut d, _) = simulated(v, p)?;
             let mut out = view(d.as_mut())?;
@@ -697,7 +702,7 @@ pub fn compile(plan:&Plan)->Result<Compiled,String>{
   }
 
   if let Setting::Button{id,action:ButtonAction::Macro(macro_id)}=s{
-   if !pulsar&&!basilisk&&!matches!((plan.vendor,plan.product),(0x1532,0x00b4)|(0x1038,0x1720)){return Err("该型号的软件宏输入尚未接通".into());}
+   if !pulsar&&!basilisk&&!crate::steelseries::supported(plan.vendor,plan.product)&&!matches!((plan.vendor,plan.product),(0x1532,0x00b4)){return Err("该型号的软件宏输入尚未接通".into());}
    if *id==1{return Err("保留左键原始点击".into());}
    let m=definitions.get(macro_id.as_str()).ok_or("按键引用的宏内容缺失")?;
    if bindings.len()>=12{return Err("同时最多绑定 12 个软件宏按钮（F13–F24）".into());}

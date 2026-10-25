@@ -801,5 +801,41 @@
         "src": "/devices/attack-shark-x11.svg"
       }
     ]
+  },
+  {
+    "id": "piper-steelseries-sensei310",
+    "label": "SteelSeries Sensei 310",
+    "vendor": 4152,
+    "products": [
+      5922
+    ],
+    "names": [
+      "SteelSeries Sensei 310",
+      "Sensei 310"
+    ],
+    "images": [
+      {
+        "label": "原版 SVG",
+        "src": "/devices/piper/steelseries-sensei310.svg"
+      }
+    ]
+  },
+  {
+    "id": "piper-steelseries-rival",
+    "label": "SteelSeries Rival 300",
+    "vendor": 4152,
+    "products": [
+      5904
+    ],
+    "names": [
+      "SteelSeries Rival 300",
+      "Rival 300"
+    ],
+    "images": [
+      {
+        "label": "原版 SVG",
+        "src": "/devices/piper/steelseries-rival.svg"
+      }
+    ]
   }
 ]

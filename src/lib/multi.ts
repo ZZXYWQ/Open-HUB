@@ -1,3 +1,4 @@
+import {isSteelseries} from './steelseries';
 import {compxModel} from './compx';
 import {isX11,X11_SCHEMA,type X11Profile} from './x11';
 export interface MouseTuning {debounce_ms?:number;motion_sync?:boolean;angle_snapping?:boolean;ripple_control?:boolean;led_idle_seconds?:number;sensor_sleep_enabled?:boolean;sensor_sleep_seconds?:number;lift_off_microns?:number}
@@ -9,7 +10,7 @@ export type MultiEffect='Off'|{Static:{color:MultiColor}}|{Breathing:{color:Mult
 export interface MultiZoneState {effect:MultiEffect;brightness:number}
 export type MultiSetting={Dpi:MultiDpi}|{ReportRate:number}|{Button:{id:number;action:MultiAction}}|{Lighting:{zone:number;state:MultiZoneState}}|{Tuning:MouseTuning}|{LiftOff:number}|{AngleSnapping:boolean}|{VendorProfile:{schema:string;data:X11Profile}};
 export interface MultiPlan {vendor:number;product:number;settings:MultiSetting[];macros?:MultiMacro[];source?:MultiSource|null}
-export interface MultiView {descriptor:{id:string;name:string;vendor_id:number;product_id:number;serial?:string|null;simulated:boolean};capabilities:{vendor_profile?:string;lift_off?:string[];angle_snapping?:boolean;tuning?:TuningCaps;dpi:{min:number;max:number;step:number;max_stages:number;separate_xy:boolean}|null;report_rates:number[];buttons:Array<{id:number;name:string;remappable:boolean}>;lighting:Array<{id:number;name:string;effects:string[];brightness?:boolean}>};state:{battery?:{percent:number|null;charging:boolean}|null;vendor_profile?:X11Profile;lift_off?:number|null;angle_snapping?:boolean|null;tuning?:MouseTuning;dpi:MultiDpi|null;report_rate:number|null;buttons:Record<string,MultiAction>;lighting:Record<string,MultiZoneState>};readback:string;hardware_tested:boolean;native_macros?:MultiMacro[];session?:{plan:MultiPlan;software_state:'hardware'|'running'|'stopped';temporary_dpi:boolean}}
+export interface MultiView {descriptor:{id:string;name:string;vendor_id:number;product_id:number;serial?:string|null;simulated:boolean};capabilities:{vendor_profile?:string;lift_off?:string[];angle_snapping?:boolean;tuning?:TuningCaps;dpi:{min:number;max:number;step:number;max_stages:number;separate_xy:boolean}|null;report_rates:number[];buttons:Array<{id:number;name:string;remappable:boolean;default_action?:MultiAction}>;lighting:Array<{id:number;name:string;effects:string[];brightness?:boolean}>};state:{battery?:{percent:number|null;charging:boolean}|null;vendor_profile?:X11Profile;lift_off?:number|null;angle_snapping?:boolean|null;tuning?:MouseTuning;dpi:MultiDpi|null;report_rate:number|null;buttons:Record<string,MultiAction>;lighting:Record<string,MultiZoneState>};readback:string;hardware_tested:boolean;native_macros?:MultiMacro[];session?:{plan:MultiPlan;software_state:'hardware'|'running'|'stopped';temporary_dpi:boolean}}
 export function fromMulti(v:MultiView):MultiPlan{
  if(v.session){const p=v.session.plan;if(p.vendor!==v.descriptor.vendor_id||p.product!==v.descriptor.product_id)throw Error('会话方案与鼠标型号不一致，未载入旧方案');return JSON.parse(JSON.stringify(p)) as MultiPlan;}
  if(isX11(v.descriptor.vendor_id,v.descriptor.product_id))return {vendor:v.descriptor.vendor_id,product:v.descriptor.product_id,macros:[],source:null,settings:v.state.vendor_profile?[{VendorProfile:{schema:X11_SCHEMA,data:v.state.vendor_profile}}]:[]};
@@ -17,7 +18,11 @@ export function fromMulti(v:MultiView):MultiPlan{
  // binding and light on fresh hardware reads; an omitted/unknown record stays
  // untouched. Cache-only drivers are not promoted to this readback guarantee.
  const board=compxModel(v.descriptor.vendor_id,v.descriptor.product_id);
- const nativeSettings:MultiSetting[]=board?[
+ const steel=isSteelseries(v.descriptor.vendor_id,v.descriptor.product_id);
+ const nativeSettings:MultiSetting[]=steel?[
+  ...v.capabilities.buttons.filter(b=>b.remappable&&b.id!==1).map(b=>({Button:{id:b.id,action:v.state.buttons[String(b.id)]??b.default_action??'Default'}})),
+  ...v.capabilities.lighting.filter(z=>v.state.lighting[String(z.id)]!=null).map(z=>({Lighting:{zone:z.id,state:v.state.lighting[String(z.id)]}})),
+ ]:board?[
   ...v.capabilities.buttons.filter(b=>b.remappable&&v.state.buttons[String(b.id)]!=null).map(b=>({Button:{id:b.id,action:v.state.buttons[String(b.id)]}})),
   ...v.capabilities.lighting.filter(z=>v.state.lighting[String(z.id)]!=null).map(z=>({Lighting:{zone:z.id,state:v.state.lighting[String(z.id)]}})),
  ]:[];

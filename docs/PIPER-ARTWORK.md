@@ -24,3 +24,6 @@ Separate, unmodified SVG artwork from https://github.com/libratbag/piper at 5d3c
 - `/devices/piper/roccat-kone-pure.svg`: https://raw.githubusercontent.com/libratbag/piper/5d3c8845b55643595ccb8029dfa5c7a2fb079e77/data/svgs/roccat-kone-pure.svg
 
 - `/devices/piper/marsgaming-mm4.svg`: https://raw.githubusercontent.com/libratbag/piper/5d3c8845b55643595ccb8029dfa5c7a2fb079e77/data/svgs/marsgaming-mm4.svg
+
+- `/devices/piper/steelseries-sensei310.svg`: https://raw.githubusercontent.com/libratbag/piper/5d3c8845b55643595ccb8029dfa5c7a2fb079e77/data/svgs/steelseries-sensei310.svg
+- `/devices/piper/steelseries-rival.svg`: https://raw.githubusercontent.com/libratbag/piper/5d3c8845b55643595ccb8029dfa5c7a2fb079e77/data/svgs/steelseries-rival.svg (Rival 300 USB 1710 shares the shell/database family, verified against libratbag `steelseries-rival.device`.)

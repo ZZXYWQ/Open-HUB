@@ -1,0 +1,83 @@
+{
+  "repository": "https://github.com/flozz/rivalcfg",
+  "commit": "779ea52c68cbf8d21234d9e0d81718225f680819",
+  "static_read_only": true,
+  "files": [
+    {
+      "path": "rivalcfg/devices/rival100.py",
+      "sha256": "efabae95add129f6ee0fb5eeff7afd5dfad29fc0a6ea2ddc6bf3b3621a643ba5",
+      "bytes": 4273
+    },
+    {
+      "path": "rivalcfg/devices/rival300.py",
+      "sha256": "1168b2523fdf0b08480062e61127d214becbd7c9be5c23d950fb5db26004223f",
+      "bytes": 6633
+    },
+    {
+      "path": "rivalcfg/devices/rival310.py",
+      "sha256": "f1b660b353b60ced3c6c0e6dd540bfb1b9e31bae9cba7f105692b59d4eefee79",
+      "bytes": 5243
+    },
+    {
+      "path": "rivalcfg/devices/sensei310.py",
+      "sha256": "3a8c5bad7159e4a0be8f411409306b750c77e0c1debbacef3429f7e13a13622e",
+      "bytes": 5084
+    },
+    {
+      "path": "rivalcfg/devices/rival600.py",
+      "sha256": "be5a65d609812f50e9ae4a0e2ba4904bc9c800edfa5c336cab27b62ddf88eb41",
+      "bytes": 8121
+    },
+    {
+      "path": "test/devices/old_specs/test_rival300.py",
+      "sha256": "e25d96916e662cc14d423d54436671626e194c79e5a5d9c0916117aad093f0f3",
+      "bytes": 6244
+    },
+    {
+      "path": "test/devices/old_specs/test_rival310.py",
+      "sha256": "96cd437301fada0ec9cda527b419bf76749fae7ab36bbb3a1c5f8d5b89c52aa5",
+      "bytes": 7216
+    },
+    {
+      "path": "test/devices/old_specs/test_sensei310.py",
+      "sha256": "92c75d7c0e9e1ad55fa8c9bec3ceaf5b369479568d9866e74681f99a0106e1a8",
+      "bytes": 7459
+    },
+    {
+      "path": "test/devices/old_specs/test_rival600.py",
+      "sha256": "5728f9aab985b20285092a3caf0b027e77a7264597fbd11939b1525feea3b151",
+      "bytes": 14916
+    },
+    {
+      "path": "doc/devices/rival310.rst",
+      "sha256": "9a55f393da44f4994fde64b7ceb6efec95fb54ab8cfd6e6da67aa38d0448fe8f",
+      "bytes": 515
+    },
+    {
+      "path": "doc/devices/sensei310.rst",
+      "sha256": "7f9c87adc3732ef1d38e86c8d415e4dd2b972eb89490da6189c4afd6238ba4fd",
+      "bytes": 521
+    },
+    {
+      "path": "doc/devices/rival600.rst",
+      "sha256": "0cbf0da70adddf6b24f4b2dfc0cf4a5d84bd3689b09641ac229d1e217d3d3e7e",
+      "bytes": 515
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "7637386b5f81e8a719ca336233149005e5fa28b5e6054ea7b67de49355b0ad40",
+      "bytes": 484
+    },
+    {
+      "path": "rivalcfg/handlers/rgbgradient.py",
+      "sha256": "b05c70aba2d7095a9df2068dda88f0739763265c1527f69fa564c9cefed994ff",
+      "bytes": 11462
+    },
+    {
+      "path": "doc/devices/_rgbgradient.rst",
+      "sha256": "224ad2603f5efca86bbc73df748d47bfc0704bdacb6f0f5310304d4855622c87",
+      "bytes": 3090
+    }
+  ],
+  "use": "Protocol facts and independent byte vectors; downloaded Python was parsed/read only, never imported or run."
+}

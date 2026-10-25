@@ -14,8 +14,6 @@ use crate::models::{Cycle, Light, LightProto, Report, Zone};
 
 /// Loop time recorded for steady colours sent as a one-stop cycle.
 const STEADY_MS: u16 = 1000;
-/// Least time the firmware needs per colour stop (libratbag).
-const MS_PER_STOP: u16 = 330;
 /// The three firmware breathing speeds, as (loop time, effect code).
 const BREATHING: [(u16, u8); 3] = [(3000, 4), (5000, 3), (7000, 2)];
 /// Effect code for a steady colour.
@@ -34,6 +32,7 @@ pub fn plan(light: &Light, zone: u8, want: &ZoneState) -> Result<(ZoneState, Vec
     if !light.effects().contains(&want.effect.kind()) {
         return Err(Error::Unsupported("lighting effect"));
     }
+    if matches!(light.proto,LightProto::Cycle(_))&&want.effect.period_ms()==Some(0){return Err(Error::invalid("native colour-loop period must be nonzero"));}
     let mut applied = *want;
 
     let packets = match light.proto {
@@ -128,7 +127,7 @@ fn cycle(layout: &Cycle, zone: &Zone, want: &ZoneState) -> (LightingEffect, Pack
             false,
             LightingEffect::Breathing {
                 color,
-                period_ms: period_ms.max(3 * MS_PER_STOP),
+                period_ms,
             },
         ),
         LightingEffect::ColorCycle { period_ms } => (
@@ -144,7 +143,7 @@ fn cycle(layout: &Cycle, zone: &Zone, want: &ZoneState) -> (LightingEffect, Pack
             .collect(),
             false,
             LightingEffect::ColorCycle {
-                period_ms: period_ms.max(4 * MS_PER_STOP),
+                period_ms,
             },
         ),
         // Off: the effect list never offers anything else.
@@ -303,19 +302,19 @@ mod tests {
     }
 
     #[test]
-    fn fast_cycles_are_slowed_to_what_the_firmware_manages() {
+    fn native_colour_loop_duration_is_not_replaced_by_an_invented_per_stop_floor() {
         let l = light(LightProto::Cycle(CYCLE));
         let (applied, p) = plan(
             &l,
             0,
-            &state(LightingEffect::ColorCycle { period_ms: 500 }, 100),
+            &state(LightingEffect::ColorCycle { period_ms: 1000 }, 100),
         )
         .unwrap();
         assert_eq!(
             applied.effect,
-            LightingEffect::ColorCycle { period_ms: 1320 }
+            LightingEffect::ColorCycle { period_ms: 1000 }
         );
-        assert_eq!(&p[0].bytes[3..5], 1320u16.to_le_bytes());
+        assert_eq!(&p[0].bytes[3..5], 1000u16.to_le_bytes());
     }
 
     #[test]

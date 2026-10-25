@@ -7,7 +7,7 @@
 use std::thread;
 use std::time::Duration;
 
-use gearwise_core::Result;
+use gearwise_core::{Error,Result};
 use gearwise_core::transport::HidTransport;
 
 use crate::models::{Report, Wire};
@@ -91,7 +91,8 @@ impl Link {
         }
         match packet.report {
             Report::Output => {
-                self.io.write(&buf)?;
+                let written=self.io.write(&buf)?;
+                if written!=buf.len(){return Err(Error::protocol(format!("SteelSeries output short write: {written}/{}",buf.len())));}
             }
             Report::Feature => self.io.send_feature_report(&buf)?,
         }
@@ -104,6 +105,7 @@ impl Link {
     fn read(&mut self, timeout_ms: i32) -> Result<Vec<u8>> {
         let mut buf = [0u8; REPLY_LEN];
         let n = self.io.read_timeout(&mut buf, timeout_ms)?;
+        if n>buf.len(){return Err(Error::protocol("SteelSeries read length exceeds report capacity"));}
         Ok(buf[..n].to_vec())
     }
 }

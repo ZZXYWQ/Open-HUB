@@ -190,3 +190,21 @@ mod tests {
 
 #[cfg(feature="simulation")]
 pub fn simulated_rival310()->(Box<dyn Device>,std::sync::Arc<std::sync::Mutex<Vec<gearwise_core::transport::MockRecord>>>){testutil::silent(0x1720)}
+
+/// Pure preflight using the same encoders as the device. No transport is opened.
+/// The bridge can reject an unsupported tail before earlier settings are sent.
+pub fn validate_setting(pid:u16,setting:&gearwise_core::Setting)->Result<()>{
+ use gearwise_core::Setting;
+ let spec=models::find(pid).ok_or(Error::Unsupported("unknown SteelSeries model"))?.spec;
+ match setting{
+  Setting::Dpi(want)=>{let(applied,_)=dpi::plan(&spec.dpi,want)?;if applied!=*want{return Err(Error::invalid("DPI must exactly match a native sensor step"));}},
+  Setting::ReportRate(hz)=>{if !spec.rate.codes.iter().any(|(r,_)|r==hz){return Err(Error::invalid("native SteelSeries report rate"));}},
+  Setting::Lighting{zone,state}=>{let(applied,_)=light::plan(spec.light.as_ref().ok_or(Error::Unsupported("lighting"))?,*zone,state)?;if applied!=*state{return Err(Error::invalid("lighting period must match a native firmware rhythm"));}},
+  Setting::Button{id,action}=>{buttons::plan(spec.buttons.as_ref().ok_or(Error::Unsupported("button table"))?,&std::collections::BTreeMap::new(),*id,action)?;},
+  _=>return Err(Error::Unsupported("SteelSeries setting not enabled in bridge")),
+ }Ok(())
+}
+#[cfg(feature="simulation")]
+pub fn simulated_model(pid:u16)->Result<(Box<dyn Device>,std::sync::Arc<std::sync::Mutex<Vec<gearwise_core::transport::MockRecord>>>)>{
+ if !matches!(pid,0x1710|0x1720|0x1722){return Err(Error::Unsupported("unreviewed bridge SteelSeries simulation"));}Ok(testutil::silent(pid))
+}

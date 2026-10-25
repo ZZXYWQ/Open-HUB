@@ -245,5 +245,21 @@
     "detail": "Exact AA/AB series only; structural illustration labelled in UI",
     "bytes": 1244,
     "sha256": "44c911ada1c40a00581982e2e6498f3f034b28faf5bf4068f1b0ca8a6dff8b86"
+  },
+  {
+    "file": "/devices/piper/steelseries-sensei310.svg",
+    "source": "https://raw.githubusercontent.com/libratbag/piper/5d3c8845b55643595ccb8029dfa5c7a2fb079e77/data/svgs/steelseries-sensei310.svg",
+    "source_sha256": "2aeb4c26406d2da0b8f58655f5c20351f992a589637f7545d5417b675113b984",
+    "sha256": "2aeb4c26406d2da0b8f58655f5c20351f992a589637f7545d5417b675113b984",
+    "bytes": 27934,
+    "license": "GPL-2.0, separate unmodified SVG source"
+  },
+  {
+    "file": "/devices/piper/steelseries-rival.svg",
+    "source": "https://raw.githubusercontent.com/libratbag/piper/5d3c8845b55643595ccb8029dfa5c7a2fb079e77/data/svgs/steelseries-rival.svg",
+    "source_sha256": "72fd8b0ee8354d3efdda0ee1c62ea7d640c6cf261b0ec427057c80666b896983",
+    "sha256": "72fd8b0ee8354d3efdda0ee1c62ea7d640c6cf261b0ec427057c80666b896983",
+    "bytes": 22784,
+    "license": "GPL-2.0, separate unmodified SVG source"
   }
 ]

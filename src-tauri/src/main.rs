@@ -39,6 +39,7 @@ mod screen;
 mod effects;
 mod onboard;
 mod onboard_restore;
+mod steelseries;
 mod onboard_macros;
 mod onboard_macro_plan;
 mod onboard_bindings;

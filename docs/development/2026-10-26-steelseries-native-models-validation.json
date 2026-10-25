@@ -1,0 +1,32 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "exact Rival300 and Sensei310 native controls, model UI/art, complete known plans, media and independent host macros; Rival310 strict preflight",
+  "new_partially_implemented_models": [
+    "SteelSeries Rival 300 / 1038:1710",
+    "SteelSeries Sensei 310 / 1038:1722"
+  ],
+  "new_full_accepted_models": 0,
+  "default_application_tests": 488,
+  "explicit_UI_native_cross_tests": 22,
+  "vendor_workspace_unit_tests": 301,
+  "vendor_doc_tests": 1,
+  "steelseries_driver_unit_tests": 85,
+  "headless_UI_suites": 36,
+  "headless_UI_status": "all-passed; final modifier-group-only styling also passed SteelSeries, Basilisk and original three-brand suites",
+  "catalog_artwork_cases": 64,
+  "development_exe_memory_transports": 34,
+  "development_exe_sha256": "56fe2476064021938817779e79905bdd42ac15b3bd044fd26e48ef575405e5d8",
+  "frontend_JS_gzip_kB": 223.89,
+  "frontend_CSS_kB": 104.76,
+  "new_SVG_bytes": 50718,
+  "new_SVG_gzip_bytes": 9071,
+  "new_runtime_dependencies": false,
+  "source_python_executed": false,
+  "physical_new_models_tested": false,
+  "readback": "write-only cached; original template/session disclosed",
+  "private_GG_import_new_models": false,
+  "hardware_save_UI_completed": false,
+  "full_OEM_gradients_completed": false,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}
