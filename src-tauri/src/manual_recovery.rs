@@ -33,7 +33,7 @@ fn target(record:&Record,descriptor:&DeviceDescriptor,source:Option<&Source>)->R
 }
 impl Service {
     pub fn recovery_list(&self,id:&str)->Result<RecoveryList,String>{self.recovery_list_from(&macro_recovery::directory()?,id)}
-    fn recovery_list_from(&self,dir:&Path,id:&str)->Result<RecoveryList,String>{
+    pub(super) fn recovery_list_from(&self,dir:&Path,id:&str)->Result<RecoveryList,String>{
         self.with(|manager|{
             let descriptor=manager.device_mut(raw_id(id)).ok_or("鼠标已断开")?.descriptor().clone();
             let(journals,mut errors)=macro_recovery::load(dir);let mut records=Vec::new();
@@ -47,16 +47,13 @@ impl Service {
         })
     }
     pub fn observe_recovery(&self,id:&str,source:&Source,runtime:&Runtime)->Result<(),String>{
-        let descriptor=self.with(|manager|Ok(manager.device_mut(raw_id(id)).ok_or("鼠标已断开")?.descriptor().clone()))?;
-        if !supported(source.vendor,source.product)||(source.vendor,source.product)!=(descriptor.vendor_id,descriptor.product_id){return Err("输入来源与所选鼠标型号不一致".into());}
-        runtime.prepare(source,descriptor.serial.as_deref())
+        self.prepare_input_target(id,source,runtime).map(|_|())
     }
     pub fn restore_recovery(&self,id:&str,key:&str,expected_revision:&str,source:&Source,confirmed:bool,runtime:&Runtime)->Result<(),String>{
-        let descriptor=self.with(|manager|Ok(manager.device_mut(raw_id(id)).ok_or("鼠标已断开")?.descriptor().clone()))?;
-        Runtime::verify(source,descriptor.serial.as_deref())?;
+        let(target,peers)=self.with(|m|Self::input_context(m,id))?;runtime.verify_target(source,&target,&peers)?;
         self.restore_recovery_from(&macro_recovery::directory()?,id,key,expected_revision,source,confirmed,runtime)
     }
-    fn restore_recovery_from(&self,dir:&Path,id:&str,key:&str,expected_revision:&str,source:&Source,confirmed:bool,runtime:&Runtime)->Result<(),String>{
+    pub(super) fn restore_recovery_from(&self,dir:&Path,id:&str,key:&str,expected_revision:&str,source:&Source,confirmed:bool,runtime:&Runtime)->Result<(),String>{
         if !confirmed{return Err("请核对原始动作、目标鼠标与覆盖范围后确认恢复".into());}
         if key.len()>256||expected_revision.len()>128*1024{return Err("恢复请求大小无效".into());}
         self.with(|manager|{
@@ -68,6 +65,7 @@ impl Service {
             let reviewed:serde_json::Value=serde_json::from_str(expected_revision).map_err(|_|"恢复记录已变化或无效，请刷新并重新核对")?;
             if review(&record,&descriptor)?!=reviewed{return Err("恢复记录已变化或目标鼠标已更换，请刷新并重新核对".into());}
             target(&record,&descriptor,Some(source))?;
+            let(current,peers)=Self::input_context(manager,id)?;runtime.verify_target(source,&current,&peers)?;
             {
                 let active=self.1.lock().map_err(|_|"宏恢复记录锁异常")?;
                 for (active_id,cleanup) in active.iter(){
@@ -85,7 +83,9 @@ impl Service {
             // presented or used as proof of routing/DPI ownership here.
             if record.software_input {device.restore_hardware_input().map_err(|e|format!("硬件模式恢复失败，记录已保留：{e}"))?;}
             if let Some(shift)=&record.shift {device.apply(&Setting::Dpi(shift.original.clone())).map_err(|e|format!("原始 DPI 恢复失败，记录已保留：{e}"))?;}
-            for setting in &record.settings {device.apply(setting).map_err(|e|format!("原始按键恢复失败，记录已保留：{e}"))?;}
+            if record.version==2{crate::steelseries::restore_table(device.as_mut(),&record.settings)?;}else{
+                for setting in &record.settings {device.apply(setting).map_err(|e|format!("原始按键恢复失败，记录已保留：{e}"))?;}
+            }
             journal.finish()?;
             self.1.lock().map_err(|_|"宏恢复记录锁异常")?.retain(|_,c|!c.journal.as_ref().is_some_and(|j|j.path==journal.path));
             runtime.remove(&source.path);
@@ -122,7 +122,7 @@ impl Service {
         if vendor!=0x1b1c{device.apply(&Setting::Button{id:button,action:ButtonAction::Key{usage:0x68,mods:Modifiers(0)}}).unwrap();}
         // A fresh M65 driver has no remembered input ownership after restart.
         // Manual recovery must nevertheless emit the explicit hardware reset.
-        let source=Source{vendor,product,path:"manual:input".into()};
+        let source=Source{vendor,product,path:"simulation:manual:input".into()};
         let dir=std::env::temp_dir().join(format!("manual-recovery-{}",crate::profiles::new_id()));
         let dpi=DpiState{stages:vec![DpiStage::uniform(1600)],active:0};
         Journal::create(&dir,Record{version:1,device_id:"old-device".into(),serial:None,source:Source{path:"old-input".into(),..source.clone()},

@@ -28,7 +28,8 @@ impl Record {
                 .is_some_and(|s| d.serial.as_deref()==Some(s))
     }
     fn validate(&self) -> Result<(), String> {
-        if self.version!=1 || !crate::multibrand::supported(self.source.vendor,self.source.product)
+        let full_table=self.version==2&&crate::steelseries::supported(self.source.vendor,self.source.product);
+        if (self.version!=1&&!full_table) || !crate::multibrand::supported(self.source.vendor,self.source.product)
             || self.device_id.is_empty() || self.device_id.len()>4096 || self.source.path.len()>4096
             || self.settings.len()>12 || self.expected.len()>12 {
             return Err("恢复记录的版本、型号或大小无效".into());
@@ -39,12 +40,18 @@ impl Record {
         let mut ids=std::collections::HashSet::new();
         for setting in &self.settings {
             let Setting::Button{id,action}=setting else {return Err("恢复记录只允许临时按键动作".into());};
-            if !ids.insert(*id) || matches!(action,ButtonAction::Macro(_)) || !self.expected.contains_key(id) {
+            if !ids.insert(*id) || matches!(action,ButtonAction::Macro(_)) || (!full_table&&!self.expected.contains_key(id)) {
                 return Err("恢复记录的按键重复或缺少归属信息".into());
             }
             crate::multibrand::validate(&crate::multibrand::Plan{vendor:self.source.vendor,product:self.source.product,settings:vec![setting.clone()],macros:vec![],source:None})?;
-            if !matches!(self.expected[id],ButtonAction::Key{usage:0x68..=0x73,mods:gearwise_core::model::Modifiers(0)}) {
+            if self.expected.get(id).is_some_and(|a|!matches!(a,ButtonAction::Key{usage:0x68..=0x73,mods:gearwise_core::model::Modifiers(0)})) {
                 return Err("恢复记录包含未知的临时触发键".into());
+            }
+        }
+        if full_table {
+            let count=if self.source.product==0x1722{8}else{6};
+            if ids!=(2..=count).collect()||self.expected.is_empty()||self.expected.keys().any(|id|!ids.contains(id)) {
+                return Err("赛睿恢复记录必须包含完整已知按键表和宏触发键归属".into());
             }
         }
         if let Some(shift)=&self.shift {
@@ -119,4 +126,10 @@ fn read_record_file(path:&Path)->Result<Option<Record>,String>{
         let(mut d,_)=crate::naga::simulated();let mut descriptor=d.descriptor().clone();descriptor.id="device:a".into();descriptor.serial=Some("unit-b".into());assert!(!record().matches(&descriptor));descriptor.serial=Some("unit-a".into());assert!(record().matches(&descriptor));let mut r=record();r.serial=None;assert!(!r.matches(&descriptor));let _=d.read_state();
     }
     #[test]fn completed_record_can_disappear_during_a_scan_but_bad_records_remain_visible(){let dir=std::env::temp_dir().join(format!("recovery-scan-{}",crate::profiles::new_id()));let journal=Journal::create(&dir,record()).unwrap();let path=journal.path.clone();assert!(read_record_file(&path).unwrap().is_some());journal.finish().unwrap();assert!(read_record_file(&path).unwrap().is_none());std::fs::write(&path,b"{ broken JSON").unwrap();assert!(read_record_file(&path).is_err());assert_eq!(std::fs::read(&path).unwrap(),b"{ broken JSON");std::fs::write(&path,vec![b' ';64*1024+1]).unwrap();assert!(read_record_file(&path).is_err());std::fs::remove_file(path).unwrap();std::fs::remove_dir(dir).unwrap();}
+}
+
+#[cfg(test)]mod full_table_tests{
+ use super::*;
+ fn full()->Record{Record{version:2,device_id:"control:A".into(),serial:None,source:Source{vendor:0x1038,product:0x1722,path:"keyboard:A".into()},settings:(2..=8).map(|id|Setting::Button{id,action:ButtonAction::Default}).collect(),expected:HashMap::from([(4,ButtonAction::Key{usage:0x68,mods:gearwise_core::model::Modifiers(0)})]),software_input:false,shift:None}}
+ #[test]fn version_two_tables_require_exact_reviewed_model_all_buttons_and_owned_macro_trigger(){assert!(full().validate().is_ok());for case in 0..8{let mut r=full();match case{0=>r.version=1,1=>r.source.product=0x1724,2=>{r.settings.pop();},3=>r.expected.clear(),4=>{r.expected.insert(1,ButtonAction::Key{usage:0x68,mods:gearwise_core::model::Modifiers(0)});},5=>{r.settings[0]=r.settings[1].clone();},6=>{r.expected.insert(4,ButtonAction::Media(0xea));},_=>r.source.vendor=0x1532}assert!(r.validate().is_err(),"case {case}");}}
 }

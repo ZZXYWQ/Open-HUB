@@ -24,6 +24,8 @@ use crate::{battery, buttons, dpi, light};
 const BATTERY_INTERVAL: Duration = Duration::from_secs(60);
 
 pub struct SteelSeriesDevice {
+    control_path:String,
+    connection_key:String,
     desc: DeviceDescriptor,
     caps: Capabilities,
     state: DeviceState,
@@ -42,7 +44,10 @@ impl SteelSeriesDevice {
             model.pid,
             iface.serial.as_deref().unwrap_or(&iface.path)
         );
+        static NEXT_CONNECTION:std::sync::atomic::AtomicU64=std::sync::atomic::AtomicU64::new(0);
+        let connection_key=format!("steel-open:{:x}:{}",std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d|d.as_nanos()).unwrap_or(0),NEXT_CONNECTION.fetch_add(1,std::sync::atomic::Ordering::Relaxed));
         Self {
+            control_path:iface.path.clone(),connection_key,
             desc: DeviceDescriptor {
                 id,
                 model_key: DeviceDescriptor::model_key_for(Vendor::SteelSeries, model.pid),
@@ -218,6 +223,8 @@ fn factory_state(spec: &Spec) -> DeviceState {
 }
 
 impl Device for SteelSeriesDevice {
+    fn control_path(&self)->Option<&str>{Some(&self.control_path)}
+    fn connection_key(&self)->Option<&str>{Some(&self.connection_key)}
     fn descriptor(&self) -> &DeviceDescriptor {
         &self.desc
     }
@@ -241,6 +248,17 @@ impl Device for SteelSeriesDevice {
         }
         applied.apply_to(&mut self.state);
         Ok(())
+    }
+
+    fn apply_button_table(&mut self,actions:&[(u16,gearwise_core::model::ButtonAction)])->Result<()>{
+        let known=self.caps.buttons.iter().filter(|b|b.id!=1).map(|b|b.id).collect::<std::collections::BTreeSet<_>>();
+        let supplied=actions.iter().map(|(id,_)|*id).collect::<std::collections::BTreeSet<_>>();
+        if known.is_empty()||known!=supplied||supplied.len()!=actions.len(){return Err(Error::invalid("complete native button table required"));}
+        let table=self.spec.buttons.as_ref().ok_or(Error::Unsupported("button remapping"))?;
+        let mut state=self.state.clone();let mut final_packet=None;
+        for(id,action)in actions{let setting=Setting::Button{id:*id,action:action.clone()};let packet=buttons::plan(table,&state.buttons,*id,action)?;setting.apply_to(&mut state);final_packet=Some(packet);}
+        self.link.send(&final_packet.ok_or(Error::invalid("empty button table"))?)?;
+        self.state=state;Ok(())
     }
 
     fn poll_events(&mut self) -> Vec<DeviceEvent> {

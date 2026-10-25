@@ -4,7 +4,7 @@ import {Button} from '@/components/ui/button';
 import type {MultiDpi,MultiSetting,MultiSource} from '@/lib/multi';
 import {KEY_NAMES} from '@/lib/sino';
 
-interface RecoveryItem {key:string;revision:string;record:{serial:string|null;device_id:string;source:MultiSource;settings:MultiSetting[];software_input:boolean;shift:{original:MultiDpi;expected:MultiDpi}|null}}
+interface RecoveryItem {key:string;revision:string;record:{version?:number;serial:string|null;device_id:string;source:MultiSource;settings:MultiSetting[];software_input:boolean;shift:{original:MultiDpi;expected:MultiDpi}|null}}
 interface RecoveryList {records:RecoveryItem[];errors:string[]}
 function describe(setting:MultiSetting){
  if(!('Button'in setting))return JSON.stringify(setting);
@@ -50,6 +50,7 @@ export function MultiRecovery({id,name,serial,source,disabled,onRestored}:{id:st
   {!!list?.records.length&&<fieldset disabled={disabled||busy} className="space-y-3">
    <label className="block">待恢复记录<select aria-label="选择待恢复记录" className="ml-3 max-w-full rounded border bg-background p-2" value={selected} onChange={e=>{setSelected(e.target.value);setPrepared('');setConfirmed(false);setError('');setNote('');}}>{list.records.map(r=><option key={r.key} value={r.key}>{r.key} · {r.record.serial??'无序列号'}</option>)}</select></label>
    {item&&<><p className="text-sm">记录序列号：{item.record.serial??'未记录，无法自动核对个体'}；原设备：<span className="break-all">{item.record.device_id}</span></p>
+    {item.record.version===2&&<p className="text-sm">此记录包含整张已知按键表。恢复时会一次发送以下所有按键，保留方案中其他自定义动作。</p>}
     <ul className="list-disc pl-5 text-sm space-y-1">{item.record.software_input&&<li>退出软件按键路由，恢复硬件模式</li>}{item.record.settings.map((s,i)=><li key={i}>{describe(s)}</li>)}{item.record.shift&&<li>恢复原始 DPI：{item.record.shift.original.stages.map(s=>`${s.x} × ${s.y}`).join(' / ')}；活动档位 {item.record.shift.original.active+1}</li>}</ul>
     <p className="text-sm text-muted-foreground">请先在上方“鼠标输入来源”选择此鼠标的接口。准备恢复只观察输入，不写入设置。</p>
     {mismatch&&<p role="alert" className="lighting-error">记录序列号与当前鼠标不一致，不能恢复到此设备。</p>}

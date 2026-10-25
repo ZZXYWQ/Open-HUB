@@ -188,7 +188,7 @@ fn selection(root:&Path,manager:&mut DeviceManager,key:&str,record_revision:&str
   assert!(s.reconnect_resume_at(&root,&item.key,&item.revision,&naga_id,"unknown",None,true,&r).is_err());assert!(naga_log.lock().unwrap().is_empty());
   let other=Plan{vendor:0x1532,product:0x00b4,settings:vec![Setting::Dpi(DpiState{stages:vec![DpiStage::uniform(1800)],active:0})],macros:vec![],source:None};assert_eq!(s.apply_at(&naga_id,&other,&r,&root,None).unwrap().state.dpi.unwrap().stages[0].x,1800);assert_eq!(b.0.lock().unwrap().setting_writes,0);
   let source=Source{vendor:0x1b1c,product:0x1b2e,path:"simulation:active-other-plan".into()};r.arm(source.clone(),vec![],crate::macro_runtime::InputMap{keys:Default::default(),buttons:vec![],dpi_buttons:vec![]},crate::macro_runtime::Hooks::default()).unwrap();
-  s.1.lock().unwrap().insert(c.descriptor.id.clone(),Cleanup{source,settings:vec![],expected:Default::default(),software_input:false,cancelled:Arc::new(AtomicBool::new(false)),shift:Arc::new(Mutex::new(None)),journal:None,serial:Some("unit-a".into())});
+  s.1.lock().unwrap().insert(c.descriptor.id.clone(),Cleanup{input_proof:None,source,settings:vec![],expected:Default::default(),software_input:false,cancelled:Arc::new(AtomicBool::new(false)),shift:Arc::new(Mutex::new(None)),journal:None,serial:Some("unit-a".into())});
   assert!(s.reconnect_resume_at(&root,&item.key,&item.revision,&c.descriptor.id,&c.revision,None,true,&r).is_err());assert_eq!(r.status().source_count,1);assert!(rec.0.lock().unwrap().is_empty());assert_eq!(b.0.lock().unwrap().setting_writes,0);s.1.lock().unwrap().clear();clean(&root,&r);
  }
  #[test]fn corrupt_oversized_and_cross_model_pending_files_are_preserved_and_never_executed(){

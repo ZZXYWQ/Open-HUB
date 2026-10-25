@@ -1,0 +1,26 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "unique physical wired input association, two identical serialless mice, full native table recovery, fresh-open session guards and scoped live UI",
+  "target_products": [
+    "1038:1710",
+    "1038:1720",
+    "1038:1722"
+  ],
+  "default_application_tests": 506,
+  "explicit_cross_tests": 26,
+  "vendor_unit_tests": 301,
+  "vendor_doc_tests": 1,
+  "headless_UI_suites": 39,
+  "headless_UI_status": "all-passed",
+  "development_exe_memory_transports": 34,
+  "development_exe_sha256": "8ea042d9582adb648f4e89c4849ffc4dd9d7ba107dde33b86ca8f03fb431b4fe",
+  "frontend_JS_gzip_kB": 225.35,
+  "new_runtime_dependencies": false,
+  "global_hooks": false,
+  "container_used_as_persistent_profile_owner": false,
+  "reconnect_auto_macros": false,
+  "physical_SteelSeries_hardware_tested": false,
+  "new_fully_accepted_models": 0,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}

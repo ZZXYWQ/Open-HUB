@@ -185,6 +185,10 @@ pub enum DeviceEvent {
 
 /// A connected, configurable device.
 pub trait Device: Send {
+    /// Exact control collection and ephemeral open-instance identity. Opt-in
+    /// only; neither is a durable physical mouse serial or a profile owner.
+    fn control_path(&self)->Option<&str>{None}
+    fn connection_key(&self)->Option<&str>{None}
     fn descriptor(&self) -> &DeviceDescriptor;
     fn capabilities(&self) -> &Capabilities;
 
@@ -195,6 +199,10 @@ pub trait Device: Send {
     /// return [`crate::Error::Unsupported`] / [`crate::Error::InvalidValue`]
     /// rather than sending garbage to firmware.
     fn apply(&mut self, setting: &Setting) -> Result<()>;
+    /// Send a complete reviewed table (excluding protected main click) in one
+    /// native command. Opt-in only; default rejects without any I/O.
+    fn apply_button_table(&mut self,_actions:&[(u16,ButtonAction)])->Result<()>{Err(crate::Error::Unsupported("complete native button table"))}
+
 
     /// Drain pending notifications without blocking for long. Called
     /// periodically by the device manager's worker thread.

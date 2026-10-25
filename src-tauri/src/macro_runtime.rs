@@ -58,7 +58,7 @@ fn verify_required_serial(source:&Source,expected:Option<&str>,actual:Option<&st
  let expected=expected.map(str::trim).filter(|s|!crate::profile_routing::serial_key(source.vendor,source.product,Some(s)).is_empty()).ok_or("软件宏与软件按键映射需要可核验的鼠标序列号；当前可使用已实现的板载功能")?;
  if actual.map(str::trim)!=Some(expected){return Err("鼠标输入接口序列号与目标鼠标不一致或不可读，未启用软件宏".into());}Ok(())
 }
-fn verify_input_source(sources:Vec<SourceInfo>,source:&Source,serial:Option<&str>)->Result<SourceInfo,String>{
+pub(crate) fn verify_input_source(sources:Vec<SourceInfo>,source:&Source,serial:Option<&str>)->Result<SourceInfo,String>{
  let candidate=sources.iter().cloned().find(|v|v.source==*source).ok_or("未找到配置指定的输入来源；请重新选择此鼠标的输入设备")?;
  let expected_kind=if source.vendor==0x1b1c{"Vendor HID"}else{"Keyboard report"};
  if candidate.kind!=expected_kind{return Err(format!("此方案需要选择 {expected_kind} 输入接口"));}
@@ -67,16 +67,25 @@ fn verify_input_source(sources:Vec<SourceInfo>,source:&Source,serial:Option<&str
  Ok(candidate)
 }
 #[derive(Clone,Default)]pub struct Runtime(Arc<Mutex<Option<Native>>>);
-struct Native{hub:Arc<Hub>,#[cfg(windows)]_watcher:Option<raw_input::Watcher>,#[cfg(test)]simulation:bool}
+struct Native{hub:Arc<Hub>,#[cfg(windows)]_watcher:Option<raw_input::Watcher>,#[cfg(test)]simulation:bool,#[cfg(test)]identity:Option<crate::input_identity::Fixture>}
 #[derive(Serialize)]pub struct Status{pub source_count:usize,pub errors:Vec<String>}
 impl Runtime{
- pub fn verify(source:&Source,serial:Option<&str>)->Result<SourceInfo,String>{verify_input_source(raw_input::sources()?,source,serial)}
- pub fn prepare(&self,source:&Source,serial:Option<&str>)->Result<(),String>{
-  #[cfg(test)]if source.path.starts_with("simulation:")&&crate::multibrand::supported(source.vendor,source.product)&&self.0.lock().map_err(|_|"软件宏运行时锁异常")?.as_ref().is_some_and(|n|n.simulation){return Ok(());}
-  Self::verify(source,serial)?;let mut native=self.0.lock().map_err(|_|"软件宏运行时锁异常")?;if native.is_none(){
-   #[cfg(windows)]{let sink:SharedSink=Arc::new(Mutex::new(gearwise_input::create_sink().map_err(|e|e.to_string())?));let hub=Arc::new(Hub::new(sink));let callback_hub=hub.clone();let watcher=raw_input::Watcher::start(Arc::new(move|e|callback_hub.event(e)))?;*native=Some(Native{hub,_watcher:Some(watcher),#[cfg(test)]simulation:false});}
+ fn initialize(&self)->Result<(),String>{let mut native=self.0.lock().map_err(|_|"软件宏运行时锁异常")?;if native.is_none(){
+   #[cfg(windows)]{let sink:SharedSink=Arc::new(Mutex::new(gearwise_input::create_sink().map_err(|e|e.to_string())?));let hub=Arc::new(Hub::new(sink));let callback_hub=hub.clone();let watcher=raw_input::Watcher::start(Arc::new(move|e|callback_hub.event(e)))?;*native=Some(Native{hub,_watcher:Some(watcher),#[cfg(test)]simulation:false,#[cfg(test)]identity:None});}
    #[cfg(not(windows))]return Err("软件宏输入采集目前需要 Windows".into());
   }Ok(())}
+ pub(crate) fn prepare_target(&self,source:&Source,target:&crate::input_identity::Target,peers:&[crate::input_identity::Target])->Result<Option<crate::input_identity::Proof>,String>{
+  let proof=self.verify_target(source,target,peers)?;self.initialize()?;Ok(proof)
+ }
+ pub(crate) fn verify_target(&self,source:&Source,target:&crate::input_identity::Target,peers:&[crate::input_identity::Target])->Result<Option<crate::input_identity::Proof>,String>{
+  #[cfg(test)]{let simulation=self.0.lock().map_err(|_|"输入运行时锁异常")?.as_ref().filter(|n|n.simulation&&source.path.starts_with("simulation:")&&crate::multibrand::supported(source.vendor,source.product)).map(|n|n.identity.clone());if let Some(context)=simulation{return match context{Some(f)=>crate::input_identity::verify(f.sources,source,target,peers,|p|f.containers.get(p).copied()),None=>Ok(None)};}}
+  crate::input_identity::verify(raw_input::sources()?,source,target,peers,crate::hid_container::id)
+ }
+ pub(crate) fn recheck_target(&self,proof:&crate::input_identity::Proof,target:&crate::input_identity::Target,peers:&[crate::input_identity::Target])->Result<(),String>{
+  #[cfg(test)]{let context=self.0.lock().map_err(|_|"输入运行时锁异常")?.as_ref().filter(|n|n.simulation).map(|n|n.identity.clone());if let Some(context)=context{let f=context.ok_or("模拟输入关联缺少物理元数据")?;return crate::input_identity::recheck(proof,f.sources,target,peers,|p|f.containers.get(p).copied());}}
+  crate::input_identity::recheck(proof,raw_input::sources()?,target,peers,crate::hid_container::id)
+ }
+ #[cfg(test)]pub(crate) fn identity_fixture(&self,fixture:crate::input_identity::Fixture){self.0.lock().unwrap().as_mut().unwrap().identity=Some(fixture);}
  pub fn arm(&self,source:Source,bindings:Vec<Binding>,map:InputMap,hooks:Hooks)->Result<(),String>{let native=self.0.lock().map_err(|_|"软件宏运行时锁异常")?;native.as_ref().ok_or("输入采集尚未初始化")?.hub.configure(source,bindings,map,hooks)}
  pub fn remove(&self,path:&str){if let Ok(native)=self.0.lock(){if let Some(native)=native.as_ref(){native.hub.remove(path);}}}
  pub fn quiesce(&self,source:&Source,expected_keys:&[u16])->Result<bool,String>{let native=self.0.lock().map_err(|_|"软件宏运行时锁异常")?;let ready=match native.as_ref(){Some(n)=>n.hub.quiesce(source,expected_keys)?,None=>true};Ok(ready&&!expected_keys.iter().any(|k|native_key_down(*k)))}
@@ -93,7 +102,7 @@ impl Runtime{
  pub fn status(&self)->Status{self.0.lock().ok().and_then(|n|n.as_ref().map(|n|Status{source_count:n.hub.configs.lock().map(|c|c.values().filter(|c|!c.quiescing).count()).unwrap_or(0),errors:{let mut errors=n.hub.router.errors();if let Ok(extra)=n.hub.errors.lock(){errors.extend(extra.clone());}errors}})).unwrap_or(Status{source_count:0,errors:vec![]})}
  pub(crate) fn notice(&self,message:String){if let Ok(native)=self.0.lock(){if let Some(native)=native.as_ref(){if let Ok(mut errors)=native.hub.errors.lock(){if errors.len()<128{errors.push(message);}}}}}
  pub fn shutdown(&self){let native=self.0.lock().ok().and_then(|mut state|state.take());if let Some(native)=native{native.hub.stop_output();drop(native);}}
- #[cfg(test)]pub(crate) fn simulation(sink:SharedSink)->Self{Self(Arc::new(Mutex::new(Some(Native{hub:Arc::new(Hub::new(sink)),#[cfg(windows)]_watcher:None,simulation:true}))))}
+ #[cfg(test)]pub(crate) fn simulation(sink:SharedSink)->Self{Self(Arc::new(Mutex::new(Some(Native{hub:Arc::new(Hub::new(sink)),#[cfg(windows)]_watcher:None,simulation:true,identity:None}))))}
  #[cfg(test)]pub(crate) fn simulate_event(&self,event:Event){let native=self.0.lock().unwrap();if let Some(native)=native.as_ref(){native.hub.event(event);}}
 }
 #[cfg(test)]mod tests{

@@ -40,6 +40,7 @@ mod effects;
 mod onboard;
 mod onboard_restore;
 mod steelseries;
+mod input_identity;
 mod onboard_macros;
 mod onboard_macro_plan;
 mod onboard_bindings;
@@ -130,7 +131,7 @@ fn multi_simulate(plan:multibrand::Plan)->Result<serde_json::Value,String>{multi
 #[tauri::command(async)]
 fn multi_macro_simulate(source:host_macros::Source,button:u16,action:gearwise_core::profile::Macro)->Result<serde_json::Value,String>{host_macros::simulate(source,button,action)}
 #[tauri::command(async)]
-fn multi_input_sources()->Result<Vec<raw_input::SourceInfo>,String>{raw_input::sources()}
+fn multi_input_sources(service:State<multibrand::Service>,id:Option<String>)->Result<Vec<raw_input::SourceInfo>,String>{match id{Some(id)=>service.input_sources(&id),None=>raw_input::sources()}}
 #[tauri::command(async)]
 fn multi_macro_status(runtime:State<macro_runtime::Runtime>)->macro_runtime::Status{runtime.status()}
 #[tauri::command(async)]

@@ -3,7 +3,7 @@
 use super::*;
 use crate::macro_runtime::Runtime;
 
-#[derive(Clone)]pub(super) struct Session {descriptor:DeviceDescriptor,plan:Plan,needs_software:bool}
+#[derive(Clone)]pub(super) struct Session {connection_key:Option<String>,descriptor:DeviceDescriptor,plan:Plan,needs_software:bool}
 #[derive(Clone,Serialize)]pub struct SessionView {pub plan:Plan,pub software_state:&'static str,pub temporary_dpi:bool}
 fn same_device(a:&DeviceDescriptor,b:&DeviceDescriptor)->bool{
  (a.vendor_id,a.product_id,a.id.as_str(),a.serial.as_deref())==(b.vendor_id,b.product_id,b.id.as_str(),b.serial.as_deref())
@@ -14,11 +14,15 @@ fn put(settings:&mut Vec<Setting>,value:Setting){
 }
 impl Service {
  pub(super) fn remember_session(&self,out:&View,plan:&Plan,needs_software:bool)->Result<(),String>{
-  let session=Session{descriptor:out.descriptor.clone(),plan:plan.clone(),needs_software};
+  let session=Session{connection_key:out.connection_key.clone(),descriptor:out.descriptor.clone(),plan:plan.clone(),needs_software};
   self.3.lock().map_err(|_|"会话方案锁异常")?.insert(out.descriptor.id.clone(),session);Ok(())
  }
  pub(super) fn attach_session(&self,out:&mut View,runtime:&Runtime)->Result<(),String>{
   let cached=self.3.lock().map_err(|_|"会话方案锁异常")?.get(&out.descriptor.id).cloned();
+  if cached.as_ref().is_some_and(|s|s.connection_key!=out.connection_key){
+   if let Some(cleanup)=self.1.lock().map_err(|_|"宏恢复记录锁异常")?.get(&out.descriptor.id){cleanup.cancelled.store(true,Ordering::Release);runtime.remove(&cleanup.source.path);}
+   out.session=None;return Ok(());
+  }
   let Some(session)=cached.filter(|s|same_device(&s.descriptor,&out.descriptor))else{out.session=None;return Ok(())};
   let cleanup=self.1.lock().map_err(|_|"宏恢复记录锁异常")?.get(&out.descriptor.id).cloned();
   let mut plan=session.plan;

@@ -11,3 +11,17 @@ pub fn validate_setting(product:u16,setting:&Setting)->Result<(),String>{
  }else{setting.clone()};
  gearwise_steelseries::validate_setting(product,&native).map_err(|e|e.to_string())
 }
+
+/// Version-2 recovery stores every non-primary key, because the native command
+/// always writes the complete table and a reopened driver only has templates.
+pub fn complete_table(product:u16,settings:&[Setting])->bool{
+ if !PRODUCTS.contains(&product){return false;}let count=if product==0x1722{8}else{6};
+ let ids=settings.iter().filter_map(|s|if let Setting::Button{id,..}=s{Some(*id)}else{None}).collect::<std::collections::BTreeSet<_>>();
+ settings.len()==usize::from(count-1)&&ids==(2..=count).collect()
+}
+pub fn restore_table(device:&mut dyn gearwise_core::Device,settings:&[Setting])->Result<(),String>{
+ let d=device.descriptor();if !supported(d.vendor_id,d.product_id)||!complete_table(d.product_id,settings){return Err("完整按键恢复表与目标鼠标不一致".into());}
+ for s in settings{validate_setting(d.product_id,s)?;}
+ let actions=settings.iter().map(|s|if let Setting::Button{id,action}=s{(*id,action.clone())}else{unreachable!()}).collect::<Vec<_>>();
+ device.apply_button_table(&actions).map_err(|e|format!("完整原始按键恢复失败，记录已保留：{e}"))
+}

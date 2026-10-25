@@ -44,6 +44,8 @@ pub struct Plan {
 }
 #[derive(Clone, Serialize)]
 pub struct View {
+    #[serde(skip)]
+    connection_key:Option<String>,
     pub descriptor: DeviceDescriptor,
     pub capabilities: Capabilities,
     pub state: DeviceState,
@@ -56,7 +58,7 @@ pub struct View {
 }
 #[derive(Clone,Default)]
 pub struct Service(Arc<Mutex<Option<DeviceManager>>>,Arc<Mutex<std::collections::HashMap<String,Cleanup>>>,Arc<AtomicBool>,Arc<Mutex<std::collections::HashMap<String,session_plan::Session>>>);
-#[derive(Clone)]struct Cleanup{source:crate::host_macros::Source,settings:Vec<Setting>,expected:std::collections::HashMap<u16,ButtonAction>,software_input:bool,cancelled:Arc<AtomicBool>,shift:Arc<Mutex<Option<gearwise_core::model::DpiState>>>,journal:Option<Arc<crate::macro_recovery::Journal>>,serial:Option<String>}
+#[derive(Clone)]struct Cleanup{input_proof:Option<crate::input_identity::Proof>,source:crate::host_macros::Source,settings:Vec<Setting>,expected:std::collections::HashMap<u16,ButtonAction>,software_input:bool,cancelled:Arc<AtomicBool>,shift:Arc<Mutex<Option<gearwise_core::model::DpiState>>>,journal:Option<Arc<crate::macro_recovery::Journal>>,serial:Option<String>}
 pub fn choose_profile_device(ids:&[String],selected:Option<&str>)->Result<String,String>{
  if selected.is_some_and(|id|id.len()>4096){return Err("设备标识过长".into());}
  let matches=ids.iter().filter(|id|selected.is_none_or(|s|id.as_str()==s)).collect::<Vec<_>>();
@@ -72,6 +74,7 @@ fn view(d: &mut dyn gearwise_core::Device) -> Result<View, String> {
     let state = d.read_state().map_err(|e| e.to_string())?;
     let mut caps=d.capabilities().clone();if crate::steelseries::supported(d.descriptor().vendor_id,d.descriptor().product_id){for b in &mut caps.buttons{if b.id==1{b.remappable=false;}}}
     Ok(View {
+        connection_key:d.connection_key().map(str::to_owned),
         descriptor: d.descriptor().clone(),
         capabilities: caps,
         state,
@@ -137,6 +140,16 @@ impl Service {
             })
             .unwrap_or_default()
     }
+    fn input_context(manager:&DeviceManager,id:&str)->Result<(crate::input_identity::Target,Vec<crate::input_identity::Target>),String>{
+        let peers=manager.devices().map(|d|crate::input_identity::Target::of(d)).collect::<Vec<_>>();let target=peers.iter().find(|d|d.id==raw_id(id)).cloned().ok_or("鼠标已断开")?;Ok((target,peers))
+    }
+    fn prepare_input_target(&self,id:&str,source:&crate::host_macros::Source,runtime:&crate::macro_runtime::Runtime)->Result<Option<crate::input_identity::Proof>,String>{
+        let(target,peers)=self.with(|m|Self::input_context(m,id))?;runtime.prepare_target(source,&target,&peers)
+    }
+    pub fn input_sources(&self,id:&str)->Result<Vec<crate::raw_input::SourceInfo>,String>{
+        let(target,peers)=self.with(|m|Self::input_context(m,id))?;let sources=crate::raw_input::sources()?;
+        Ok(sources.iter().filter(|s|crate::input_identity::verify(sources.clone(),&s.source,&target,&peers,crate::hid_container::id).is_ok()).cloned().collect())
+    }
     pub fn read(&self, id: &str,runtime:&crate::macro_runtime::Runtime) -> Result<View, String> {
         self.with(|m|{let mut out=view(m.device_mut(raw_id(id)).ok_or("鼠标已断开")?.as_mut())?;self.attach_session(&mut out,runtime)?;Ok(out)})
     }
@@ -149,13 +162,14 @@ impl Service {
         let peer=self.peers().into_iter().find(|d|d.id==raw_id(id)).ok_or("鼠标已断开")?;
         if (peer.vendor_id,peer.product_id)!=(plan.vendor,plan.product){return Err("方案与当前鼠标的品牌/型号不一致".into());}
         if expected_identity.is_some_and(|key| key != crate::profile_routing::serial_key(peer.vendor_id,peer.product_id,peer.serial.as_deref())) { return Err("鼠标身份在配置预览后已变化；未应用配置".into()); }
-        let source=if compiled.bindings.is_empty()&&!compiled.software_input{None}else{let source=plan.source.clone().ok_or("软件宏需要选择此鼠标的具体输入来源")?;runtime.prepare(&source,peer.serial.as_deref())?;Some(source)};
+        let (source,input_proof)=if compiled.bindings.is_empty()&&!compiled.software_input{(None,None)}else{let source=plan.source.clone().ok_or("软件宏需要选择此鼠标的具体输入来源")?;let proof=self.prepare_input_target(id,&source,runtime)?;(Some(source),proof)};
         self.with(|manager|{
             rate_reconnect::guard_apply(root,manager,id,resume)?;
             let current=manager.device_mut(raw_id(id)).ok_or("鼠标已断开")?.descriptor();
             if (current.vendor_id,current.product_id)!=(plan.vendor,plan.product){return Err("方案与当前鼠标的品牌/型号不一致".into());}
             if peer.serial.as_deref().filter(|s|!s.trim().is_empty()).is_some_and(|serial|current.serial.as_deref()!=Some(serial)){return Err("鼠标序列号已改变，请重新选择设备".into());}
             if expected_identity.is_some_and(|key| key != crate::profile_routing::serial_key(current.vendor_id,current.product_id,current.serial.as_deref())) { return Err("鼠标身份在预检后已变化；未应用配置".into()); }
+            if let Some(proof)=&input_proof{let(target,peers)=Self::input_context(manager,id)?;runtime.recheck_target(proof,&target,&peers)?;}
             self.restore_one(manager,raw_id(id),runtime)?;
             let device=manager.device_mut(raw_id(id)).ok_or("鼠标已断开")?;
             if device.descriptor().vendor_id!=plan.vendor||device.descriptor().product_id!=plan.product{return Err("方案与当前鼠标的品牌/型号不一致".into());}
@@ -173,19 +187,26 @@ impl Service {
                 if readable_host_buttons(plan.vendor,plan.product)&&original.is_none(){return Err("无法读取此鼠标按键的原始动作，未配置软件宏".into());}
                 restore.push(Setting::Button{id:binding.button,action:original.unwrap_or(ButtonAction::Default)});
             }
+            if crate::steelseries::supported(plan.vendor,plan.product)&&!compiled.bindings.is_empty(){
+                let mut table=before.capabilities.buttons.iter().filter(|b|b.id!=1&&b.remappable).map(|b|(b.id,before.state.buttons.get(&b.id).cloned().unwrap_or_else(||b.default_action.clone()))).collect::<std::collections::BTreeMap<_,_>>();
+                for setting in &compiled.settings{if let Setting::Button{id,action}=setting{if *id!=1&&!compiled.bindings.iter().any(|b|b.button==*id){table.insert(*id,action.clone());}}}
+                for setting in &restore{if let Setting::Button{id,action}=setting{table.insert(*id,action.clone());}}
+                restore=table.into_iter().map(|(id,action)|Setting::Button{id,action}).collect();
+            }
             let expected=compiled.settings.iter().filter_map(|s|if let Setting::Button{id,action}=s{compiled.bindings.iter().any(|b|b.button==*id).then(||(*id,action.clone()))}else{None}).collect::<std::collections::HashMap<_,_>>();
             let dir=root.join("backups");
             std::fs::create_dir_all(&dir).map_err(|e|e.to_string())?;
             let snapshot=dir.join(format!("three-brand-{}.json",crate::profiles::new_id()));
             std::fs::write(&snapshot,serde_json::to_vec_pretty(&serde_json::json!({"before":before,"macro_restore":restore,"owned_expected":expected,"source":source})).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;
             let cancelled=Arc::new(AtomicBool::new(false));let shift=Arc::new(Mutex::new(None));
-            let journal=if let Some(source)=source.clone(){Some(Arc::new(crate::macro_recovery::Journal::create(&root.join("recovery"),crate::macro_recovery::Record{version:1,device_id:raw_id(id).into(),serial:peer.serial.clone(),source,settings:restore.clone(),expected:expected.clone(),software_input:compiled.software_input,shift:None})?))}else{None};
-            if let Some(source)=source.clone(){self.1.lock().map_err(|_|"宏恢复记录锁异常")?.insert(raw_id(id).into(),Cleanup{source,settings:restore,expected,software_input:compiled.software_input,cancelled:cancelled.clone(),shift:shift.clone(),journal:journal.clone(),serial:peer.serial.clone()});}
+            let journal=if let Some(source)=source.clone(){Some(Arc::new(crate::macro_recovery::Journal::create(&root.join("recovery"),crate::macro_recovery::Record{version:if crate::steelseries::supported(plan.vendor,plan.product){2}else{1},device_id:raw_id(id).into(),serial:peer.serial.clone(),source,settings:restore.clone(),expected:expected.clone(),software_input:compiled.software_input,shift:None})?))}else{None};
+            if let Some(source)=source.clone(){self.1.lock().map_err(|_|"宏恢复记录锁异常")?.insert(raw_id(id).into(),Cleanup{input_proof:input_proof.clone(),source,settings:restore,expected,software_input:compiled.software_input,cancelled:cancelled.clone(),shift:shift.clone(),journal:journal.clone(),serial:peer.serial.clone()});}
             let operation=(||->Result<View,String>{
                 for (index,setting) in compiled.settings.iter().enumerate(){if matches!(setting,Setting::ReportRate(rate) if before.state.report_rate==Some(*rate)){continue;}device.apply(setting).map_err(|e|format!("第 {} 项写入失败：{e}；此前设置可能已生效，快照：{}",index+1,snapshot.display()))?;}
                 view(device.as_mut())
             })();
             let mut result=match operation{Ok(v)=>v,Err(e)=>{let restored=self.restore_one(manager,raw_id(id),runtime);return Err(format!("{e}；宏触发键恢复：{}",restored.map(|_|"完成".to_string()).unwrap_or_else(|e|e)));}};
+            if let Some(proof)=&input_proof{let(target,peers)=Self::input_context(manager,id)?;if let Err(e)=runtime.recheck_target(proof,&target,&peers){let restored=self.restore_one(manager,raw_id(id),runtime);return Err(format!("{e}；宏未启用；恢复结果：{restored:?}"));}}
             let needs_software=source.is_some();
             let hooks=if compiled.software_input{
                 let manager=self.0.clone();let device_id=raw_id(id).to_string();let actions=compiled.dpi_actions.clone();let stopped=cancelled.clone();let saved=shift.clone();
@@ -205,15 +226,19 @@ impl Service {
             let trigger_keys=cleanup.expected.values().filter_map(|a|match a{ButtonAction::Key{usage:0x68..=0x73,mods:gearwise_core::model::Modifiers(0)}=>if let ButtonAction::Key{usage,..}=a{Some(u16::from(*usage)+0x14)}else{None},_=>None}).collect::<Vec<_>>();
             if !runtime.quiesce(&cleanup.source,&trigger_keys)?{return Err(if runtime.is_quiescing(&cleanup.source){"宏已停止；请松开仍按住的触发键，随后会自动恢复原始映射"}else{"宏已停止；请松开触发键后重新检查待恢复记录"}.into());}
             runtime.remove(&cleanup.source.path);
+            if let Some(proof)=&cleanup.input_proof{let(target,peers)=Self::input_context(manager,id)?;runtime.recheck_target(proof,&target,&peers)?;}
             let device=manager.device_mut(id).ok_or("鼠标已断开，宏已停止；原始按键需连接后再恢复")?;
             if (device.descriptor().vendor_id,device.descriptor().product_id)!=(cleanup.source.vendor,cleanup.source.product){return Err("恢复目标与原始品牌/型号不一致".into());}
             if cleanup.serial.as_deref().filter(|s|!s.trim().is_empty()).is_some_and(|s|device.descriptor().serial.as_deref()!=Some(s)){return Err("鼠标序列号已改变，保留恢复记录，未写入其他鼠标".into());}
             if cleanup.software_input{device.stop_software_actions().map_err(|e|format!("软件按键硬件模式恢复失败：{e}"))?;let mut shift=cleanup.shift.lock().map_err(|_|"狙击 DPI 锁异常")?;if let Some(original)=shift.as_ref(){let owned=cleanup.journal.as_ref().map(|j|j.record()).transpose()?.and_then(|r|r.shift);let actual=device.read_state().map_err(|e|e.to_string())?.dpi;if owned.as_ref().is_some_and(|s|actual.as_ref()!=Some(&s.expected)&&actual.as_ref()!=Some(original)){return Err("本次会话的 DPI 已改变，保留恢复记录，未覆盖当前设置".into());}device.apply(&Setting::Dpi(original.clone())).map_err(|e|format!("狙击 DPI 恢复失败：{e}"))?;if let Some(j)=&cleanup.journal{j.shift(None)?;}*shift=None;}}
             let actual=if readable_host_buttons(cleanup.source.vendor,cleanup.source.product){Some(device.read_state().map_err(|e|format!("宏已停止，无法读取当前按键以验证恢复归属：{e}"))?)}else{None};
             let mut changed=Vec::new();
-            for setting in &cleanup.settings{
+            if crate::steelseries::complete_table(cleanup.source.product,&cleanup.settings)&&cleanup.source.vendor==0x1038{
+                crate::steelseries::restore_table(device.as_mut(),&cleanup.settings)?;
+            }else{for setting in &cleanup.settings{
                 if let(Setting::Button{id,action},Some(actual))=(setting,&actual){let current=actual.buttons.get(id);if current==Some(action){continue;}if !cleanup.expected.contains_key(id)||cleanup.expected.get(id)!=current{changed.push(*id);continue;}}
                 device.apply(setting).map_err(|e|format!("宏已停止，但原始按键恢复失败：{e}"))?;
+            }
             }
             if let Some(journal)=&cleanup.journal{journal.finish()?;}
             self.1.lock().map_err(|_|"宏恢复记录锁异常")?.remove(id);
@@ -284,7 +309,7 @@ impl Service {
                 let id=&matches[0];
                 {let mut active=self.1.lock().map_err(|_|"宏恢复记录锁异常")?;for (old,_) in &tracked{active.remove(old);}}
                 if self.1.lock().map_err(|_|"宏恢复记录锁异常")?.contains_key(id){issues.push("当前鼠标已有运行中的宏，保留旧恢复记录，未覆盖".into());continue;}
-                self.1.lock().map_err(|_|"宏恢复记录锁异常")?.insert(id.clone(),Cleanup{source:record.source,settings:record.settings,expected:record.expected,software_input:record.software_input,cancelled:Arc::new(AtomicBool::new(true)),shift:Arc::new(Mutex::new(record.shift.map(|s|s.original))),journal:Some(Arc::new(journal)),serial:record.serial});
+                self.1.lock().map_err(|_|"宏恢复记录锁异常")?.insert(id.clone(),Cleanup{input_proof:None,source:record.source,settings:record.settings,expected:record.expected,software_input:record.software_input,cancelled:Arc::new(AtomicBool::new(true)),shift:Arc::new(Mutex::new(record.shift.map(|s|s.original))),journal:Some(Arc::new(journal)),serial:record.serial});
             }
             let pending=self.1.lock().map_err(|_|"宏恢复记录锁异常")?.iter().filter(|(_,c)|c.cancelled.load(Ordering::Acquire)).map(|(id,c)|(id.clone(),c.serial.clone(),c.source.vendor,c.source.product,c.source.clone())).collect::<Vec<_>>();
             for (id,serial,vendor,product,source) in pending{
@@ -761,7 +786,7 @@ fn resolve_defaults(compiled:&mut Compiled,before:&View)->Result<(),String>{
 }
 #[cfg(test)]mod ownership_restore_tests{
  use super::*;use gearwise_core::transport::MockBackend;use gearwise_core::model::Modifiers;
- fn scenario(current:u8)->(Service,DeviceManager,String){let(mut device,_)=crate::naga::simulated();let id=device.descriptor().id.clone();device.apply(&Setting::Button{id:0x40,action:ButtonAction::Key{usage:current,mods:Modifiers(0)}}).unwrap();let mut manager=DeviceManager::new(Box::new(MockBackend::new(vec![],|_|Err(gearwise_core::Error::Unsupported("no physical HID")))),vec![]);manager.add_virtual(vec![device]);let service=Service::default();service.1.lock().unwrap().insert(id.clone(),Cleanup{source:crate::host_macros::Source{vendor:0x1532,product:0x00b4,path:"simulation:owned".into()},settings:vec![Setting::Button{id:0x40,action:ButtonAction::Key{usage:4,mods:Modifiers(0)}}],expected:std::collections::HashMap::from([(0x40,ButtonAction::Key{usage:0x68,mods:Modifiers(0)})]),software_input:false,cancelled:Arc::new(AtomicBool::new(false)),shift:Arc::new(Mutex::new(None)),journal:None,serial:None});(service,manager,id)}
+ fn scenario(current:u8)->(Service,DeviceManager,String){let(mut device,_)=crate::naga::simulated();let id=device.descriptor().id.clone();device.apply(&Setting::Button{id:0x40,action:ButtonAction::Key{usage:current,mods:Modifiers(0)}}).unwrap();let mut manager=DeviceManager::new(Box::new(MockBackend::new(vec![],|_|Err(gearwise_core::Error::Unsupported("no physical HID")))),vec![]);manager.add_virtual(vec![device]);let service=Service::default();service.1.lock().unwrap().insert(id.clone(),Cleanup{input_proof:None,source:crate::host_macros::Source{vendor:0x1532,product:0x00b4,path:"simulation:owned".into()},settings:vec![Setting::Button{id:0x40,action:ButtonAction::Key{usage:4,mods:Modifiers(0)}}],expected:std::collections::HashMap::from([(0x40,ButtonAction::Key{usage:0x68,mods:Modifiers(0)})]),software_input:false,cancelled:Arc::new(AtomicBool::new(false)),shift:Arc::new(Mutex::new(None)),journal:None,serial:None});(service,manager,id)}
  #[test]fn own_trigger_is_restored_and_already_restored_binding_is_preserved(){for current in [0x68,4]{let(service,mut manager,id)=scenario(current);service.restore_one(&mut manager,&id,&crate::macro_runtime::Runtime::default()).unwrap();assert_eq!(manager.device_mut(&id).unwrap().read_state().unwrap().buttons[&0x40],ButtonAction::Key{usage:4,mods:Modifiers(0)});assert!(service.1.lock().unwrap().is_empty());}}
  #[test]fn external_controller_change_is_not_overwritten_during_macro_stop(){let(service,mut manager,id)=scenario(5);let error=service.restore_one(&mut manager,&id,&crate::macro_runtime::Runtime::default()).unwrap_err();assert!(error.contains("未覆盖外部设置"));assert_eq!(manager.device_mut(&id).unwrap().read_state().unwrap().buttons[&0x40],ButtonAction::Key{usage:5,mods:Modifiers(0)});assert!(service.1.lock().unwrap().is_empty());}
 }
@@ -829,7 +854,7 @@ fn resolve_defaults(compiled:&mut Compiled,before:&View)->Result<(),String>{
  #[test]fn changed_serial_during_release_wait_never_receives_restore_writes(){let(service,dir,runtime,_,source)=held_naga();let(other,other_dir)=setup(Some("unit-b"),0x68,1);*service.0.lock().unwrap()=other.0.lock().unwrap().take();runtime.simulate_event(crate::raw_input::Event::Key{source,vkey:0x7c,down:false});assert!(service.recover_from(&dir,&runtime).unwrap().iter().any(|s|s.contains("序列号")));assert_eq!(current(&service),key(0x68));assert!(!service.recover_from(&dir,&runtime).unwrap().is_empty());assert_eq!(current(&service),key(0x68));runtime.shutdown();for directory in [dir,other_dir]{for journal in crate::macro_recovery::load(&directory).0{journal.finish().unwrap();}std::fs::remove_dir(directory).unwrap();}}
  #[test]fn live_corsair_vendor_mode_waits_for_release_before_actual_hardware_mode_restore(){
   use gearwise_core::profile::{Macro,MacroMode,MacroStep};let(mut device,log)=gearwise_corsair::simulated_m65_pro();device.apply(&Setting::Button{id:4,action:ButtonAction::Disabled}).unwrap();let descriptor=device.descriptor().clone();let source=crate::host_macros::Source{vendor:0x1b1c,product:0x1b2e,path:"simulation:live-vendor".into()};let dir=std::env::temp_dir().join(format!("held-vendor-{}",crate::profiles::new_id()));let journal=Arc::new(crate::macro_recovery::Journal::create(&dir,crate::macro_recovery::Record{version:1,device_id:descriptor.id.clone(),serial:descriptor.serial.clone(),source:source.clone(),settings:vec![],expected:Default::default(),software_input:true,shift:None}).unwrap());
-  let mut manager=DeviceManager::new(Box::new(MockBackend::new(vec![],|_|Err(gearwise_core::Error::Unsupported("no physical HID")))),vec![]);manager.add_virtual(vec![device]);let service=Service::default();*service.0.lock().unwrap()=Some(manager);service.1.lock().unwrap().insert(descriptor.id,Cleanup{source:source.clone(),settings:vec![],expected:Default::default(),software_input:true,cancelled:Arc::new(AtomicBool::new(false)),shift:Arc::new(Mutex::new(None)),journal:Some(journal.clone()),serial:descriptor.serial});
+  let mut manager=DeviceManager::new(Box::new(MockBackend::new(vec![],|_|Err(gearwise_core::Error::Unsupported("no physical HID")))),vec![]);manager.add_virtual(vec![device]);let service=Service::default();*service.0.lock().unwrap()=Some(manager);service.1.lock().unwrap().insert(descriptor.id,Cleanup{input_proof:None,source:source.clone(),settings:vec![],expected:Default::default(),software_input:true,cancelled:Arc::new(AtomicBool::new(false)),shift:Arc::new(Mutex::new(None)),journal:Some(journal.clone()),serial:descriptor.serial});
   let rec=Rec::default();let runtime=crate::macro_runtime::Runtime::simulation(Arc::new(Mutex::new(rec.clone())));runtime.arm(source.clone(),vec![crate::host_macros::Binding{button:4,action:Macro{id:"owned".into(),name:"once".into(),mode:MacroMode::Once,steps:vec![MacroStep::KeyDown(4),MacroStep::KeyUp(4)]}}],crate::macro_runtime::InputMap{keys:Default::default(),buttons:vec![4],dpi_buttons:vec![]},crate::macro_runtime::Hooks::default()).unwrap();runtime.simulate_event(crate::raw_input::Event::Buttons{source:source.clone(),mask:8});wait(&rec,2);log.lock().unwrap().clear();assert!(service.stop_software(&runtime).unwrap_err().contains("触发键"));assert!(runtime.has_quiescing());assert_eq!(runtime.status().source_count,0);assert!(log.lock().unwrap().is_empty());assert!(journal.path.exists());
   runtime.simulate_event(crate::raw_input::Event::Buttons{source,mask:0});wait_restore(&service,&journal.path);assert!(!journal.path.exists());assert!(!runtime.has_quiescing());assert!(log.lock().unwrap().iter().any(|r|matches!(r,gearwise_core::transport::MockRecord::Write(p) if p.windows(3).any(|v|v==[7,4,1]))));runtime.shutdown();std::fs::remove_dir(dir).unwrap();
  }
@@ -845,16 +870,16 @@ fn resolve_defaults(compiled:&mut Compiled,before:&View)->Result<(),String>{
   let(service,dir)=setup(Some("unit-a"),5,1);let issues=service.recover_from(&dir,&crate::macro_runtime::Runtime::default()).unwrap();assert!(issues.iter().any(|s|s.contains("未覆盖外部设置")));assert_eq!(current(&service),key(5));assert!(crate::macro_recovery::load(&dir).0.is_empty());std::fs::remove_dir(dir).unwrap();
  }
  #[test]fn cancelled_cleanup_without_serial_is_not_automatically_written(){
-  let(service,dir)=setup(None,0x68,1);let(mut journals,_)=crate::macro_recovery::load(&dir);let journal=Arc::new(journals.remove(0));let record=journal.record().unwrap();service.1.lock().unwrap().insert("connected:new-path:0".into(),Cleanup{source:record.source,settings:record.settings,expected:record.expected,software_input:false,cancelled:Arc::new(AtomicBool::new(true)),shift:Arc::new(Mutex::new(None)),journal:Some(journal.clone()),serial:None});
+  let(service,dir)=setup(None,0x68,1);let(mut journals,_)=crate::macro_recovery::load(&dir);let journal=Arc::new(journals.remove(0));let record=journal.record().unwrap();service.1.lock().unwrap().insert("connected:new-path:0".into(),Cleanup{input_proof:None,source:record.source,settings:record.settings,expected:record.expected,software_input:false,cancelled:Arc::new(AtomicBool::new(true)),shift:Arc::new(Mutex::new(None)),journal:Some(journal.clone()),serial:None});
   assert!(!service.recover_from(&dir,&crate::macro_runtime::Runtime::default()).unwrap().is_empty());assert_eq!(current(&service),key(0x68));assert!(journal.path.exists());journal.finish().unwrap();std::fs::remove_dir(dir).unwrap();
  }
  #[test]fn cancelled_corsair_routing_is_not_reset_without_current_ownership_readback(){
   let(mut device,log)=gearwise_corsair::simulated_m65_pro();device.apply(&Setting::Button{id:4,action:ButtonAction::Disabled}).unwrap();let descriptor=device.descriptor().clone();let source=crate::host_macros::Source{vendor:0x1b1c,product:0x1b2e,path:"simulation:input".into()};let dir=std::env::temp_dir().join(format!("route-journal-{}",crate::profiles::new_id()));let journal=Arc::new(crate::macro_recovery::Journal::create(&dir,crate::macro_recovery::Record{version:1,device_id:descriptor.id.clone(),serial:descriptor.serial.clone(),source:source.clone(),settings:vec![],expected:Default::default(),software_input:true,shift:None}).unwrap());
-  let mut manager=DeviceManager::new(Box::new(MockBackend::new(vec![],|_|Err(gearwise_core::Error::Unsupported("no physical HID")))),vec![]);manager.add_virtual(vec![device]);let service=Service::default();*service.0.lock().unwrap()=Some(manager);service.1.lock().unwrap().insert(descriptor.id,Cleanup{source,settings:vec![],expected:Default::default(),software_input:true,cancelled:Arc::new(AtomicBool::new(true)),shift:Arc::new(Mutex::new(None)),journal:Some(journal.clone()),serial:descriptor.serial});log.lock().unwrap().clear();
+  let mut manager=DeviceManager::new(Box::new(MockBackend::new(vec![],|_|Err(gearwise_core::Error::Unsupported("no physical HID")))),vec![]);manager.add_virtual(vec![device]);let service=Service::default();*service.0.lock().unwrap()=Some(manager);service.1.lock().unwrap().insert(descriptor.id,Cleanup{input_proof:None,source,settings:vec![],expected:Default::default(),software_input:true,cancelled:Arc::new(AtomicBool::new(true)),shift:Arc::new(Mutex::new(None)),journal:Some(journal.clone()),serial:descriptor.serial});log.lock().unwrap().clear();
   assert!(!service.recover_from(&dir,&crate::macro_runtime::Runtime::default()).unwrap().is_empty());assert!(log.lock().unwrap().is_empty());assert!(journal.path.exists());journal.finish().unwrap();std::fs::remove_dir(dir).unwrap();
  }
  #[test]fn source_removal_discards_live_restore_authority_even_if_the_path_reappears(){
-  let(mut device,log)=gearwise_corsair::simulated_m65_pro();device.apply(&Setting::Button{id:4,action:ButtonAction::Disabled}).unwrap();let descriptor=device.descriptor().clone();let source=crate::host_macros::Source{vendor:0x1b1c,product:0x1b2e,path:"simulation:removed-vendor".into()};let dir=std::env::temp_dir().join(format!("removed-vendor-{}",crate::profiles::new_id()));let journal=Arc::new(crate::macro_recovery::Journal::create(&dir,crate::macro_recovery::Record{version:1,device_id:descriptor.id.clone(),serial:None,source:source.clone(),settings:vec![],expected:Default::default(),software_input:true,shift:None}).unwrap());let mut manager=DeviceManager::new(Box::new(MockBackend::new(vec![],|_|Err(gearwise_core::Error::Unsupported("no physical HID")))),vec![]);manager.add_virtual(vec![device]);let service=Service::default();*service.0.lock().unwrap()=Some(manager);service.1.lock().unwrap().insert(descriptor.id,Cleanup{source:source.clone(),settings:vec![],expected:Default::default(),software_input:true,cancelled:Arc::new(AtomicBool::new(true)),shift:Arc::new(Mutex::new(None)),journal:Some(journal.clone()),serial:None});let runtime=crate::macro_runtime::Runtime::simulation(Arc::new(Mutex::new(Rec::default())));runtime.simulate_event(crate::raw_input::Event::Buttons{source:source.clone(),mask:8});assert!(!runtime.quiesce(&source,&[]).unwrap());assert!(runtime.has_quiescing());runtime.simulate_event(crate::raw_input::Event::Removed{path:source.path.clone()});assert!(!runtime.has_quiescing());runtime.simulate_event(crate::raw_input::Event::Buttons{source,mask:0});log.lock().unwrap().clear();assert!(!service.recover_from(&dir,&runtime).unwrap().is_empty());assert!(log.lock().unwrap().is_empty());assert!(journal.path.exists());runtime.shutdown();journal.finish().unwrap();std::fs::remove_dir(dir).unwrap();
+  let(mut device,log)=gearwise_corsair::simulated_m65_pro();device.apply(&Setting::Button{id:4,action:ButtonAction::Disabled}).unwrap();let descriptor=device.descriptor().clone();let source=crate::host_macros::Source{vendor:0x1b1c,product:0x1b2e,path:"simulation:removed-vendor".into()};let dir=std::env::temp_dir().join(format!("removed-vendor-{}",crate::profiles::new_id()));let journal=Arc::new(crate::macro_recovery::Journal::create(&dir,crate::macro_recovery::Record{version:1,device_id:descriptor.id.clone(),serial:None,source:source.clone(),settings:vec![],expected:Default::default(),software_input:true,shift:None}).unwrap());let mut manager=DeviceManager::new(Box::new(MockBackend::new(vec![],|_|Err(gearwise_core::Error::Unsupported("no physical HID")))),vec![]);manager.add_virtual(vec![device]);let service=Service::default();*service.0.lock().unwrap()=Some(manager);service.1.lock().unwrap().insert(descriptor.id,Cleanup{input_proof:None,source:source.clone(),settings:vec![],expected:Default::default(),software_input:true,cancelled:Arc::new(AtomicBool::new(true)),shift:Arc::new(Mutex::new(None)),journal:Some(journal.clone()),serial:None});let runtime=crate::macro_runtime::Runtime::simulation(Arc::new(Mutex::new(Rec::default())));runtime.simulate_event(crate::raw_input::Event::Buttons{source:source.clone(),mask:8});assert!(!runtime.quiesce(&source,&[]).unwrap());assert!(runtime.has_quiescing());runtime.simulate_event(crate::raw_input::Event::Removed{path:source.path.clone()});assert!(!runtime.has_quiescing());runtime.simulate_event(crate::raw_input::Event::Buttons{source,mask:0});log.lock().unwrap().clear();assert!(!service.recover_from(&dir,&runtime).unwrap().is_empty());assert!(log.lock().unwrap().is_empty());assert!(journal.path.exists());runtime.shutdown();journal.finish().unwrap();std::fs::remove_dir(dir).unwrap();
  }
 }
 
@@ -1011,3 +1036,5 @@ mod profile_activation_identity_tests {
   for p in profiles{let plan=p.multi.as_ref().unwrap();let c=compile(plan).unwrap();assert!(c.bindings.is_empty());assert!(!c.software_input);let(mut d,log)=crate::atk::simulated(plan.product).unwrap();d.set_macro_definitions(&plan.macros).unwrap();for s in &c.settings{d.apply(s).unwrap();}let state=d.read_state().unwrap();assert_eq!(state.buttons[&2],ButtonAction::Mouse(MouseButton::Back));assert_eq!(state.buttons[&4],ButtonAction::Media(0xe2));for (button,usage)in[(5,None),(3,Some(0xe9))]{let ButtonAction::Macro(id)=&state.buttons[&button]else{panic!("macro lost")};let definitions=d.macro_definitions();let m=definitions.iter().find(|m|&m.id==id).unwrap();if let Some(usage)=usage{assert!(m.steps.contains(&MacroStep::Media(usage)));}else{assert!(m.steps.contains(&MacroStep::KeyDown(7)));assert!(m.steps.contains(&MacroStep::Delay(77)));}}assert_eq!(state.dpi.unwrap().stages[0].x,400);assert!(!log.lock().unwrap().is_empty());}
  }
 }
+
+#[cfg(test)]#[path="wired_input_tests.rs"]mod wired_input_tests;
