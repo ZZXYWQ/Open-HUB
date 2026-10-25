@@ -180,7 +180,7 @@ impl FeatureRequest for Memory {
                 let (sector, size, mut bytes) = s.staging.take().expect("write in progress");
                 assert!(bytes.len() >= size);
                 bytes.truncate(size);
-                assert!(sector_crc_ok(&bytes));
+                assert!(sector_crc_ok(&bytes)||bytes.iter().all(|b|*b==0xff));
                 s.sectors.insert(sector, bytes);
                 s.committed = true;
             }
@@ -370,10 +370,15 @@ fn native_logitech_onboard_fixture_export() {
         let (after_dpi_snapshot,_)=d.onboard_snapshot(&m).unwrap();
         let macro_mem=macro_memory();
         let macro_trace=crate::onboard_macros::read(&d,&macro_mem,&macro_selection(&d)).unwrap();
+        let planning_mem=planning_memory();let planning_device=unit_device(&planning_mem);
+        let(planning_snapshot,_)=planning_device.onboard_snapshot(&planning_mem).unwrap();
+        let macro_request=macro_request(&planning_device);let prepared=crate::onboard_macro_plan::prepare(&planning_device,&planning_mem,&macro_request).unwrap();
+        let macro_preview=prepared.preview();let macro_saved=crate::onboard_macro_plan::commit(&planning_device,&planning_mem,&prepared).unwrap();
+        let(after_macro_snapshot,_)=planning_device.onboard_snapshot(&planning_mem).unwrap();
         std::fs::write(
             path,
             serde_json::to_vec_pretty(
-                &serde_json::json!({"macro_trace":macro_trace,"device":summary,"snapshot":snapshot,"after_snapshot":after_snapshot,"after_dpi_snapshot":after_dpi_snapshot,"hardware_tested":false}),
+                &serde_json::json!({"planning_snapshot":planning_snapshot,"macro_preview":macro_preview,"macro_saved":macro_saved,"after_macro_snapshot":after_macro_snapshot,"macro_trace":macro_trace,"device":summary,"snapshot":snapshot,"after_snapshot":after_snapshot,"after_dpi_snapshot":after_dpi_snapshot,"hardware_tested":false}),
             )
             .unwrap(),
         )
@@ -497,4 +502,50 @@ fn macro_selection(d:&Device)->crate::onboard_macros::Selection{crate::onboard_m
 fn browser_native_macro_selection_executes_read_only_production_reader(){
  let path=std::env::var_os("OPEN_HUB_LOGITECH_MACRO_UI_SELECTION").unwrap();let selection:crate::onboard_macros::Selection=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
  let m=macro_memory();let before=m.0.lock().unwrap().sectors.clone();let tr=crate::onboard_macros::read(&device(),&m,&selection).unwrap();assert!(tr.complete);assert_eq!(tr.steps[0].action,crate::onboard_macros::Action::KeyDown{modifiers:0x11,usage:6});assert_eq!(tr.steps[1].action,crate::onboard_macros::Action::Delay{milliseconds:77});assert_eq!(tr.pages.len(),2);let s=m.0.lock().unwrap();assert_eq!(s.sectors,before);assert!(s.calls.iter().all(|(f,_)|matches!(f,0|5)));
+}
+
+fn planning_memory()->Memory{
+ let m=macro_memory();let mut state=m.0.lock().unwrap();for sector in [1,2]{let mut p=state.sectors[&sector].clone();p[0x20..0xa0].fill(0xff);p[0x20..0x24].copy_from_slice(&[0x80,1,0,1]);if sector==1{p[0x30..0x34].copy_from_slice(&[0,3,0,5]);}state.sectors.insert(sector,crc(p));}for s in 5..8{state.sectors.insert(s,vec![0xff;256]);}drop(state);m
+}
+fn macro_request(d:&Device)->crate::onboard_macro_plan::Request{let mut selection=macro_selection(d);selection.button=4;selection.expected=[0xff;4];crate::onboard_macro_plan::Request{selection,definition:gearwise_core::profile::Macro{id:"native-new".into(),name:"copy and media".into(),mode:gearwise_core::profile::MacroMode::Once,steps:vec![gearwise_core::profile::MacroStep::KeyTap{usage:6,mods:gearwise_core::model::Modifiers(0x11)},gearwise_core::profile::MacroStep::Delay(77),gearwise_core::profile::MacroStep::Media(0xe2)]}}}
+#[test]fn whole_native_bank_capture_and_two_sector_macro_commit_preserve_existing_programs(){
+ let m=planning_memory();let d=unit_device(&m);let before=m.0.lock().unwrap().sectors.clone();let request=macro_request(&d);let p=crate::onboard_macro_plan::prepare(&d,&m,&request).unwrap();assert_eq!(p.preview().macro_sector,5);assert_eq!(p.raw().len(),8);assert!(m.0.lock().unwrap().calls.iter().all(|(f,_)|matches!(f,0|5)));
+ let report=crate::onboard_macro_plan::commit(&d,&m,&p).unwrap();assert!(report.active_reloaded);
+ let mut selected=request.selection.clone();selected.expected=[0,5,0,0];let trace=crate::onboard_macros::read(&d,&m,&selected).unwrap();assert!(trace.complete);assert_eq!(trace.steps[2].action,crate::onboard_macros::Action::Delay{milliseconds:77});
+ let now=m.0.lock().unwrap();for sector in [0,2,3,4,6,7]{assert_eq!(now.sectors[&sector],before[&sector]);}assert_eq!(&now.sectors[&1][0x2c..0x30],&[0,5,0,0]);
+}
+#[test]fn all_thirty_six_uncertain_macro_and_binding_write_stages_restore_original_bank(){
+ let faults=[(6,1),(6,2),(8,1),(8,2)].into_iter().chain((1..=32).map(|n|(7,n)));
+ for fault in faults{let m=planning_memory();let d=unit_device(&m);let before=m.0.lock().unwrap().sectors.clone();let p=crate::onboard_macro_plan::prepare(&d,&m,&macro_request(&d)).unwrap();m.0.lock().unwrap().fault=Some(fault);let e=crate::onboard_macro_plan::commit(&d,&m,&p).unwrap_err().to_string();assert!(e.contains("restored/verified"),"{fault:?}: {e}");assert_eq!(m.0.lock().unwrap().sectors,before,"{fault:?}");}
+}
+#[test]fn stale_global_bank_and_changed_unit_never_get_macro_commit_or_rollback(){
+ let m=planning_memory();let d=unit_device(&m);let p=crate::onboard_macro_plan::prepare(&d,&m,&macro_request(&d)).unwrap();m.0.lock().unwrap().sectors.get_mut(&6).unwrap()[0]=0;assert!(crate::onboard_macro_plan::commit(&d,&m,&p).is_err());assert!(!m.0.lock().unwrap().calls.iter().any(|(f,_)|matches!(f,3|6|7|8)));
+ let m=planning_memory();let d=unit_device(&m);let p=crate::onboard_macro_plan::prepare(&d,&m,&macro_request(&d)).unwrap();{let mut s=m.0.lock().unwrap();s.fault=Some((8,1));s.change_unit_on_fault=true;}let e=crate::onboard_macro_plan::commit(&d,&m,&p).unwrap_err().to_string();assert!(e.contains("state uncertain"));let state=m.0.lock().unwrap();assert_eq!(state.calls.iter().filter(|(f,_)|*f==6).count(),1);assert!(!state.calls.iter().any(|(f,_)|*f==3));
+}
+
+#[test]
+#[ignore="requires current native macro composer UI request"]
+fn browser_native_macro_composer_request_compiles_allocates_and_commits_in_production(){
+ let path=std::env::var_os("OPEN_HUB_LOGITECH_MACRO_UI_REQUEST").unwrap();let request:crate::onboard_macro_plan::Request=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+ let m=planning_memory();let d=unit_device(&m);let before=m.0.lock().unwrap().sectors.clone();let p=crate::onboard_macro_plan::prepare(&d,&m,&request).unwrap();assert_eq!(p.preview().macro_sector,5);let report=crate::onboard_macro_plan::commit(&d,&m,&p).unwrap();assert!(report.active_reloaded);
+ let mut selected=request.selection.clone();selected.expected=[0,5,0,0];let trace=crate::onboard_macros::read(&d,&m,&selected).unwrap();assert!(trace.complete);assert_eq!(trace.steps[0].action,crate::onboard_macros::Action::KeyDown{modifiers:0x11,usage:6});assert_eq!(trace.steps[2].action,crate::onboard_macros::Action::Delay{milliseconds:77});assert_eq!(trace.steps[3].action,crate::onboard_macros::Action::ConsumerDown{usage:0xe2});
+ let now=m.0.lock().unwrap();for sector in [0,2,3,4,6,7]{assert_eq!(now.sectors[&sector],before[&sector]);}
+}
+
+#[test]fn native_macro_save_never_forces_host_or_another_slot_and_keeps_reload_failure_distinct(){
+ for (mode,active,reload_fail) in [(2,1,false),(1,2,false),(1,1,true)]{let m=planning_memory();let d=unit_device(&m);{let mut state=m.0.lock().unwrap();state.mode=mode;state.active=active;state.reload_fail=reload_fail;}let p=crate::onboard_macro_plan::prepare(&d,&m,&macro_request(&d)).unwrap();let report=crate::onboard_macro_plan::commit(&d,&m,&p).unwrap();assert!(!report.active_reloaded);assert_eq!(report.reload_note.is_some(),reload_fail);if !reload_fail{assert!(!m.0.lock().unwrap().calls.iter().any(|(f,_)|*f==3));}}
+}
+#[test]fn directory_change_after_macro_commit_blocks_recovery_instead_of_overwriting_other_owner(){
+ let m=planning_memory();let d=unit_device(&m);let p=crate::onboard_macro_plan::prepare(&d,&m,&macro_request(&d)).unwrap();{let mut state=m.0.lock().unwrap();state.fault=Some((8,1));state.change_directory_on_fault=true;}let error=crate::onboard_macro_plan::commit(&d,&m,&p).unwrap_err().to_string();assert!(error.contains("no blind restoration"));let state=m.0.lock().unwrap();assert_eq!(state.calls.iter().filter(|(f,_)|*f==6).count(),1);assert!(!state.calls.iter().any(|(f,_)|*f==3));
+}
+
+#[test]fn native_macro_preflight_rejects_unsupported_definitions_missing_unit_and_last_left_click(){
+ let m=planning_memory();let d=unit_device(&m);let mut request=macro_request(&d);request.definition.steps=vec![gearwise_core::profile::MacroStep::Text("unsupported".into())];assert!(crate::onboard_macro_plan::prepare(&d,&m,&request).is_err());assert!(m.0.lock().unwrap().calls.is_empty());
+ let m=planning_memory();let d=device();let request=macro_request(&d);assert!(crate::onboard_macro_plan::prepare(&d,&m,&request).is_err());assert!(m.0.lock().unwrap().calls.is_empty());
+ let m=planning_memory();let d=unit_device(&m);let mut request=macro_request(&d);request.selection.button=1;request.selection.expected=[0x80,1,0,1];assert!(crate::onboard_macro_plan::prepare(&d,&m,&request).is_err());assert!(!m.0.lock().unwrap().calls.iter().any(|(f,_)|matches!(f,3|6|7|8)));
+}
+
+#[test]fn native_macro_can_replace_primary_left_only_when_another_normal_record_still_clicks_left(){
+ let m=planning_memory();let d=unit_device(&m);{let mut state=m.0.lock().unwrap();let mut page=state.sectors[&1].clone();page[0x24..0x28].copy_from_slice(&[0x80,1,0,3]);state.sectors.insert(1,crc(page));}
+ let mut request=macro_request(&d);request.selection.button=1;request.selection.expected=[0x80,1,0,1];let p=crate::onboard_macro_plan::prepare(&d,&m,&request).unwrap();let report=crate::onboard_macro_plan::commit(&d,&m,&p).unwrap();assert!(report.active_reloaded);assert_eq!(&m.0.lock().unwrap().sectors[&1][0x24..0x28],&[0x80,1,0,3]);
 }

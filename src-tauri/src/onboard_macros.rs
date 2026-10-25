@@ -26,7 +26,7 @@ pub struct Selection{pub expected_device:String,pub slot:u8,pub sector:u16,pub l
 fn fail(message:&str)->Error{Error::Other(format!("Logitech native macro: {message}"))}
 fn allowed(a:Address,info:&Info)->bool{a.sector>0&&a.sector<u16::from(info.sector_count)&&a.offset<info.sector_size}
 fn be(raw:&[u8],at:usize)->u16{u16::from_be_bytes([raw[at],raw[at+1]])}
-fn inspect(entry:Address,info:&Info,mut load:impl FnMut(u16)->Result<Vec<u8>>)->Result<Trace>{
+pub(crate) fn inspect(entry:Address,info:&Info,mut load:impl FnMut(u16)->Result<Vec<u8>>)->Result<Trace>{
  let mut trace=Trace{entry,complete:false,note:None,steps:vec![],pages:vec![]};
  let mut pages=BTreeMap::<u16,Vec<u8>>::new();let mut visited=BTreeSet::new();let mut pc=entry;
  loop{

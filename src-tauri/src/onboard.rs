@@ -124,7 +124,7 @@ pub(crate) fn sector_crc_ok(data: &[u8]) -> bool {
     data.len() >= 2 && crc_ccitt(&data[..data.len() - 2]) == u16::from_be_bytes([data[data.len() - 2], data[data.len() - 1]])
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Info {
     pub memory_model: u8,
     pub profile_format: u8,
@@ -405,7 +405,7 @@ impl Device {
 
     /// Writes one whole sector: start (sector, offset 0, length), 16-byte
     /// chunks, then end, which commits it to flash.
-    fn write_sector(&self, t: &dyn FeatureRequest, sector: u16, data: &[u8]) -> Result<()> {
+    pub(crate) fn write_sector(&self, t: &dyn FeatureRequest, sector: u16, data: &[u8]) -> Result<()> {
         crate::onboard_bindings::validate_target(self).map_err(Error::Other)?;
         self.verify_native_identity(t, &self.profile_key)?;
         if sector >= ROM_BASE {

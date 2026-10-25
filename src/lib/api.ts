@@ -283,6 +283,8 @@ export const api = {
 
   onboardSnapshot: (id: string) => invoke<OnboardSnapshot>("onboard_snapshot", { id }),
   saveOnboardBackup: (id: string, path: string) => invoke<void>("save_onboard_backup", { id, path }),
+  previewOnboardMacro:(id:string,request:import("./logitech-macro-plan").NativeMacroRequest)=>invoke<import("./logitech-macro-plan").NativeMacroPreview>("preview_onboard_macro",{id,request}),
+  writeOnboardMacro:(id:string,request:import("./logitech-macro-plan").NativeMacroRequest)=>invoke<import("./logitech-macro-plan").NativeMacroWriteResult>("write_onboard_macro",{id,request}),
   readOnboardMacro:(id:string,selection:import("./logitech-macros").NativeMacroSelection)=>invoke<import("./logitech-macros").NativeMacroTrace>("read_onboard_macro",{id,selection}),
   writeOnboardBindings:(id:string,settings:OnboardBindingSettings)=>invoke<OnboardBindingWriteResult>("write_onboard_bindings",{id,settings}),
   writeOnboardSlot: (id: string, settings: SlotSettings) =>

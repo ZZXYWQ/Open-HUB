@@ -128,6 +128,10 @@ pub struct Report {
     pub active_reloaded: bool,
     pub reload_note: Option<String>,
 }
+pub fn has_normal_left_click(profile:&[u8],info:&Info)->bool{
+ if info.button_count>16||profile.len()<0x20+usize::from(info.button_count)*4{return false;}
+ (0..usize::from(info.button_count)).any(|i|{let at=0x20+4*i;profile[at]==0x80&&profile[at+1]==1&&u16::from_be_bytes([profile[at+2],profile[at+3]])&1!=0})
+}
 pub fn patch(original: &[u8], info: &Info, changes: &[Change]) -> Result<Vec<u8>, String> {
     validate_info(info)?;
     if changes.is_empty() || changes.len() > 32 {
@@ -167,12 +171,7 @@ pub fn patch(original: &[u8], info: &Info, changes: &[Change]) -> Result<Vec<u8>
         out[offset..offset + 4].copy_from_slice(&value);
     }
     // Keep a normal-layer left button. G-Shift cannot be the only path to click.
-    if !(0..usize::from(info.button_count)).any(|i| {
-        let at = 0x20 + 4 * i;
-        out[at] == 0x80
-            && out[at + 1] == 1
-            && u16::from_be_bytes([out[at + 2], out[at + 3]]) & 1 != 0
-    }) {
+    if !has_normal_left_click(&out, info) {
         return Err(fail(
             "at least one normal-layer physical button must retain left click",
         ));

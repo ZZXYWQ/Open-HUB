@@ -1,3 +1,5 @@
+import {OnboardMacroComposer} from '@/components/onboard-macro-composer';
+import type {NativeMacroRequest} from '@/lib/logitech-macro-plan';
 import {OnboardBindingsEditor} from "@/components/onboard-bindings-editor";
 import { useState,useEffect,useRef } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
@@ -17,7 +19,7 @@ function remapped(buttons: OnboardButton[]): OnboardButton[] {
   return buttons.filter((b, i) => b.description !== `Mouse button ${i + 1}`);
 }
 
-function ProfileCard({ profile, active, onEdit,onEditBindings }: { profile: OnboardProfile; active: boolean; onEdit?: () => void;onEditBindings?:()=>void }) {
+function ProfileCard({ profile, active, onEdit,onEditBindings,onNewMacro }: { profile: OnboardProfile; active: boolean; onEdit?: () => void;onEditBindings?:()=>void;onNewMacro?:()=>void }) {
   const changed = remapped(profile.buttons);
   const gshift = profile.gshift_buttons.filter((b) => b.kind !== "disabled");
   return (
@@ -31,6 +33,7 @@ function ProfileCard({ profile, active, onEdit,onEditBindings }: { profile: Onbo
         {!profile.enabled && <Badge variant="secondary">Disabled</Badge>}
         {profile.crc_valid === false && <Badge variant="destructive">Checksum error</Badge>}
         <span className="ml-auto text-xs text-muted-foreground tabular-nums">{profile.report_rate_hz} Hz</span>
+        {onNewMacro&&<Button variant="outline" size="sm" onClick={onNewMacro}>新增板载宏</Button>}
         {onEditBindings&&<Button variant="outline" size="sm" onClick={onEditBindings}>编辑按键</Button>}
         {onEdit && (
           <Button variant="ghost" size="icon-sm" aria-label={`Edit slot ${profile.slot}`} onClick={onEdit}>
@@ -67,15 +70,19 @@ function ProfileCard({ profile, active, onEdit,onEditBindings }: { profile: Onbo
 /** Profiles stored in the mouse: view, edit DPI/report rate per slot, back up and restore. */
 export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary; supportedDpi: number[] }) {
   const readGeneration=useRef(0);
-  useEffect(()=>{readGeneration.current++;setSnapshot(null);setEditing(null);setEditingBindings(null);setRestorePath(null);},[device.id]);
+  useEffect(()=>{readGeneration.current++;setSnapshot(null);setEditing(null);setEditingBindings(null);setComposing(null);setRestorePath(null);},[device.id]);
   const [snapshot, setSnapshot] = useState<OnboardSnapshot | null>(null);
   const [reading, setReading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<OnboardProfile | null>(null);
   const [editingBindings,setEditingBindings]=useState<OnboardProfile|null>(null);
+  const [composing,setComposing]=useState<OnboardProfile|null>(null);
   const [restorePath, setRestorePath] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
 
+  const writeMacro=async(request:NativeMacroRequest)=>{
+    try{const result=await api.writeOnboardMacro(device.id,request);setSnapshot(result.snapshot);const note=[result.report.reload_note,result.refresh_note].filter(Boolean).join('；');if(note)toast.warning('板载宏已保存并校验',{description:note});else toast.success('板载宏已保存到此鼠标',{description:`宏与按键绑定均已读回校验。备份：${result.backup_path}`});return true;}catch(e){toast.error(String(e));return false;}
+  };
   const writeBindings=async(settings:OnboardBindingSettings)=>{
     try{const result=await api.writeOnboardBindings(device.id,settings);setSnapshot(result.snapshot);
       const note=[result.report.reload_note,result.refresh_note].filter(Boolean).join('；');
@@ -196,6 +203,7 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
               profile={p}
               active={snapshot.active_profile === p.slot}
               onEdit={p.crc_valid&&info.bindings_writable ? () => setEditing(p) : undefined}
+              onNewMacro={p.crc_valid&&info.bindings_writable&&snapshot.device_key.startsWith('unit:')&&info.memory_model===1&&info.profile_format>=1&&info.profile_format<=5&&info.macro_format===1&&[255,256].includes(info.sector_size)&&info.sector_count>0&&info.sector_count<=32&&info.button_count>0&&info.button_count<=16?()=>setComposing(p):undefined}
               onEditBindings={p.crc_valid&&info.bindings_writable&&info.memory_model===1&&info.profile_format>=1&&info.profile_format<=5&&info.macro_format===1&&info.button_count>0&&info.button_count<=16?()=>setEditingBindings(p):undefined}
             />
           ))}
@@ -205,6 +213,7 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
         </div>
       )}
 
+      {composing&&snapshot&&info&&<OnboardMacroComposer profile={composing} info={info} deviceKey={snapshot.device_key} deviceId={device.id} onClose={()=>setComposing(null)} onSave={writeMacro}/>}
       <OnboardBindingsEditor device={device} deviceKey={snapshot?.device_key??''} profile={editingBindings} info={snapshot?.info??null} onClose={()=>setEditingBindings(null)} onSave={writeBindings}/>
       <OnboardSlotEditor profile={editing} deviceKey={snapshot?.device_key??''} supportedDpi={supportedDpi} onClose={() => setEditing(null)} onSave={writeSlot} />
 

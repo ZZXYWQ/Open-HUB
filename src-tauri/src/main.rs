@@ -39,6 +39,7 @@ mod screen;
 mod effects;
 mod onboard;
 mod onboard_macros;
+mod onboard_macro_plan;
 mod onboard_bindings;
 mod profiles;
 mod profile_routing;
@@ -596,6 +597,25 @@ fn apply_logitech_lighting(state:State<AppState>,id:String,change:native_logitec
 fn read_onboard_macro(state:State<AppState>,id:String,selection:onboard_macros::Selection)->Result<onboard_macros::Trace,String>{
  let guard=manager(&state)?;guard.as_ref().expect("manager initialised").with_device(&id,|d,t|onboard_macros::read(d,t,&selection)).map_err(|e|e.to_string())
 }
+#[derive(Serialize)]
+struct OnboardMacroWriteResult{report:onboard_macro_plan::Committed,backup_path:String,snapshot:Option<onboard::Snapshot>,refresh_note:Option<String>}
+#[tauri::command(async)]
+fn preview_onboard_macro(state:State<AppState>,id:String,request:onboard_macro_plan::Request)->Result<onboard_macro_plan::Preview,String>{
+ let guard=manager(&state)?;guard.as_ref().expect("manager initialised").with_device(&id,|d,t|onboard_macro_plan::prepare(d,t,&request).map(|p|p.preview())).map_err(|e|e.to_string())
+}
+#[tauri::command(async)]
+fn write_onboard_macro(app:AppHandle,state:State<AppState>,id:String,request:onboard_macro_plan::Request)->Result<OnboardMacroWriteResult,String>{
+ if ghub_agent_running(){return Err(GHUB_RUNNING.into());}
+ let guard=manager(&state)?;guard.as_ref().expect("manager initialised").with_device(&id,|d,t|{
+  let prepared=onboard_macro_plan::prepare(d,t,&request)?;
+  let(before,factory)=d.onboard_snapshot(t)?;let mut raw=prepared.raw();raw.extend(factory.into_iter().filter(|s|s.sector>=0x100));
+  let backup=auto_backup_path(&app,d).map_err(hidpp::Error::Other)?;
+  write_onboard_backup(&app.package_info().version.to_string(),&backup,d,&before,&raw).map_err(hidpp::Error::Other)?;
+  let report=onboard_macro_plan::commit(d,t,&prepared)?;
+  let(snapshot,refresh_note)=match d.onboard_snapshot(t){Ok((s,_))=>(Some(s),None),Err(e)=>(None,Some(format!("macro saved and verified; memory view refresh failed: {e}")))};
+  Ok(OnboardMacroWriteResult{report,backup_path:backup.display().to_string(),snapshot,refresh_note})
+ }).map_err(|e|e.to_string())
+}
 #[tauri::command(async)]
 fn write_onboard_bindings(
     app: AppHandle,
@@ -1100,6 +1120,8 @@ fn main() {
             write_onboard_slot,
             write_onboard_bindings,
             read_onboard_macro,
+            preview_onboard_macro,
+            write_onboard_macro,
             read_logitech_lighting,apply_logitech_lighting,
             restore_onboard_backup,
             get_app_info,
