@@ -1,0 +1,66 @@
+{
+  "version": "0.3.6",
+  "tag": "v0.3.6-experimental.1",
+  "verified_at": "2026-10-25T10:35:07.408996+00:00",
+  "release_url": "https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.6-experimental.1",
+  "source_commit": "3b8c7a38374c4d5e98e4b9a7ef8a23a56d120ea2",
+  "source_zip": {
+    "name": "Open-HUB-0.3.6-source.zip",
+    "bytes": 41364521,
+    "sha256": "703c6873709172cedb2977bc6d153b46787755249ffc6d9d2a6177bc3e5c20f7"
+  },
+  "source_archive_files_verified": 452,
+  "source_archive_matches_git": true,
+  "initial_github_asset_digests_matched": 6,
+  "anonymous_initial_checks": [
+    {
+      "name": "Open-HUB-0.3.6-x64-setup.exe",
+      "status": 200
+    },
+    {
+      "name": "Open-HUB-0.3.6-source.zip",
+      "status": 200
+    },
+    {
+      "name": "latest.json",
+      "status": 200
+    },
+    {
+      "name": "validation.json",
+      "status": 200
+    }
+  ],
+  "anonymous_full_download": {
+    "url": "https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.6-experimental.1/Open-HUB-0.3.6-x64-setup.exe",
+    "status": 200,
+    "bytes": 38801998,
+    "sha256": "02cfeae964362c8130e206f1f10d28fe2b3159796bf14ad9e9bd2474e2549f7d",
+    "matched_local": true
+  },
+  "readme_direct_exe_link_verified": true,
+  "public_feed_version": "0.3.6",
+  "production_update_verification": {
+    "bytes": 38801998,
+    "download_signature_valid": true,
+    "hardware_accessed": false,
+    "installed": false,
+    "passed": true,
+    "release_url": "https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.6-experimental.1",
+    "signed_version_mismatch_rejected": true,
+    "tamper_rejected": true,
+    "version": "0.3.6"
+  },
+  "local_upgrade": {
+    "explicitly_authorized": true,
+    "installed_version": "0.3.6",
+    "installed_payload_files_verified": 51,
+    "configuration_and_preferences_preserved_before_first_start": true,
+    "application_started_and_responding": true,
+    "personal_backup_or_paths_published": false
+  },
+  "per_device_configuration_only": true,
+  "global_remapper_included": false,
+  "experimental": true,
+  "new_mouse_hardware_tested": false,
+  "all_mouse_buttons_supported": false
+}
