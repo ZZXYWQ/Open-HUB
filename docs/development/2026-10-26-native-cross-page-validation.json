@@ -1,0 +1,30 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "native Logitech multi-page Once macro grouping, five-byte links, whole-chain verified commits/recovery and long composer UI",
+  "default_application_tests": 465,
+  "explicit_cross_tests": 19,
+  "new_default_tests": 6,
+  "single_page_uncertain_write_stages": 36,
+  "two_page_uncertain_write_stages": 54,
+  "headless_ui_suites": 33,
+  "headless_ui_suites_available": 33,
+  "targeted_latest_ui_suites": 2,
+  "new_macro_input_groups": "atomic shortcut/media press and release stay on the same page",
+  "geometry_tested_in_native_simulation": [
+    255,
+    256
+  ],
+  "native_limits": {
+    "chain_pages": 16,
+    "instructions_including_jump_end": 1024,
+    "bank_sectors": 32
+  },
+  "new_runtime_dependencies": false,
+  "frontend_js_gzip_kb": 222.2,
+  "development_exe_memory_transports": 32,
+  "development_exe_sha256": "11ffd0487bae4a603928348bb98d7fbbba1e32eb900fbdf0d3bc719589c2ca42",
+  "physical_Logitech_tested": false,
+  "accepted_full_models": 0,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}

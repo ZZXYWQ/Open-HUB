@@ -5,8 +5,8 @@
 use crate::{device::Device,hidpp::{Error,FeatureRequest,Result},onboard::{sector_crc_ok,Info},onboard_bindings::{Layer,validate_info}};
 use serde::{Serialize,Deserialize};
 use std::collections::{BTreeMap,BTreeSet};
-const MAX_PAGES:usize=16;
-const MAX_STEPS:usize=1024;
+pub(crate) const MAX_PAGES:usize=16;
+pub(crate) const MAX_STEPS:usize=1024;
 #[derive(Clone,Copy,Debug,PartialEq,Eq,PartialOrd,Ord,Serialize,Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Address{pub sector:u16,pub offset:u16}

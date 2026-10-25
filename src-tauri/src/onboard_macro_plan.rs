@@ -1,30 +1,31 @@
-//! Native macro compilation, whole-bank reference planning and two-sector
+//! Native macro compilation, whole-bank reference planning and multi-sector
 //! verified commits. Never routes a native program through OS input.
 use crate::{device::Device,hidpp::{Error,FeatureRequest,Result},onboard::{Info,sector_crc_ok},onboard_macros::{Address,inspect}};
 use gearwise_core::{profile::{Macro,MacroMode,MacroStep},model::MouseButton};
 use std::collections::{BTreeMap,BTreeSet};
 use serde::Serialize;
 fn fail(s:&str)->Error{Error::Other(format!("Logitech macro planning: {s}"))}
-/// Once-only, one-sector bytecode. Held/toggle control-flow is not inferred
-/// from an opcode name. Source events remain press/release events.
-pub fn compile(m:&Macro,sector_size:u16)->Result<Vec<u8>>{
+/// Once-only instruction groups. Atomic shortcuts and media taps are kept
+/// together when a planner inserts cross-page links.
+fn groups(m:&Macro,sector_size:u16)->Result<Vec<Vec<u8>>>{
  crate::host_macros::validate(m).map_err(Error::Other)?;
  if m.name.trim().is_empty(){return Err(fail("macro needs a name"));}
  if m.mode!=MacroMode::Once{return Err(fail("native repeat-mode layout is not enabled"));}
  if !(210..=4096).contains(&sector_size){return Err(fail("unsupported sector size"));}
  let mut out=Vec::new();
- for step in &m.steps{match step{
-  MacroStep::KeyDown(k)|MacroStep::KeyUp(k) if (4..=0xa4).contains(k)=>out.extend([if matches!(step,MacroStep::KeyDown(_)){0x43}else{0x44},0,*k]),
-  MacroStep::KeyTap{usage,mods}=>{out.extend([0x43,mods.0,*usage,0x44,mods.0,*usage]);}
-  MacroStep::MouseDown(b)|MacroStep::MouseUp(b)=>{let mask=match b{MouseButton::Left=>1u16,MouseButton::Right=>2,MouseButton::Middle=>4,MouseButton::Back=>8,MouseButton::Forward=>16,_=>return Err(fail("native wheel/mouse operand is not verified"))};let bytes=mask.to_be_bytes();out.extend([if matches!(step,MacroStep::MouseDown(_)){0x41}else{0x42},bytes[0],bytes[1]]);}
-  MacroStep::Media(usage)=>{if !(1..=0x3ff).contains(usage){return Err(fail("unsupported consumer usage"));}let b=usage.to_be_bytes();out.extend([0x45,b[0],b[1],0x46,b[0],b[1]]);}
-  MacroStep::Delay(ms)=>{if *ms>0{let b=u16::try_from(*ms).map_err(|_|fail("native delay overflow"))?.to_be_bytes();out.extend([0x40,b[0],b[1]]);}}
+ for step in &m.steps{let item=match step{
+  MacroStep::KeyDown(k)|MacroStep::KeyUp(k) if (4..=0xa4).contains(k)=>vec![if matches!(step,MacroStep::KeyDown(_)){0x43}else{0x44},0,*k],
+  MacroStep::KeyTap{usage,mods}=>vec![0x43,mods.0,*usage,0x44,mods.0,*usage],
+  MacroStep::MouseDown(b)|MacroStep::MouseUp(b)=>{let mask=match b{MouseButton::Left=>1u16,MouseButton::Right=>2,MouseButton::Middle=>4,MouseButton::Back=>8,MouseButton::Forward=>16,_=>return Err(fail("native wheel/mouse operand is not verified"))};let bytes=mask.to_be_bytes();vec![if matches!(step,MacroStep::MouseDown(_)){0x41}else{0x42},bytes[0],bytes[1]]},
+  MacroStep::Media(usage)=>{if !(1..=0x3ff).contains(usage){return Err(fail("unsupported consumer usage"));}let b=usage.to_be_bytes();vec![0x45,b[0],b[1],0x46,b[0],b[1]]},
+  MacroStep::Delay(ms)=>{if *ms==0{vec![]}else{let b=u16::try_from(*ms).map_err(|_|fail("native delay overflow"))?.to_be_bytes();vec![0x40,b[0],b[1]]}},
   _=>return Err(fail("standalone modifier holds, text and physical-wait are not compiled; use a reviewed atomic shortcut")),
- }
- if out.len()+1>usize::from(sector_size)-2{return Err(fail("macro needs more than one page; no implicit truncation or cross-page allocation"));}
- }
- if out.is_empty(){return Err(fail("macro has no input or timed event"));}out.push(0xff);Ok(out)
+ };if !item.is_empty(){out.push(item);}}
+ if out.is_empty(){return Err(fail("macro has no input or timed event"));}
+ if out.iter().map(|v|v.len()/3).sum::<usize>()+1>crate::onboard_macros::MAX_STEPS{return Err(fail("native instruction budget exceeded"));}
+ Ok(out)
 }
+pub fn compile(m:&Macro,sector_size:u16)->Result<Vec<u8>>{let mut bytes:Vec<_>=groups(m,sector_size)?.into_iter().flatten().collect();bytes.push(0xff);Ok(bytes)}
 #[derive(Debug,Serialize)]pub struct Reference{pub slot:u8,pub layer:&'static str,pub button:u8,pub entry:Address,pub complete:bool}
 #[derive(Debug,Serialize)]pub struct Inventory{pub references:Vec<Reference>,pub protected_sectors:BTreeSet<u16>,pub erased_unreferenced:Vec<u16>,pub blockers:Vec<String>}
 /// All live sectors, including unused macro pages. Unknown/partial reachable
@@ -62,6 +63,7 @@ pub fn read_bank(d:&Device,t:&dyn FeatureRequest,expected:&str)->Result<Bank>{
  d.verify_native_identity(t,expected)?;
  if !expected.starts_with("unit:"){return Err(fail("new macro planning requires a stable native unit-id"));}
  let info=d.onboard_info(t)?;
+ crate::onboard_bindings::validate_info(&info).map_err(Error::Other)?;
  if !matches!(info.sector_size,255|256)||info.sector_count==0||info.sector_count>32{return Err(fail("unverified macro bank geometry"));}
  let mut pages=BTreeMap::new();for sector in 0..u16::from(info.sector_count){d.verify_native_identity(t,expected)?;pages.insert(sector,d.read_sector(t,sector,info.sector_size)?);}
  let inventory=inventory(&info,&pages)?;
@@ -72,10 +74,10 @@ pub fn read_bank(d:&Device,t:&dyn FeatureRequest,expected:&str)->Result<Bank>{
 #[derive(Clone,Debug,serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Request{pub selection:crate::onboard_macros::Selection,pub definition:Macro}
-#[derive(Debug,Serialize)]pub struct Preview{pub macro_sector:u16,pub slot:u8,pub profile_sector:u16,pub button:u8,pub byte_count:usize}
-pub struct Prepared{bank:Bank,selection:crate::onboard_macros::Selection,macro_sector:u16,payload:Vec<u8>,profile:Vec<u8>}
+#[derive(Debug,Serialize)]pub struct Preview{pub macro_sector:u16,pub slot:u8,pub profile_sector:u16,pub button:u8,pub byte_count:usize,pub page_count:usize}
+pub struct Prepared{bank:Bank,selection:crate::onboard_macros::Selection,macro_sector:u16,macro_pages:BTreeMap<u16,Vec<u8>>,profile:Vec<u8>}
 impl Prepared{
- pub fn preview(&self)->Preview{Preview{macro_sector:self.macro_sector,slot:self.selection.slot,profile_sector:self.selection.sector,button:self.selection.button,byte_count:self.payload.iter().zip(&self.bank.pages[&self.macro_sector]).filter(|(a,b)|a!=b).count()}}
+ pub fn preview(&self)->Preview{Preview{macro_sector:self.macro_sector,slot:self.selection.slot,profile_sector:self.selection.sector,button:self.selection.button,byte_count:self.macro_pages.iter().map(|(sector,payload)|payload.iter().zip(&self.bank.pages[sector]).filter(|(a,b)|a!=b).count()).sum(),page_count:self.macro_pages.len()}}
  pub fn raw(&self)->Vec<crate::onboard::RawSector>{self.bank.pages.iter().map(|(sector,bytes)|crate::onboard::RawSector{sector:*sector,crc_valid:Some(sector_crc_ok(bytes)),hex:bytes.iter().map(|b|format!("{b:02x}")).collect()}).collect()}
 }
 pub fn prepare(d:&Device,t:&dyn FeatureRequest,r:&Request)->Result<Prepared>{
@@ -90,7 +92,7 @@ pub fn prepare(d:&Device,t:&dyn FeatureRequest,r:&Request)->Result<Prepared>{
  let plan=plan(&bank,&r.definition)?;let mut profile=original.clone();profile[at..at+4].copy_from_slice(&[0,plan.macro_sector as u8,0,0]);
  if !crate::onboard_bindings::has_normal_left_click(&profile,&bank.info){return Err(fail("at least one normal physical left click must remain"));}
  let n=profile.len();let crc=crate::onboard::crc_ccitt(&profile[..n-2]);profile[n-2..].copy_from_slice(&crc.to_be_bytes());
- Ok(Prepared{bank,selection:s.clone(),macro_sector:plan.macro_sector,payload:plan.payload,profile})
+ Ok(Prepared{bank,selection:s.clone(),macro_sector:plan.macro_sector,macro_pages:plan.pages,profile})
 }
 fn capture(d:&Device,t:&dyn FeatureRequest,p:&Prepared)->Result<BTreeMap<u16,Vec<u8>>>{
  d.verify_native_identity(t,&p.bank.device_key)?;if d.onboard_info(t)?!=p.bank.info{return Err(fail("native memory descriptor changed"));}
@@ -100,17 +102,19 @@ fn capture(d:&Device,t:&dyn FeatureRequest,p:&Prepared)->Result<BTreeMap<u16,Vec
 fn verify(d:&Device,t:&dyn FeatureRequest,p:&Prepared,expected:&BTreeMap<u16,Vec<u8>>)->Result<()>{if &capture(d,t,p)?!=expected{return Err(fail("live bank differs from reviewed transaction state"));}Ok(())}
 #[derive(Debug,Serialize)]pub struct Committed{pub preview:Preview,pub active_reloaded:bool,pub reload_note:Option<String>}
 /// Caller must persist p.raw() before entering commit. An erased macro page
-/// is written and reconciled first; the binding can only point to verified code.
+/// chain is written and reconciled first; the binding can only point to verified code.
 pub fn commit(d:&Device,t:&dyn FeatureRequest,p:&Prepared)->Result<Committed>{
  verify(d,t,p,&p.bank.pages)?;
- let mut macro_state=p.bank.pages.clone();macro_state.insert(p.macro_sector,p.payload.clone());
- let mut complete=macro_state.clone();complete.insert(p.selection.sector,p.profile.clone());
- let result=(||->Result<()>{d.write_sector(t,p.macro_sector,&p.payload)?;verify(d,t,p,&macro_state)?;d.write_sector(t,p.selection.sector,&p.profile)?;verify(d,t,p,&complete)})();
+ let mut stage=p.bank.pages.clone();
+ let result=(||->Result<()>{
+  for (sector,payload) in &p.macro_pages{d.write_sector(t,*sector,payload)?;stage.insert(*sector,payload.clone());verify(d,t,p,&stage)?;}
+  d.write_sector(t,p.selection.sector,&p.profile)?;stage.insert(p.selection.sector,p.profile.clone());verify(d,t,p,&stage)
+ })();
  if let Err(error)=result{
   let recovery=(||->Result<()>{let mut actual=capture(d,t,p)?;
-   for (sector,bytes) in &actual{let allowed=if *sector==p.macro_sector{bytes==&p.bank.pages[sector]||bytes==&p.payload}else if *sector==p.selection.sector{bytes==&p.bank.pages[sector]||bytes==&p.profile}else{bytes==&p.bank.pages[sector]};if !allowed{return Err(fail("third-party or partial memory state; no blind restoration"));}}
+   for (sector,bytes) in &actual{let allowed=if let Some(payload)=p.macro_pages.get(sector){bytes==&p.bank.pages[sector]||bytes==payload}else if *sector==p.selection.sector{bytes==&p.bank.pages[sector]||bytes==&p.profile}else{bytes==&p.bank.pages[sector]};if !allowed{return Err(fail("third-party or partial memory state; no blind restoration"));}}
    if actual[&p.selection.sector]!=p.bank.pages[&p.selection.sector]{d.write_sector(t,p.selection.sector,&p.bank.pages[&p.selection.sector])?;actual.insert(p.selection.sector,p.bank.pages[&p.selection.sector].clone());verify(d,t,p,&actual)?;}
-   if actual[&p.macro_sector]!=p.bank.pages[&p.macro_sector]{d.write_sector(t,p.macro_sector,&p.bank.pages[&p.macro_sector])?;}
+   for sector in p.macro_pages.keys(){if actual[sector]!=p.bank.pages[sector]{d.write_sector(t,*sector,&p.bank.pages[sector])?;actual.insert(*sector,p.bank.pages[sector].clone());verify(d,t,p,&actual)?;}}
    verify(d,t,p,&p.bank.pages)
   })();return Err(fail(&format!("macro save failed ({error}); {}",match recovery{Ok(())=>"original bank restored/verified".into(),Err(e)=>format!("state uncertain, keep backup and refresh without retry: {e}")})));
  }
@@ -119,11 +123,22 @@ pub fn commit(d:&Device,t:&dyn FeatureRequest,p:&Prepared)->Result<Committed>{
  Ok(Committed{preview:p.preview(),active_reloaded,reload_note})
 }
 
-#[derive(Debug)]pub struct Plan{pub macro_sector:u16,pub payload:Vec<u8>}
+#[derive(Debug)]pub struct Plan{pub macro_sector:u16,pub pages:BTreeMap<u16,Vec<u8>>}
 pub fn plan(bank:&Bank,m:&Macro)->Result<Plan>{
  if !bank.inventory.blockers.is_empty(){return Err(fail("unknown or partial native references prevent allocation; factory macros retained"));}
- let code=compile(m,bank.info.sector_size)?;let sector=*bank.inventory.erased_unreferenced.first().ok_or_else(||fail("no unreferenced erased macro page; nonempty factory pages retained"))?;
- let mut payload=vec![0xff;usize::from(bank.info.sector_size)];payload[..code.len()].copy_from_slice(&code);let n=payload.len();let crc=crate::onboard::crc_ccitt(&payload[..n-2]);payload[n-2..].copy_from_slice(&crc.to_be_bytes());Ok(Plan{macro_sector:sector,payload})
+ let groups=groups(m,bank.info.sector_size)?;let capacity=usize::from(bank.info.sector_size)-2;
+ let mut remaining=groups.iter().map(Vec::len).sum::<usize>();let mut at=0;let mut chunks=Vec::new();
+ while at<groups.len(){let last=remaining+1<=capacity;let limit=capacity-if last{1}else{5};let mut chunk=Vec::new();let start=at;
+  while at<groups.len()&&chunk.len()+groups[at].len()<=limit{chunk.extend(&groups[at]);remaining-=groups[at].len();at+=1;}
+  if at==start{return Err(fail("native event group cannot fit into a physical page"));}chunks.push(chunk);
+ }
+ if chunks.len()>crate::onboard_macros::MAX_PAGES||groups.iter().map(|g|g.len()/3).sum::<usize>()+chunks.len()>crate::onboard_macros::MAX_STEPS{return Err(fail("native chain would exceed the validated reader budget"));}
+ if bank.inventory.erased_unreferenced.len()<chunks.len(){return Err(fail("not enough unreferenced erased macro pages; factory data retained"));}
+ let sectors=&bank.inventory.erased_unreferenced[..chunks.len()];let mut pages=BTreeMap::new();
+ for (i,mut code) in chunks.into_iter().enumerate(){if i+1<sectors.len(){code.push(0x60);code.extend(sectors[i+1].to_be_bytes());code.extend([0,0]);}else{code.push(0xff);}
+  let mut payload=vec![0xff;usize::from(bank.info.sector_size)];payload[..code.len()].copy_from_slice(&code);let n=payload.len();let crc=crate::onboard::crc_ccitt(&payload[..n-2]);payload[n-2..].copy_from_slice(&crc.to_be_bytes());pages.insert(sectors[i],payload);
+ }
+ Ok(Plan{macro_sector:sectors[0],pages})
 }
 #[cfg(test)]mod tests{
  use super::*;use gearwise_core::model::Modifiers;
@@ -145,10 +160,10 @@ pub fn plan(bank:&Bank,m:&Macro)->Result<Plan>{
  }
  #[test]fn unsupported_modes_unbalanced_events_text_and_capacity_never_truncate(){
   let mut m=action(vec![MacroStep::Media(0xe2)]);m.mode=MacroMode::Toggle;assert!(compile(&m,256).is_err());m.mode=MacroMode::WhileHeld;assert!(compile(&m,256).is_err());
-  for steps in [vec![MacroStep::KeyDown(4)],vec![MacroStep::Text("x".into())],vec![MacroStep::KeyDown(0xe0),MacroStep::KeyUp(0xe0)],vec![MacroStep::Delay(0)],(0..43).map(|_|MacroStep::Media(0xe2)).collect()]{assert!(compile(&action(steps),256).is_err());}
+  for steps in [vec![MacroStep::KeyDown(4)],vec![MacroStep::Text("x".into())],vec![MacroStep::KeyDown(0xe0),MacroStep::KeyUp(0xe0)],vec![MacroStep::Delay(0)]]{assert!(compile(&action(steps),256).is_err());}
  }
  #[test]fn disabled_slots_and_unadvertised_stored_records_protect_shared_macro_pages(){
-  let bank=bank();assert!(bank.inventory.protected_sectors.contains(&3));assert_eq!(bank.inventory.references[0].button,16);assert_eq!(bank.inventory.references[0].layer,"GShift");assert_eq!(bank.inventory.erased_unreferenced,vec![4,5,6,7]);let p=plan(&bank,&action(vec![MacroStep::Media(0xe2)])).unwrap();assert_eq!(p.macro_sector,4);assert!(sector_crc_ok(&p.payload));assert_eq!(&p.payload[..7],&[0x45,0,0xe2,0x46,0,0xe2,0xff]);
+  let bank=bank();assert!(bank.inventory.protected_sectors.contains(&3));assert_eq!(bank.inventory.references[0].button,16);assert_eq!(bank.inventory.references[0].layer,"GShift");assert_eq!(bank.inventory.erased_unreferenced,vec![4,5,6,7]);let p=plan(&bank,&action(vec![MacroStep::Media(0xe2)])).unwrap();assert_eq!(p.macro_sector,4);assert!(sector_crc_ok(&p.pages[&p.macro_sector]));assert_eq!(&p.pages[&p.macro_sector][..7],&[0x45,0,0xe2,0x46,0,0xe2,0xff]);
  }
  #[test]fn nonempty_factory_pages_and_unknown_reachable_programs_are_not_reclaimed(){
   let mut b=bank();b.pages.get_mut(&4).unwrap()[0]=0;let inventory=inventory(&b.info,&b.pages).unwrap();assert_eq!(inventory.erased_unreferenced,vec![5,6,7]);b.inventory=inventory;
@@ -162,6 +177,19 @@ pub fn plan(bank:&Bank,m:&Macro)->Result<Plan>{
  }
  #[test]fn validated_crc_materialized_empty_pages_are_free_but_bad_crc_tail_is_retained(){
   let mut b=bank();b.pages.insert(4,crc(vec![0xff;256]));let i=inventory(&b.info,&b.pages).unwrap();assert_eq!(i.erased_unreferenced.first(),Some(&4));b.pages.get_mut(&4).unwrap()[255]^=1;let i=inventory(&b.info,&b.pages).unwrap();assert!(!i.erased_unreferenced.contains(&4));
+ }
+
+ #[test]fn long_macro_uses_five_byte_links_without_splitting_atomic_input_groups(){
+  for size in [255,256]{let mut b=bank();if size==255{b.info.sector_size=size;for bytes in b.pages.values_mut(){bytes.truncate(255);}for sector in [0,1,2]{b.pages.insert(sector,crc(b.pages[&sector].clone()));}b.inventory=inventory(&b.info,&b.pages).unwrap();}
+   let m=action(vec![MacroStep::Media(0xe2);43]);let p=plan(&b,&m).unwrap();assert_eq!(p.pages.len(),2);let head=&p.pages[&p.macro_sector];assert_eq!(&head[246..251],&[0x60,0,5,0,0]);assert!(sector_crc_ok(head));let tr=inspect(Address{sector:p.macro_sector,offset:0},&b.info,|s|Ok(p.pages[&s].clone())).unwrap();assert!(tr.complete);assert_eq!(tr.pages.len(),2);assert_eq!(tr.steps.len(),88);assert!(matches!(tr.steps[81].action,crate::onboard_macros::Action::ConsumerUp{usage:0xe2}));assert!(matches!(tr.steps[82].action,crate::onboard_macros::Action::Jump{..}));
+  }
+ }
+ #[test]fn a_long_chain_never_consumes_factory_pages_or_silently_truncates_for_space(){
+  let mut b=bank();for sector in [5,6,7]{b.pages.get_mut(&sector).unwrap()[0]=0x12;}b.inventory=inventory(&b.info,&b.pages).unwrap();let m=action(vec![MacroStep::Media(0xe2);43]);assert!(plan(&b,&m).is_err());assert_eq!(compile(&m,256).unwrap().len(),259);
+ }
+
+ #[test]fn sufficient_flash_space_cannot_bypass_the_validated_instruction_budget(){
+  let mut b=bank();b.info.sector_count=32;for sector in 8..32{b.pages.insert(sector,vec![255;256]);}b.inventory=inventory(&b.info,&b.pages).unwrap();let m=action(vec![MacroStep::Media(0xe2);507]);assert!(compile(&m,256).is_ok());let error=plan(&b,&m).unwrap_err().to_string();assert!(error.contains("reader budget"));
  }
 
 }

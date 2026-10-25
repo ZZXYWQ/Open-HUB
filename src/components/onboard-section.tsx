@@ -213,7 +213,7 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
         </div>
       )}
 
-      {composing&&snapshot&&info&&<OnboardMacroComposer profile={composing} info={info} deviceKey={snapshot.device_key} deviceId={device.id} onClose={()=>setComposing(null)} onSave={writeMacro}/>}
+      {composing&&snapshot&&info&&<OnboardMacroComposer profile={composing} info={info} deviceKey={snapshot.device_key} deviceId={device.id} deviceName={device.name} onClose={()=>setComposing(null)} onSave={writeMacro}/>}
       <OnboardBindingsEditor device={device} deviceKey={snapshot?.device_key??''} profile={editingBindings} info={snapshot?.info??null} onClose={()=>setEditingBindings(null)} onSave={writeBindings}/>
       <OnboardSlotEditor profile={editing} deviceKey={snapshot?.device_key??''} supportedDpi={supportedDpi} onClose={() => setEditing(null)} onSave={writeSlot} />
 
