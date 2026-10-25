@@ -1,0 +1,17 @@
+{
+  "reference_commit": "779ea52c68cbf8d21234d9e0d81718225f680819",
+  "source": "test/devices/old_specs/test_sensei310.py",
+  "data_extracted_without_executing_source": true,
+  "cases": [
+    {
+      "name": "test_set_logo_color",
+      "hidapi_feature_hex": "005b0000e8030000000000000000000000000000000000000000000004ff0000ff00000000ff00540000ff54ff000057",
+      "source_fake_report_prefix": "03 00 = feature report marker, replaced by hidapi report ID 00"
+    },
+    {
+      "name": "test_set_wheel_color",
+      "hidapi_feature_hex": "005b000188130000000000000000000000000000000000000000000005112233112233004455663f77889940aabbcc4011223340",
+      "source_fake_report_prefix": "03 00 = feature report marker, replaced by hidapi report ID 00"
+    }
+  ]
+}

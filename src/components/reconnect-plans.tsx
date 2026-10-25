@@ -33,6 +33,7 @@ function settingLabel(s:MultiSetting,plan:MultiPlan){
  const rgb=(color:{r:number;g:number;b:number})=>`RGB(${color.r}, ${color.g}, ${color.b})`;
  let description:string;
  if(effect==='Off')description='关闭';
+ else if("Gradient"in effect)description=`自定义渐变 ${effect.Gradient.count} 色点 · ${effect.Gradient.period_ms} 毫秒`;
  else if('Static'in effect)description=`常亮 ${rgb(effect.Static.color)}`;
  else if('Breathing'in effect)description=`单色呼吸 ${rgb(effect.Breathing.color)}`;
  else if('ColorCycle'in effect)description='光谱循环';

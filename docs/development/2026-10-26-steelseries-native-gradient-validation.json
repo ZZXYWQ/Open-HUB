@@ -1,0 +1,28 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "bounded native 14-point gradient, exact percent distances/closure, model-isolated UI and durable profile roundtrip",
+  "target_products": [
+    "1038:1720",
+    "1038:1722"
+  ],
+  "new_fully_accepted_models": 0,
+  "default_application_tests": 491,
+  "explicit_UI_native_cross_tests": 23,
+  "vendor_workspace_unit_tests": 301,
+  "vendor_doc_tests": 1,
+  "headless_UI_suites": 37,
+  "headless_UI_status": "all-passed; final compact gradient layout also passed dedicated suite",
+  "independent_full_feature_vectors": 2,
+  "reference_source_executed": false,
+  "new_runtime_dependencies": false,
+  "frontend_JS_gzip_kB": 224.95,
+  "frontend_CSS_kB": 104.83,
+  "development_exe_memory_transports": 34,
+  "development_exe_sha256": "398b6affa4cd875369f107cbc36b041ad760eb21619bc74ff76cc67dcff306e1",
+  "max_native_stops": 14,
+  "readback": "write-only cached; no hardware confirmation",
+  "physical_models_tested": false,
+  "private_GG_gradient_import_completed": false,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}

@@ -191,6 +191,7 @@ pub struct Light {
 const FX_STATIC: &[EffectKind] = &[EffectKind::Off, EffectKind::Static];
 const FX_BREATHING: &[EffectKind] = &[EffectKind::Off, EffectKind::Static, EffectKind::Breathing];
 const FX_CYCLE: &[EffectKind] = &[
+    EffectKind::Gradient,
     EffectKind::Off,
     EffectKind::Static,
     EffectKind::Breathing,

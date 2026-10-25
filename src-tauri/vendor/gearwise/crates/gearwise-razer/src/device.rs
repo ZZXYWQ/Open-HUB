@@ -262,7 +262,7 @@ impl RazerDevice {
         }
         self.check_board(true)?;
         self.link
-            .exec(commands::effect(zone, &st.effect, self.model.wave))?;
+            .exec(commands::effect(zone, &st.effect, self.model.wave)?)?;
         self.check_board(true)?;
         self.link
             .exec(commands::set_brightness(zone, st.brightness))?;

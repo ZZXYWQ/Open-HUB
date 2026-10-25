@@ -38,7 +38,38 @@ impl HidTransport for ShortOutput{fn write(&mut self,data:&[u8])->gearwise_core:
 #[test]
 #[ignore="requires current exact SteelSeries browser profiles"]
 fn steelseries_browser_profiles_roundtrip_import_and_execute_exact_native_model(){
- let path=std::env::var_os("OPEN_HUB_STEELSERIES_UI_PROFILES").unwrap();let profiles:Vec<crate::profiles::Profile>=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();assert_eq!(profiles.len(),3);
- let file=std::env::temp_dir().join(format!("steelseries-ui-{}.json",crate::profiles::new_id()));std::fs::write(&file,serde_json::to_vec(&serde_json::json!({"format":"open-hub-profiles/1","profiles":profiles})).unwrap()).unwrap();let preview=crate::profile_transfer::preview("openhub",Some(file.display().to_string())).unwrap();let _=std::fs::remove_file(file);
- for p in preview.profiles{let plan=p.multi.as_ref().unwrap();assert!(crate::steelseries::supported(plan.vendor,plan.product));let count=if plan.product==0x1722{8}else{6};assert_eq!(plan.settings.iter().filter(|s|matches!(s,Setting::Button{..})).count(),count-1);assert_eq!(plan.settings.iter().filter(|s|matches!(s,Setting::Lighting{..})).count(),2);assert_eq!(plan.macros.len(),1);let r=simulate(plan).unwrap();assert_eq!(r["software_macros"].as_array().unwrap().len(),1);assert_eq!(r["hardware_tested"],false);}
+ let imported=roundtrip_browser_profiles("OPEN_HUB_STEELSERIES_UI_PROFILES");assert_eq!(imported.len(),3);
+
+ for p in imported{let plan=p.multi.as_ref().unwrap();assert!(crate::steelseries::supported(plan.vendor,plan.product));let count=if plan.product==0x1722{8}else{6};assert_eq!(plan.settings.iter().filter(|s|matches!(s,Setting::Button{..})).count(),count-1);assert_eq!(plan.settings.iter().filter(|s|matches!(s,Setting::Lighting{..})).count(),2);assert_eq!(plan.macros.len(),1);let r=simulate(plan).unwrap();assert_eq!(r["software_macros"].as_array().unwrap().len(),1);assert_eq!(r["hardware_tested"],false);}
+}
+
+fn gradient(colors:&[(u8,[u8;3])],period_ms:u16)->gearwise_core::model::LightingEffect{
+ let mut stops=[gearwise_core::model::ColorStop::EMPTY;14];for(i,(position,c))in colors.iter().enumerate(){stops[i]=gearwise_core::model::ColorStop{position:*position,color:Rgb{r:c[0],g:c[1],b:c[2]}};}LightingEffect::Gradient{stops,count:colors.len()as u8,period_ms}
+}
+#[test]fn steelseries_gradient_full_feature_buffers_match_inert_independent_reference_vectors(){
+ let vectors:serde_json::Value=serde_json::from_str(include_str!("../../docs/development/steelseries-independent-gradient-vectors.json")).unwrap();
+ for pid in [0x1720,0x1722]{for(zone,colors,period)in [(0,vec![(0,[255,0,0]),(33,[0,255,0]),(66,[0,0,255])],1000),(1,vec![(0,[17,34,51]),(25,[68,85,102]),(50,[119,136,153]),(75,[170,187,204])],5000)]{let(mut d,log)=opened(pid);let setting=Setting::Lighting{zone,state:ZoneState{effect:gradient(&colors,period),brightness:100}};crate::steelseries::validate_setting(pid,&setting).unwrap();d.apply(&setting).unwrap();let hex=vectors["cases"][usize::from(zone)]["hidapi_feature_hex"].as_str().unwrap();let expected=(0..hex.len()).step_by(2).map(|i|u8::from_str_radix(&hex[i..i+2],16).unwrap()).collect::<Vec<_>>();assert_eq!(log.lock().unwrap().as_slice(),&[MockRecord::SetFeature(expected)]);assert_eq!(d.read_state().unwrap().lighting[&zone].effect,if let Setting::Lighting{state,..}=setting{state.effect}else{unreachable!()});}}
+}
+#[test]fn steelseries_gradient_orders_bounds_closure_and_model_isolation_are_validated_before_any_send(){
+ let base=gradient(&[(0,[100,150,200]),(50,[1,2,3]),(100,[10,20,30])],1777);
+ for case in 0..6{let mut effect=base;if let LightingEffect::Gradient{ref mut stops,ref mut count,ref mut period_ms}=effect{match case{0=>*count=0,1=>*count=15,2=>*period_ms=0,3=>stops[0].position=1,4=>stops[1].position=101,_=>{stops[1].position=75;stops[2].position=50;}}}let(mut d,log)=opened(0x1722);assert!(d.apply(&Setting::Lighting{zone:0,state:ZoneState{effect,brightness:100}}).is_err());assert!(log.lock().unwrap().is_empty());}
+ let s=Setting::Lighting{zone:0,state:ZoneState{effect:base,brightness:50}};for(v,p)in[(0x1532,0x0084),(0x1532,0x00aa),(0x1b1c,0x1b2e),(0x373b,0x1115),(0x1038,0x1710)]{let plan=Plan{vendor:v,product:p,settings:vec![s.clone()],macros:vec![],source:None};assert!(validate(&plan).is_err());}
+ let(mut d,log)=opened(0x1722);d.apply(&s).unwrap();let ops=log.lock().unwrap();let MockRecord::SetFeature(bytes)=&ops[0]else{panic!()};assert_eq!(&bytes[29..32],&[50,75,100]);assert_eq!(bytes[28],3);
+}
+#[test]fn steelseries_fourteen_point_gradient_preserves_exact_active_count_and_profile_roundtrip(){
+ let colors=(0..14u8).map(|i|(i*7,[i,255-i,i*5])).collect::<Vec<_>>();let s=Setting::Lighting{zone:1,state:ZoneState{effect:gradient(&colors,65535),brightness:100}};let(mut d,log)=opened(0x1722);d.apply(&s).unwrap();let ops=log.lock().unwrap();let MockRecord::SetFeature(bytes)=&ops[0]else{panic!()};assert_eq!(bytes.len(),88);assert_eq!(bytes[28],14);assert_eq!(&bytes[4..6],&[255,255]);
+ let encoded=serde_json::to_vec(&s).unwrap();let decoded:Setting=serde_json::from_slice(&encoded).unwrap();assert_eq!(s,decoded);let mut malformed=serde_json::to_value(&s).unwrap();malformed["Lighting"]["state"]["effect"]["Gradient"]["stops"].as_array_mut().unwrap().pop();assert!(serde_json::from_value::<Setting>(malformed).is_err());
+}
+
+#[test]
+#[ignore="requires current native gradient browser profiles"]
+fn steelseries_browser_native_gradients_roundtrip_and_compile_into_exact_selected_zone(){
+ let profiles=roundtrip_browser_profiles("OPEN_HUB_STEELSERIES_GRADIENT_UI_PROFILES");assert_eq!(profiles.len(),2);for p in profiles{crate::profile_transfer::validate(&p).unwrap();let encoded=serde_json::to_vec(&p).unwrap();let restored:crate::profiles::Profile=serde_json::from_slice(&encoded).unwrap();let plan=restored.multi.unwrap();assert!(matches!(plan.product,0x1720|0x1722));let setting=plan.settings.iter().find(|s|matches!(s,Setting::Lighting{zone:0,..})).unwrap();let Setting::Lighting{state,..}=setting else{unreachable!()};let LightingEffect::Gradient{stops,count,period_ms}=state.effect else{panic!("missing native gradient")};assert_eq!((count,period_ms),(14,4321));assert_eq!(stops[0].color,Rgb{r:18,g:52,b:86});let(mut d,log)=opened(plan.product);d.apply(setting).unwrap();let ops=log.lock().unwrap();let MockRecord::SetFeature(bytes)=&ops[0]else{panic!()};assert_eq!(&bytes[1..4],&[0x5b,0,0]);assert_eq!(bytes[28],14);assert_eq!(&bytes[4..6],&4321u16.to_le_bytes());assert_eq!(&bytes[29..32],&[18,52,86]);assert_eq!(simulate(&plan).unwrap()["hardware_tested"],false);}
+}
+
+// Uses the same id assignment, production profile store and import merger as
+// a real save/export/import, including a separate reloaded store. No AppData.
+fn roundtrip_browser_profiles(env:&str)->Vec<crate::profiles::Profile>{
+ let path=std::env::var_os(env).unwrap();let profiles:Vec<crate::profiles::Profile>=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();let mut store=crate::profiles::ProfileStore::default();for mut p in profiles{crate::profile_transfer::validate(&p).unwrap();if p.id.is_empty(){p.id=crate::profiles::new_id();}store.upsert(p);}
+ let dir=std::env::temp_dir().join(format!("open-hub-steel-store-{}",crate::profiles::new_id()));std::fs::create_dir(&dir).unwrap();let state=dir.join("profiles.json");store.save(&state).unwrap();let loaded=crate::profiles::ProfileStore::load(&state);let profiles=loaded.profiles.into_iter().filter(|p|p.id!=crate::profiles::DESKTOP_ID).collect::<Vec<_>>();let pack=dir.join("export.json");std::fs::write(&pack,serde_json::to_vec(&serde_json::json!({"format":"open-hub-profiles/1","profiles":profiles})).unwrap()).unwrap();let preview=crate::profile_transfer::preview("openhub",Some(pack.display().to_string())).unwrap();let mut dest=crate::profiles::ProfileStore::default();crate::profile_transfer::merge(&mut dest,preview.profiles).unwrap();dest.save(&state).unwrap();let imported=crate::profiles::ProfileStore::load(&state).profiles.into_iter().filter(|p|p.id!=crate::profiles::DESKTOP_ID).collect();std::fs::remove_file(pack).unwrap();std::fs::remove_file(state).unwrap();std::fs::remove_dir(dir).unwrap();imported
 }

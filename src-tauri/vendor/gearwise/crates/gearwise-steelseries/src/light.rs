@@ -33,6 +33,10 @@ pub fn plan(light: &Light, zone: u8, want: &ZoneState) -> Result<(ZoneState, Vec
         return Err(Error::Unsupported("lighting effect"));
     }
     if matches!(light.proto,LightProto::Cycle(_))&&want.effect.period_ms()==Some(0){return Err(Error::invalid("native colour-loop period must be nonzero"));}
+    if let LightingEffect::Gradient{stops,count,..}=want.effect{
+        let count=usize::from(count);
+        if count==0||count>14||stops[0].position!=0||stops[..count].iter().any(|s|s.position>100)||stops[..count].windows(2).any(|s|s[0].position>s[1].position){return Err(Error::invalid("native gradient needs 1–14 ordered percent colour stops starting at zero"));}
+    }
     let mut applied = *want;
 
     let packets = match light.proto {
@@ -121,6 +125,12 @@ fn firmware_effect(
 fn cycle(layout: &Cycle, zone: &Zone, want: &ZoneState) -> (LightingEffect, Packet) {
     let scale = |c: Rgb| c.scaled(want.brightness);
     let (stops, once, effect): (Vec<(Rgb, u8)>, bool, LightingEffect) = match want.effect {
+        LightingEffect::Gradient{stops,count,..}=>{
+            let mut encoded=Vec::new();let mut previous=0u8;
+            for point in &stops[..usize::from(count)]{let pos=(u16::from(point.position)*255/100)as u8;encoded.push((scale(point.color),pos-previous));previous=pos;}
+            if count<14&&previous<255{encoded.push((scale(stops[0].color),255-previous));}
+            (encoded,false,want.effect)
+        },
         LightingEffect::Static { color } => (vec![(scale(color), 0)], true, want.effect),
         LightingEffect::Breathing { color, period_ms } => (
             vec![(Rgb::BLACK, 0), (scale(color), 127), (Rgb::BLACK, 128)],

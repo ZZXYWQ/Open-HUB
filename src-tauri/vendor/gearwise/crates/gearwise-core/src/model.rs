@@ -212,6 +212,7 @@ impl DpiState {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum EffectKind {
+    Gradient,
     Off,
     Static,
     Breathing,
@@ -221,7 +222,8 @@ pub enum EffectKind {
 }
 
 impl EffectKind {
-    pub const ALL: [EffectKind; 6] = [
+    pub const ALL: [EffectKind; 7] = [
+        EffectKind::Gradient,
         EffectKind::Off,
         EffectKind::Static,
         EffectKind::Breathing,
@@ -232,6 +234,7 @@ impl EffectKind {
 
     pub fn name(self) -> &'static str {
         match self {
+            EffectKind::Gradient => "Custom gradient",
             EffectKind::Off => "Off",
             EffectKind::Static => "Static",
             EffectKind::Breathing => "Breathing",
@@ -248,8 +251,17 @@ pub enum WaveDirection {
     RightToLeft,
 }
 
+/// One native colour-loop control point. Position is a percent, not a wire
+/// byte; codecs perform the documented floor(position * 255 / 100).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ColorStop {pub color:Rgb,pub position:u8}
+impl ColorStop{pub const EMPTY:Self=Self{color:Rgb::BLACK,position:0};}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LightingEffect {
+    /// Fixed bound keeps this enum Copy and bounds serialised native palettes.
+    Gradient { stops:[ColorStop;14],count:u8,period_ms:u16 },
     Off,
     Static {
         color: Rgb,
@@ -275,6 +287,7 @@ pub enum LightingEffect {
 impl LightingEffect {
     pub fn kind(&self) -> EffectKind {
         match self {
+            LightingEffect::Gradient { .. } => EffectKind::Gradient,
             LightingEffect::Off => EffectKind::Off,
             LightingEffect::Static { .. } => EffectKind::Static,
             LightingEffect::Breathing { .. } => EffectKind::Breathing,
@@ -288,6 +301,7 @@ impl LightingEffect {
     /// the effect uses one.
     pub fn default_for(kind: EffectKind, color: Rgb) -> Self {
         match kind {
+            EffectKind::Gradient => {let mut stops=[ColorStop::EMPTY;14];stops[0]=ColorStop{color,position:0};stops[1]=ColorStop{color:Rgb::BLACK,position:50};stops[2]=ColorStop{color,position:100};LightingEffect::Gradient{stops,count:3,period_ms:1000}},
             EffectKind::Off => LightingEffect::Off,
             EffectKind::Static => LightingEffect::Static { color },
             EffectKind::Breathing => LightingEffect::Breathing {
@@ -308,6 +322,7 @@ impl LightingEffect {
 
     pub fn color(&self) -> Option<Rgb> {
         match *self {
+            LightingEffect::Gradient{stops,count,..} => (count>0).then_some(stops[0].color),
             LightingEffect::Static { color }
             | LightingEffect::Breathing { color, .. }
             | LightingEffect::Reactive { color, .. } => Some(color),
@@ -318,7 +333,8 @@ impl LightingEffect {
     /// Speed/period in milliseconds, for effects that animate.
     pub fn period_ms(&self) -> Option<u16> {
         match *self {
-            LightingEffect::Breathing { period_ms, .. }
+            LightingEffect::Gradient{period_ms,..}
+            | LightingEffect::Breathing { period_ms, .. }
             | LightingEffect::ColorCycle { period_ms }
             | LightingEffect::Wave { period_ms, .. } => Some(period_ms),
             LightingEffect::Reactive { duration_ms, .. } => Some(duration_ms),

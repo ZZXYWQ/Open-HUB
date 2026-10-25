@@ -21,3 +21,5 @@
 外观使用原版 Piper 小型 SVG：Sensei 310 专用图和 Rival/300 同外壳家族图，带固定来源和 SHA-256，无脚本、外部图片或新增运行库。二图合计约 50.7 kB 原始文件。
 
 协议来源为 [rivalcfg 固定提交](https://github.com/flozz/rivalcfg/tree/779ea52c68cbf8d21234d9e0d81718225f680819)：逐型号 profile、独立旧规格报文和 RGB gradient 文档；具体文件摘要见 STEELSERIES-NATIVE-SOURCES.json。按公开协议事实复用本项目已有 MIT 驱动，不运行参考工程，不分发其 Python 环境。原版 SVG 独立保留 Piper 的 GPL-2.0 源文件和许可，详见 PIPER-ARTWORK.md。
+
+后续开发增量已接入 Rival 310 / Sensei 310 的 14 点原生自定义渐变和独立周期编辑，详见 STEELSERIES-NATIVE-GRADIENT.md。私有 GG 对应效果转换及实物验收仍不因此完成。

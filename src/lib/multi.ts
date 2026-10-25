@@ -6,7 +6,9 @@ export interface TuningCaps {debounce_ms:number[];motion_sync:boolean;angle_snap
 export interface MultiDpi {stages:Array<{x:number;y:number}>;active:number}
 export type MultiAction='Default'|'Disabled'|{Mouse:'Left'|'Right'|'Middle'|'Back'|'Forward'|'WheelLeft'|'WheelRight'}|{Key:{usage:number;mods:number}}|{Dpi:'Cycle'|'Up'|'Down'|{Shift:number}}|{Macro:string}|{Media:number};
 export interface MultiColor {r:number;g:number;b:number}
-export type MultiEffect='Off'|{Static:{color:MultiColor}}|{Breathing:{color:MultiColor;period_ms:number}}|{ColorCycle:{period_ms:number}}|{Wave:{period_ms:number;direction:'LeftToRight'|'RightToLeft'}}|{Reactive:{color:MultiColor;duration_ms:number}};
+export interface MultiColorStop{color:MultiColor;position:number}
+export interface MultiGradient{stops:MultiColorStop[];count:number;period_ms:number}
+export type MultiEffect={Gradient:MultiGradient}|'Off'|{Static:{color:MultiColor}}|{Breathing:{color:MultiColor;period_ms:number}}|{ColorCycle:{period_ms:number}}|{Wave:{period_ms:number;direction:'LeftToRight'|'RightToLeft'}}|{Reactive:{color:MultiColor;duration_ms:number}};
 export interface MultiZoneState {effect:MultiEffect;brightness:number}
 export type MultiSetting={Dpi:MultiDpi}|{ReportRate:number}|{Button:{id:number;action:MultiAction}}|{Lighting:{zone:number;state:MultiZoneState}}|{Tuning:MouseTuning}|{LiftOff:number}|{AngleSnapping:boolean}|{VendorProfile:{schema:string;data:X11Profile}};
 export interface MultiPlan {vendor:number;product:number;settings:MultiSetting[];macros?:MultiMacro[];source?:MultiSource|null}

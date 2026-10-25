@@ -4,6 +4,7 @@
 //! Byte layouts follow the openrazer kernel driver (`razerchromacommon.c`)
 //! and its captures; only the commands this crate uses are covered.
 
+use gearwise_core::{Error,Result};
 use gearwise_core::model::{Battery, DpiStage, DpiState, LightingEffect, Rgb, WaveDirection};
 
 use crate::report::{MAX_ARGS, Report};
@@ -288,9 +289,10 @@ fn wave_speed(period_ms: u16) -> u8 {
 ///
 /// Arguments: storage, LED, effect id, then effect parameters. Effect ids:
 /// 0 off, 1 static, 2 breathing, 3 spectrum, 4 wave, 5 reactive.
-pub fn effect(led: u8, fx: &LightingEffect, wave: WaveCodes) -> Report {
+pub fn effect(led: u8, fx: &LightingEffect, wave: WaveCodes) -> Result<Report> {
     let s = VARSTORE;
-    match *fx {
+    Ok(match *fx {
+        LightingEffect::Gradient{..}=>return Err(Error::Unsupported("native custom gradient is not implemented for this Razer model")),
         LightingEffect::Off => Report::new(0x0f, 0x02, 0x06, &[s, led, 0x00]),
         LightingEffect::Static { color: c } => {
             Report::new(0x0f, 0x02, 0x09, &[s, led, 0x01, 0, 0, 1, c.r, c.g, c.b])
@@ -334,7 +336,7 @@ pub fn effect(led: u8, fx: &LightingEffect, wave: WaveCodes) -> Report {
                 c.b,
             ],
         ),
-    }
+    })
 }
 
 /// Class 0x0f, id 0x03: upload one row of the custom frame.
@@ -474,7 +476,7 @@ mod tests {
         let fx = LightingEffect::Static {
             color: Rgb::new(255, 0, 0),
         };
-        let got = req(effect(led::BACKLIGHT, &fx, WaveCodes::STANDARD), 0x3f);
+        let got = req(effect(led::BACKLIGHT, &fx, WaveCodes::STANDARD).unwrap(), 0x3f);
         let want = wire(
             &[
                 0, 0, 0x3f, 0, 0, 0, 0x09, 0x0f, 0x02, 0x01, 0x05, 0x01, 0, 0, 0x01, 0xff, 0, 0,
@@ -492,7 +494,7 @@ mod tests {
             period_ms: 3000,
             direction: WaveDirection::LeftToRight,
         };
-        let got = req(effect(led::BACKLIGHT, &fx, WaveCodes::STANDARD), 0x3f);
+        let got = req(effect(led::BACKLIGHT, &fx, WaveCodes::STANDARD).unwrap(), 0x3f);
         assert_eq!(
             got,
             wire(
@@ -531,7 +533,7 @@ mod tests {
     fn other_effect_encodings() {
         let c = Rgb::new(1, 2, 3);
         let w = WaveCodes::ZERO_BASED;
-        let a = |fx: LightingEffect| effect(led::LOGO, &fx, w);
+        let a = |fx: LightingEffect| effect(led::LOGO, &fx, w).unwrap();
         assert_eq!(
             (
                 a(LightingEffect::Off).data_size,
