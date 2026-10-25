@@ -10,7 +10,7 @@ export function deviceVisual(vendor:number|undefined,product:number|string|undef
 // OpenRGB exposes display names, not the native USB configuration identity.
 // This is presentation only: it never chooses or routes a control target.
 export function rgbArtwork(device:{name:string;vendor:string}){
- const vendors:Record<string,number>={hyperx:0x03f0,pulsar:0x3554,logitech:0x046d,razer:0x1532,corsair:0x1b1c,steelseries:0x1038,glorious:0x3794,'g-wolves':0x258a,dreammachines:0x258a,genesis:0x258a,machenike:0x258a,'mad dog':0x258a,'t-dagger':0x258a,marvo:0x258a};
+ const vendors:Record<string,number>={asus:0x0b05,roccat:0x1e7d,gskill:0x28da,etekcity:0x1ea7,marsgaming:0x04d9,hyperx:0x03f0,pulsar:0x3554,logitech:0x046d,razer:0x1532,corsair:0x1b1c,steelseries:0x1038,glorious:0x3794,'g-wolves':0x258a,dreammachines:0x258a,genesis:0x258a,machenike:0x258a,'mad dog':0x258a,'t-dagger':0x258a,marvo:0x258a};
  const vendorId=vendors[device.vendor.trim().toLowerCase()];
  if(vendorId==null)return undefined;
  for(const name of [device.name,device.vendor+' '+device.name]){const visual=deviceVisual(vendorId,undefined,name);if(visual)return{vendorId,name};}

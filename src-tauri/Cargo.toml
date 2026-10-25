@@ -1,6 +1,6 @@
 [package]
 name = "open-hub"
-version = "0.3.3"
+version = "0.3.4"
 description = "Configure Logitech HID++ 2.0 mice (DPI, report rate, profiles)"
 authors = ["Abidur Rahman"]
 license = "GPL-3.0-or-later"

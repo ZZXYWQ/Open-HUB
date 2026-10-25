@@ -680,5 +680,90 @@
         "src": "/devices/hyperx-haste.svg"
       }
     ]
+  },
+  {
+    "id": "asus-1847",
+    "label": "ASUS ROG Strix Impact",
+    "vendor": 2821,
+    "products": [
+      6215
+    ],
+    "names": [
+      "ASUS ROG Strix Impact"
+    ],
+    "images": [
+      {
+        "label": "结构示意",
+        "src": "/devices/asus-strix-impact.svg"
+      }
+    ]
+  },
+  {
+    "id": "roccat-2dc2",
+    "label": "Roccat Kone Pure",
+    "vendor": 7805,
+    "products": [
+      11714
+    ],
+    "names": [
+      "Roccat Kone Pure"
+    ],
+    "images": [
+      {
+        "label": "开源型号图",
+        "src": "/devices/piper/roccat-kone-pure.svg"
+      }
+    ]
+  },
+  {
+    "id": "gskill-3101",
+    "label": "G.Skill MX-780",
+    "vendor": 10458,
+    "products": [
+      12545
+    ],
+    "names": [
+      "G.Skill MX-780"
+    ],
+    "images": [
+      {
+        "label": "结构示意",
+        "src": "/devices/gskill-mx780.svg"
+      }
+    ]
+  },
+  {
+    "id": "etekcity-4011",
+    "label": "Etekcity Scroll Alpha",
+    "vendor": 7847,
+    "products": [
+      16401
+    ],
+    "names": [
+      "Etekcity Scroll Alpha"
+    ],
+    "images": [
+      {
+        "label": "结构示意",
+        "src": "/devices/etekcity-alpha.svg"
+      }
+    ]
+  },
+  {
+    "id": "marsgaming-fa58",
+    "label": "Mars Gaming MM4",
+    "vendor": 1241,
+    "products": [
+      64088
+    ],
+    "names": [
+      "Mars Gaming MM4"
+    ],
+    "images": [
+      {
+        "label": "开源型号图",
+        "src": "/devices/piper/marsgaming-mm4.svg"
+      }
+    ]
   }
 ]

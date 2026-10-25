@@ -6,10 +6,10 @@
 
 **基于 [abidr/open-ghub（Open GHub）](https://github.com/abidr/open-ghub) 修改的多品牌鼠标控制实验项目。**
 
-**[⬇ 下载 Windows x64 EXE 安装包 · 0.3.3 实验版（约 37 MiB）](https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.3-experimental.1/Open-HUB-0.3.3-x64-setup.exe)**
+**[⬇ 下载 Windows x64 EXE 安装包 · 0.3.4 实验版（约 37 MiB）](https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.4-experimental.1/Open-HUB-0.3.4-x64-setup.exe)**
 
-[版本说明与全部附件](https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.3-experimental.1) ·
-[对应源码 ZIP](https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.3-experimental.1/Open-HUB-0.3.3-source.zip) ·
+[版本说明与全部附件](https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.4-experimental.1) ·
+[对应源码 ZIP](https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.4-experimental.1/Open-HUB-0.3.4-source.zip) ·
 [完整适配范围](MOUSE-BRAND-SUPPORT.md) · [验证记录](RELEASE-VALIDATION.md)
 
 </div>
@@ -27,7 +27,7 @@
 
 ## 哪些设备适配到什么程度
 
-**当前涉及 18 个品牌的部分型号，不是全品牌兼容。** 上游原有测试不计作本分支新增实机验证。
+**当前涉及 23 个品牌的部分型号，不是全品牌兼容。** 上游原有测试不计作本分支新增实机验证。
 
 |品牌|明确型号 / 范围|已实现的主要范围|本分支验证|
 |---|---|---|---|
@@ -38,6 +38,11 @@
 |赛睿 SteelSeries|Rival 310，1038:1720|两组 CPI、回报率、支持的按键/软件宏、有限 GG 数据库转换；部分状态来自写入缓存|生产驱动 + 模拟，未实机验证|
 |HyperX|Pulsefire Haste / Haste Wireless，03F0:048E / 028E|DPI、回报率、已知按键、单次键盘板载宏、常亮/关闭灯光和板载读取；原厂宏/灯效不可读回|生产驱动 + 模拟与公开抓包核对，未实机验证|
 |Pulsar|X2 V2 Mini，3554:F507 / F508|四档 DPI、回报率、常亮/关闭指示灯、读取导入；按键宏暂不写入|生产驱动 + 模拟，未实机验证|
+|华硕 / ASUS|ROG Strix Impact 0B05:1847|固定两档 DPI、回报率、实际四个按键、单键映射和四种 Logo 灯效；任意宏未启用|生产驱动 + 模拟，未实机验证|
+|Roccat|Kone Pure 1E7D:2DC2|五档 XY DPI、回报率、已知按键、单次键盘板载宏；灯效暂未启用|生产驱动 + 模拟，未实机验证|
+|芝奇 / G.Skill|MX-780 28DA:3101|五档 XY DPI、500/1000 Hz、按键、快捷键和单次键盘板载宏；保留原灯效字段|生产驱动 + 模拟，未实机验证|
+|Etekcity|Scroll Alpha 1EA7:4011|六档 XY DPI、回报率、按键和最多 50 事件的单次键盘宏；间隔由固件控制，灯效暂未启用|生产驱动 + 模拟，未实机验证|
+|Mars Gaming|MM4 04D9:FA58|五档 XY DPI、回报率、按键/快捷键、关闭/常亮/呼吸；任意宏未启用|生产驱动 + 模拟，未实机验证|
 |ATK|A9 Plus NK：373B:1115 / 老 NearLink 10C9；X1 Pro Max USB：373B:1017|八档 XY DPI、对应回报率、基础按键、键盘点按、板载宏、只读板载导入；X1 指示灯关闭/常亮|生产驱动 + 模拟，**没有 ATK 实机**|
 |蜻蜓 VXE|R1、R1 Pro、MAD R、MAD R+ 的精确 USB/CID/MID|DPI、回报率、按键、键盘点按、板载宏、读取导入和型号外观；R1 系列 DPI 指示灯|生产驱动 + 模拟，未实机验证|
 |VGN|蜻蜓 F1 Pro / F1 Pro Max 的精确 USB/CID/MID|上述 COMPX 功能及当前 DPI 指示灯；两品牌分别列出|生产驱动 + 模拟，未实机验证|
@@ -58,32 +63,34 @@ SinoWealth 范围：仅表中型号/固件的 DPI、回报率、按键、程序�
 
 ## 配置导入与灯光边界
 
-导入菜单按品牌列出，先预览再保存，不自动应用鼠标。G HUB 仅导入已支持字段；M HUB 仅导入本地三组板载名称与引用，不迁移云端或未写入鼠标的完整方案。Synapse / iCUE / GG 只转换实现过的格式、型号和动作，不保证任意官方文件可用。HyperX、Pulsar、ATK、VXE、VGN 和上述 SinoWealth 型号通过设备板载读取导入，**不是官方软件文件解析器**。
+导入菜单按品牌列出，先预览再保存，不自动应用鼠标。G HUB 仅导入已支持字段；M HUB 仅导入本地三组板载名称与引用，不迁移云端或未写入鼠标的完整方案。Synapse / iCUE / GG 只转换实现过的格式、型号和动作，不保证任意官方文件可用。ASUS、Roccat、G.Skill、Etekcity、Mars Gaming、HyperX、Pulsar、ATK、VXE、VGN 和上述 SinoWealth 型号通过设备板载读取导入，**不是官方软件文件解析器**。
 
 灯光界面按实际能力识别品牌和鼠标，原厂效果按型号提供。电脑 RGB 同步使用按需启动的 OpenRGB 1.1，只有匹配设备、Direct 模式和灯珠均满足才允许同步。RGB 兼容不代表 DPI、按键、宏兼容，不自动安装内核驱动。音乐使用系统播放电平，屏幕取色读取主显示器少量像素，均在本机处理。
 
 ## 外观
 
-设备中心、原生设置、离线方案编辑和已识别的鼠标灯光界面按型号显示产品图或对应轮廓。28 张 WebP + 19 张 SVG 共约 686 KiB，未知型号不套用其他鼠标图片；配色选择仅影响展示。详见 [外观资源与来源](docs/DEVICE-ARTWORK.md)。
+设备中心、原生设置、离线方案编辑和已识别的鼠标灯光界面按型号显示产品图或对应轮廓。28 张 WebP + 24 张 SVG 共约 759 KiB，未知型号不套用其他鼠标图片；配色选择仅影响展示。详见 [外观资源与来源](docs/DEVICE-ARTWORK.md)。
 
 齿轮 → **外观与设置**：4 组预设、主题/背景/面板颜色、透明或半透明、圆角和小型皮肤导入/导出。皮肤是最多 8 KiB 的严格 JSON，不加载任意脚本、图片包或 CSS。新图标为抽象 Z 字轨迹；**图标六色切换尚未实现**。见 [外观说明](APPEARANCE.md)。
 
 ## 测试与实验性质
 
-本次 0.3.3 的检查：
+当前覆盖 **23 个品牌的限定型号**；本批新增五款有线鼠标，具体功能边界见 [五品牌说明](FIVE-BRAND-ADAPTERS.md)。
 
-- **276 项原生测试通过**（273 项默认回归 + 3 项明确提供输入的交叉测试），新增硬件身份、读回差异、失败恢复、宏槽引用隔离与 UI 保存方案到原生驱动执行验证。
-- **19 组浏览器界面回归通过**，浏览器模拟 Tauri；生产驱动使用内存 HID。56 个目录身份的图片加载检查不等于新增 56 款硬件支持。
+本次 0.3.4 的检查：
+
+- **296 项原生测试通过**（292 项默认回归 + 4 项明确提供输入的交叉测试），新增硬件身份、读回差异、失败恢复、宏槽引用隔离与 UI 保存方案到原生驱动执行验证。
+- **20 组浏览器界面回归通过**，浏览器模拟 Tauri；生产驱动使用内存 HID。61 个目录身份的图片加载检查不等于新增 61 款硬件支持。
 - 公开 HyperX 原始抓包独立核对回报率、按键输出及宏布局，原始文件哈希和提取报文保留；仍不能替代 Windows 实机验证。
-- Windows 生产 EXE、安装包载荷和签名检查见 [验证摘要](docs/releases/0.3.3-validation.json)。本轮不自动替换当前电脑的 0.3.2；用户可在设置里检查、选择下载和安装。公开 EXE 已匿名完整下载核对哈希，生产程序验证签名、篡改拒绝和版本绑定均通过，见 [发布后验收](docs/releases/0.3.3-public-verification.json)。
+- Windows 生产 EXE、安装包载荷和签名检查见 [验证摘要](docs/releases/0.3.4-validation.json)。应用内更新继续由用户选择下载与安装；开发者本机按用户明确要求在每次发布后升级，个人配置备份记录不公开。公开 EXE 已匿名完整下载核对哈希，生产程序验证签名、篡改拒绝和版本绑定均通过，见 [发布后验收](docs/releases/0.3.4-public-verification.json)。
 - 历史共享驱动检查为 289 个单元测试 + 1 个文档测试；Synapse 解析器为 148 个单元测试 + 3 个集成测试，作为历史回归证据列出。
 
-**未覆盖：** 其他鼠标实机、全新 Windows / 新用户、缺失 WebView2 的联网补装、所有固件变体、桌面透明效果的完整人工视觉验证。测试通过不构成全品牌兼容或稳定性保证。见 [公开验证摘要](docs/releases/0.3.3-validation.json) 和 [测试边界](RELEASE-VALIDATION.md)。
+**未覆盖：** 其他鼠标实机、全新 Windows / 新用户、缺失 WebView2 的联网补装、所有固件变体、桌面透明效果的完整人工视觉验证。测试通过不构成全品牌兼容或稳定性保证。见 [公开验证摘要](docs/releases/0.3.4-validation.json) 和 [测试边界](RELEASE-VALIDATION.md)。
 
 ## 安装与校验
 
-1. 点击主页顶部 **EXE 下载**，或进入 [实验版 Release](https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.3-experimental.1)。
-2. 运行 `Open-HUB-0.3.3-x64-setup.exe`，按当前用户安装到 `%LOCALAPPDATA%\Programs\Open HUB`。
+1. 点击主页顶部 **EXE 下载**，或进入 [实验版 Release](https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.4-experimental.1)。
+2. 运行 `Open-HUB-0.3.4-x64-setup.exe`，按当前用户安装到 `%LOCALAPPDATA%\Programs\Open HUB`。
 3. 从开始菜单打开 Open HUB。测试设备前先退出对应官方控制中心，避免反复覆盖设置。
 
 Windows 10 / 11 x64，需要 Microsoft Edge WebView2。约 37 MiB 的常规包复用系统 WebView2，缺少时联网补装，不携带完整浏览器运行库。**本实验 EXE 未代码签名**，不继承上游 SignPath 认证；自 0.3.2 起提供本仓库 GitHub 更新：启动后自动查询，可关闭；下载和安装分两次由用户选择，安装前验证版本绑定签名。0.3.1 旧客户端首次需手动安装新版。见 [更新说明](docs/UPDATES.md)。
@@ -91,7 +98,7 @@ Windows 10 / 11 x64，需要 Microsoft Edge WebView2。约 37 MiB 的常规包�
 EXE 的 SHA-256：
 
 ```text
-aa4691515d74db45f6378acd58aa92b1162d43ca03137f146f128741e1f3751b
+1085bd7e9d3963207d0309acf2c8c47ad1768cbe51edc4871cc11b5dd9c7c4c5
 ```
 
 Release 同时提供对应源码 ZIP、`SHA256SUMS.txt` 与公开验证摘要。源码包含第三方许可与 OpenRGB 对应源码存档，不上传个人配置、设备备份、账号信息或厂商驱动研究文件。

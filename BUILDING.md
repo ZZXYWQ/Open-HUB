@@ -1,6 +1,6 @@
 # 构建与测试
 
-代码内部版本为 0.3.2，GitHub 预发布标签为 v0.3.2-experimental.1。
+代码内部版本为 0.3.4，GitHub 预发布标签为 v0.3.4-experimental.1。
 
 ## Windows 构建
 
@@ -40,7 +40,7 @@ cargo test --locked --manifest-path src-tauri/vendor/sidearm-synapse-parser/Carg
 
 浏览器脚本 scripts/test-*-ui.cjs 另需 Playwright 与可用浏览器开发依赖（Windows 测试运行器可复用已安装 Edge），不进入应用运行时。脚本模拟 Tauri，一些回归需要先由原生测试生成 DTO fixture。scripts/test-installer-migration.py 另需 NSIS，执行隔离样本，不等于整包安装测试。保留脚本中的可选外部 fixture / 研究输入路径，不将它们伪装成随包提供的输入。
 
-实际证据见 RELEASE-VALIDATION.md、docs/releases/0.3.2-validation.json。模拟测试不能代替实机。
+实际证据见 RELEASE-VALIDATION.md、docs/releases/0.3.4-validation.json。模拟测试不能代替实机。
 
 本次仍为本地手动构建和发布，未修改上游工作流。更新包使用本分支独立私钥的版本绑定签名，签名发布流程见 docs/UPDATES.md；Windows EXE 没有 Authenticode 证书。
 

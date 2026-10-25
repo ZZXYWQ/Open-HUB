@@ -46,7 +46,7 @@ pub struct View {
 pub struct Service(Arc<Mutex<Option<DeviceManager>>>,Arc<Mutex<std::collections::HashMap<String,Cleanup>>>,Arc<AtomicBool>,Arc<Mutex<std::collections::HashMap<String,session_plan::Session>>>);
 #[derive(Clone)]struct Cleanup{source:crate::host_macros::Source,settings:Vec<Setting>,expected:std::collections::HashMap<u16,ButtonAction>,software_input:bool,cancelled:Arc<AtomicBool>,shift:Arc<Mutex<Option<gearwise_core::model::DpiState>>>,journal:Option<Arc<crate::macro_recovery::Journal>>,serial:Option<String>}
 pub fn supported(v: u16, p: u16) -> bool {
-    crate::atk::supported(v,p) || crate::hyperx::supported(v,p) || matches!(
+    crate::legacy::supported(v,p) || crate::atk::supported(v,p) || crate::hyperx::supported(v,p) || matches!(
         (v, p),
         (0x1532, 0x0084) | (0x1532, 0x00b4) | (0x1532, 0x007a | 0x007b | 0x00a5 | 0x00a6 | 0x00c0 | 0x00c1) | (0x1b1c, 0x1b2e) | (0x1038, 0x1720)
     )
@@ -79,7 +79,7 @@ impl Service {
             .lock()
             .map_err(|_| "Three-brand manager lock poisoned")?;
         if guard.is_none() {
-            let backend = HidapiBackend::with_filter(VendorFilter::only([0x1532, 0x1b1c, 0x1038, 0x373b, 0x3554, 0x03f0]))
+            let backend = HidapiBackend::with_filter(VendorFilter::only([0x1532, 0x1b1c, 0x1038, 0x373b, 0x3554, 0x03f0, 0x0b05, 0x1e7d, 0x28da, 0x1ea7, 0x04d9]))
                 .map_err(|e| e.to_string())?;
             *guard = Some(DeviceManager::new(
                 Box::new(ExactBackend(backend)),
@@ -87,6 +87,7 @@ impl Service {
                     Box::new(crate::naga::NagaDriver),
                     Box::new(crate::atk::AtkDriver),
                     Box::new(crate::hyperx::HasteDriver),
+                    Box::new(crate::legacy::WiredDriver),
                     Box::new(gearwise_razer::RazerDriver::new()),
                     Box::new(gearwise_corsair::CorsairDriver),
                     Box::new(gearwise_steelseries::SteelSeriesDriver::default()),
@@ -319,6 +320,7 @@ pub fn validate(p: &Plan) -> Result<(), String> {
             return Err("同一项设置不能重复".into());
         }
         if crate::atk::model(p.vendor,p.product).is_some_and(|m|!m.native_macros){match s{Setting::Dpi(d)=>crate::atk::validate_dpi(d,p.product).map_err(|e|e.to_string())?,Setting::ReportRate(r)if crate::atk::model(p.vendor,p.product).unwrap().rates.contains(r)=>{},Setting::Lighting{zone:0,state}if state.brightness==100&&matches!(state.effect,gearwise_core::model::LightingEffect::Off|gearwise_core::model::LightingEffect::Static{..})=>{},_=>return Err("Pulsar 当前仅接通 DPI、回报率和常亮/关闭指示灯；按键与宏暂不写入".into())}continue;}
+        if let Some(model)=crate::legacy::model(p.vendor,p.product){crate::legacy::validate_setting(model,s).map_err(|e|e.to_string())?;continue;}
         if crate::hyperx::supported(p.vendor,p.product){crate::hyperx::validate_setting(s).map_err(|e|e.to_string())?;continue;}
         match s {
             Setting::Dpi(d) => {
@@ -512,6 +514,7 @@ fn simulated(
     product: u16,
 ) -> Result<(Box<dyn gearwise_core::Device>, MockLog), String> {
     match (vendor, product) {
+        (v,p) if crate::legacy::supported(v,p)=>crate::legacy::simulated(v,p).map_err(|e|e.to_string()),
         (v,p) if crate::atk::supported(v,p)=>crate::atk::simulated(product).map_err(|e|e.to_string()),
         (v,p) if crate::hyperx::supported(v,p)=>crate::hyperx::simulated(product).map_err(|e|e.to_string()),
         (0x1532, 0x0084) => Ok(gearwise_razer::simulated_deathadder_v2()),
@@ -523,7 +526,7 @@ fn simulated(
     }
 }
 pub fn templates() -> Result<Vec<View>, String> {
-    crate::atk::models().iter().map(|m|(m.vendor,m.product)).chain([(0x03f0,0x048e),(0x03f0,0x028e),(0x1532, 0x0084), (0x1532, 0x00b4), (0x1b1c, 0x1b2e), (0x1038, 0x1720),(0x1532,0x007a),(0x1532,0x007b),(0x1532,0x00a5),(0x1532,0x00a6),(0x1532,0x00c0),(0x1532,0x00c1)].into_iter())
+    crate::legacy::models().iter().map(|m|(m.vendor,m.product)).chain(crate::atk::models().iter().map(|m|(m.vendor,m.product))).chain([(0x03f0,0x048e),(0x03f0,0x028e),(0x1532, 0x0084), (0x1532, 0x00b4), (0x1b1c, 0x1b2e), (0x1038, 0x1720),(0x1532,0x007a),(0x1532,0x007b),(0x1532,0x00a5),(0x1532,0x00a6),(0x1532,0x00c0),(0x1532,0x00c1)].into_iter())
         .map(|(v, p)| {
             let (mut d, _) = simulated(v, p)?;
             let mut out = view(d.as_mut())?;
@@ -604,7 +607,7 @@ pub struct Compiled {
  pub input:crate::macro_runtime::InputMap, pub software_input:bool,
  pub dpi_actions:std::collections::BTreeMap<u16,DpiFunction>,
 }
-fn native_macros(v:u16,p:u16)->bool{crate::atk::model(v,p).is_some_and(|m|m.native_macros)||crate::hyperx::supported(v,p)}
+fn native_macros(v:u16,p:u16)->bool{crate::legacy::native_macros(v,p)||crate::atk::model(v,p).is_some_and(|m|m.native_macros)||crate::hyperx::supported(v,p)}
 pub fn compile(plan:&Plan)->Result<Compiled,String>{
  use gearwise_core::profile::{Macro,MacroMode,MacroStep};
  let corsair=(plan.vendor,plan.product)==(0x1b1c,0x1b2e);
@@ -612,7 +615,7 @@ pub fn compile(plan:&Plan)->Result<Compiled,String>{
  let mut native=Vec::new();let mut bindings=Vec::new();let mut keys=std::collections::BTreeMap::new();let mut buttons=Vec::new();let mut dpi_actions=std::collections::BTreeMap::new();
  let mut definitions=std::collections::HashMap::new();if plan.macros.len()>32{return Err("最多保存 32 个软件宏".into());}
  if crate::atk::model(plan.vendor,plan.product).is_some_and(|m|!m.native_macros)&&!plan.macros.is_empty(){return Err("Pulsar 板载宏协议尚未核对".into());}
- for m in &plan.macros{crate::host_macros::validate(m)?;if crate::hyperx::supported(plan.vendor,plan.product){crate::hyperx::validate_macro(m).map_err(|e|e.to_string())?;}if crate::atk::supported(plan.vendor,plan.product){crate::atk::validate_macro(m).map_err(|e|e.to_string())?;}if definitions.insert(m.id.as_str(),m).is_some(){return Err("宏标识重复".into());}}
+ for m in &plan.macros{crate::host_macros::validate(m)?;if crate::legacy::supported(plan.vendor,plan.product){crate::legacy::validate_macro(plan.vendor,plan.product,m).map_err(|e|e.to_string())?;}if crate::hyperx::supported(plan.vendor,plan.product){crate::hyperx::validate_macro(m).map_err(|e|e.to_string())?;}if crate::atk::supported(plan.vendor,plan.product){crate::atk::validate_macro(m).map_err(|e|e.to_string())?;}if definitions.insert(m.id.as_str(),m).is_some(){return Err("宏标识重复".into());}}
  if let Some(source)=&plan.source{if source.vendor!=plan.vendor||source.product!=plan.product{return Err("软件宏来源与方案品牌/型号不一致".into());}}
  for s in &plan.settings{
   if corsair {if let Setting::Button{id,action}=s{
@@ -628,6 +631,7 @@ pub fn compile(plan:&Plan)->Result<Compiled,String>{
    if let Some(steps)=steps{let action=Macro{id:format!("openhub-remap-{id}"),name:format!("按住按键 {id}"),mode:MacroMode::WhileHeld,steps};crate::host_macros::validate(&action)?;bindings.push(crate::host_macros::Binding{button:*id,action});buttons.push(*id);}
    native.push(s.clone());continue;
   }}
+  if let Some(model)=crate::legacy::model(plan.vendor,plan.product){crate::legacy::validate_setting(model,s).map_err(|e|e.to_string())?;if let Setting::Button{action:ButtonAction::Macro(id),..}=s{crate::legacy::validate_macro(plan.vendor,plan.product,definitions.get(id.as_str()).ok_or("板载宏内容缺失")?).map_err(|e|e.to_string())?;}native.push(s.clone());continue;}
   if crate::hyperx::supported(plan.vendor,plan.product){crate::hyperx::validate_setting(s).map_err(|e|e.to_string())?;if let Setting::Button{action:ButtonAction::Macro(id),..}=s{crate::hyperx::validate_macro(definitions.get(id.as_str()).ok_or("HyperX 板载宏定义缺失")?).map_err(|e|e.to_string())?;}native.push(s.clone());continue;}
   if crate::atk::supported(plan.vendor,plan.product) {if let Setting::Button{action:ButtonAction::Key{usage,mods},..}=s{crate::atk::validate_key(*usage,*mods).map_err(|e|e.to_string())?;}if let Setting::Button{action:ButtonAction::Macro(id),..}=s{let definition=definitions.get(id.as_str()).ok_or("ATK 板载宏定义缺失")?;crate::atk::validate_macro(definition).map_err(|e|e.to_string())?;}native.push(s.clone());continue;}
   if let Setting::Button{id,action:ButtonAction::Macro(macro_id)}=s{

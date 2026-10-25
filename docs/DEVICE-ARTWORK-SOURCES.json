@@ -203,5 +203,40 @@
     "bytes": 12558,
     "license": "GPL-3.0",
     "changes": "Removed separate button/LED annotation layers and fit viewBox to device; body paths unchanged. Original source retained in docs/upstream/HyperX-Pulsefire-Haste-original.svg"
+  },
+  {
+    "file": "/devices/asus-strix-impact.svg",
+    "source": "Open HUB original SVG structural illustration; not a manufacturer photograph",
+    "detail": "Simplified model-specific illustration, explicitly labelled 结构示意 in UI; no claim of photographic accuracy",
+    "bytes": 1223,
+    "sha256": "3642699f57862d45cff023c59999274c8ab8e8fb47b013df81f822d98dcaab89"
+  },
+  {
+    "file": "/devices/piper/roccat-kone-pure.svg",
+    "source": "https://raw.githubusercontent.com/libratbag/piper/5d3c8845b55643595ccb8029dfa5c7a2fb079e77/data/svgs/roccat-kone-pure.svg",
+    "detail": "Unmodified GPL-2.0 Piper SVG",
+    "bytes": 20686,
+    "sha256": "2ad972b56d62df0a26d3d05055646fbd15e608195cc9a57f3a71a7ea6956671e"
+  },
+  {
+    "file": "/devices/gskill-mx780.svg",
+    "source": "Open HUB original SVG structural illustration; not a manufacturer photograph",
+    "detail": "Simplified model-specific illustration, explicitly labelled 结构示意 in UI; no claim of photographic accuracy",
+    "bytes": 1490,
+    "sha256": "2ee10988cd2eec2460dd479f329fa03668fe7d0391cf11bf519d1b0cc51b4563"
+  },
+  {
+    "file": "/devices/etekcity-alpha.svg",
+    "source": "Open HUB original SVG structural illustration; not a manufacturer photograph",
+    "detail": "Simplified model-specific illustration, explicitly labelled 结构示意 in UI; no claim of photographic accuracy",
+    "bytes": 1579,
+    "sha256": "cf334b2041da8373a27b274cd95d1524800c58c46c142515b0f80e8fdacfabb9"
+  },
+  {
+    "file": "/devices/piper/marsgaming-mm4.svg",
+    "source": "https://raw.githubusercontent.com/libratbag/piper/5d3c8845b55643595ccb8029dfa5c7a2fb079e77/data/svgs/marsgaming-mm4.svg",
+    "detail": "Unmodified GPL-2.0 Piper SVG",
+    "bytes": 50362,
+    "sha256": "bb0e29a09ff44debfb0cd05d542ad2d2bfbaeec8119b24a422ded20b53a1ba65"
   }
 ]

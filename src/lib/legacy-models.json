@@ -1,0 +1,119 @@
+[
+  {
+    "vendor": 2821,
+    "product": 6215,
+    "brand": "asus",
+    "name": "ASUS ROG Strix Impact",
+    "min": 100,
+    "max": 5000,
+    "step": 100,
+    "stages": 2,
+    "xy": false,
+    "buttons": 4,
+    "rates": [
+      125,
+      250,
+      500,
+      1000
+    ],
+    "macros": false,
+    "lights": [
+      "Off",
+      "Static",
+      "Breathing",
+      "ColorCycle"
+    ],
+    "fixed_stages": true,
+    "active_readonly": true
+  },
+  {
+    "vendor": 7805,
+    "product": 11714,
+    "brand": "roccat",
+    "name": "Roccat Kone Pure",
+    "min": 200,
+    "max": 5000,
+    "step": 50,
+    "stages": 5,
+    "xy": true,
+    "buttons": 17,
+    "rates": [
+      125,
+      250,
+      500,
+      1000
+    ],
+    "macros": true,
+    "lights": [],
+    "fixed_stages": false,
+    "active_readonly": false
+  },
+  {
+    "vendor": 10458,
+    "product": 12545,
+    "brand": "gskill",
+    "name": "G.Skill MX-780",
+    "min": 100,
+    "max": 8200,
+    "step": 50,
+    "stages": 5,
+    "xy": true,
+    "buttons": 10,
+    "rates": [
+      500,
+      1000
+    ],
+    "macros": true,
+    "lights": [],
+    "fixed_stages": false,
+    "active_readonly": false
+  },
+  {
+    "vendor": 7847,
+    "product": 16401,
+    "brand": "etekcity",
+    "name": "Etekcity Scroll Alpha",
+    "min": 50,
+    "max": 8200,
+    "step": 50,
+    "stages": 6,
+    "xy": true,
+    "buttons": 10,
+    "rates": [
+      125,
+      250,
+      500,
+      1000
+    ],
+    "macros": true,
+    "lights": [],
+    "fixed_stages": false,
+    "active_readonly": false
+  },
+  {
+    "vendor": 1241,
+    "product": 64088,
+    "brand": "marsgaming",
+    "name": "Mars Gaming MM4",
+    "min": 50,
+    "max": 16400,
+    "step": 50,
+    "stages": 5,
+    "xy": true,
+    "buttons": 19,
+    "rates": [
+      125,
+      250,
+      500,
+      1000
+    ],
+    "macros": false,
+    "lights": [
+      "Off",
+      "Static",
+      "Breathing"
+    ],
+    "fixed_stages": false,
+    "active_readonly": false
+  }
+]

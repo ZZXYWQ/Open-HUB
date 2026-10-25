@@ -9,6 +9,7 @@ mod feature_transport;
 mod naga;
 mod atk;
 mod hyperx;
+mod legacy;
 mod appearance;
 mod host_macros;
 mod multibrand;

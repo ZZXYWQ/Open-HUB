@@ -20,3 +20,7 @@ Separate, unmodified SVG artwork from https://github.com/libratbag/piper at 5d3c
 - `/devices/piper/glorious-model-o.svg`: https://raw.githubusercontent.com/libratbag/piper/5d3c8845b55643595ccb8029dfa5c7a2fb079e77/data/svgs/glorious-model-o.svg
 - `/devices/piper/glorious-model-d.svg`: https://raw.githubusercontent.com/libratbag/piper/5d3c8845b55643595ccb8029dfa5c7a2fb079e77/data/svgs/glorious-model-d.svg
 - `/devices/piper/steelseries-rival310.svg`: https://raw.githubusercontent.com/libratbag/piper/5d3c8845b55643595ccb8029dfa5c7a2fb079e77/data/svgs/steelseries-rival310.svg
+
+- `/devices/piper/roccat-kone-pure.svg`: https://raw.githubusercontent.com/libratbag/piper/5d3c8845b55643595ccb8029dfa5c7a2fb079e77/data/svgs/roccat-kone-pure.svg
+
+- `/devices/piper/marsgaming-mm4.svg`: https://raw.githubusercontent.com/libratbag/piper/5d3c8845b55643595ccb8029dfa5c7a2fb079e77/data/svgs/marsgaming-mm4.svg

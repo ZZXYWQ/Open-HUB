@@ -21,8 +21,10 @@ ATK 协议按官方公开网页驱动和协议事实独立实现，来源与边�
 
 Windows EXE 尚未取得 Authenticode 代码签名。0.3.2 起从本仓库 GitHub 更新源检查版本，下载与安装都由用户选择；更新包使用独立密钥与版本绑定签名，上游 SignPath 声明不适用。
 
-型号产品图的来源、权利说明与哈希见 docs/DEVICE-ARTWORK.md 和 docs/DEVICE-ARTWORK-SOURCES.json。Piper 的 18 张未修改 SVG 按其原 GPL-2.0 单独保留许可与可编辑源文件，见 docs/PIPER-ARTWORK.md 和 Piper-SVG-COPYING.txt；没有重许可为应用代码许可，也没有包含 Piper/GTK 运行库。
+型号产品图的来源、权利说明与哈希见 docs/DEVICE-ARTWORK.md 和 docs/DEVICE-ARTWORK-SOURCES.json。Piper 的 20 张未修改 SVG 按其原 GPL-2.0 单独保留许可与可编辑源文件，见 docs/PIPER-ARTWORK.md 和 Piper-SVG-COPYING.txt；没有重许可为应用代码许可，也没有包含 Piper/GTK 运行库。
 
 HyperX Haste SVG 的 GPL-3.0 许可与可编辑源文件单独保留，协议作者及固定提交见 HYPERX-ADAPTER.md。公开 USB 抓包只提取报文与来源哈希，未包含用户私有输入记录。
 
 Haste SVG 仅去除独立标注引线层并收紧画布，主体路径未改；原始 SVG 另存 docs/upstream/HyperX-Pulsefire-Haste-original.svg，保留原作者与 GPL-3.0 许可。
+
+Five wired model adapters: libratbag MIT reference, fixed source and scope in [FIVE-BRAND-ADAPTERS.md](FIVE-BRAND-ADAPTERS.md), bundled copyright notices in Wired-Protocol-MIT.txt. Two additional unmodified Piper SVGs retain GPL-2.0; three original lightweight structural illustrations are labelled as illustrations.

@@ -1,0 +1,21 @@
+# Five wired brand adapters · 0.3.4 experimental
+
+These are five newly implemented brands, each restricted to one exact wired model. No corresponding physical mouse was available; production drivers run against memory HID and browser-created profiles. This does not establish whole-brand or Windows hardware compatibility.
+
+|Brand / exact USB ID|DPI and polling|Bindings and macros|Native lighting|
+|---|---|---|---|
+|ASUS ROG Strix Impact · 0B05:1847|Exactly two equal XY presets, 100–5000 in steps of 100; 125/250/500/1000 Hz; active preset is controlled by the physical DPI button|Three main clicks plus physical DPI key; no invented side buttons. Basic mouse actions, disable and supported single keyboard keys; arbitrary macros unavailable|Logo off/static/breathing/color cycle; four brightness units; breathing/cycle timing belongs to firmware|
+|Roccat Kone Pure · 1E7D:2DC2|Up to five XY stages, deliberately conservative 200–5000 range, step 50; 125/250/500/1000 Hz|Known basic actions and independent native single-play keyboard macros, up to 500 events. Extended/Easy-Shift slots are labelled as slots; unknown original actions are locked|Not enabled: public reference does not implement its LED report|
+|G.Skill MX-780 · 28DA:3101|Up to five XY stages, 100–8200 step 50; reviewed 500/1000 Hz subset|Known basic actions, native keyboard shortcuts and independent single-play keyboard macros; at most 500 events / 1786 encoded bytes|Not enabled: RGB fields are preserved opaquely, not treated as a complete lighting implementation|
+|Etekcity Scroll Alpha · 1EA7:4011|Up to six XY stages, 50–8200 step 50; 125/250/500/1000 Hz|Known basic actions; single-play keyboard macros, up to 50 events. Event timing remains firmware controlled; user delays are rejected instead of silently discarded|Not enabled: original lighting fields remain untouched|
+|Mars Gaming MM4 · 04D9:FA58|Up to five XY stages, 50–16400 step 50; 125/250/500/1000 Hz|Known mouse actions, DPI functions, disable and native keyboard shortcuts. Arbitrary onboard macros unavailable|Off/static/breathing; three brightness units; breathing 2–18 seconds in 2-second steps|
+
+All five have a named board-read import flow, read/preview/save, offline editing, simulation and model-specific controls. This reads the mouse, not Armoury Crate, Swarm, G.Skill, Etekcity or Mars private configuration files. Original macro bindings are retained and locked; only this process's own verified macros are exported. The left click is protected.
+
+The adapter selects only exact VID/PID USB vendor collections and validates response sizes, profile indices, settings and applicable checksums before modification. A configuration selection command is a volatile query selector; scans/reads never activate a profile, reset the device or persist settings. The active board group is pinned and checked again around snapshots/writes. A changed group requires reconnect/read. Whole-report devices use read/modify/write, preserving unknown fields, original RGB/name data and other buttons. A failed write/readback attempts restoration; an unreadable or changed profile refuses restoration and reports the failure.
+
+Native macro payloads are read back. Each macro belongs to the current profile and target button; current payload ownership is rechecked even if the user applies without first refreshing the UI. External changes remove write permission. No host keyboard injection is added for these brands. Only single playback is enabled; unsupported mouse/text/repeat steps fail validation.
+
+Protocol reference: [libratbag pinned source](https://github.com/libratbag/libratbag/tree/8235b5bb6032dea15901ab58a8218956f4494d08/src), MIT, including ASUS helpers, Roccat Kone Pure, G.Skill, Etekcity and the Mars Gaming module. Exact URLs and source SHA-256 values are in docs/FIVE-BRAND-SOURCES.json. Copyright and license notices are bundled as Wired-Protocol-MIT.txt. This is an independent Rust implementation with Windows hidapi report IDs, not a bundled vendor control center or Linux daemon.
+
+Model artwork: Roccat/MM4 use unmodified GPL-2.0 Piper SVG files; ASUS/G.Skill/Etekcity use separate small original structural illustrations labelled as such. They are not manufacturer photographs. No new runtime dependency was added. Original Logitech/MCHOSE/other driver selection remains separate.

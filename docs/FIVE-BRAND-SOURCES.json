@@ -1,0 +1,193 @@
+{
+  "repository": "https://github.com/libratbag/libratbag",
+  "commit": "8235b5bb6032dea15901ab58a8218956f4494d08",
+  "license": "MIT",
+  "files": [
+    {
+      "path": "src/driver-asus.c",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-asus.c",
+      "sha256": "4e19cfa2dd9dbdbf109485dfe1eb66334c759f2fe3efc50179aa167dbb073cbe",
+      "bytes": 21392
+    },
+    {
+      "path": "src/driver-roccat.c",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-roccat.c",
+      "sha256": "313538c68c1ad94ba633640bee888ddd01e3669b11ed8f4e8003bea9d00cd288",
+      "bytes": 22496
+    },
+    {
+      "path": "src/driver-roccat-kone-pure.c",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-roccat-kone-pure.c",
+      "sha256": "2776be163bd9cfc53e1304847ee17b5bb19cc1e204c3ce2563724a3fb00e2558",
+      "bytes": 22765
+    },
+    {
+      "path": "src/driver-gskill.c",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-gskill.c",
+      "sha256": "bd94db128e2a4194d5d905e493b78623a22300ab6534e314d5c8921c907ad59e",
+      "bytes": 40731
+    },
+    {
+      "path": "src/driver-etekcity.c",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-etekcity.c",
+      "sha256": "00d29dea4a92725185fb1980071b29c989938b18aafec29be40581f81a118a57",
+      "bytes": 20294
+    },
+    {
+      "path": "src/driver-sinowealth.c",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-sinowealth.c",
+      "sha256": "26af81ddfadc871ad8d497077d906ebf2e3189cc5f0be65324759d65a93d39f9",
+      "bytes": 70850
+    },
+    {
+      "path": "src/driver-sinowealth.h",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-sinowealth.h",
+      "sha256": "520c460f58e52c499a8b9dd53bcba68d397d7acdd46d28069884d2022d6281d6",
+      "bytes": 1519
+    },
+    {
+      "path": "COPYING",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/COPYING",
+      "sha256": "1cfb5486ef5b2d4d27ce63e1dd7f0166af7c3acc4ab6288b2497c0e85ce4a012",
+      "bytes": 1150
+    },
+    {
+      "path": "data/devices/asus-rog-gladius2-origin.device",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/data/devices/asus-rog-gladius2-origin.device",
+      "sha256": "81909fefb15315fd21c257de4c83c1a4e3e763b678439df73f55a606ddf5ef3f",
+      "bytes": 239
+    },
+    {
+      "path": "data/devices/asus-rog-strix-impact.device",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/data/devices/asus-rog-strix-impact.device",
+      "sha256": "69407ee9315364fac03667ab5ff788ab9a2190d02093f3105612f7c1c3faea69",
+      "bytes": 163
+    },
+    {
+      "path": "data/devices/etekcity-scroll-alpha.device",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/data/devices/etekcity-scroll-alpha.device",
+      "sha256": "5642d154a4b1bff202291e06a9b38c8f224c684b3ab072dc0359a6e0d4e16813",
+      "bytes": 95
+    },
+    {
+      "path": "data/devices/gskill-MX-780.device",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/data/devices/gskill-MX-780.device",
+      "sha256": "9f30ee1a80455bf6f297441c755e2e16f43e3d457c682cfac2bf39496a35bb93",
+      "bytes": 103
+    },
+    {
+      "path": "data/devices/marsgaming-mm4.device",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/data/devices/marsgaming-mm4.device",
+      "sha256": "e24074ebd0d76b94e4c675d596d354fe86b99f8f590637cc4f3b3982f9d65a43",
+      "bytes": 91
+    },
+    {
+      "path": "data/devices/roccat-kone-pure.device",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/data/devices/roccat-kone-pure.device",
+      "sha256": "412d4e850aeb8d4fa4cd624354ac389521147461b28ce94237014cbbe18c50a3",
+      "bytes": 126
+    },
+    {
+      "path": "src/driver-marsgaming/driver-marsgaming.c",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-marsgaming/driver-marsgaming.c",
+      "sha256": "7693ee5c0e55ceb24c4481a37dade113e0aeb80bb14989397a7f6bc146762796",
+      "bytes": 504
+    },
+    {
+      "path": "src/driver-marsgaming/marsgaming-buttons.c",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-marsgaming/marsgaming-buttons.c",
+      "sha256": "89a7ec628606a2fc61fe21bd35cdc5161e16f3d7d3e006a4bc9bf9fe4249dc41",
+      "bytes": 15224
+    },
+    {
+      "path": "src/driver-marsgaming/marsgaming-buttons.h",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-marsgaming/marsgaming-buttons.h",
+      "sha256": "527b569c8f912fdcca8f7534546b403aec4eea394517b0e07d2364e67ed43f7d",
+      "bytes": 2570
+    },
+    {
+      "path": "src/driver-marsgaming/marsgaming-command.c",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-marsgaming/marsgaming-command.c",
+      "sha256": "c57bf2460fd251dfb7463106cf36a9e9e748caf41ead90843c65c053070ee0ce",
+      "bytes": 3732
+    },
+    {
+      "path": "src/driver-marsgaming/marsgaming-command.h",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-marsgaming/marsgaming-command.h",
+      "sha256": "1be430e7aacebcd5334755df7f85fcc2456dbbc2ce51c4b5b53e9d3312c4ef35",
+      "bytes": 481
+    },
+    {
+      "path": "src/driver-marsgaming/marsgaming-commit.c",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-marsgaming/marsgaming-commit.c",
+      "sha256": "2988a7409616d62d58ada7bb2288c3356bcf847011cb66e37e033816fd5d1667",
+      "bytes": 3992
+    },
+    {
+      "path": "src/driver-marsgaming/marsgaming-commit.h",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-marsgaming/marsgaming-commit.h",
+      "sha256": "0bdf1b7b921287503847579c901076a5e706058069b25ef93b6c9bf09297533f",
+      "bytes": 185
+    },
+    {
+      "path": "src/driver-marsgaming/marsgaming-definitions.h",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-marsgaming/marsgaming-definitions.h",
+      "sha256": "4d2f0e05521d7389cd6a8bfeb6d8538f3d0cf53f783b841b097f7cb9278784dc",
+      "bytes": 285
+    },
+    {
+      "path": "src/driver-marsgaming/marsgaming-leds.c",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-marsgaming/marsgaming-leds.c",
+      "sha256": "4aefa70cc3ae69fd56e56da840cd3df7699687448c3d4f8e5f672017b74a1f3a",
+      "bytes": 241
+    },
+    {
+      "path": "src/driver-marsgaming/marsgaming-leds.h",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-marsgaming/marsgaming-leds.h",
+      "sha256": "dfe4311fa74be57afe00ac6da09e2bf6fa6e42d0be59e28a566afda51fad225a",
+      "bytes": 642
+    },
+    {
+      "path": "src/driver-marsgaming/marsgaming-probe.c",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-marsgaming/marsgaming-probe.c",
+      "sha256": "4fd5a072cb08ad2d24853bc2781ca7c7126e17d611d95c869bd76d2bb247815d",
+      "bytes": 5087
+    },
+    {
+      "path": "src/driver-marsgaming/marsgaming-probe.h",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-marsgaming/marsgaming-probe.h",
+      "sha256": "e7683f6656b8585c1f6f14f7411ae385c9e937be604bd6a22fbedd7588f2b658",
+      "bytes": 160
+    },
+    {
+      "path": "src/driver-marsgaming/marsgaming-protocol.h",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-marsgaming/marsgaming-protocol.h",
+      "sha256": "579a70c5db374f322304be0cbba1e22213e09f401a4ca2ab96e9e55660e76cb5",
+      "bytes": 2788
+    },
+    {
+      "path": "src/driver-marsgaming/marsgaming-query.c",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-marsgaming/marsgaming-query.c",
+      "sha256": "6aa3ca99b9b42416f92ab58ce998bd9895b02b294456b014d0234713e0d42426",
+      "bytes": 2603
+    },
+    {
+      "path": "src/driver-marsgaming/marsgaming-query.h",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/driver-marsgaming/marsgaming-query.h",
+      "sha256": "6e19854e5602df7d9a9953e19b25cdc7e0ec18a0ccb6347ecb64dc6df55d69bf",
+      "bytes": 534
+    },
+    {
+      "path": "src/asus.c",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/asus.c",
+      "sha256": "934649ffedabd82701baac9b782f95a4dca7506bdae296f9909c2447e9f1635c",
+      "bytes": 17526
+    },
+    {
+      "path": "src/asus.h",
+      "source": "https://raw.githubusercontent.com/libratbag/libratbag/8235b5bb6032dea15901ab58a8218956f4494d08/src/asus.h",
+      "sha256": "e8e325720c33fd5870dda9be5cc97bf983c24ac4eb1797215476f5d6ca3cad03",
+      "bytes": 9209
+    }
+  ]
+}

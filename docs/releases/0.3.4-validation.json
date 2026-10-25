@@ -1,0 +1,195 @@
+{
+  "product": "Open HUB",
+  "version": "0.3.4",
+  "tag": "v0.3.4-experimental.1",
+  "experimental": true,
+  "date": "2026-10-25T08:27:52.881311+00:00",
+  "origin": {
+    "repository": "https://github.com/abidr/open-ghub",
+    "author": "Abidur Rahman",
+    "license": "GPL-3.0-or-later",
+    "base": "2853a6251a31a376a0f7287c1c846bd9bff97198"
+  },
+  "scope": {
+    "brands_with_partial_support": 23,
+    "new_brands": [
+      "ASUS",
+      "Roccat",
+      "G.Skill",
+      "Etekcity",
+      "Mars Gaming"
+    ],
+    "new_mouse_models": 5,
+    "new_exact_transports": 5,
+    "whole_brand_support": false,
+    "details": "FIVE-BRAND-ADAPTERS.md"
+  },
+  "native_tests": {
+    "passed": 296,
+    "default_suite": 292,
+    "explicit_input_tests": 4,
+    "failed": 0,
+    "new_default_five_brand_tests": 19
+  },
+  "ui_tests": {
+    "passed": true,
+    "suites": 20,
+    "ipc_mocked": true,
+    "suite_results": [
+      {
+        "name": "test-appearance-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-atk-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-brand-imports-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-compx-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-device-art-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-five-brands-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-gg-import-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-icue-import-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-manual-recovery-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-multi-macros-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-new-brands-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-reconnect-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-session-plan-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-sino-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-synapse-import-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-synapse-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-three-brand-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-ui-integration.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-updater-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-viper-ui.cjs",
+        "passed": true
+      }
+    ],
+    "new_brand_native_dtos": 5,
+    "ui_created_new_brand_profiles_executed_by_native_drivers": 10
+  },
+  "artwork": {
+    "catalog_identities_verified": 61,
+    "series": 46,
+    "webp_files": 28,
+    "svg_files": 24,
+    "bytes": 777558,
+    "new_original_structural_illustrations": 3,
+    "new_unmodified_piper_model_svgs": 2,
+    "photographic_accuracy_claimed_for_illustrations": false
+  },
+  "production_executable_selftest": {
+    "passed": true,
+    "simulated_transport_identities": 28,
+    "hardware_accessed": false
+  },
+  "installer": {
+    "passed": true,
+    "version": "0.3.4",
+    "installer_bytes": 38792147,
+    "installer_sha256": "1085bd7e9d3963207d0309acf2c8c47ad1768cbe51edc4871cc11b5dd9c7c4c5",
+    "application_sha256": "3b9fc8ad789148a6920ac53b56b5fac15898f2f4f2e9cf5b02ae2af4e2d6931c",
+    "payload_files_verified": 50,
+    "current_frontend_embedded": true,
+    "installed": false,
+    "registry_changed": false,
+    "user_configuration_touched": false
+  },
+  "installer_size_change_from_0_3_3": {
+    "bytes": 67409,
+    "new_runtime_dependency": false
+  },
+  "installer_migration": {
+    "passed": true,
+    "checks": [
+      "nested/unicode backups copied; source/newer/prior snapshots unchanged; registers restored",
+      "repeat migration reserves new snapshot without overwriting any prior file",
+      "destination failure returns nonzero before uninstall continuation and preserves source",
+      "real sharing violation during copy returns nonzero before uninstall continuation; source preserved",
+      "missing source is a successful no-op; registers restored"
+    ],
+    "helper_sha256": "63c41eeb53ab7802ec16f170fb8afbcd26279fc579fe40072e609a884f76b3fa",
+    "scope": "Real NSIS compiler/runtime; workspace fixtures only; no registry or installed software"
+  },
+  "update_package": {
+    "independent_key": true,
+    "version_bound_signature_generated": true,
+    "private_key_included": false,
+    "windows_authenticode": "NotSigned",
+    "automatic_download": false,
+    "automatic_install": false,
+    "download_and_install_are_separate_explicit_actions": true
+  },
+  "hardware_validation": {
+    "new_five_brands_physical_tests": false,
+    "existing_physical_mouse": "MCHOSE A7 V3 Ultra+",
+    "existing_physical_dock": "MagDock",
+    "hardware_accessed_by_tests": false
+  },
+  "local_upgrade_policy": {
+    "explicitly_authorized_by_user": true,
+    "install_after_publishing": true,
+    "private_configuration_or_paths_published": false
+  },
+  "limits": [
+    "Exact wired models only; not whole-brand compatibility",
+    "Simulation does not establish Windows HID control collection or actual firmware compatibility",
+    "ASUS/MM4 arbitrary macros unavailable; three other new brands support only single-play keyboard macros",
+    "Etekcity user delays rejected; event timing remains firmware-controlled",
+    "Roccat/G.Skill/Etekcity RGB not enabled; unknown original fields preserved",
+    "Vendor private configuration files are not parsed",
+    "No fresh Windows or missing-WebView2 installation validation"
+  ]
+}
