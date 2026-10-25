@@ -98,6 +98,12 @@ pub fn validate_target(device: &crate::device::Device) -> Result<(), String> {
     }
     Ok(())
 }
+pub fn sole_cli_target(devices:&[crate::device::Device])->Result<String,String>{
+ let mut eligible=devices.iter().filter(|d|validate_target(d).is_ok()&&d.has(crate::device::feature::ONBOARD_PROFILES));
+ let first=eligible.next().ok_or_else(||fail("no eligible direct USB mouse found"))?;
+ if eligible.next().is_some(){return Err(fail("multiple writable mice are connected; select the specific mouse in Open HUB"));}
+ Ok(first.id.clone())
+}
 pub fn validate_info(info: &Info) -> Result<(), String> {
     if info.memory_model != 1 || !(1..=5).contains(&info.profile_format) || info.macro_format != 1 {
         return Err(fail("unverified on-board profile format"));
@@ -115,6 +121,7 @@ pub fn validate_info(info: &Info) -> Result<(), String> {
 #[serde(deny_unknown_fields)]
 pub struct Settings {
     pub expected_device: String,
+    pub expected_connection:String,
     pub slot: u8,
     pub sector: u16,
     pub changes: Vec<Change>,

@@ -14,6 +14,7 @@ const MAX_LEVELS = 5;
 interface Props {
   profile: OnboardProfile | null;
   deviceKey:string;
+  connectionKey:string;
   /** Valid DPI values for this mouse, to snap typed values. */
   supportedDpi: number[];
   onClose: () => void;
@@ -25,7 +26,7 @@ function nearest(list: number[], v: number): number {
 }
 
 /** Edits DPI levels, starting level and report rate of one on-board slot. */
-export function OnboardSlotEditor({ profile, deviceKey, supportedDpi, onClose, onSave }: Props) {
+export function OnboardSlotEditor({ profile, deviceKey, connectionKey, supportedDpi, onClose, onSave }: Props) {
   const [levels, setLevels] = useState<number[]>([]);
   const [start, setStart] = useState(0);
   const [rate, setRate] = useState(1000);
@@ -54,7 +55,7 @@ export function OnboardSlotEditor({ profile, deviceKey, supportedDpi, onClose, o
 
   const save = async () => {
     setSaving(true);
-    const ok = await onSave({ expected_device:deviceKey,sector:profile.sector,slot: profile.slot, dpi_levels: levels.map(snap), default_index: start, report_rate_hz: rate });
+    const ok = await onSave({ expected_device:deviceKey,expected_connection:connectionKey,sector:profile.sector,slot: profile.slot, dpi_levels: levels.map(snap), default_index: start, report_rate_hz: rate });
     setSaving(false);
     if (ok) onClose();
   };

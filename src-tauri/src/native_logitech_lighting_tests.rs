@@ -52,6 +52,7 @@ fn device() -> Device {
     Device {
         vendor_id: 0x046d,
         profile_key: "session:memory-only".into(),
+        connection_key: "connection:memory-only".into(),
         id: "lighting-unit-A".into(),
         path: CString::new("memory-only-A").unwrap(),
         index: 0xff,
@@ -183,6 +184,7 @@ impl FeatureRequest for Memory {
 fn change(m: &Memory) -> Change {
     Change {
         expected_device: device().profile_key,
+        expected_connection: device().connection_key,
         zone: 1,
         expected: m.0.lock().unwrap().current[1],
         effect: Effect::Fixed {
@@ -326,6 +328,7 @@ fn malformed_discovery_and_huge_counts_are_rejected_without_mode_or_write_comman
     let mut v = read(&d, &mem()).unwrap();
     let c = Change {
         expected_device: device().profile_key,
+        expected_connection: device().connection_key,
         zone: 0,
         expected: v.zones[0].current.unwrap(),
         effect: Effect::Fixed { color: [1, 2, 3] },
@@ -368,6 +371,7 @@ fn native_logitech_light_fixture_export() {
     let breath_view = apply(&d, &m, &breath).unwrap().view;
     let cycle = Change {
         expected_device: d.profile_key.clone(),
+        expected_connection:d.connection_key.clone(),
         zone: 1,
         expected: breath_view.zones[1].current.unwrap(),
         effect: Effect::Cycle {
@@ -657,4 +661,8 @@ fn browser_breathing_and_cycle_use_production_native_transactions() {
         m.0.lock().unwrap().current[1],
         [0, 0, 0, 0, 0, 0, 0x13, 0x88, 0, 0, 0]
     );
+}
+
+#[test]fn stale_lighting_preview_cannot_follow_the_same_unit_to_a_new_connection(){
+ let m=mem();let d=device();let before=read(&d,&m).unwrap();let c=change(&m);let mut reconnected=d.clone();reconnected.connection_key="connection:reconnected".into();m.0.lock().unwrap().calls.clear();assert!(apply(&reconnected,&m,&c).unwrap_err().to_string().contains("generation changed"));assert!(m.0.lock().unwrap().calls.is_empty());let fresh=read(&reconnected,&m).unwrap();assert_eq!(fresh.device_key,before.device_key);assert_ne!(fresh.connection_key,before.connection_key);
 }

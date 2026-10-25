@@ -630,7 +630,7 @@ fn write_onboard_bindings(
     let manager = guard.as_ref().expect("manager initialised");
     manager.with_device(&id,|d,t|{
         onboard_bindings::validate_target(d).map_err(hidpp::Error::Other)?;
-        d.verify_native_identity(t,&settings.expected_device)?;
+        d.verify_native_preview(t,&settings.expected_device,&settings.expected_connection)?;
         let(before,raw)=d.onboard_snapshot(t)?;
         let backup=auto_backup_path(&app,d).map_err(hidpp::Error::Other)?;
         write_onboard_backup(&app.package_info().version.to_string(),&backup,d,&before,&raw).map_err(hidpp::Error::Other)?;
@@ -656,7 +656,7 @@ fn write_onboard_slot(
     manager
         .with_device(&id, |d, t| {
             onboard_bindings::validate_target(d).map_err(hidpp::Error::Other)?;
-            d.verify_native_identity(t,&settings.expected_device)?;
+            d.verify_native_preview(t,&settings.expected_device,&settings.expected_connection)?;
             let (before, raw) = d.onboard_snapshot(t)?;
             let backup = auto_backup_path(&app, d).map_err(hidpp::Error::Other)?;
             write_onboard_backup(&app.package_info().version.to_string(), &backup, d, &before, &raw).map_err(hidpp::Error::Other)?;
@@ -677,7 +677,7 @@ struct OnboardRestoreResult {
 /// Restores the directory and user profiles from a backup file made for the
 /// same mouse model. The current state is backed up first.
 #[tauri::command(async)]
-fn restore_onboard_backup(app: AppHandle, state: State<AppState>, id: String, path: String, expected_device: String) -> Result<OnboardRestoreResult, String> {
+fn restore_onboard_backup(app: AppHandle, state: State<AppState>, id: String, path: String, expected_device: String, expected_connection:String) -> Result<OnboardRestoreResult, String> {
     if ghub_agent_running() {
         return Err(GHUB_RUNNING.into());
     }
@@ -696,7 +696,7 @@ fn restore_onboard_backup(app: AppHandle, state: State<AppState>, id: String, pa
     manager
         .with_device(&id, |d, t| {
             onboard_bindings::validate_target(d).map_err(hidpp::Error::Other)?;
-            d.verify_native_identity(t,&expected_device)?;
+            d.verify_native_preview(t,&expected_device,&expected_connection)?;
             let models: Vec<String> = d.model_ids.iter().map(|m| format!("{m:04X}")).collect();
             if !backup_models.is_empty() && !backup_models.iter().any(|m| models.contains(m)) {
                 return Err(hidpp::Error::Other(format!("this backup is for a different mouse ({})", backup_models.join(", "))));
@@ -827,7 +827,7 @@ async fn download_update(app:AppHandle,expected_version:String)->Result<updater:
     updater::download(&app,&expected_version).await
 }
 
-/// Runs `f` on the first device with on-board profiles (CLI diagnostics).
+/// Runs `f` only on a unique eligible direct mouse; never chooses the first match.
 /// Refuses while G HUB's agent runs, like the app.
 fn onboard_cli(f: impl FnOnce(&device::Device, &hidpp::Transport) -> Result<String, String>) {
     if ghub_agent_running() {
@@ -840,9 +840,7 @@ fn onboard_cli(f: impl FnOnce(&device::Device, &hidpp::Transport) -> Result<Stri
     if let Err(e) = manager.scan() {
         return eprintln!("scan failed: {e}");
     }
-    let Some(id) = manager.devices().iter().find(|d| d.has(device::feature::ONBOARD_PROFILES)).map(|d| d.id.clone()) else {
-        return eprintln!("no device with on-board profiles found");
-    };
+    let id=match onboard_bindings::sole_cli_target(manager.devices()){Ok(id)=>id,Err(e)=>return eprintln!("{e}")};
     let mut f = Some(f);
     match manager.with_device(&id, |d, t| Ok((f.take().expect("called once"))(d, t))) {
         Ok(Ok(out)) => println!("{out}"),
@@ -996,6 +994,7 @@ fn main() {
             let target=snapshot.profiles.iter().find(|p|p.slot==target_slot).ok_or("slot not found")?;
             let settings = onboard::SlotSettings {
                 expected_device: snapshot.device_key.clone(),
+                expected_connection:snapshot.connection_key.clone(),
                 sector: target.sector,
                 slot: slot.parse().map_err(|_| "bad slot")?,
                 dpi_levels: dpis.split(',').map(|v| v.parse().map_err(|_| "bad dpi")).collect::<Result<_, _>>()?,

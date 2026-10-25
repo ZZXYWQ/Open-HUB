@@ -194,6 +194,7 @@ impl Manager {
                 match transport.mchose().expect("MCHOSE transport").identity() {
                     Ok(_) => found.push(Device {
                         vendor_id: crate::mchose::VID,
+                        connection_key: self.devices.iter().find(|d| d.path == c.long && retained_paths.contains(&c.long)).map(|d| d.connection_key.clone()).unwrap_or_else(|| format!("connection:{}",crate::profiles::new_id())),
                         profile_key: self.devices.iter().find(|d| d.path == c.long && retained_paths.contains(&c.long)).map(|d| d.profile_key.clone()).unwrap_or_else(|| format!("session:{}", crate::profiles::new_id())),
                         id: format!("{}#{DIRECT}", c.long.to_string_lossy()),
                         path: c.long.clone(),

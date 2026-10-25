@@ -119,6 +119,8 @@ pub struct Device {
     pub id: String,
     /// Stable only when verified through HID++ unit-id; otherwise connection-only.
     pub profile_key: String,
+    /// Fresh for each probe/transport generation; never used as a durable owner.
+    pub connection_key: String,
     pub path: CString,
     pub index: u8,
     pub product_id: u16,
@@ -256,6 +258,10 @@ impl Device {
         }
         Ok(())
     }
+    pub fn verify_native_preview(&self,t:&dyn FeatureRequest,expected:&str,connection:&str)->Result<()>{
+        if connection.is_empty()||connection!=self.connection_key{return Err(Error::Other("mouse connection generation changed; read it again".into()));}
+        self.verify_native_identity(t,expected)
+    }
     /// Pings `index` on `transport`, then discovers the device's features.
     pub fn probe(
         transport: &Transport,
@@ -271,9 +277,11 @@ impl Device {
             return Err(Error::Other("device only speaks HID++ 1.0".into()));
         }
 
+        let connection_key=format!("session:{}",crate::profiles::new_id());
         let mut device = Device {
             vendor_id: crate::hidpp::LOGITECH_VID,
-            profile_key: format!("session:{}", crate::profiles::new_id()),
+            profile_key: connection_key.clone(),
+            connection_key,
             id,
             path,
             index,

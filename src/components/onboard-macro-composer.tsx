@@ -11,12 +11,13 @@ const kinds:Record<string,string>={KeyTap:'快捷键点按',KeyDown:'键盘按�
 const media:Array<[number,string]>=[[0xe2,'静音'],[0xcd,'播放 / 暂停'],[0xb5,'下一曲'],[0xb6,'上一曲'],[0xb7,'停止'],[0xe9,'增大音量'],[0xea,'减小音量']];
 const modifiers=['左 Ctrl','左 Shift','左 Alt','左 Win','右 Ctrl','右 Shift','右 Alt','右 Win'];
 const input='rounded border bg-background px-2 py-1.5 text-sm';
-export function OnboardMacroComposer({profile,info,deviceKey,deviceId,deviceName,onClose,onSave}:{profile:OnboardProfile;info:OnboardInfo;deviceKey:string;deviceId:string;deviceName:string;onClose:()=>void;onSave:(r:NativeMacroRequest)=>Promise<boolean>}){
+export function OnboardMacroComposer({profile,info,deviceKey,connectionKey,deviceId,deviceName,onClose,onSave,onRefresh}:{profile:OnboardProfile;info:OnboardInfo;deviceKey:string;connectionKey:string;deviceId:string;deviceName:string;onClose:()=>void;onSave:(r:NativeMacroRequest)=>Promise<boolean>;onRefresh:()=>Promise<void>}){
  const [id]=useState(()=>`logitech-native:${crypto.randomUUID()}`),[name,setName]=useState('新的板载宏'),[steps,setSteps]=useState<Event[]>([{KeyTap:{usage:6,mods:1}},{Delay:77},{Media:0xe2}]),[button,setButton]=useState(Math.min(4,info.button_count)),[layer,setLayer]=useState<'Normal'|'GShift'>('Normal'),[busy,setBusy]=useState(false),[error,setError]=useState(''),[checked,setChecked]=useState('');const generation=useRef(0);
  const records=layer==='Normal'?profile.buttons:profile.gshift_buttons;
- const request:NativeMacroRequest={selection:{expected_device:deviceKey,slot:profile.slot,sector:profile.sector,layer,button,expected:records[button-1]?.raw??[]},definition:{id,name,mode:'Once',steps}};
+ const request:NativeMacroRequest={selection:{expected_device:deviceKey,expected_connection:connectionKey,slot:profile.slot,sector:profile.sector,layer,button,expected:records[button-1]?.raw??[]},definition:{id,name,mode:'Once',steps}};
  const signature=JSON.stringify(request);
  useEffect(()=>{generation.current++;setChecked('');setError('');setBusy(false);return()=>{generation.current++;};},[signature]);
+ const refresh=async()=>{const turn=++generation.current;setBusy(true);setChecked('');setError('');try{await onRefresh();}catch(e){if(turn===generation.current)setError(String(e));}finally{if(turn===generation.current)setBusy(false);}};
  const put=(index:number,event:Event)=>setSteps(old=>old.map((v,i)=>i===index?event:v));
  const preview=async()=>{const turn=++generation.current;setBusy(true);setError('');setChecked('');try{await api.previewOnboardMacro(deviceId,request);if(turn===generation.current)setChecked(signature);}catch(e){if(turn===generation.current)setError(String(e));}finally{if(turn===generation.current)setBusy(false);}};
  return <Dialog open onOpenChange={value=>{if(!value&&!busy)onClose();}}><DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl"><DialogHeader><DialogTitle>新增罗技板载宏 · 槽 {profile.slot}</DialogTitle><DialogDescription>{deviceName} · 单次播放，保存在这只鼠标中。先核对空闲板载空间，再保存；其他槽和原厂宏保持原样。</DialogDescription></DialogHeader>
@@ -31,6 +32,6 @@ export function OnboardMacroComposer({profile,info,deviceKey,deviceId,deviceName
  <Button variant="ghost" size="sm" aria-label={`删除${label}`} disabled={steps.length<=1} onClick={()=>setSteps(old=>old.filter((_,i)=>i!==index))}>删除</Button></li>;})}</ol>
  <Button variant="outline" disabled={steps.length>=80} onClick={()=>setSteps(old=>[...old,{KeyTap:{usage:4,mods:0}}])}>新增事件</Button>
  <p className="text-xs text-muted-foreground">实验性功能，尚未实机验证。当前支持单次宏，较长内容会自动衔接空闲空间；按下与松开必须成对。没有空闲空间、原厂宏无法完整核对、或设备状态已改变时会拒绝保存。</p>
- <div className="flex justify-end gap-2"><Button variant="ghost" onClick={onClose}>取消</Button><Button variant="outline" disabled={!name.trim()} onClick={()=>void preview()}>检查板载宏</Button><Button disabled={checked!==signature||!name.trim()} onClick={async()=>{setBusy(true);try{if(await onSave(request))onClose();}finally{setBusy(false);}}}>{busy?'正在处理…':'保存到此鼠标'}</Button></div>
+ <div className="flex flex-wrap justify-end gap-2"><Button variant="ghost" onClick={onClose}>取消</Button><Button variant="outline" onClick={()=>void refresh()}>重新读取鼠标，保留草稿</Button><Button variant="outline" disabled={!name.trim()} onClick={()=>void preview()}>检查板载宏</Button><Button disabled={checked!==signature||!name.trim()} onClick={async()=>{setBusy(true);try{if(await onSave(request))onClose();}finally{setBusy(false);}}}>{busy?'正在处理…':'保存到此鼠标'}</Button></div>
  </fieldset></DialogContent></Dialog>;
 }

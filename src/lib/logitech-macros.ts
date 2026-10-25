@@ -2,7 +2,7 @@ import {KEY_NAMES} from './sino';
 export interface NativeMacroAddress{sector:number;offset:number}
 export type NativeMacroAction='NoOp'|'WaitForRelease'|'RepeatWhilePressed'|'RepeatUntilCanceled'|'End'|{Delay:{milliseconds:number}}|{KeyDown:{modifiers:number;usage:number}}|{KeyUp:{modifiers:number;usage:number}}|{MouseDown:{buttons:number}}|{MouseUp:{buttons:number}}|{ConsumerDown:{usage:number}}|{ConsumerUp:{usage:number}}|{Jump:{target:NativeMacroAddress}};
 export interface NativeMacroTrace{entry:NativeMacroAddress;complete:boolean;note:string|null;steps:Array<{address:NativeMacroAddress;bytes:number[];action:NativeMacroAction}>;pages:Array<{sector:number;crc_valid:boolean;hex:string}>}
-export interface NativeMacroSelection{expected_device:string;slot:number;sector:number;layer:'Normal'|'GShift';button:number;expected:number[]}
+export interface NativeMacroSelection{expected_device:string;expected_connection:string;slot:number;sector:number;layer:'Normal'|'GShift';button:number;expected:number[]}
 const media:Record<number,string>={0xcd:'播放 / 暂停',0xb5:'下一曲',0xb6:'上一曲',0xb7:'停止播放',0xe2:'静音',0xe9:'增大音量',0xea:'减小音量',0x192:'计算器'};
 export function nativeMacroActionName(action:NativeMacroAction):string{
  if(typeof action==='string')return {NoOp:'等待一个原生宏步长',WaitForRelease:'等待松开触发按键',RepeatWhilePressed:'按住时重复',RepeatUntilCanceled:'重复至取消',End:'结束标记'}[action];

@@ -26,3 +26,5 @@
 
 
 呼吸/循环的参数位置额外交叉核对 [Solaar 固定版本的协议定义](https://github.com/pwr-Solaar/Solaar/blob/e7304c4c451cc9bb4f206a914844525e67856a28/lib/logitech_receiver/hidpp20.py)。只使用互操作协议事实，没有复制该项目源码或新增其运行依赖。设备报告的节奏仅按原值传递，不据此宣称所有型号具有相同时间单位。
+
+后续开发增量增加 [独立的预览连接校验](NATIVE-PREVIEW-CONNECTIONS.md)：稳定配置归属与当前连接标记分别核对；旧连接请求零 HID 拒绝，宏草稿可显式刷新保留。

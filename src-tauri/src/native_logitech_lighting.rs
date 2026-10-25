@@ -73,6 +73,7 @@ pub struct Zone {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct View {
     pub device_key: String,
+    pub connection_key:String,
     pub feature: u16,
     pub version: u8,
     pub nv_caps: u16,
@@ -145,6 +146,7 @@ pub fn read(d: &Device, t: &dyn FeatureRequest) -> Result<View> {
     }
     Ok(View {
         device_key: d.profile_key.clone(),
+        connection_key:d.connection_key.clone(),
         feature: COLOR,
         version,
         nv_caps,
@@ -157,6 +159,7 @@ pub fn read(d: &Device, t: &dyn FeatureRequest) -> Result<View> {
 #[serde(deny_unknown_fields)]
 pub struct Change {
     pub expected_device: String,
+    pub expected_connection:String,
     pub zone: u8,
     pub expected: [u8; 11],
     pub effect: Effect,
@@ -301,6 +304,7 @@ fn same_caps(a: &View, b: &View) -> bool {
 }
 pub fn apply(d: &Device, t: &dyn FeatureRequest, change: &Change) -> Result<Applied> {
     mouse(d)?;
+    d.verify_native_preview(t,&change.expected_device,&change.expected_connection)?;
     if change.expected_device != d.profile_key {
         return Err(fail(
             "mouse connection changed since preview; read it again",

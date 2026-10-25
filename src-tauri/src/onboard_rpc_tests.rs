@@ -60,6 +60,7 @@ fn device() -> Device {
     Device {
         vendor_id: 0x046d,
         profile_key: "session:memory-only".into(),
+        connection_key: "connection:memory-only".into(),
         id: "logitech-test-A".into(),
         path: CString::new("memory-only").unwrap(),
         index: 0xff,
@@ -87,6 +88,7 @@ fn settings(m: &Memory) -> Settings {
     let s = m.0.lock().unwrap();
     Settings {
         expected_device: device().profile_key,
+        expected_connection: device().connection_key,
         slot: 1,
         sector: 1,
         changes: vec![
@@ -429,7 +431,7 @@ fn unit_device(m:&Memory)->Device{
     d.features.insert(crate::device::feature::DEVICE_INFO,FeatureInfo{id:crate::device::feature::DEVICE_INFO,index:0x11,version:0,flags:0,name:"Device info"});d
 }
 fn unit_settings(m:&Memory,d:&Device)->Settings{let mut s=settings(m);s.expected_device=d.profile_key.clone();s}
-fn dpi_settings(d:&Device)->SlotSettings{SlotSettings{expected_device:d.profile_key.clone(),sector:1,slot:1,dpi_levels:vec![400,800],default_index:0,report_rate_hz:500}}
+fn dpi_settings(d:&Device)->SlotSettings{SlotSettings{expected_device:d.profile_key.clone(),expected_connection:d.connection_key.clone(),sector:1,slot:1,dpi_levels:vec![400,800],default_index:0,report_rate_hz:500}}
 #[test]
 fn stale_preview_keys_reject_button_and_dpi_edits_before_even_reading_memory(){
     let m=memory();let d=device();let mut b=settings(&m);b.expected_device="session:another-connection".into();
@@ -488,7 +490,7 @@ fn macro_memory()->Memory{
  let mut b=vec![0xff;256];b[7..14].copy_from_slice(&[0x45,0,0xe2,0x46,0,0xe2,0xff]);
  {let mut s=m.0.lock().unwrap();s.sectors.insert(3,a);s.sectors.insert(4,b);}m
 }
-fn macro_selection(d:&Device)->crate::onboard_macros::Selection{crate::onboard_macros::Selection{expected_device:d.profile_key.clone(),slot:1,sector:1,layer:Layer::Normal,button:5,expected:[0,3,0,5]}}
+fn macro_selection(d:&Device)->crate::onboard_macros::Selection{crate::onboard_macros::Selection{expected_device:d.profile_key.clone(),expected_connection:d.connection_key.clone(),slot:1,sector:1,layer:Layer::Normal,button:5,expected:[0,3,0,5]}}
 #[test]fn native_macro_reader_uses_only_verified_read_requests_and_preserves_every_sector(){
  let m=macro_memory();let d=unit_device(&m);let before=m.0.lock().unwrap().sectors.clone();let trace=crate::onboard_macros::read(&d,&m,&macro_selection(&d)).unwrap();assert!(trace.complete);assert_eq!(trace.pages.len(),2);assert_eq!(trace.steps.len(),7);assert_eq!(trace.steps[1].action,crate::onboard_macros::Action::Delay{milliseconds:77});assert_eq!(trace.steps[3].bytes,vec![0x60,0,4,0,7]);
  let s=m.0.lock().unwrap();assert_eq!(s.sectors,before);assert!(s.calls.iter().all(|(f,_)|matches!(f,0|5)));assert!(s.identity_reads>=6);
@@ -570,4 +572,21 @@ fn long_macro_request(d:&Device)->crate::onboard_macro_plan::Request{let mut req
 #[ignore="requires current long native macro composer UI request"]
 fn browser_long_native_macro_request_uses_production_cross_page_allocation_and_readback(){
  let path=std::env::var_os("OPEN_HUB_LOGITECH_LONG_MACRO_UI_REQUEST").unwrap();let request:crate::onboard_macro_plan::Request=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();assert_eq!(request.definition.steps.len(),43);let m=planning_memory();let d=unit_device(&m);let original=m.0.lock().unwrap().sectors.clone();let prepared=crate::onboard_macro_plan::prepare(&d,&m,&request).unwrap();assert_eq!(prepared.preview().page_count,2);crate::onboard_macro_plan::commit(&d,&m,&prepared).unwrap();let mut selection=request.selection;selection.expected=[0,5,0,0];let tr=crate::onboard_macros::read(&d,&m,&selection).unwrap();assert!(tr.complete);assert_eq!(tr.steps.len(),87);assert!(tr.steps.iter().any(|s|s.address.offset==249&&s.bytes==[0x60,0,6,0,0]));let actual=m.0.lock().unwrap();for sector in [0,2,3,4,7]{assert_eq!(actual.sectors[&sector],original[&sector]);}
+}
+
+#[test]fn same_model_same_unit_new_connection_rejects_every_old_preview_before_any_hid_io(){
+ let m=planning_memory();let d=unit_device(&m);let binding=unit_settings(&m,&d);let dpi=dpi_settings(&d);let selection=macro_selection(&d);let request=macro_request(&d);let prepared=crate::onboard_macro_plan::prepare(&d,&m,&request).unwrap();let mut reconnected=d.clone();reconnected.connection_key="connection:reconnected".into();{let mut state=m.0.lock().unwrap();state.calls.clear();state.identity_reads=0;}
+ assert!(reconnected.write_slot_bindings(&m,&binding).is_err());assert!(reconnected.write_slot_settings(&m,&dpi).is_err());assert!(crate::onboard_macros::read(&reconnected,&m,&selection).is_err());assert!(crate::onboard_macro_plan::prepare(&reconnected,&m,&request).is_err());assert!(crate::onboard_macro_plan::commit(&reconnected,&m,&prepared).is_err());let state=m.0.lock().unwrap();assert!(state.calls.is_empty());assert_eq!(state.identity_reads,0);
+}
+#[test]fn a_fresh_preview_on_reconnection_keeps_the_same_durable_profile_owner(){
+ let m=planning_memory();let mut d=unit_device(&m);let owner=d.profile_key.clone();d.connection_key="connection:reconnected".into();let(snapshot,_)=d.onboard_snapshot(&m).unwrap();assert_eq!(snapshot.device_key,owner);assert_eq!(snapshot.connection_key,d.connection_key);let request=macro_request(&d);let prepared=crate::onboard_macro_plan::prepare(&d,&m,&request).unwrap();crate::onboard_macro_plan::commit(&d,&m,&prepared).unwrap();assert_eq!(d.profile_key,owner);
+}
+
+#[test]fn flash_cli_never_selects_the_first_of_two_mice_or_a_receiver_keyboard_or_other_brand(){
+ let a=device();let mut b=a.clone();b.id="second-mouse".into();assert!(crate::onboard_bindings::sole_cli_target(&[a.clone(),b]).is_err());let mut keyboard=a.clone();keyboard.kind="Keyboard";let mut receiver=a.clone();receiver.index=1;let mut other=a.clone();other.vendor_id=0x3837;assert!(crate::onboard_bindings::sole_cli_target(&[keyboard.clone(),receiver.clone(),other.clone()]).is_err());assert_eq!(crate::onboard_bindings::sole_cli_target(&[keyboard,a.clone(),receiver,other]).unwrap(),a.id);
+}
+#[test]
+#[ignore="requires current reconnection-preserved macro UI request"]
+fn browser_reconnected_macro_draft_preserves_definition_but_uses_only_the_fresh_connection(){
+ let path=std::env::var_os("OPEN_HUB_LOGITECH_RECONNECTED_MACRO_UI_REQUEST").unwrap();let request:crate::onboard_macro_plan::Request=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();let m=planning_memory();let mut d=unit_device(&m);d.connection_key="connection:reconnected".into();assert_eq!(request.selection.expected_connection,d.connection_key);assert_eq!(request.definition.name,"重连保留的宏草稿");let prepared=crate::onboard_macro_plan::prepare(&d,&m,&request).unwrap();crate::onboard_macro_plan::commit(&d,&m,&prepared).unwrap();let mut selection=request.selection;selection.expected=[0,5,0,0];let trace=crate::onboard_macros::read(&d,&m,&selection).unwrap();assert!(trace.complete);assert_eq!(trace.steps[0].action,crate::onboard_macros::Action::KeyDown{usage:6,modifiers:17});
 }

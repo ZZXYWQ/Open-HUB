@@ -1,0 +1,28 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "separate durable native profile owner from ephemeral preview connection generation, preserved macro drafts on same-owner refresh, unambiguous flash CLI target",
+  "default_application_tests": 469,
+  "explicit_cross_tests": 20,
+  "new_default_tests": 4,
+  "headless_ui_suites": 34,
+  "fresh_preview_fields": [
+    "device_key",
+    "connection_key"
+  ],
+  "request_fields": [
+    "expected_device",
+    "expected_connection"
+  ],
+  "old_generation_failure": "before any HID I/O, including an already prepared macro commit",
+  "profile_ownership_renamed": false,
+  "cross_unit_draft_refresh_allowed": false,
+  "receiver_writes_enabled": false,
+  "new_runtime_dependencies": false,
+  "frontend_js_gzip_kb": 222.54,
+  "development_exe_memory_transports": 32,
+  "development_exe_sha256": "100a193acaf802d6a9095a080e810c0df3d8e06e589ee70a22710e80a3be16cd",
+  "physical_Logitech_tested": false,
+  "accepted_full_models": 0,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}

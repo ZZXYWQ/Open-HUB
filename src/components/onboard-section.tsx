@@ -80,6 +80,14 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
   const [restorePath, setRestorePath] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
 
+  const refreshMacro=async()=>{
+    if(!composing||!snapshot)throw Error('请先读取当前鼠标');
+    const next=await api.onboardSnapshot(device.id);
+    if(next.device_key!==snapshot.device_key)throw Error('当前已是另一只鼠标，未把草稿改到其他设备');
+    const target=next.profiles.find(p=>p.slot===composing.slot&&p.crc_valid);
+    if(!target||!next.info.bindings_writable||next.info.memory_model!==1||next.info.profile_format<1||next.info.profile_format>5||next.info.macro_format!==1||![255,256].includes(next.info.sector_size))throw Error('当前板载配置尚未通过写入条件，宏草稿仍保留');
+    setSnapshot(next);setComposing(target);
+  };
   const writeMacro=async(request:NativeMacroRequest)=>{
     try{const result=await api.writeOnboardMacro(device.id,request);setSnapshot(result.snapshot);const note=[result.report.reload_note,result.refresh_note].filter(Boolean).join('；');if(note)toast.warning('板载宏已保存并校验',{description:note});else toast.success('板载宏已保存到此鼠标',{description:`宏与按键绑定均已读回校验。备份：${result.backup_path}`});return true;}catch(e){toast.error(String(e));return false;}
   };
@@ -121,7 +129,7 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
     if (!restorePath||!snapshot?.device_key) return;
     setRestoring(true);
     try {
-      const result = await api.restoreOnboardBackup(device.id, restorePath,snapshot.device_key);
+      const result = await api.restoreOnboardBackup(device.id, restorePath,snapshot.device_key,snapshot.connection_key);
       setSnapshot(result.snapshot);
       toast.success(
         result.sectors_written === 0 ? "The mouse already matches this backup" : `Restored ${result.sectors_written} sector(s) from the backup`,
@@ -213,9 +221,9 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
         </div>
       )}
 
-      {composing&&snapshot&&info&&<OnboardMacroComposer profile={composing} info={info} deviceKey={snapshot.device_key} deviceId={device.id} deviceName={device.name} onClose={()=>setComposing(null)} onSave={writeMacro}/>}
-      <OnboardBindingsEditor device={device} deviceKey={snapshot?.device_key??''} profile={editingBindings} info={snapshot?.info??null} onClose={()=>setEditingBindings(null)} onSave={writeBindings}/>
-      <OnboardSlotEditor profile={editing} deviceKey={snapshot?.device_key??''} supportedDpi={supportedDpi} onClose={() => setEditing(null)} onSave={writeSlot} />
+      {composing&&snapshot&&info&&<OnboardMacroComposer profile={composing} info={info} deviceKey={snapshot.device_key} connectionKey={snapshot.connection_key} deviceId={device.id} deviceName={device.name} onClose={()=>setComposing(null)} onSave={writeMacro} onRefresh={refreshMacro}/>}
+      <OnboardBindingsEditor device={device} deviceKey={snapshot?.device_key??''} connectionKey={snapshot?.connection_key??''} profile={editingBindings} info={snapshot?.info??null} onClose={()=>setEditingBindings(null)} onSave={writeBindings}/>
+      <OnboardSlotEditor profile={editing} deviceKey={snapshot?.device_key??''} connectionKey={snapshot?.connection_key??''} supportedDpi={supportedDpi} onClose={() => setEditing(null)} onSave={writeSlot} />
 
       <Dialog open={restorePath !== null} onOpenChange={(o) => !o && setRestorePath(null)}>
         <DialogContent className="sm:max-w-md">

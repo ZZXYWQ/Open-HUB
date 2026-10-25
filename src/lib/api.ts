@@ -195,6 +195,7 @@ export interface OnboardProfile {
 
 export interface OnboardSnapshot {
   device_key: string;
+  connection_key:string;
   info: OnboardInfo;
   directory_crc_valid: boolean;
   /** 0 when no on-board profile is active (software mode). */
@@ -206,11 +207,12 @@ export interface OnboardSnapshot {
 
 export type OnboardBindingAction='Disabled'|{Mouse:number}|{Key:{usage:number;modifiers:number}}|{Consumer:number}|{Special:'WheelLeft'|'WheelRight'|'DpiUp'|'DpiDown'|'DpiCycle'|'DpiDefault'|'DpiShift'|'ProfileUp'|'ProfileDown'|'ProfileCycle'|'GShift'};
 export interface OnboardBindingChange {button:number;layer:'Normal'|'GShift';expected:number[];action:OnboardBindingAction}
-export interface OnboardBindingSettings {expected_device:string;slot:number;sector:number;changes:OnboardBindingChange[]}
+export interface OnboardBindingSettings {expected_device:string;expected_connection:string;slot:number;sector:number;changes:OnboardBindingChange[]}
 export interface OnboardBindingWriteResult {report:{slot:number;sector:number;bytes_changed:number;unchanged:boolean;active_reloaded:boolean;reload_note:string|null};backup_path:string;snapshot:OnboardSnapshot|null;refresh_note:string|null}
 
 export interface SlotSettings {
   expected_device:string;
+  expected_connection:string;
   sector:number;
   slot: number;
   dpi_levels: number[];
@@ -289,8 +291,8 @@ export const api = {
   writeOnboardBindings:(id:string,settings:OnboardBindingSettings)=>invoke<OnboardBindingWriteResult>("write_onboard_bindings",{id,settings}),
   writeOnboardSlot: (id: string, settings: SlotSettings) =>
     invoke<OnboardWriteResult>("write_onboard_slot", { id, settings }),
-  restoreOnboardBackup: (id: string, path: string, expectedDevice:string) =>
-    invoke<OnboardRestoreResult>("restore_onboard_backup", { id, path,expectedDevice }),
+  restoreOnboardBackup: (id: string, path: string, expectedDevice:string,expectedConnection:string) =>
+    invoke<OnboardRestoreResult>("restore_onboard_backup", { id, path,expectedDevice,expectedConnection }),
 
   appInfo: () => invoke<AppInfo>("get_app_info"),
   setAppSettings: (settings: AppSettings) => invoke<void>("set_app_settings", { settings }),

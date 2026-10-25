@@ -10,7 +10,7 @@
   "timing": "preserve current effect timing or use advertised nonzero native effect value; no invented ms conversion or caller timing",
   "brightness": "1..100 percent; 100 encodes as native zero; zero UI brightness rejected in favour of Off",
   "preserved_fields": "current waveform, native timing, reserved parameters and all other zones",
-  "identity": "preview connection cookie plus strict HID++ unit checks before/after write and before restoration",
+  "identity": "preview device owner/session key plus strict HID++ unit checks before/after write and before restoration",
   "monochrome": "read-only in this increment",
   "new_runtime_dependencies": false,
   "frontend_js_gzip_kb": 218.68,
@@ -24,5 +24,7 @@
     "libratbag": "8235b5bb6032dea15901ab58a8218956f4494d08",
     "LogitechGDeviceInfo": "e19565d9f14d23c7e7c8eb6b674c3de907243515",
     "Solaar": "e7304c4c451cc9bb4f206a914844525e67856a28"
-  }
+  },
+  "separate_connection_generation_at_this_checkpoint": false,
+  "later_connection_guard": "see 2026-10-26-native-preview-connection-validation.json"
 }

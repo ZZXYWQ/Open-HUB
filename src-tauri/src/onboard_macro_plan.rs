@@ -83,7 +83,7 @@ impl Prepared{
 pub fn prepare(d:&Device,t:&dyn FeatureRequest,r:&Request)->Result<Prepared>{
  // Validate the supported subset before any device reads.
  compile(&r.definition,256)?;
- let s=&r.selection;let bank=read_bank(d,t,&s.expected_device)?;
+ let s=&r.selection;d.verify_native_preview(t,&s.expected_device,&s.expected_connection)?;let bank=read_bank(d,t,&s.expected_device)?;
  if s.slot==0||s.slot>bank.info.profile_count||s.button==0||s.button>bank.info.button_count{return Err(fail("unknown profile or physical button"));}
  if s.layer==crate::onboard_bindings::Layer::GShift&&bank.info.mechanical_layout&3!=2{return Err(fail("G-Shift is not reported"));}
  let i=usize::from(s.slot-1)*4;let directory=&bank.pages[&0];if u16::from_be_bytes([directory[i],directory[i+1]])!=s.sector{return Err(fail("reviewed slot no longer owns its sector"));}
@@ -95,9 +95,9 @@ pub fn prepare(d:&Device,t:&dyn FeatureRequest,r:&Request)->Result<Prepared>{
  Ok(Prepared{bank,selection:s.clone(),macro_sector:plan.macro_sector,macro_pages:plan.pages,profile})
 }
 fn capture(d:&Device,t:&dyn FeatureRequest,p:&Prepared)->Result<BTreeMap<u16,Vec<u8>>>{
- d.verify_native_identity(t,&p.bank.device_key)?;if d.onboard_info(t)?!=p.bank.info{return Err(fail("native memory descriptor changed"));}
- let mut pages=BTreeMap::new();for sector in p.bank.pages.keys(){d.verify_native_identity(t,&p.bank.device_key)?;pages.insert(*sector,d.read_sector(t,*sector,p.bank.info.sector_size)?);}
- d.verify_native_identity(t,&p.bank.device_key)?;Ok(pages)
+ d.verify_native_preview(t,&p.bank.device_key,&p.selection.expected_connection)?;if d.onboard_info(t)?!=p.bank.info{return Err(fail("native memory descriptor changed"));}
+ let mut pages=BTreeMap::new();for sector in p.bank.pages.keys(){d.verify_native_preview(t,&p.bank.device_key,&p.selection.expected_connection)?;pages.insert(*sector,d.read_sector(t,*sector,p.bank.info.sector_size)?);}
+ d.verify_native_preview(t,&p.bank.device_key,&p.selection.expected_connection)?;Ok(pages)
 }
 fn verify(d:&Device,t:&dyn FeatureRequest,p:&Prepared,expected:&BTreeMap<u16,Vec<u8>>)->Result<()>{if &capture(d,t,p)?!=expected{return Err(fail("live bank differs from reviewed transaction state"));}Ok(())}
 #[derive(Debug,Serialize)]pub struct Committed{pub preview:Preview,pub active_reloaded:bool,pub reload_note:Option<String>}
@@ -118,7 +118,7 @@ pub fn commit(d:&Device,t:&dyn FeatureRequest,p:&Prepared)->Result<Committed>{
    verify(d,t,p,&p.bank.pages)
   })();return Err(fail(&format!("macro save failed ({error}); {}",match recovery{Ok(())=>"original bank restored/verified".into(),Err(e)=>format!("state uncertain, keep backup and refresh without retry: {e}")})));
  }
- let reload=(||->Result<bool>{d.verify_native_identity(t,&p.bank.device_key)?;let mode=d.call_unpadded(t,0x8100,2,&[])?;if mode.first()!=Some(&1){return Ok(false);}let active=d.call_unpadded(t,0x8100,4,&[])?;if active.len()<2{return Err(fail("short active profile reply"));}if active[1]!=p.selection.slot{return Ok(false);}d.verify_native_identity(t,&p.bank.device_key)?;d.call_unpadded(t,0x8100,3,&[0,p.selection.slot])?;d.verify_native_identity(t,&p.bank.device_key)?;Ok(true)})();
+ let reload=(||->Result<bool>{d.verify_native_preview(t,&p.bank.device_key,&p.selection.expected_connection)?;let mode=d.call_unpadded(t,0x8100,2,&[])?;if mode.first()!=Some(&1){return Ok(false);}let active=d.call_unpadded(t,0x8100,4,&[])?;if active.len()<2{return Err(fail("short active profile reply"));}if active[1]!=p.selection.slot{return Ok(false);}d.verify_native_preview(t,&p.bank.device_key,&p.selection.expected_connection)?;d.call_unpadded(t,0x8100,3,&[0,p.selection.slot])?;d.verify_native_preview(t,&p.bank.device_key,&p.selection.expected_connection)?;Ok(true)})();
  let (active_reloaded,reload_note)=match reload{Ok(v)=>(v,None),Err(e)=>(false,Some(format!("macro and binding saved and verified; slot reload not confirmed: {e}")))};
  Ok(Committed{preview:p.preview(),active_reloaded,reload_note})
 }

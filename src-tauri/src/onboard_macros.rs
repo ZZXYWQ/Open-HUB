@@ -22,7 +22,7 @@ pub enum Action{
 #[derive(Debug,Serialize)]pub struct Trace{pub entry:Address,pub complete:bool,pub note:Option<String>,pub steps:Vec<Step>,pub pages:Vec<Page>}
 #[derive(Clone,Debug,Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Selection{pub expected_device:String,pub slot:u8,pub sector:u16,pub layer:Layer,pub button:u8,pub expected:[u8;4]}
+pub struct Selection{pub expected_device:String,pub expected_connection:String,pub slot:u8,pub sector:u16,pub layer:Layer,pub button:u8,pub expected:[u8;4]}
 fn fail(message:&str)->Error{Error::Other(format!("Logitech native macro: {message}"))}
 fn allowed(a:Address,info:&Info)->bool{a.sector>0&&a.sector<u16::from(info.sector_count)&&a.offset<info.sector_size}
 fn be(raw:&[u8],at:usize)->u16{u16::from_be_bytes([raw[at],raw[at+1]])}
@@ -63,7 +63,7 @@ pub(crate) fn inspect(entry:Address,info:&Info,mut load:impl FnMut(u16)->Result<
 pub fn read(d:&Device,t:&dyn FeatureRequest,s:&Selection)->Result<Trace>{
  if d.vendor_id!=0x046d||!d.kind.eq_ignore_ascii_case("mouse"){return Err(fail("requires a Logitech mouse"));}
  if d.index!=crate::hidpp::DIRECT&&!d.profile_key.starts_with("unit:"){return Err(fail("receiver inspection requires a verified physical unit"));}
- d.verify_native_identity(t,&s.expected_device)?;let info=d.onboard_info(t)?;validate_info(&info).map_err(Error::Other)?;
+ d.verify_native_preview(t,&s.expected_device,&s.expected_connection)?;let info=d.onboard_info(t)?;validate_info(&info).map_err(Error::Other)?;
  if s.slot==0||s.slot>info.profile_count||s.button==0||s.button>info.button_count||s.sector==0||s.sector>=u16::from(info.sector_count){return Err(fail("unknown slot, button or sector"));}
  if s.layer==Layer::GShift&&info.mechanical_layout&3!=2{return Err(fail("G-Shift is not advertised"));}
  let directory=d.read_sector(t,0,info.sector_size)?;let offset=usize::from(s.slot-1)*4;
@@ -72,9 +72,9 @@ pub fn read(d:&Device,t:&dyn FeatureRequest,s:&Selection)->Result<Trace>{
  if !sector_crc_ok(&profile)||profile[at..at+4]!=s.expected{return Err(fail("profile binding changed; read it again"));}
  if s.expected[0]!=0{return Err(fail("selected record is not a supported native macro address"));}
  let entry=Address{sector:u16::from(s.expected[1]),offset:be(&s.expected,2)};
- let trace=inspect(entry,&info,|sector|{d.verify_native_identity(t,&s.expected_device)?;let bytes=d.read_sector(t,sector,info.sector_size)?;d.verify_native_identity(t,&s.expected_device)?;Ok(bytes)})?;
+ let trace=inspect(entry,&info,|sector|{d.verify_native_preview(t,&s.expected_device,&s.expected_connection)?;let bytes=d.read_sector(t,sector,info.sector_size)?;d.verify_native_preview(t,&s.expected_device,&s.expected_connection)?;Ok(bytes)})?;
  if d.read_sector(t,0,info.sector_size)?!=directory||d.read_sector(t,s.sector,info.sector_size)?!=profile{return Err(fail("on-board profile changed during inspection; old result discarded"));}
- d.verify_native_identity(t,&s.expected_device)?;Ok(trace)
+ d.verify_native_preview(t,&s.expected_device,&s.expected_connection)?;Ok(trace)
 }
 #[cfg(test)]mod tests{
  use super::*;
