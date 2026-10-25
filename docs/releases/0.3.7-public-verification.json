@@ -1,0 +1,48 @@
+{
+  "version": "0.3.7",
+  "tag": "v0.3.7-experimental.1",
+  "verified_at": "2026-10-25T12:37:37.551668+00:00",
+  "release_url": "https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.7-experimental.1",
+  "source_commit": "64423b30b2a234663c2f2b2da770109aec5c200d",
+  "source_zip": {
+    "name": "Open-HUB-0.3.7-source.zip",
+    "bytes": 41395437,
+    "sha256": "35bb966b447d0ba3317331c8f8b500ef5eb8a0c746af5b233953c768757157cc"
+  },
+  "source_archive_files_verified": 465,
+  "source_archive_matches_git": true,
+  "initial_github_asset_digests_matched": 6,
+  "anonymous_full_download": {
+    "status": 200,
+    "bytes": 38817061,
+    "sha256": "5e19c1b1d377a5edbdff1bb462e0e4367f292bf8a167d807103cac19b41b7bf2",
+    "matched_local": true
+  },
+  "readme_direct_exe_link_verified": true,
+  "public_feed_version": "0.3.7",
+  "production_update_verification": {
+    "bytes": 38817061,
+    "download_signature_valid": true,
+    "hardware_accessed": false,
+    "installed": false,
+    "passed": true,
+    "release_url": "https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.7-experimental.1",
+    "signed_version_mismatch_rejected": true,
+    "tamper_rejected": true,
+    "version": "0.3.7"
+  },
+  "local_upgrade": {
+    "explicitly_authorized": true,
+    "installed_version": "0.3.7",
+    "installed_payload_files_verified": 55,
+    "configuration_and_preferences_preserved_before_first_start": true,
+    "configuration_files_preserved": 1612,
+    "application_started_and_responding": true,
+    "personal_backup_or_paths_published": false
+  },
+  "per_device_configuration_only": true,
+  "global_remapper_included": false,
+  "experimental": true,
+  "new_mouse_hardware_tested": false,
+  "all_mouse_buttons_supported": false
+}
