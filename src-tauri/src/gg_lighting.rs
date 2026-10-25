@@ -3,7 +3,7 @@
 //! in the inert OEM factories; no vendor JS is loaded or executed.
 use super::field;
 use gearwise_core::{
-    model::{ColorStop, LightingEffect, Rgb, ZoneState},
+    model::{ColorPosition, ColorStop, LightingEffect, Rgb, ZoneState},
     Setting,
 };
 use serde_json::Value;
@@ -139,7 +139,7 @@ fn zone(value: &Value) -> Result<ZoneState, String> {
             let mut used = 0;
             for index in 0..count {
                 stops[used] = ColorStop {
-                    position: positions[index],
+                    position: positions[index].into(),
                     color: colors[index],
                 };
                 used += 1;
@@ -150,13 +150,8 @@ fn zone(value: &Value) -> Result<ZoneState, String> {
                         100
                     };
                     let midpoint = u16::from(positions[index]) + u16::from(end);
-                    if midpoint % 2 != 0 {
-                        return Err(
-                            "GG 多色呼吸含半百分比位置，当前原生百分比格式不能无损表达".into()
-                        );
-                    }
                     stops[used] = ColorStop {
-                        position: (midpoint / 2) as u8,
+                        position: ColorPosition::from_half_percent(midpoint),
                         color: Rgb::BLACK,
                     };
                     used += 1;
@@ -310,7 +305,7 @@ mod tests {
         ));
     }
     #[test]
-    fn multicolor_breathing_keeps_exact_black_midpoints_and_rejects_fractional_loss() {
+    fn multicolor_breathing_keeps_exact_whole_and_half_percent_black_midpoints() {
         let mut lamp = lamp(2, 0);
         lamp["num_colors"] = json!(2);
         lamp["positions"][1]["pos"] = json!(50);
@@ -331,7 +326,7 @@ mod tests {
         assert_eq!(stops[1].color, Rgb::BLACK);
         assert_eq!(stops[3].color, Rgb::BLACK);
         lamp["positions"][1]["pos"] = json!(33);
-        assert!(zone(&lamp).unwrap_err().contains("半百分比"));
+        let half=zone(&lamp).unwrap();let LightingEffect::Gradient{stops,count,..}=half.effect else{panic!()};assert_eq!(count,4);assert_eq!(stops[..4].iter().map(|s|s.position.half_percent()).collect::<Vec<_>>(),[0,33,66,133]);
     }
     #[test]
     fn incomplete_unproven_masks_modes_directions_layouts_and_units_do_not_save_partial_lighting() {

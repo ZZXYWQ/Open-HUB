@@ -251,12 +251,44 @@ pub enum WaveDirection {
     RightToLeft,
 }
 
-/// One native colour-loop control point. Position is a percent, not a wire
-/// byte; codecs perform the documented floor(position * 255 / 100).
+/// A percent position in exact half-percent units. JSON keeps the original
+/// numeric `position` field (whole percentages stay integers). No float is
+/// retained internally, rounded or accepted outside the 0..100 / 0.5 grid.
+#[derive(Clone,Copy,Debug,Default,PartialEq,Eq,PartialOrd,Ord)]
+pub struct ColorPosition(u16);
+impl ColorPosition{
+    pub const fn whole(percent:u8)->Self{Self(percent as u16*2)}
+    pub const fn from_half_percent(halves:u16)->Self{Self(halves)}
+    pub const fn half_percent(self)->u16{self.0}
+}
+impl From<u8> for ColorPosition{fn from(percent:u8)->Self{Self::whole(percent)}}
+impl PartialEq<u8> for ColorPosition{fn eq(&self,other:&u8)->bool{self.0==u16::from(*other)*2}}
+impl PartialOrd<u8> for ColorPosition{fn partial_cmp(&self,other:&u8)->Option<std::cmp::Ordering>{self.0.partial_cmp(&(u16::from(*other)*2))}}
+impl Serialize for ColorPosition{
+    fn serialize<S:serde::Serializer>(&self,s:S)->std::result::Result<S::Ok,S::Error>{
+        if self.0>200{return Err(serde::ser::Error::custom("gradient position exceeds 100 percent"));}
+        if self.0%2==0{s.serialize_u16(self.0/2)}else{s.serialize_f64(f64::from(self.0)/2.0)}
+    }
+}
+impl<'de> Deserialize<'de> for ColorPosition{
+    fn deserialize<D:serde::Deserializer<'de>>(d:D)->std::result::Result<Self,D::Error>{
+        struct Position;
+        impl<'de> serde::de::Visitor<'de> for Position{
+            type Value=ColorPosition;
+            fn expecting(&self,f:&mut std::fmt::Formatter)->std::fmt::Result{f.write_str("0–100 percent in exact 0.5-percent steps")}
+            fn visit_u64<E:serde::de::Error>(self,v:u64)->std::result::Result<Self::Value,E>{if v>100{Err(E::custom("gradient position exceeds 100 percent"))}else{Ok(ColorPosition::whole(v as u8))}}
+            fn visit_i64<E:serde::de::Error>(self,v:i64)->std::result::Result<Self::Value,E>{if v<0{Err(E::custom("negative gradient position"))}else{self.visit_u64(v as u64)}}
+            fn visit_f64<E:serde::de::Error>(self,v:f64)->std::result::Result<Self::Value,E>{if !v.is_finite()||!(0.0..=100.0).contains(&v)||(v*2.0).fract()!=0.0{Err(E::custom("gradient position must use exact half-percent steps"))}else{Ok(ColorPosition::from_half_percent((v*2.0)as u16))}}
+        }
+        d.deserialize_any(Position)
+    }
+}
+/// One native colour-loop control point. Codecs perform the documented
+/// floor(percent * 255 / 100), including exact half-percent positions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ColorStop {pub color:Rgb,pub position:u8}
-impl ColorStop{pub const EMPTY:Self=Self{color:Rgb::BLACK,position:0};}
+pub struct ColorStop {pub color:Rgb,pub position:ColorPosition}
+impl ColorStop{pub const EMPTY:Self=Self{color:Rgb::BLACK,position:ColorPosition::whole(0)};}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LightingEffect {
@@ -301,7 +333,7 @@ impl LightingEffect {
     /// the effect uses one.
     pub fn default_for(kind: EffectKind, color: Rgb) -> Self {
         match kind {
-            EffectKind::Gradient => {let mut stops=[ColorStop::EMPTY;14];stops[0]=ColorStop{color,position:0};stops[1]=ColorStop{color:Rgb::BLACK,position:50};stops[2]=ColorStop{color,position:100};LightingEffect::Gradient{stops,count:3,period_ms:1000}},
+            EffectKind::Gradient => {let mut stops=[ColorStop::EMPTY;14];stops[0]=ColorStop{color,position:ColorPosition::whole(0)};stops[1]=ColorStop{color:Rgb::BLACK,position:ColorPosition::whole(50)};stops[2]=ColorStop{color,position:ColorPosition::whole(100)};LightingEffect::Gradient{stops,count:3,period_ms:1000}},
             EffectKind::Off => LightingEffect::Off,
             EffectKind::Static => LightingEffect::Static { color },
             EffectKind::Breathing => LightingEffect::Breathing {
@@ -544,4 +576,10 @@ pub struct ButtonCaps {
 pub struct Battery {
     pub percent: Option<u8>,
     pub charging: bool,
+}
+
+#[cfg(test)]mod color_position_tests{
+ use super::*;
+ #[test]fn half_percent_positions_round_trip_without_changing_integer_json(){for (text,halves)in[("0",0),("33",66),("100",200),("16.5",33),("49.5",99)]{let p:ColorPosition=serde_json::from_str(text).unwrap();assert_eq!(p.half_percent(),halves);assert_eq!(serde_json::to_string(&p).unwrap(),text);}}
+ #[test]fn positions_reject_out_of_range_quarter_percent_non_numeric_and_non_finite_inputs(){for s in["-0.5","100.5","101","16.25","true","null","\"16.5\"","1e100"]{assert!(serde_json::from_str::<ColorPosition>(s).is_err(),"{s}");}assert!(serde_json::to_string(&ColorPosition::from_half_percent(201)).is_err());}
 }

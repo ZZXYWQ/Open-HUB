@@ -40,7 +40,7 @@
       "Wheel": 1
     },
     "element_coordinate": "pos.x=0,pos.y=0",
-    "supported": "mask1/subtype0 static or black off; mask0/subtype1 1–10 ordered colors; mask0/subtype2 1–4 colors with exact integer black midpoint positions",
+    "supported": "mask1/subtype0 static or black off; mask0/subtype1 1–10 ordered colors; mask0/subtype2 1–4 colors with exact whole or half-percent black midpoints",
     "preview_period_ms": "round(max(330*color_count*(breathe?2:1),10*stored_speed)); speed33..3000",
     "timing_evidence_limit": "OEM UI calculation is proven; physical GG-to-native timing equivalence is not measured",
     "not_converted": [
@@ -48,9 +48,9 @@
       "host stream",
       "override initial color",
       "spatial/directional modes",
-      "fractional black midpoint percentages",
       "inactive color history"
-    ]
+    ],
+    "position_precision": "exact 0.5-percent control points; native 8-bit positions use floor(half_percent_units*255/200)"
   },
   "migration_reference": "gg-flat-lighting-default-reference.json",
   "independent_native_vectors": "steelseries-independent-gradient-vectors.json",

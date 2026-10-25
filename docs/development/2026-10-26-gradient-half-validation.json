@@ -1,0 +1,21 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "exact half-percent native gradient positions, integer JSON compatibility and full integer-position GG multicolor breathing conversion",
+  "default_application_tests": 520,
+  "explicit_cross_tests": 28,
+  "vendor_unit_tests": 303,
+  "vendor_doc_tests": 1,
+  "headless_UI_suites": 41,
+  "headless_UI_status": "all-passed",
+  "GG_native_lighting_UI_profiles": 8,
+  "development_exe_memory_transports": 34,
+  "development_exe_sha256": "4aafddf88b86c9590e60e637a5ab4ae58f42da912ff266e4c2125dca71a27635",
+  "frontend_JS_gzip_kB": 225.8,
+  "new_runtime_dependencies": false,
+  "integer_position_wire_vectors_unchanged": true,
+  "quarter_percent_or_invalid_position_rejected": true,
+  "physical_hardware_tested": false,
+  "new_fully_accepted_models": 0,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}

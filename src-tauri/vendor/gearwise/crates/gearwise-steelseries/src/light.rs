@@ -127,7 +127,7 @@ fn cycle(layout: &Cycle, zone: &Zone, want: &ZoneState) -> (LightingEffect, Pack
     let (stops, once, effect): (Vec<(Rgb, u8)>, bool, LightingEffect) = match want.effect {
         LightingEffect::Gradient{stops,count,..}=>{
             let mut encoded=Vec::new();let mut previous=0u8;
-            for point in &stops[..usize::from(count)]{let pos=(u16::from(point.position)*255/100)as u8;encoded.push((scale(point.color),pos-previous));previous=pos;}
+            for point in &stops[..usize::from(count)]{let pos=(point.position.half_percent()*255/200)as u8;encoded.push((scale(point.color),pos-previous));previous=pos;}
             if count<14&&previous<255{encoded.push((scale(stops[0].color),255-previous));}
             (encoded,false,want.effect)
         },
