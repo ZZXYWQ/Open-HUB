@@ -5,6 +5,7 @@ import {multiProfile,type MultiPlan,type MultiSource,type MultiView,type MultiSe
 import {Button} from '@/components/ui/button';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {KEY_NAMES} from '@/lib/sino';
+import {NATIVE_MEDIA_KEYS} from '@/lib/native-models';
 
 interface Target{id:string;name:string;serial:string|null;vendor_id:number;product_id:number}
 interface Item{key:string;revision:string;pending:{target:Target;plan:MultiPlan;requested:number;sent:boolean;error:string|null}}
@@ -24,6 +25,7 @@ function settingLabel(s:MultiSetting,plan:MultiPlan){
   else if('Macro'in a)action=`软件宏“${plan.macros?.find(m=>m.id===a.Macro)?.name??a.Macro}”`;
   else if('Key'in a){const modifiers=['左 Ctrl','左 Shift','左 Alt','左 Win','右 Ctrl','右 Shift','右 Alt','右 Win'].filter((_,i)=>a.Key.mods&(1<<i));action=`键盘 ${[...modifiers,KEY_NAMES.find(([k])=>k===a.Key.usage)?.[1]??String(a.Key.usage)].join(' + ')}`;}
   else if('Mouse'in a)action=`鼠标 ${{Left:'左键',Right:'右键',Middle:'中键',Back:'后退',Forward:'前进',WheelLeft:'滚轮左倾',WheelRight:'滚轮右倾'}[a.Mouse]}`;
+  else if('Media'in a)action=`媒体 ${NATIVE_MEDIA_KEYS.find(([id])=>id===a.Media)?.[1]??'0x'+a.Media.toString(16)}`;
   else action=typeof a.Dpi==='string'?`DPI ${{Cycle:'循环档位',Up:'提高一档',Down:'降低一档'}[a.Dpi]}`:`按住狙击 DPI ${a.Dpi.Shift}`;
   return `按键 ${s.Button.id}：${action}`;
  }

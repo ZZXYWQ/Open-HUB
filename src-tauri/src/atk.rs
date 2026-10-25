@@ -39,6 +39,7 @@ pub fn validate_key(usage: u8, mods: gearwise_core::model::Modifiers) -> Result<
 }
 pub fn is_pulsar(v:u16,p:u16)->bool{v==0x3554&&matches!(p,0xf507|0xf508)}
 pub fn validate_pulsar_key(usage:u8,mods:gearwise_core::model::Modifiers)->Result<()>{pulsar_shortcut::encode(usage,mods).map(|_|())}
+pub fn validate_media(usage:u16)->Result<()>{native_macro::validate_media(usage)}
 pub fn validate_macro(m: &Macro) -> Result<()> {
     native_macro::encode(m).map(|_| ())
 }
@@ -431,6 +432,7 @@ impl Atk {
         }
         if raw.len() == 4 && sum(raw) == 0x55 && raw[0] == 6 {
             let m = self.read_native_macro(raw[1], raw[2]).ok()?;
+            if let Some(action)=native_macro::media_action(&m){return Some((action,None));}
             return Some((ButtonAction::Macro(m.id.clone()), Some(m)));
         }
         None
@@ -481,8 +483,11 @@ impl Atk {
                 occupied.insert(b[1]);
             }
         }
-        let mut selected = None;
+        // A known current slot owned only by this button is an explicit edit,
+        // not a free-standing factory macro. Reuse it before consuming free slots.
+        let mut selected=(original[0]==6&&original[1]<12&&!occupied.contains(&original[1])).then_some(original[1]);
         for slot in 0..12u8 {
+            if selected.is_some(){break;}
             if occupied.contains(&slot) {
                 continue;
             }
@@ -494,10 +499,6 @@ impl Atk {
         }
         // An existing non-empty, unbound macro is never silently repurposed.
         let slot = selected
-            .or_else(|| {
-                (original[0] == 6 && original[1] < 12 && !occupied.contains(&original[1]))
-                    .then_some(original[1])
-            })
             .ok_or(Error::invalid(
                 "ATK has no free native macro slot; existing macros were retained",
             ))?;
@@ -656,6 +657,7 @@ impl Device for Atk {
                     ButtonAction::Key { usage, mods } => {
                         if is_pulsar(self.model.vendor,self.model.product){validate_pulsar_key(*usage,*mods)?;}else{native_macro::encode(&native_macro::keyboard(*usage, *mods))?;}
                     }
+                    ButtonAction::Media(usage)=>{if !self.model.native_macros{return Err(Error::Unsupported("Pulsar native media record is not verified"));}native_macro::validate_media(*usage)?;},
                     ButtonAction::Macro(key) => {
                         if !self.model.native_macros{return Err(Error::Unsupported("Pulsar native macro payload not verified"));}
                         native_macro::encode(
@@ -712,7 +714,7 @@ impl Device for Atk {
             }
             Setting::Button{id,action:ButtonAction::Key{usage,mods}} if is_pulsar(self.model.vendor,self.model.product)=>{self.pulsar_key(*id,*usage,*mods)?;}
             Setting::Button { id, action }
-                if matches!(action, ButtonAction::Macro(_) | ButtonAction::Key { .. }) =>
+                if matches!(action, ButtonAction::Macro(_) | ButtonAction::Key { .. } | ButtonAction::Media(_)) =>
             {
                 self.native_binding(*id, action)?;
             }
@@ -1362,4 +1364,22 @@ mod dpi_limits_tests {
   let(mut d,l)=memory_device(0xf508).unwrap();let old=d.read(108,4).unwrap();d.io=Box::new(CorruptOnce{inner:d.io,pending:false,used:false});l.lock().unwrap().clear();assert!(d.apply(&Setting::Button{id:4,action:ButtonAction::Disabled}).is_err());assert_eq!(d.read(108,4).unwrap(),old);let log=l.lock().unwrap();let writes=log.iter().filter_map(|r|if let gearwise_core::transport::MockRecord::Write(p)=r{Some(p)}else{None}).filter(|p|p[1]==7).collect::<Vec<_>>();assert_eq!(writes.len(),2);assert_eq!(&writes[1][6..10],old.as_slice());
  }
  #[test]fn pulsar_exact_control_interface_not_other_3554_mice(){let mut i=HidInterfaceInfo{vendor_id:0x3554,product_id:0xf507,interface_number:1,usage_page:0xff02,..Default::default()};assert!(AtkDriver.probe(&i));i.interface_number=0;assert!(!AtkDriver.probe(&i));i.interface_number=1;i.product_id=0xf509;assert!(!AtkDriver.probe(&i));}
+}
+#[cfg(test)]mod media_native_tests{
+ use super::*;
+ #[test]fn every_native_compx_transport_writes_reads_and_reopens_seven_media_actions(){
+  for spec in models().iter().filter(|s|s.native_macros&&s.native_buttons){
+   let(mut d,_)=memory_device(spec.product).unwrap();for usage in native_macro::MEDIA_USAGES{d.apply(&Setting::Button{id:4,action:ButtonAction::Media(*usage)}).unwrap();assert_eq!(d.read_state().unwrap().buttons[&4],ButtonAction::Media(*usage));}
+   let info=HidInterfaceInfo{vendor_id:spec.vendor,product_id:spec.product,interface_number:1,usage_page:0xff02,usage:2,..Default::default()};let mut reopened=Atk::open(d.io,&info).unwrap();assert_eq!(reopened.read_state().unwrap().buttons[&4],ButtonAction::Media(0xea));
+  }
+ }
+ #[test]fn repeated_edits_reuse_the_current_exclusive_macro_slot_and_leave_free_slots_empty(){
+  let(mut d,_)=memory_device(0x1115).unwrap();d.apply(&Setting::Button{id:4,action:ButtonAction::Media(0xe2)}).unwrap();let slot=d.read(108,4).unwrap()[1];for n in 0..30{d.apply(&Setting::Button{id:4,action:ButtonAction::Media(native_macro::MEDIA_USAGES[n%7])}).unwrap();assert_eq!(d.read(108,4).unwrap()[1],slot);}for other in 0..12u16{if other!=u16::from(slot){assert_eq!(d.read(768+other*384+31,1).unwrap(),vec![0]);}}
+ }
+ #[test]fn a_shared_media_slot_is_not_overwritten_when_only_one_button_changes(){
+  let(mut d,_)=memory_device(0x1115).unwrap();d.apply(&Setting::Button{id:4,action:ButtonAction::Media(0xe2)}).unwrap();let row=d.read(108,4).unwrap();d.write_verified(112,&row).unwrap();let base=768+u16::from(row[1])*384;let before=d.read_blob(base,43).unwrap();d.apply(&Setting::Button{id:4,action:ButtonAction::Media(0xe9)}).unwrap();let state=d.read_state().unwrap();assert_eq!(state.buttons[&4],ButtonAction::Media(0xe9));assert_eq!(state.buttons[&5],ButtonAction::Media(0xe2));assert_eq!(d.read_blob(base,43).unwrap(),before);assert_ne!(d.read(108,4).unwrap()[1],row[1]);
+ }
+ #[test]fn unverified_consumer_usages_pulsar_and_left_button_reject_before_any_io(){
+  for(product,id,usage)in[(0x1115,4,0x183),(0x1115,1,0xe2),(0xf507,4,0xe2),(0xf508,4,0xe2)]{let(mut d,log)=memory_device(product).unwrap();log.lock().unwrap().clear();assert!(d.apply(&Setting::Button{id,action:ButtonAction::Media(usage)}).is_err());assert!(log.lock().unwrap().is_empty());}
+ }
 }

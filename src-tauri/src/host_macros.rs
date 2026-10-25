@@ -61,6 +61,7 @@ pub fn validate(m: &Macro) -> Result<(), String> {
                     return Err("鼠标释放没有对应按下".into());
                 }
             }
+            MacroStep::Media(usage) if !gearwise_core::model::media::ALL.iter().any(|(code,_)|code==usage)=>return Err("未知多媒体键码".into()),
             MacroStep::Delay(ms) => {
                 delay += u64::from(*ms);
                 if *ms > 10000 || delay > 60000 {
@@ -397,4 +398,12 @@ impl InputSink for CountingSink{
  use super::*;use gearwise_core::model::Modifiers;
  #[test]fn tap_cannot_release_a_key_already_held_by_the_same_macro(){let m=Macro{id:"t".into(),name:"t".into(),mode:MacroMode::Once,steps:vec![MacroStep::KeyDown(4),MacroStep::KeyTap{usage:4,mods:Modifiers(0)},MacroStep::KeyUp(4)]};assert!(validate(&m).is_err());}
  #[test]fn shortcut_preserves_preexisting_modifier_until_source_cancel(){let rec=Recorder::default();let router=Router::new(Arc::new(Mutex::new(rec.clone())));let source=Source{vendor:0x1038,product:0x1720,path:"simulation:heldtap".into()};let m=Macro{id:"t".into(),name:"t".into(),mode:MacroMode::Once,steps:vec![MacroStep::KeyDown(0xe0),MacroStep::KeyTap{usage:4,mods:Modifiers(1)},MacroStep::Delay(10000),MacroStep::KeyUp(0xe0)]};router.configure(source.clone(),vec![Binding{button:6,action:m}]).unwrap();router.input(&source,6,true);let end=Instant::now()+Duration::from_secs(1);while !rec.0.lock().unwrap().iter().any(|e|e=="key_up:4")&&Instant::now()<end{std::thread::sleep(Duration::from_millis(1));}assert_eq!(*rec.0.lock().unwrap(),vec!["key_down:224","key_down:4","key_up:4"]);router.remove(&source.path);router.stop_all();assert_eq!(*rec.0.lock().unwrap(),vec!["key_down:224","key_down:4","key_up:4","key_up:224"]);assert!(router.counted.lock().unwrap().keys.is_empty());}
+}
+#[cfg(test)]mod media_route_tests{
+ use super::*;
+ #[test]fn media_steps_use_only_the_selected_mouse_route_and_reject_unknown_usages(){
+  let source=Source{vendor:0x1038,product:0x1720,path:"simulation:media-A".into()};let other=Source{path:"simulation:media-B".into(),..source.clone()};let rec=Recorder::default();let router=Router::new(Arc::new(Mutex::new(rec.clone())));
+  let action=|id:&str,usage|Macro{id:id.into(),name:id.into(),mode:MacroMode::Once,steps:vec![MacroStep::Media(usage)]};let a=action("mute",0xe2);assert!(validate(&action("invalid",0xffff)).is_err());router.configure(source.clone(),vec![Binding{button:6,action:a}]).unwrap();router.configure(other.clone(),vec![Binding{button:6,action:action("play",0xcd)}]).unwrap();
+  router.input(&source,6,true);let until=Instant::now()+Duration::from_secs(1);while rec.0.lock().unwrap().is_empty()&&Instant::now()<until{std::thread::sleep(Duration::from_millis(1));}assert_eq!(*rec.0.lock().unwrap(),vec!["media:226"]);router.input(&other,6,true);let until=Instant::now()+Duration::from_secs(1);while rec.0.lock().unwrap().len()<2&&Instant::now()<until{std::thread::sleep(Duration::from_millis(1));}assert_eq!(*rec.0.lock().unwrap(),vec!["media:226","media:205"]);router.stop_all();
+ }
 }

@@ -67,6 +67,8 @@ pub enum MacroStep {
     },
     MouseDown(MouseButton),
     MouseUp(MouseButton),
+    /// Atomic HID consumer-page tap (no held consumer state).
+    Media(u16),
     /// Wait, in milliseconds.
     Delay(u32),
     /// Type a string (layout-dependent; best effort).
@@ -88,6 +90,7 @@ impl MacroStep {
             .label(),
             MacroStep::MouseDown(b) => format!("↓ {}", b.name()),
             MacroStep::MouseUp(b) => format!("↑ {}", b.name()),
+            MacroStep::Media(usage) => ButtonAction::Media(*usage).label(),
             MacroStep::Delay(ms) => format!("Wait {ms} ms"),
             MacroStep::WaitForRelease => "Hold until physical release".into(),
             MacroStep::Text(t) => format!("Type \"{t}\""),

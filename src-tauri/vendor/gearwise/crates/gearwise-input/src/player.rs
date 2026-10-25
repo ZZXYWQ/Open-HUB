@@ -128,6 +128,7 @@ impl Playback {
             MacroStep::KeyTap { usage, mods } => self.tap(*usage, *mods),
             MacroStep::MouseDown(button) => self.mouse_down(*button),
             MacroStep::MouseUp(button) => self.mouse_up(*button),
+            MacroStep::Media(usage) => Ok(self.sink().media(*usage)?),
             MacroStep::Delay(ms) => self.delay(Duration::from_millis(u64::from(*ms))),
             MacroStep::Text(text) => Ok(self.sink().text(text)?),
             MacroStep::WaitForRelease => if self.ctl.wait_release(){Err(Halt::Aborted)}else{Ok(())},
@@ -440,6 +441,14 @@ mod tests {
                 Event::KeyUp(0xe1),
             ]
         );
+    }
+
+    #[test]
+    fn media_step_is_one_atomic_sink_tap_between_other_steps(){
+        let (p,rec)=setup();
+        p.press(&mac(MacroMode::Once,vec![MacroStep::KeyDown(4),MacroStep::KeyUp(4),MacroStep::Media(0xe2),MacroStep::Media(0xcd)]),"media");
+        wait_idle(&p,"media");
+        assert_eq!(rec.events(),vec![Event::KeyDown(4),Event::KeyUp(4),Event::Media(0xe2),Event::Media(0xcd)]);
     }
 
     #[test]

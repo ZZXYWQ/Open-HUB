@@ -1,0 +1,30 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "COMPX native media taps, atomic source-specific software media steps, exclusive current-slot reuse and complete known configuration snapshots",
+  "default_application_tests": 431,
+  "explicit_cross_tests": 15,
+  "vendor_unit_tests": 282,
+  "vendor_doc_tests": 1,
+  "headless_ui_suites": 29,
+  "compx_native_media_transports": 9,
+  "compx_distinct_existing_models": 8,
+  "media_usages": [
+    "0xB5",
+    "0xB6",
+    "0xB7",
+    "0xCD",
+    "0xE2",
+    "0xE9",
+    "0xEA"
+  ],
+  "native_vectors": "independent reconstruction from static official source, not USB captures",
+  "macro_pool_limit": "current scanned binding references only; cross-bank ownership still requires evidence",
+  "new_runtime_dependencies": false,
+  "development_exe_memory_transports": 32,
+  "development_exe_sha256": "26dfbe0aba7018a995208fb78c97193fb7287dedc4d7d21911aed9dddad8b4be",
+  "new_physical_mice_tested": false,
+  "accepted_full_models": 0,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7",
+  "official_protocol_source_sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5"
+}

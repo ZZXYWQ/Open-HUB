@@ -399,7 +399,7 @@ pub fn validate(p: &Plan) -> Result<(), String> {
                 if p.vendor==0x1532&&matches!(p.product,0x00c0|0x00c1){validate_viper_button(*id,action)?;continue;}
                 if p.vendor==0x1532&&p.product==0x00b4{if !crate::naga::known_button(*id){return Err("未知 Naga 按键".into());}match action{ButtonAction::Default|ButtonAction::Mouse(_)|ButtonAction::Macro(_)=>{},ButtonAction::Key{usage,..} if (4..=0xa4).contains(usage)=>{},_=>return Err("Naga 不支持此板载动作".into())}if *id==1{return Err("保留左键原始点击".into());}continue;}
                 if p.vendor==0x1b1c&&p.product==0x1b2e{if !(2..=8).contains(id){return Err("保留左键，且只允许 M65 PRO 已知按键".into());}match action{ButtonAction::Default|ButtonAction::Disabled|ButtonAction::Mouse(_)|ButtonAction::Macro(_)|ButtonAction::Dpi(DpiFunction::Up|DpiFunction::Down|DpiFunction::Cycle)=>{},ButtonAction::Dpi(DpiFunction::Shift(d)) if (100..=12000).contains(d)=>{},ButtonAction::Key{usage,..} if (4..=0xa4).contains(usage)=>{},_=>return Err("M65 PRO 按键动作无效".into())}continue;}
-                if crate::atk::supported(p.vendor,p.product) {if !(2..=crate::atk::model(p.vendor,p.product).unwrap().buttons).contains(id)||!matches!(action,ButtonAction::Default|ButtonAction::Disabled|ButtonAction::Key{..}|ButtonAction::Macro(_)|ButtonAction::Mouse(gearwise_core::model::MouseButton::Left|gearwise_core::model::MouseButton::Right|gearwise_core::model::MouseButton::Middle|gearwise_core::model::MouseButton::Back|gearwise_core::model::MouseButton::Forward)|ButtonAction::Dpi(DpiFunction::Cycle|DpiFunction::Up|DpiFunction::Down)){return Err("该精确型号仅开放已实现的基础按键、键盘点按和板载宏；未知原厂动作保持不变".into());}continue;}
+                if crate::atk::supported(p.vendor,p.product) {if let ButtonAction::Media(usage)=action{let spec=crate::atk::model(p.vendor,p.product).unwrap();if !spec.native_macros||!spec.native_buttons||!(2..=spec.buttons).contains(id){return Err("此型号或按键未验证板载媒体动作".into());}crate::atk::validate_media(*usage).map_err(|e|e.to_string())?;continue;}if !(2..=crate::atk::model(p.vendor,p.product).unwrap().buttons).contains(id)||!matches!(action,ButtonAction::Default|ButtonAction::Disabled|ButtonAction::Key{..}|ButtonAction::Macro(_)|ButtonAction::Mouse(gearwise_core::model::MouseButton::Left|gearwise_core::model::MouseButton::Right|gearwise_core::model::MouseButton::Middle|gearwise_core::model::MouseButton::Back|gearwise_core::model::MouseButton::Forward)|ButtonAction::Dpi(DpiFunction::Cycle|DpiFunction::Up|DpiFunction::Down)){return Err("该精确型号仅开放已实现的基础按键、键盘点按和板载宏；未知原厂动作保持不变".into());}continue;}
                 if p.vendor != 0x1038 || !(1..=6).contains(id) {
                     return Err("此型号的按键写入尚未实现".into());
                 }
@@ -690,6 +690,7 @@ pub fn compile(plan:&Plan)->Result<Compiled,String>{
   if crate::hyperx::supported(plan.vendor,plan.product){crate::hyperx::validate_setting(s).map_err(|e|e.to_string())?;if let Setting::Button{action:ButtonAction::Macro(id),..}=s{crate::hyperx::validate_macro(definitions.get(id.as_str()).ok_or("HyperX 板载宏定义缺失")?).map_err(|e|e.to_string())?;}native.push(s.clone());continue;}
   if let Some(model)=crate::atk::model(plan.vendor,plan.product) {
    if pulsar{if let Setting::Button{id,action}=s{validate_pulsar_button(*id,action)?;}}
+   if let Setting::Button{action:ButtonAction::Media(usage),..}=s{if !model.native_macros{return Err("此型号的板载媒体动作尚未验证".into());}crate::atk::validate_media(*usage).map_err(|e|e.to_string())?;}
    if let Setting::Button{action:ButtonAction::Key{usage,mods},..}=s{if pulsar{crate::atk::validate_pulsar_key(*usage,*mods)}else{crate::atk::validate_key(*usage,*mods)}.map_err(|e|e.to_string())?;}
    if let Setting::Button{action:ButtonAction::Macro(id),..}=s{if model.native_macros{let definition=definitions.get(id.as_str()).ok_or("ATK 板载宏定义缺失")?;crate::atk::validate_macro(definition).map_err(|e|e.to_string())?;native.push(s.clone());continue;}if !pulsar{return Err("此型号未接通宏".into());}}
    else{native.push(s.clone());continue;}
@@ -706,6 +707,8 @@ pub fn compile(plan:&Plan)->Result<Compiled,String>{
  }
  if software_input{for (id,function) in [(6,DpiFunction::Up),(7,DpiFunction::Down),(8,DpiFunction::Shift(0))]{if !plan.settings.iter().any(|s|matches!(s,Setting::Button{id:b,action} if *b==id&&!matches!(action,ButtonAction::Default))){dpi_actions.insert(id,function);}}for id in dpi_actions.keys(){buttons.push(*id);}}
  if !keys.is_empty(){let reserved=keys.keys().map(|v|0x68+(*v-0x7c) as u8).collect::<Vec<_>>();for s in &plan.settings{if let Setting::Button{action:ButtonAction::Key{usage,..},..}=s{if reserved.contains(usage){return Err("普通快捷键与软件宏的 F13–F24 触发键冲突".into());}}}}
+ // Indicator colours address the active DPI stage; establish that stage first.
+ if crate::atk::supported(plan.vendor,plan.product){native.sort_by_key(|s|matches!(s,Setting::Lighting{..}));}
  Ok(Compiled{settings:native,bindings,input:crate::macro_runtime::InputMap{keys,buttons,dpi_buttons:dpi_actions.keys().copied().collect()},software_input,dpi_actions})
 }#[cfg(test)]mod macro_compile_tests{
  use super::*;use gearwise_core::{profile::{Macro,MacroMode,MacroStep},model::Modifiers};
@@ -972,5 +975,33 @@ mod profile_activation_identity_tests {
   let runtime=crate::macro_runtime::Runtime::default();log.lock().unwrap().clear();
   let error=service.apply_at_identity(&descriptor.id,&plan,&runtime,&root,None,Some("serial:1b1c:1b2e:another-unit")).err().expect("must reject stale serial");
   assert!(error.contains("身份"));assert!(log.lock().unwrap().is_empty());assert!(!root.exists());
+ }
+}
+
+#[cfg(test)]mod compx_media_tests{
+ use super::*;
+ use gearwise_core::{profile::{Macro,MacroMode,MacroStep},model::{MouseButton,DpiState,DpiStage,LightingEffect,ZoneState,Rgb}};
+ #[test]fn compx_indicator_changes_follow_new_dpi_stage_regardless_of_input_order(){
+  let(mut d,_)=crate::atk::simulated(0xf58f).unwrap();let old=d.read_state().unwrap().lighting[&0].clone();let dpi=Setting::Dpi(DpiState{stages:vec![DpiStage::uniform(400),DpiStage::uniform(1600)],active:0});let light=Setting::Lighting{zone:0,state:ZoneState{effect:LightingEffect::Static{color:Rgb{r:17,g:34,b:51}},brightness:100}};
+  let p=Plan{vendor:0x3554,product:0xf58f,settings:vec![light,dpi],macros:vec![],source:None};let c=compile(&p).unwrap();assert!(matches!(c.settings[0],Setting::Dpi(_)));for s in c.settings{d.apply(&s).unwrap();}assert_eq!(d.read_state().unwrap().lighting[&0],ZoneState{effect:LightingEffect::Static{color:Rgb{r:17,g:34,b:51}},brightness:100});d.apply(&Setting::DpiActiveStage(1)).unwrap();assert_eq!(d.read_state().unwrap().lighting[&0],old);
+ }
+ fn base_views()->Vec<View>{
+  crate::atk::models().iter().filter(|m|m.native_macros&&m.native_buttons).map(|spec|{
+   let(mut d,_)=crate::atk::simulated(spec.product).unwrap();d.apply(&Setting::Button{id:2,action:ButtonAction::Mouse(MouseButton::Back)}).unwrap();
+   let m=Macro{id:"existing".into(),name:"existing".into(),mode:MacroMode::Once,steps:vec![MacroStep::KeyDown(7),MacroStep::Delay(77),MacroStep::KeyUp(7)]};d.set_macro_definitions(&[m.clone()]).unwrap();d.apply(&Setting::Button{id:5,action:ButtonAction::Macro(m.id)}).unwrap();view(d.as_mut()).unwrap()
+  }).collect()
+ }
+ #[test]fn export_compx_native_media_ui_fixture(){
+  let views=base_views();assert!(!views.is_empty());for v in &views{assert_eq!(v.state.buttons[&2],ButtonAction::Mouse(MouseButton::Back));assert!(matches!(v.state.buttons[&5],ButtonAction::Macro(_)));}
+  if let Some(path)=std::env::var_os("OPEN_HUB_COMPX_MEDIA_FIXTURE"){std::fs::write(path,serde_json::to_vec_pretty(&views).unwrap()).unwrap();}
+ }
+ #[test]#[ignore="requires COMPX media UI-created profiles"]
+ fn browser_compx_media_profiles_reimport_and_execute_real_native_drivers(){
+  let path=std::env::var_os("OPEN_HUB_COMPX_MEDIA_UI_PROFILES").unwrap();let mut profiles:Vec<crate::profiles::Profile>=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();assert_eq!(profiles.len(),base_views().len());
+  // These are pre-save IPC arguments. Production save_profile assigns each
+  // empty id before a later export/import, so replay that exact normalization.
+  for p in &mut profiles{if p.id.is_empty(){p.id=crate::profiles::new_id();}}
+  let mut store=crate::profiles::ProfileStore::default();crate::profile_transfer::merge(&mut store,profiles.clone()).unwrap();
+  for p in profiles{let plan=p.multi.as_ref().unwrap();let c=compile(plan).unwrap();assert!(c.bindings.is_empty());assert!(!c.software_input);let(mut d,log)=crate::atk::simulated(plan.product).unwrap();d.set_macro_definitions(&plan.macros).unwrap();for s in &c.settings{d.apply(s).unwrap();}let state=d.read_state().unwrap();assert_eq!(state.buttons[&2],ButtonAction::Mouse(MouseButton::Back));assert_eq!(state.buttons[&4],ButtonAction::Media(0xe2));for (button,usage)in[(5,None),(3,Some(0xe9))]{let ButtonAction::Macro(id)=&state.buttons[&button]else{panic!("macro lost")};let definitions=d.macro_definitions();let m=definitions.iter().find(|m|&m.id==id).unwrap();if let Some(usage)=usage{assert!(m.steps.contains(&MacroStep::Media(usage)));}else{assert!(m.steps.contains(&MacroStep::KeyDown(7)));assert!(m.steps.contains(&MacroStep::Delay(77)));}}assert_eq!(state.dpi.unwrap().stages[0].x,400);assert!(!log.lock().unwrap().is_empty());}
  }
 }
