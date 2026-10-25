@@ -230,7 +230,7 @@ pub fn decode_binding(raw: [u8; 4]) -> ButtonBinding {
             let name = SPECIALS.get(usize::from(raw[1])).copied().unwrap_or("invalid");
             ("special", name.to_string())
         }
-        0x00 => ("macro", format!("Macro at page {} offset {}", raw[1], raw[3])),
+        0x00 => ("macro", format!("Macro at page {} offset {}", raw[1], u16::from_be_bytes([raw[2],raw[3]]))),
         0xFF => ("disabled", "Disabled".to_string()),
         other => ("unknown", format!("Type 0x{other:02x}")),
     };

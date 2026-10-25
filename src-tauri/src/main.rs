@@ -38,6 +38,7 @@ mod rgb;
 mod screen;
 mod effects;
 mod onboard;
+mod onboard_macros;
 mod onboard_bindings;
 mod profiles;
 mod profile_routing;
@@ -592,6 +593,10 @@ fn apply_logitech_lighting(state:State<AppState>,id:String,change:native_logitec
  let guard=manager(&state)?;guard.as_ref().expect("manager initialised").with_device(&id,|d,t|native_logitech_lighting::apply(d,t,&change)).map_err(|e|e.to_string())
 }
 #[tauri::command(async)]
+fn read_onboard_macro(state:State<AppState>,id:String,selection:onboard_macros::Selection)->Result<onboard_macros::Trace,String>{
+ let guard=manager(&state)?;guard.as_ref().expect("manager initialised").with_device(&id,|d,t|onboard_macros::read(d,t,&selection)).map_err(|e|e.to_string())
+}
+#[tauri::command(async)]
 fn write_onboard_bindings(
     app: AppHandle,
     state: State<AppState>,
@@ -1094,6 +1099,7 @@ fn main() {
             save_onboard_backup,
             write_onboard_slot,
             write_onboard_bindings,
+            read_onboard_macro,
             read_logitech_lighting,apply_logitech_lighting,
             restore_onboard_backup,
             get_app_info,

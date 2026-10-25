@@ -368,10 +368,12 @@ fn native_logitech_onboard_fixture_export() {
         let mut dpi=dpi_settings(&d);dpi.dpi_levels=vec![400,2400];dpi.default_index=1;
         d.write_slot_settings(&m,&dpi).unwrap();
         let (after_dpi_snapshot,_)=d.onboard_snapshot(&m).unwrap();
+        let macro_mem=macro_memory();
+        let macro_trace=crate::onboard_macros::read(&d,&macro_mem,&macro_selection(&d)).unwrap();
         std::fs::write(
             path,
             serde_json::to_vec_pretty(
-                &serde_json::json!({"device":summary,"snapshot":snapshot,"after_snapshot":after_snapshot,"after_dpi_snapshot":after_dpi_snapshot,"hardware_tested":false}),
+                &serde_json::json!({"macro_trace":macro_trace,"device":summary,"snapshot":snapshot,"after_snapshot":after_snapshot,"after_dpi_snapshot":after_dpi_snapshot,"hardware_tested":false}),
             )
             .unwrap(),
         )
@@ -472,4 +474,27 @@ fn browser_logitech_dpi_slot_keeps_private_mouse_scope_and_native_target_identit
     let m=memory();let d=device();assert_eq!(s.expected_device,d.profile_key);assert_eq!((s.slot,s.sector),(1,1));assert_eq!(s.dpi_levels,vec![400,2400]);assert_eq!(s.default_index,0);
     let before=m.0.lock().unwrap().sectors.clone();let result=d.write_slot_settings(&m,&s).unwrap();assert!(!result.unchanged);
     let now=m.0.lock().unwrap();assert_eq!(now.sectors[&0],before[&0]);assert_eq!(now.sectors[&2],before[&2]);assert_eq!(&now.sectors[&1][3..7],&[0x90,1,0x60,9]);assert_eq!(&now.sectors[&1][0x0d..254],&before[&1][0x0d..254]);
+}
+
+fn macro_memory()->Memory{
+ let m=memory();let mut a=vec![0xff;256];a[5..18].copy_from_slice(&[0x43,0x11,6,0x40,0,77,0x44,0x11,6,0x60,0,4,0]);a[18]=7;
+ let mut b=vec![0xff;256];b[7..14].copy_from_slice(&[0x45,0,0xe2,0x46,0,0xe2,0xff]);
+ {let mut s=m.0.lock().unwrap();s.sectors.insert(3,a);s.sectors.insert(4,b);}m
+}
+fn macro_selection(d:&Device)->crate::onboard_macros::Selection{crate::onboard_macros::Selection{expected_device:d.profile_key.clone(),slot:1,sector:1,layer:Layer::Normal,button:5,expected:[0,3,0,5]}}
+#[test]fn native_macro_reader_uses_only_verified_read_requests_and_preserves_every_sector(){
+ let m=macro_memory();let d=unit_device(&m);let before=m.0.lock().unwrap().sectors.clone();let trace=crate::onboard_macros::read(&d,&m,&macro_selection(&d)).unwrap();assert!(trace.complete);assert_eq!(trace.pages.len(),2);assert_eq!(trace.steps.len(),7);assert_eq!(trace.steps[1].action,crate::onboard_macros::Action::Delay{milliseconds:77});assert_eq!(trace.steps[3].bytes,vec![0x60,0,4,0,7]);
+ let s=m.0.lock().unwrap();assert_eq!(s.sectors,before);assert!(s.calls.iter().all(|(f,_)|matches!(f,0|5)));assert!(s.identity_reads>=6);
+}
+#[test]fn native_macro_preview_rejects_wrong_layer_stale_records_and_unit_changes_without_writes(){
+ for choice in 0..4{let m=macro_memory();let d=unit_device(&m);let mut selection=macro_selection(&d);match choice{0=>selection.expected_device="session:elsewhere".into(),1=>selection.expected[3]=6,2=>selection.button=12,_=>m.0.lock().unwrap().switch_after_read=Some(40)}
+  assert!(crate::onboard_macros::read(&d,&m,&selection).is_err());assert!(m.0.lock().unwrap().calls.iter().all(|(f,_)|matches!(f,0|5)));
+ }
+}
+
+#[test]
+#[ignore="requires current native macro inspection UI selection"]
+fn browser_native_macro_selection_executes_read_only_production_reader(){
+ let path=std::env::var_os("OPEN_HUB_LOGITECH_MACRO_UI_SELECTION").unwrap();let selection:crate::onboard_macros::Selection=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+ let m=macro_memory();let before=m.0.lock().unwrap().sectors.clone();let tr=crate::onboard_macros::read(&device(),&m,&selection).unwrap();assert!(tr.complete);assert_eq!(tr.steps[0].action,crate::onboard_macros::Action::KeyDown{modifiers:0x11,usage:6});assert_eq!(tr.steps[1].action,crate::onboard_macros::Action::Delay{milliseconds:77});assert_eq!(tr.pages.len(),2);let s=m.0.lock().unwrap();assert_eq!(s.sectors,before);assert!(s.calls.iter().all(|(f,_)|matches!(f,0|5)));
 }

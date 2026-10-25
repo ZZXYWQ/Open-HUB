@@ -1,0 +1,29 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "read-only native Logitech Macro Format 1 inspection with five-byte jumps and model-slot UI",
+  "default_application_tests": 445,
+  "explicit_cross_tests": 17,
+  "new_default_tests": 8,
+  "targeted_headless_ui_suites": 3,
+  "headless_ui_suites_available": 31,
+  "previous_full_headless_ui_suites": 29,
+  "reader_limits": {
+    "pages": 16,
+    "instructions": 1024
+  },
+  "unverified_instructions": "wheel/XY/unknown remain partial; no implicit page fallthrough",
+  "production_requests": "unit identity, getInfo and readSector only",
+  "new_runtime_dependencies": false,
+  "frontend_js_gzip_kb": 220.46,
+  "development_exe_memory_transports": 32,
+  "development_exe_sha256": "90791097206250d1df5ec72f2c303248a4d68d95de911b7c9437e5e2ae766a36",
+  "physical_Logitech_tested": false,
+  "accepted_full_models": 0,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7",
+  "references": {
+    "cvuchener/hidpp": "474ac10db5673da8f2f1c8911414d394c0eb6d12",
+    "leodbc/g502x-onboard": "cb2952849f82ae91664a610ca9e3e8ce7ee59d55",
+    "libratbag_macro_pr1895_comparison_only": "26611b7b20866d1b01e8677ce011af18d6ff2ef7"
+  }
+}
