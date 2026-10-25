@@ -61,7 +61,12 @@ pub struct WriteReport {
     pub bytes_changed: usize,
     /// True when nothing changed, so nothing was written.
     pub unchanged: bool,
+    pub active_reloaded: bool,
+    pub reload_note: Option<String>,
 }
+
+pub struct PreparedDpi{tx:crate::onboard_restore::Prepared,report:WriteReport}
+impl PreparedDpi{pub fn raw(&self)->Vec<RawSector>{self.tx.raw()}}
 
 /// Puts `settings` into a copy of a profile sector. Only the report rate,
 /// starting and shift DPI indices and the five DPI values change; buttons,
@@ -459,29 +464,8 @@ impl Device {
         Ok(())
     }
 
-    /// Writes `data` to `sector` and reads it back. On a mismatch the
-    /// original bytes are written back and an error explains what happened.
-    fn write_sector_verified(&self, t: &dyn FeatureRequest, sector: u16, data: &[u8], original: &[u8]) -> Result<()> {
-        let size = data.len() as u16;
-        let outcome = self.write_sector(t, sector, data).and_then(|()| self.read_sector(t, sector, size)).and_then(|bytes| { self.verify_native_identity(t, &self.profile_key)?; Ok(bytes) });
-        let reason = match outcome {
-            Ok(readback) if readback == data => return Ok(()),
-            Ok(_) => "the mouse stored different bytes than were written".to_string(),
-            Err(e) => e.to_string(),
-        };
-        let rolled_back = self
-            .write_sector(t, sector, original)
-            .and_then(|()| self.read_sector(t, sector, size))
-            .is_ok_and(|back| back == original);
-        Err(Error::Other(if rolled_back {
-            format!("write to sector 0x{sector:04x} failed ({reason}); the original was put back")
-        } else {
-            format!("write to sector 0x{sector:04x} failed ({reason}) and the original couldn't be confirmed; restore from the backup")
-        }))
-    }
-
     /// Changes one user slot's DPI levels, starting level and report rate.
-    pub fn write_slot_settings(&self, t: &dyn FeatureRequest, settings: &SlotSettings) -> Result<WriteReport> {
+    pub fn prepare_slot_settings(&self, t: &dyn FeatureRequest, settings: &SlotSettings) -> Result<PreparedDpi> {
         crate::onboard_bindings::validate_target(self).map_err(Error::Other)?;
         self.verify_native_preview(t, &settings.expected_device,&settings.expected_connection)?;
         let info = self.onboard_info(t)?;
@@ -505,17 +489,18 @@ impl Device {
         let patched = patch_profile_sector(&original, settings).map_err(Error::Other)?;
         let bytes_changed = patched.iter().zip(&original).filter(|(a, b)| a != b).count();
         self.verify_native_preview(t, &settings.expected_device,&settings.expected_connection)?;
-        if bytes_changed == 0 {
-            return Ok(WriteReport { slot: settings.slot, sector, bytes_changed, unchanged: true });
-        }
-        self.write_sector_verified(t, sector, &patched, &original)?;
-        self.verify_native_preview(t, &settings.expected_device,&settings.expected_connection)?;
-        // If the mouse is running this slot from memory, reload it.
-        let active = self.call(t, ONBOARD_PROFILES, func::GET_ACTIVE_PROFILE, &[])?;
-        if active[1] == settings.slot {
-            let _ = self.call(t, ONBOARD_PROFILES, func::SET_ACTIVE_PROFILE, &[0, settings.slot]);
-        }
-        Ok(WriteReport { slot: settings.slot, sector, bytes_changed, unchanged: false })
+        let tx=crate::onboard_restore::prepare(self,t,&info,&[(sector,patched)])?;
+        if !tx.matches(sector,&original)||!tx.matches(0,&directory){return Err(Error::Other("DPI profile or directory changed during planning; read it again".into()));}
+        Ok(PreparedDpi{tx,report:WriteReport{slot:settings.slot,sector,bytes_changed,unchanged:bytes_changed==0,active_reloaded:false,reload_note:None}})
+    }
+    pub fn commit_slot_settings(&self,t:&dyn FeatureRequest,mut prepared:PreparedDpi)->Result<WriteReport>{
+        crate::onboard_restore::commit(self,t,&prepared.tx)?;
+        match crate::onboard_restore::reload_current(self,t,&prepared.tx){Ok(reloaded)=>prepared.report.active_reloaded=reloaded,Err(e)=>prepared.report.reload_note=Some(format!("DPI saved and readback verified; active slot reload was not confirmed: {e}"))};
+        Ok(prepared.report)
+    }
+    #[cfg(test)]
+    pub fn write_slot_settings(&self,t:&dyn FeatureRequest,settings:&SlotSettings)->Result<WriteReport>{
+        let prepared=self.prepare_slot_settings(t,settings)?;self.commit_slot_settings(t,prepared)
     }
 
     /// Changes only explicitly reviewed physical bindings in one user sector.
@@ -656,33 +641,13 @@ impl Device {
 
     /// Writes backed-up sectors (directory and user profiles only) back to
     /// the mouse, skipping those already identical. Returns how many changed.
+    #[cfg(test)]
     pub fn restore_sectors(&self, t: &dyn FeatureRequest, sectors: &[(u16, Vec<u8>)]) -> Result<usize> {
         crate::onboard_bindings::validate_target(self).map_err(Error::Other)?;
         self.verify_native_identity(t, &self.profile_key)?;
-        let info = self.onboard_info(t)?;
-        crate::onboard_bindings::validate_info(&info).map_err(Error::Other)?;
-        let mut seen=std::collections::BTreeSet::new();
-        if sectors.is_empty()||sectors.iter().any(|(sector,data)|*sector>=u16::from(info.sector_count)||!seen.insert(*sector)||!sector_crc_ok(data)){return Err(Error::Other("invalid, duplicate or unverified restore sector".into()));}
-        if let Some((sector, data)) = sectors.iter().find(|(_, d)| d.len() != usize::from(info.sector_size)) {
-            return Err(Error::Other(format!(
-                "backup sector 0x{sector:04x} is {} bytes but this mouse uses {}",
-                data.len(),
-                info.sector_size
-            )));
-        }
-        // Read every preimage before the first flash write. A bad last sector
-        // must not leave earlier sectors already changed.
-        let mut before=Vec::new();
-        for (sector,data) in sectors {before.push((*sector,data,self.read_sector(t,*sector,info.sector_size)?));}
-        self.verify_native_identity(t,&self.profile_key)?;
-        before.sort_by_key(|(sector,_,_)|(*sector==0,*sector));
-        let mut written = 0;
-        for (sector, data, current) in before {
-            if &current == data {continue;}
-            self.write_sector_verified(t, sector, data, &current)?;
-            written += 1;
-        }
-        Ok(written)
+        let info=self.onboard_info(t)?;
+        let prepared=crate::onboard_restore::prepare(self,t,&info,sectors)?;
+        crate::onboard_restore::commit(self,t,&prepared)
     }
 }
 

@@ -221,15 +221,18 @@ export interface SlotSettings {
 }
 
 export interface OnboardWriteResult {
-  report: { slot: number; sector: number; bytes_changed: number; unchanged: boolean };
+  report: { slot: number; sector: number; bytes_changed: number; unchanged: boolean;active_reloaded:boolean;reload_note:string|null };
   backup_path: string;
-  snapshot: OnboardSnapshot;
+  snapshot: OnboardSnapshot|null;
+  refresh_note:string|null;
 }
 
 export interface OnboardRestorePreview{digest:string;device_name:string;profiles:OnboardProfile[];macro_references:number}
 
 export interface OnboardRestoreResult {
   sectors_written: number;
+  active_reloaded:boolean;
+  reload_note:string|null;
   backup_path: string;
   snapshot: OnboardSnapshot | null;
   refresh_note: string | null;

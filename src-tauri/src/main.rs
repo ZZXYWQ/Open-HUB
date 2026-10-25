@@ -38,6 +38,7 @@ mod rgb;
 mod screen;
 mod effects;
 mod onboard;
+mod onboard_restore;
 mod onboard_macros;
 mod onboard_macro_plan;
 mod onboard_bindings;
@@ -574,7 +575,8 @@ fn save_onboard_backup(app: AppHandle, state: State<AppState>, id: String, path:
 struct OnboardWriteResult {
     report: onboard::WriteReport,
     backup_path: String,
-    snapshot: onboard::Snapshot,
+    snapshot: Option<onboard::Snapshot>,
+    refresh_note: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -658,11 +660,13 @@ fn write_onboard_slot(
             onboard_bindings::validate_target(d).map_err(hidpp::Error::Other)?;
             d.verify_native_preview(t,&settings.expected_device,&settings.expected_connection)?;
             let (before, raw) = d.onboard_snapshot(t)?;
+            let prepared=d.prepare_slot_settings(t,&settings)?;
+            let mut backup_raw=raw.into_iter().map(|r|(r.sector,r)).collect::<std::collections::BTreeMap<_,_>>();for r in prepared.raw(){backup_raw.insert(r.sector,r);}
             let backup = auto_backup_path(&app, d).map_err(hidpp::Error::Other)?;
-            write_onboard_backup(&app.package_info().version.to_string(), &backup, d, &before, &raw).map_err(hidpp::Error::Other)?;
-            let report = d.write_slot_settings(t, &settings)?;
-            let (snapshot, _) = d.onboard_snapshot(t)?;
-            Ok(OnboardWriteResult { report, backup_path: backup.display().to_string(), snapshot })
+            write_onboard_backup(&app.package_info().version.to_string(), &backup, d, &before, &backup_raw.into_values().collect::<Vec<_>>()).map_err(hidpp::Error::Other)?;
+            let report = d.commit_slot_settings(t,prepared)?;
+            let (snapshot,refresh_note)=match d.onboard_snapshot(t){Ok((s,_))=>(Some(s),None),Err(e)=>(None,Some(format!("DPI saved and readback verified; refreshing the view failed: {e}")))};
+            Ok(OnboardWriteResult { report, backup_path: backup.display().to_string(), snapshot, refresh_note })
         })
         .map_err(|e| e.to_string())
 }
@@ -670,6 +674,8 @@ fn write_onboard_slot(
 #[derive(Serialize)]
 struct OnboardRestoreResult {
     sectors_written: usize,
+    active_reloaded: bool,
+    reload_note: Option<String>,
     backup_path: String,
     snapshot: Option<onboard::Snapshot>,
     refresh_note: Option<String>,
@@ -698,14 +704,18 @@ fn restore_onboard_backup(app: AppHandle, state: State<AppState>, id: String, pa
             d.verify_native_preview(t,&expected_device,&expected_connection)?;
             let (before, current_raw) = d.onboard_snapshot(t)?;
             let sectors=onboard::scoped_restore(&file,&d.model_ids,&before.info).map_err(hidpp::Error::Other)?;
+            let prepared=onboard_restore::prepare(d,t,&before.info,&sectors)?;
+            let mut backup_raw=current_raw.into_iter().map(|r|(r.sector,r)).collect::<std::collections::BTreeMap<_,_>>();
+            for r in prepared.raw(){backup_raw.insert(r.sector,r);}
             let backup = auto_backup_path(&app, d).map_err(hidpp::Error::Other)?;
-            write_onboard_backup(&app.package_info().version.to_string(), &backup, d, &before, &current_raw).map_err(hidpp::Error::Other)?;
-            let sectors_written = d.restore_sectors(t, &sectors)?;
+            write_onboard_backup(&app.package_info().version.to_string(), &backup, d, &before, &backup_raw.into_values().collect::<Vec<_>>()).map_err(hidpp::Error::Other)?;
+            let sectors_written = onboard_restore::commit(d,t,&prepared)?;
+            let(active_reloaded,reload_note)=match onboard_restore::reload_current(d,t,&prepared){Ok(v)=>(v,None),Err(e)=>(false,Some(format!("Restore saved and readback verified; current slot reload was not confirmed: {e}")))};
             let (snapshot, refresh_note) = match d.onboard_snapshot(t) {
                 Ok((snapshot,_)) => (Some(snapshot),None),
                 Err(e) => (None,Some(format!("Restore was read-back verified, but refreshing the view failed: {e}"))),
             };
-            Ok(OnboardRestoreResult { sectors_written, backup_path: backup.display().to_string(), snapshot, refresh_note })
+            Ok(OnboardRestoreResult { sectors_written, active_reloaded,reload_note, backup_path: backup.display().to_string(), snapshot, refresh_note })
         })
         .map_err(|e| e.to_string())
 }
@@ -995,8 +1005,10 @@ fn main() {
                 default_index: start.parse().map_err(|_| "bad start index")?,
                 report_rate_hz: hz.parse().map_err(|_| "bad rate")?,
             };
-            write_onboard_backup(env!("CARGO_PKG_VERSION"), std::path::Path::new(backup), d, &snapshot, &raw)?;
-            let report = d.write_slot_settings(t, &settings).map_err(|e| e.to_string())?;
+            let prepared=d.prepare_slot_settings(t,&settings).map_err(|e|e.to_string())?;
+            let mut backup_raw=raw.into_iter().map(|r|(r.sector,r)).collect::<std::collections::BTreeMap<_,_>>();for r in prepared.raw(){backup_raw.insert(r.sector,r);}
+            write_onboard_backup(env!("CARGO_PKG_VERSION"), std::path::Path::new(backup), d, &snapshot, &backup_raw.into_values().collect::<Vec<_>>())?;
+            let report=d.commit_slot_settings(t,prepared).map_err(|e|e.to_string())?;
             Ok(serde_json::to_string_pretty(&report).unwrap_or_default())
         });
     }
@@ -1008,9 +1020,12 @@ fn main() {
             let (before,raw)=d.onboard_snapshot(t).map_err(|e|e.to_string())?;
             let sectors=onboard::scoped_restore(&file,&d.model_ids,&before.info)?;
             let source=std::path::Path::new(&path);let backup=source.with_file_name(format!("open-hub-before-restore-{}.json",profiles::new_id()));
-            write_onboard_backup(env!("CARGO_PKG_VERSION"),&backup,d,&before,&raw)?;
-            let written = d.restore_sectors(t, &sectors).map_err(|e| e.to_string())?;
-            Ok(format!("restored {written} sector(s); previous state backed up to {}",backup.display()))
+            let prepared=onboard_restore::prepare(d,t,&before.info,&sectors).map_err(|e|e.to_string())?;
+            let mut backup_raw=raw.into_iter().map(|r|(r.sector,r)).collect::<std::collections::BTreeMap<_,_>>();for r in prepared.raw(){backup_raw.insert(r.sector,r);}
+            write_onboard_backup(env!("CARGO_PKG_VERSION"),&backup,d,&before,&backup_raw.into_values().collect::<Vec<_>>())?;
+            let written = onboard_restore::commit(d,t,&prepared).map_err(|e| e.to_string())?;
+            let reload=onboard_restore::reload_current(d,t,&prepared);let note=reload.err().map(|e|format!("; saved and readback verified, but current slot reload was not confirmed: {e}")).unwrap_or_default();
+            Ok(format!("restored {written} sector(s); previous state backed up to {}{note}",backup.display()))
         });
     }
     // Read-only: print what an import from G HUB would produce, without saving.

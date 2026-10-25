@@ -26,6 +26,8 @@ struct State {
     identity_reads: usize,
     short_identity: bool,
     change_unit_on_fault: bool,
+    change_unrelated_on_fault: bool,
+    descriptor_changed: bool,
     switch_after_read: Option<usize>,
     read_count: usize,
 }
@@ -143,7 +145,7 @@ impl FeatureRequest for Memory {
         }
         let mut r = vec![0; 16];
         match function {
-            0 => {r[..11].copy_from_slice(&[1, 3, 1, 2, 0, 11, 8, 1, 0, 10, 1]);if let Some(size)=s.sector_size{r[7..9].copy_from_slice(&size.to_be_bytes());}},
+            0 => {r[..11].copy_from_slice(&[1, 3, 1, 2, 0, 11, 8, 1, 0, 10, 1]);if let Some(size)=s.sector_size{r[7..9].copy_from_slice(&size.to_be_bytes());}if s.descriptor_changed{r[9]^=1;}},
             2 => r[0] = s.mode,
             11 => r[0] = 0,
             4 => r[1] = s.active,
@@ -197,6 +199,7 @@ impl FeatureRequest for Memory {
                 if s.seen == nth {
                     s.fault = None;
                     if s.change_unit_on_fault {s.unit=[9;4];}
+                    if s.change_unrelated_on_fault{let mut p=s.sectors[&2].clone();p[0x12]^=0x40;s.sectors.insert(2,crc(p));}
                     if s.change_directory_on_fault {
                         let mut dir = s.sectors[&0].clone();
                         dir[1] = 2;
@@ -371,7 +374,7 @@ fn native_logitech_onboard_fixture_export() {
         d.write_slot_bindings(&m, &edited).unwrap();
         let (after_snapshot, _) = d.onboard_snapshot(&m).unwrap();
         let mut dpi=dpi_settings(&d);dpi.dpi_levels=vec![400,2400];dpi.default_index=1;
-        d.write_slot_settings(&m,&dpi).unwrap();
+        let after_dpi_report=d.write_slot_settings(&m,&dpi).unwrap();
         let (after_dpi_snapshot,_)=d.onboard_snapshot(&m).unwrap();
         let macro_mem=macro_memory();
         let macro_trace=crate::onboard_macros::read(&d,&macro_mem,&macro_selection(&d)).unwrap();
@@ -385,7 +388,7 @@ fn native_logitech_onboard_fixture_export() {
         std::fs::write(
             path,
             serde_json::to_vec_pretty(
-                &serde_json::json!({"restore_backup":restore_file,"restore_backup_digest":restore_digest,"restore_preview":restore_preview,"long_macro_preview":long_macro_preview,"long_macro_saved":long_macro_saved,"after_long_macro_snapshot":after_long_macro_snapshot,"planning_snapshot":planning_snapshot,"macro_preview":macro_preview,"macro_saved":macro_saved,"after_macro_snapshot":after_macro_snapshot,"macro_trace":macro_trace,"device":summary,"snapshot":snapshot,"after_snapshot":after_snapshot,"after_dpi_snapshot":after_dpi_snapshot,"hardware_tested":false}),
+                &serde_json::json!({"restore_backup":restore_file,"restore_backup_digest":restore_digest,"restore_preview":restore_preview,"long_macro_preview":long_macro_preview,"long_macro_saved":long_macro_saved,"after_long_macro_snapshot":after_long_macro_snapshot,"planning_snapshot":planning_snapshot,"macro_preview":macro_preview,"macro_saved":macro_saved,"after_macro_snapshot":after_macro_snapshot,"macro_trace":macro_trace,"device":summary,"snapshot":snapshot,"after_snapshot":after_snapshot,"after_dpi_snapshot":after_dpi_snapshot,"after_dpi_report":after_dpi_report,"hardware_tested":false}),
             )
             .unwrap(),
         )
@@ -635,4 +638,31 @@ fn restore_file()->serde_json::Value{
 #[ignore="requires current backup restore preview browser request"]
 fn browser_reviewed_restore_request_uses_selected_unit_connection_and_exact_backup_bytes(){
  let path=std::env::var_os("OPEN_HUB_LOGITECH_RESTORE_UI_REQUEST").unwrap();let request:serde_json::Value=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();let m=memory();let d=device();d.verify_native_preview(&m,request["expectedDevice"].as_str().unwrap(),request["expectedConnection"].as_str().unwrap()).unwrap();assert_eq!(request["id"],d.id);let file=restore_file();let digest=backup_digest(&serde_json::to_vec_pretty(&file).unwrap());assert_eq!(request["expectedBackupDigest"],digest);let plan=scoped_restore(&file,&d.model_ids,&d.onboard_info(&m).unwrap()).unwrap();assert_eq!(d.restore_sectors(&m,&plan).unwrap(),3);assert_eq!(d.onboard_snapshot(&m).unwrap().0.profiles[0].name.as_deref(),Some("备份桌面"));
+}
+
+#[test]fn all_fifty_four_uncertain_restore_write_stages_put_back_every_original_selected_sector(){
+ for fault in [(6,1),(6,2),(6,3),(8,1),(8,2),(8,3)].into_iter().chain((1..=48).map(|n|(7,n))){
+  let m=planning_memory();let d=unit_device(&m);let before=m.0.lock().unwrap().sectors.clone();let info=d.onboard_info(&m).unwrap();let plan=scoped_restore(&restore_file(),&d.model_ids,&info).unwrap();let prepared=crate::onboard_restore::prepare(&d,&m,&info,&plan).unwrap();m.0.lock().unwrap().fault=Some(fault);let err=crate::onboard_restore::commit(&d,&m,&prepared).unwrap_err().to_string();assert!(err.contains("original restore state restored and verified"),"{fault:?}: {err}");assert_eq!(m.0.lock().unwrap().sectors,before,"{fault:?}");
+ }
+}
+#[test]fn restore_transaction_rechecks_reviewed_pages_descriptor_and_connection_before_first_write(){
+ for case in 0..3{let m=planning_memory();let mut d=unit_device(&m);let info=d.onboard_info(&m).unwrap();let plan=scoped_restore(&restore_file(),&d.model_ids,&info).unwrap();let p=crate::onboard_restore::prepare(&d,&m,&info,&plan).unwrap();match case{0=>{let mut state=m.0.lock().unwrap();let mut b=state.sectors[&2].clone();b[17]^=1;state.sectors.insert(2,crc(b));},1=>m.0.lock().unwrap().descriptor_changed=true,_=>d.connection_key="connection:new".into()};assert!(crate::onboard_restore::commit(&d,&m,&p).is_err());assert!(!m.0.lock().unwrap().calls.iter().any(|(f,_)|matches!(f,6|7|8)));}
+}
+#[test]fn restore_transaction_never_overwrites_third_party_changes_or_a_replaced_unit(){
+ for case in 0..3{let m=planning_memory();let d=unit_device(&m);let info=d.onboard_info(&m).unwrap();let plan=scoped_restore(&restore_file(),&d.model_ids,&info).unwrap();let p=crate::onboard_restore::prepare(&d,&m,&info,&plan).unwrap();{let mut s=m.0.lock().unwrap();s.fault=Some((8,2));match case{0=>s.change_unrelated_on_fault=true,1=>s.change_directory_on_fault=true,_=>s.change_unit_on_fault=true};}let err=crate::onboard_restore::commit(&d,&m,&p).unwrap_err().to_string();assert!(err.contains("state uncertain"),"{err}");let s=m.0.lock().unwrap();assert_eq!(s.calls.iter().filter(|(f,_)|*f==6).count(),2);}
+}
+#[test]fn restore_preimage_includes_newly_referenced_destination_and_preserves_untouched_pages(){
+ let m=planning_memory();let d=unit_device(&m);let before=m.0.lock().unwrap().sectors.clone();let info=d.onboard_info(&m).unwrap();let mut dir=before[&0].clone();dir[1]=5;let plan=vec![(5,profile()),(2,before[&2].clone()),(0,crc(dir))];let p=crate::onboard_restore::prepare(&d,&m,&info,&plan).unwrap();let raw=p.raw();assert_eq!(raw.iter().map(|r|r.sector).collect::<Vec<_>>(),vec![0,2,5]);assert_eq!(parse_hex(&raw[2].hex).unwrap(),before[&5]);assert_eq!(crate::onboard_restore::commit(&d,&m,&p).unwrap(),2);let s=m.0.lock().unwrap();for sector in [1,2,3,4,6,7]{assert_eq!(s.sectors[&sector],before[&sector]);}
+}
+
+#[test]fn native_dpi_eighteen_uncertain_flash_stages_use_reviewed_state_and_restore_original(){
+ for fault in [(6,1),(8,1)].into_iter().chain((1..=16).map(|n|(7,n))){let m=memory();let d=unit_device(&m);let before=m.0.lock().unwrap().sectors.clone();let p=d.prepare_slot_settings(&m,&dpi_settings(&d)).unwrap();m.0.lock().unwrap().fault=Some(fault);let e=d.commit_slot_settings(&m,p).unwrap_err().to_string();assert!(e.contains("original restore state restored and verified"),"{fault:?}: {e}");assert_eq!(m.0.lock().unwrap().sectors,before);}
+}
+#[test]fn native_dpi_save_rechecks_exact_preimage_and_never_restores_external_directory_changes(){
+ let m=memory();let d=unit_device(&m);let p=d.prepare_slot_settings(&m,&dpi_settings(&d)).unwrap();assert_eq!(p.raw().iter().map(|r|r.sector).collect::<Vec<_>>(),vec![0,1]);{let mut s=m.0.lock().unwrap();s.fault=Some((8,1));s.change_directory_on_fault=true;}let e=d.commit_slot_settings(&m,p).unwrap_err().to_string();assert!(e.contains("state uncertain"));assert_eq!(m.0.lock().unwrap().calls.iter().filter(|(f,_)|*f==6).count(),1);
+ let m=memory();let d=unit_device(&m);let p=d.prepare_slot_settings(&m,&dpi_settings(&d)).unwrap();m.0.lock().unwrap().descriptor_changed=true;assert!(d.commit_slot_settings(&m,p).is_err());assert!(!m.0.lock().unwrap().calls.iter().any(|(f,_)|matches!(f,6|7|8)));
+}
+#[test]fn dpi_and_restore_reload_only_current_enabled_board_slot_and_report_reload_failure_after_save(){
+ for(mode,active,reload_fail)in [(2,1,false),(1,2,false),(1,1,false),(1,1,true)]{let m=memory();let d=unit_device(&m);{let mut s=m.0.lock().unwrap();s.mode=mode;s.active=active;s.reload_fail=reload_fail;}let r=d.write_slot_settings(&m,&dpi_settings(&d)).unwrap();assert_eq!(r.active_reloaded,mode==1&&active==1&&!reload_fail);assert_eq!(r.reload_note.is_some(),reload_fail);assert_eq!(m.0.lock().unwrap().sectors[&1][0],2);}
+ for(mode,active,reload_fail)in [(2,1,false),(1,2,false),(1,1,false),(1,1,true)]{let m=planning_memory();let d=unit_device(&m);let info=d.onboard_info(&m).unwrap();let plan=scoped_restore(&restore_file(),&d.model_ids,&info).unwrap();let p=crate::onboard_restore::prepare(&d,&m,&info,&plan).unwrap();{let mut s=m.0.lock().unwrap();s.mode=mode;s.active=active;s.reload_fail=reload_fail;}assert_eq!(crate::onboard_restore::commit(&d,&m,&p).unwrap(),3);let result=crate::onboard_restore::reload_current(&d,&m,&p);if active==2||reload_fail{assert!(result.is_err());}else{assert_eq!(result.unwrap(),mode==1);}assert_eq!(m.0.lock().unwrap().calls.iter().filter(|(f,_)|*f==3).count(),usize::from(mode==1&&active==1));}
 }

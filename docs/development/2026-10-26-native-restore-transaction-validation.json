@@ -1,0 +1,33 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "reviewed multi-sector restore transaction reused by native DPI, exact preimage backup, conditional recovery and active slot reload",
+  "default_application_tests": 482,
+  "explicit_cross_tests": 21,
+  "headless_ui_suites": 35,
+  "headless_ui_status": "all-passed",
+  "transaction_failure_stages": {
+    "three_sector_restore": 54,
+    "single_sector_DPI": 18
+  },
+  "guards": [
+    "reviewed selected pages and directory",
+    "full native memory descriptor",
+    "durable owner plus connection generation",
+    "third-party/partial state refuses blind rollback"
+  ],
+  "backup_preimages_include_new_directory_destination": true,
+  "active_slot_reload": "only currently enabled slot, already in on-board mode, with changed payload",
+  "post_commit_errors_separate": [
+    "reload",
+    "snapshot refresh"
+  ],
+  "development_exe_memory_transports": 32,
+  "development_exe_sha256": "6f37f47b3202b2cd929417a2cf6f77d989edbcd227a54a11ac4081c61c1fc751",
+  "frontend_js_gzip_kb": 222.96,
+  "macro_content_restored": false,
+  "new_runtime_dependencies": false,
+  "physical_Logitech_tested": false,
+  "accepted_full_models": 0,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}

@@ -103,7 +103,8 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
     try {
       const result = await api.writeOnboardSlot(device.id, settings);
       setSnapshot(result.snapshot);
-      if (result.report.unchanged) {
+      const note=[result.report.reload_note,result.refresh_note].filter(Boolean).join('；');
+      if(note)toast.warning("DPI 已保存并校验",{description:note});else if (result.report.unchanged) {
         toast.info(`Slot ${settings.slot} already has these settings`);
       } else {
         toast.success(`Slot ${settings.slot} saved to the mouse`, {
@@ -138,7 +139,8 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
       const result = await api.restoreOnboardBackup(device.id, restorePath,snapshot.device_key,snapshot.connection_key,restorePreview.digest);
       if(generation!==readGeneration.current)return;
       setSnapshot(result.snapshot);
-      if(result.refresh_note)toast.warning("板载配置已恢复并校验",{description:result.refresh_note});else toast.success(
+      const note=[result.reload_note,result.refresh_note].filter(Boolean).join('；');
+      if(note)toast.warning("板载配置已恢复并校验",{description:note});else toast.success(
         result.sectors_written === 0 ? "The mouse already matches this backup" : `Restored ${result.sectors_written} sector(s) from the backup`,
         { description: `The previous state was backed up to ${result.backup_path}` },
       );
@@ -189,13 +191,13 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
       help="Profiles stored inside the mouse, used in on-board memory mode even with Open HUB closed. Reading never changes the mouse; every save is backed up first."
     >
       <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" onClick={read} disabled={reading}>
+        <Button variant="secondary" onClick={read} disabled={reading||restoring||saving}>
           <RefreshCw className={cn(reading && "animate-spin")} /> {snapshot ? "Read again" : "Read from mouse"}
         </Button>
-        <Button variant="ghost" onClick={backup} disabled={saving}>
+        <Button variant="ghost" onClick={backup} disabled={saving||restoring||reading}>
           <Download /> {saving ? "Saving…" : "Save backup…"}
         </Button>
-        <Button variant="ghost" onClick={pickRestore} disabled={restoring||!snapshot?.device_key||!snapshot?.info.bindings_writable}>
+        <Button variant="ghost" onClick={pickRestore} disabled={restoring||saving||reading||!snapshot?.device_key||!snapshot?.info.bindings_writable}>
           <Upload /> Restore from backup…
         </Button>
       </div>
