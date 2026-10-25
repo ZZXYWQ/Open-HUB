@@ -330,9 +330,10 @@ struct Activation {
     errors: Vec<String>,
 }
 
-/// Makes `id` the active profile and applies it to every connected mouse.
+/// Activates a profile; native multi-brand plans require one exact target.
 /// Lock order is always profiles, then devices.
-fn activate(app: &AppHandle, id: &str, reason: &'static str) -> Result<Activation, String> {
+fn activate(app: &AppHandle, id: &str, reason: &'static str) -> Result<Activation, String> {activate_target(app,id,reason,None)}
+fn activate_target(app: &AppHandle, id: &str, reason: &'static str, device_id:Option<&str>) -> Result<Activation, String> {
     let profiles = app.state::<ProfilesState>();
     let profile = {
         let mut store = lock_store(&profiles)?;
@@ -360,8 +361,9 @@ fn activate(app: &AppHandle, id: &str, reason: &'static str) -> Result<Activatio
     }
     drop(guard);
 
-    if let Some(plan)=&profile.multi{let service=app.state::<multibrand::Service>();let peers=service.peers().into_iter().filter(|d|d.vendor_id==plan.vendor&&d.product_id==plan.product).collect::<Vec<_>>();if peers.is_empty(){errors.push("未连接此配置对应的具体型号".into());}for peer in peers{if let Err(e)=service.apply(&peer.id,plan,&app.state::<macro_runtime::Runtime>()){errors.push(format!("{}: {e}",peer.name));}}}
-    if let Some(plan)=&profile.sino{let service=app.state::<sinowealth::Service>();let candidates=service.peers().into_iter().filter(|d|d.model==plan.model).collect::<Vec<_>>();if candidates.is_empty(){errors.push("未连接匹配品牌、型号与固件的鼠标".into())}for d in candidates{if let Err(e)=service.activate(&d.id,plan.clone()){errors.push(format!("{}: {e}",d.model.name));}}}
+    if let Some(plan)=&profile.multi{let service=app.state::<multibrand::Service>();let ids=service.peers().into_iter().filter(|d|d.vendor_id==plan.vendor&&d.product_id==plan.product).map(|d|d.id).collect::<Vec<_>>();match multibrand::choose_profile_device(&ids,device_id.map(|id|id.strip_prefix("multi:").unwrap_or(id))){Ok(id)=>if let Err(e)=service.apply(&id,plan,&app.state::<macro_runtime::Runtime>()){errors.push(e);},Err(e)=>errors.push(e)}}
+    if let Some(plan)=&profile.sino{let service=app.state::<sinowealth::Service>();let ids=service.peers().into_iter().filter(|d|d.model==plan.model).map(|d|d.id).collect::<Vec<_>>();match multibrand::choose_profile_device(&ids,device_id.map(|id|id.strip_prefix("sino:").unwrap_or(id))){Ok(id)=>if let Err(e)=service.activate(&id,plan.clone()){errors.push(e);},Err(e)=>errors.push(e)}}
+
     if profile.multi.is_none()&&profile.sino.is_none()&&profile.target_vendor.is_none()&&profile.target_model.is_none()&&profile.ghub_id.is_none()&&profile.mchose_board.is_none(){let service=app.state::<sinowealth::Service>();for d in service.peers(){if let Err(e)=service.apply_generic(&d.id,&profile){errors.push(format!("{}: {e}",d.model.name));}}}
     if (profile.sino.is_some()||profile.multi.is_some())&&errors.is_empty(){let mut store=lock_store(&profiles)?;store.active_id=profile.id.clone();store.save(&profiles.path).map_err(|e|e.to_string())?;}
     let activation = Activation { id: profile.id, name: profile.name, reason, errors };
@@ -644,8 +646,8 @@ fn set_auto_switch(app: AppHandle, state: State<ProfilesState>, enabled: bool) -
 }
 
 #[tauri::command(async)]
-fn activate_profile(app: AppHandle, id: String) -> Result<Activation, String> {
-    activate(&app, &id, "manual")
+fn activate_profile(app: AppHandle, id: String,device_id:Option<String>) -> Result<Activation, String> {
+    activate_target(&app, &id, "manual",device_id.as_deref())
 }
 
 #[derive(Serialize)]

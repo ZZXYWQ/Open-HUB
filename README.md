@@ -6,10 +6,10 @@
 
 **基于 [abidr/open-ghub（Open GHub）](https://github.com/abidr/open-ghub) 修改的多品牌鼠标控制实验项目。**
 
-**[⬇ 下载 Windows x64 EXE 安装包 · 0.3.5 实验版（约 37 MiB）](https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.5-experimental.1/Open-HUB-0.3.5-x64-setup.exe)**
+**[⬇ 下载 Windows x64 EXE 安装包 · 0.3.6 实验版（约 37 MiB）](https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.6-experimental.1/Open-HUB-0.3.6-x64-setup.exe)**
 
-[版本说明与全部附件](https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.5-experimental.1) ·
-[对应源码 ZIP](https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.5-experimental.1/Open-HUB-0.3.5-source.zip) ·
+[版本说明与全部附件](https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.6-experimental.1) ·
+[对应源码 ZIP](https://github.com/ZZXYWQ/Open-HUB/releases/download/v0.3.6-experimental.1/Open-HUB-0.3.6-source.zip) ·
 [完整适配范围](MOUSE-BRAND-SUPPORT.md) · [验证记录](RELEASE-VALIDATION.md)
 
 </div>
@@ -25,7 +25,7 @@
 
 本项目与各硬件厂商及上游作者均无官方隶属或背书关系。
 
-本轮补齐部分已有型号的原生按键，仍为 23 个品牌的限定范围；[按键支持与限制](BUTTON-COMPATIBILITY.md)。只保留每只鼠标的独立配置，不加入同时影响其他鼠标的全局重映射。
+本轮增加 Pulsar 板载快捷键及逐设备软件宏，并修正同型号多鼠标的配置目标选择，仍为 23 个品牌的限定范围；[按键支持与限制](BUTTON-COMPATIBILITY.md)。跨品牌和 SinoWealth 方案在多只同型号设备连接时必须选择一个目标，自动切换遇到歧义会跳过。保留逐设备按键配置，不加入全局重映射。
 
 ## 哪些设备适配到什么程度
 
@@ -39,7 +39,7 @@
 |海盗船 Corsair|M65 PRO RGB，1B1C:1B2E|DPI、回报率、支持的按键/软件宏、有限 iCUE 转换；部分状态来自缓存，重连需核对|生产驱动 + 模拟，未实机验证|
 |赛睿 SteelSeries|Rival 310，1038:1720|两组 CPI、回报率、支持的按键/软件宏、有限 GG 数据库转换；部分状态来自写入缓存|生产驱动 + 模拟，未实机验证|
 |HyperX|Pulsefire Haste / Haste Wireless，03F0:048E / 028E|DPI、回报率、已知按键、单次键盘板载宏、常亮/关闭灯光和板载读取；原厂宏/灯效不可读回|生产驱动 + 模拟与公开抓包核对，未实机验证|
-|Pulsar|X2 V2 Mini，3554:F507 / F508|四档 DPI、回报率、常亮/关闭指示灯、基础按键与 DPI 动作、读取导入；键盘/宏未启用|生产驱动 + 模拟，未实机验证|
+|Pulsar|X2 V2 Mini，3554:F507 / F508|四档 DPI、回报率、常亮/关闭指示灯、基础按键、DPI 动作、板载点按快捷键、单次/开关软件宏；软件宏须核验同一鼠标的序列号，任意板载宏未启用|生产驱动 + 模拟，未实机验证|
 |华硕 / ASUS|ROG Strix Impact 0B05:1847|固定两档 DPI、回报率、实际四个按键、单键映射和四种 Logo 灯效；任意宏未启用|生产驱动 + 模拟，未实机验证|
 |Roccat|Kone Pure 1E7D:2DC2|五档 XY DPI、回报率、已知按键、单次键盘板载宏；灯效暂未启用|生产驱动 + 模拟，未实机验证|
 |芝奇 / G.Skill|MX-780 28DA:3101|五档 XY DPI、500/1000 Hz、按键、快捷键和单次键盘板载宏；保留原灯效字段|生产驱动 + 模拟，未实机验证|
@@ -79,20 +79,20 @@ SinoWealth 范围：仅表中型号/固件的 DPI、回报率、按键、程序�
 
 当前覆盖 **23 个品牌的限定型号**；本次补充已有型号的按键能力，品牌数不变。上一批五款有线鼠标的范围见 [五品牌说明](FIVE-BRAND-ADAPTERS.md)。
 
-本次 0.3.5 的检查：
+本次 0.3.6 的检查：
 
-- **304 项主程序原生测试通过**（299 项默认回归 + 5 项提供输入的交叉测试），另有 **79 项雷蛇驱动测试**。覆盖 Pulsar 已知基础按键、独立抓包向量、蝰蛇额外控制、回读失败恢复、未知原动作保留和界面保存方案重新执行。
-- **20 组浏览器界面回归通过**，浏览器模拟 Tauri；生产驱动使用内存 HID。61 个目录身份的图片加载检查不等于新增 61 款硬件支持。
+- **321 项主程序原生测试通过**（316 项默认回归 + 5 项提供输入的交叉测试）。覆盖 Pulsar 快捷键完整校验、每阶段短写恢复、原厂未知记录保留、两只同型号鼠标的宏隔离、切组恢复保护、配置单目标校验和界面保存方案重新执行。
+- **21 组浏览器界面回归通过**，浏览器模拟 Tauri；生产驱动使用内存 HID。61 个目录身份的图片加载检查不等于新增 61 款硬件支持。
 - 公开 HyperX 原始抓包独立核对回报率、按键输出及宏布局，原始文件哈希和提取报文保留；仍不能替代 Windows 实机验证。
-- Windows 生产 EXE、安装包载荷和签名检查见 [验证摘要](docs/releases/0.3.5-validation.json)。应用内更新继续由用户选择下载与安装；开发者本机按用户明确要求在每次发布后升级，个人配置备份记录不公开。公开 EXE 已匿名完整下载核对哈希，生产程序验证签名、篡改拒绝和版本绑定均通过，见 [发布后验收](docs/releases/0.3.5-public-verification.json)。
+- Windows 生产 EXE、安装包载荷和签名检查见 [验证摘要](docs/releases/0.3.6-validation.json)。应用内更新继续由用户选择下载与安装；开发者本机按用户明确要求在每次发布后升级，个人配置备份记录不公开。公开 EXE 已匿名完整下载核对哈希，生产程序验证签名、篡改拒绝和版本绑定均通过，见 [发布后验收](docs/releases/0.3.6-public-verification.json)。
 - 历史共享驱动检查为 289 个单元测试 + 1 个文档测试；Synapse 解析器为 148 个单元测试 + 3 个集成测试，作为历史回归证据列出。
 
-**未覆盖：** 其他鼠标实机、全新 Windows / 新用户、缺失 WebView2 的联网补装、所有固件变体、桌面透明效果的完整人工视觉验证。测试通过不构成全品牌兼容或稳定性保证。见 [公开验证摘要](docs/releases/0.3.5-validation.json) 和 [测试边界](RELEASE-VALIDATION.md)。
+**未覆盖：** 其他鼠标实机、全新 Windows / 新用户、缺失 WebView2 的联网补装、所有固件变体、桌面透明效果的完整人工视觉验证。测试通过不构成全品牌兼容或稳定性保证。见 [公开验证摘要](docs/releases/0.3.6-validation.json) 和 [测试边界](RELEASE-VALIDATION.md)。
 
 ## 安装与校验
 
-1. 点击主页顶部 **EXE 下载**，或进入 [实验版 Release](https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.5-experimental.1)。
-2. 运行 `Open-HUB-0.3.5-x64-setup.exe`，按当前用户安装到 `%LOCALAPPDATA%\Programs\Open HUB`。
+1. 点击主页顶部 **EXE 下载**，或进入 [实验版 Release](https://github.com/ZZXYWQ/Open-HUB/releases/tag/v0.3.6-experimental.1)。
+2. 运行 `Open-HUB-0.3.6-x64-setup.exe`，按当前用户安装到 `%LOCALAPPDATA%\Programs\Open HUB`。
 3. 从开始菜单打开 Open HUB。测试设备前先退出对应官方控制中心，避免反复覆盖设置。
 
 Windows 10 / 11 x64，需要 Microsoft Edge WebView2。约 37 MiB 的常规包复用系统 WebView2，缺少时联网补装，不携带完整浏览器运行库。**本实验 EXE 未代码签名**，不继承上游 SignPath 认证；自 0.3.2 起提供本仓库 GitHub 更新：启动后自动查询，可关闭；下载和安装分两次由用户选择，安装前验证版本绑定签名。0.3.1 旧客户端首次需手动安装新版。见 [更新说明](docs/UPDATES.md)。

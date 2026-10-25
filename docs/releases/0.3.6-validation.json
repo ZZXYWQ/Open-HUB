@@ -1,0 +1,157 @@
+{
+  "product": "Open HUB",
+  "version": "0.3.6",
+  "tag": "v0.3.6-experimental.1",
+  "experimental": true,
+  "date": "2026-10-25T10:28:00.115976+00:00",
+  "origin": {
+    "repository": "https://github.com/abidr/open-ghub",
+    "author": "Abidur Rahman",
+    "license": "GPL-3.0-or-later",
+    "base": "2853a6251a31a376a0f7287c1c846bd9bff97198"
+  },
+  "scope": {
+    "brands_with_partial_support": 23,
+    "new_brands": [],
+    "whole_brand_support": false,
+    "all_mouse_buttons_supported": false,
+    "per_device_only": true,
+    "global_remapper_included": false,
+    "details": "BUTTON-COMPATIBILITY.md",
+    "pulsar": "X2 V2 Mini F507/F508: native 32-byte tap shortcuts; per-device Once/Toggle software macros with verified unambiguous keyboard-interface serial; no held-repeat or unknown native macros",
+    "profile_activation": "Multi-brand and SinoWealth plans require one explicit target when same-model devices are connected; ambiguous automatic activation skips the plan",
+    "recovery": "Pulsar identity includes original hardware bank 0-3"
+  },
+  "native_tests": {
+    "default_suite": 316,
+    "explicit_input_tests": 5,
+    "main_application_total": 321,
+    "failed": 0
+  },
+  "ui_tests": {
+    "passed": true,
+    "suites": 21,
+    "ipc_mocked": true,
+    "saved_profiles_executed_by_native_drivers": 22,
+    "post_change_rechecks": [
+      "test-independent-target-ui.cjs",
+      "test-new-brands-ui.cjs"
+    ],
+    "suite_results": [
+      {
+        "name": "test-appearance-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-atk-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-brand-imports-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-compx-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-device-art-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-five-brands-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-gg-import-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-icue-import-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-independent-target-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-manual-recovery-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-multi-macros-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-new-brands-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-reconnect-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-session-plan-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-sino-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-synapse-import-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-synapse-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-three-brand-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-ui-integration.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-updater-ui.cjs",
+        "passed": true
+      },
+      {
+        "name": "test-viper-ui.cjs",
+        "passed": true
+      }
+    ]
+  },
+  "production_executable": {
+    "simulated_transports": 28,
+    "passed": true,
+    "hardware_tested": false
+  },
+  "installer": {
+    "passed": true,
+    "version": "0.3.6",
+    "installer_bytes": 38801998,
+    "installer_sha256": "02cfeae964362c8130e206f1f10d28fe2b3159796bf14ad9e9bd2474e2549f7d",
+    "application_sha256": "34ddf28dc298533fe612196bf7e3e9383a754098776060ee84fc8edcdb5da962",
+    "payload_files_verified": 51,
+    "current_frontend_embedded": true
+  },
+  "installer_migration": {
+    "passed": true,
+    "cases": 5,
+    "registry_or_existing_installation_changed": false
+  },
+  "new_runtime_dependencies": false,
+  "size_change_from_0_3_5_bytes": 10981,
+  "hardware": {
+    "new_models_tested": false,
+    "this_release_accessed_mouse_hardware": false
+  },
+  "updater": {
+    "requires_version_bound_signature": true,
+    "downloads_and_installation_require_user_choice": true
+  },
+  "local_upgrade_policy": "Explicit user authorization to install each published update; private configuration backups are not uploaded."
+}

@@ -223,9 +223,9 @@ export default function App() {
   const globalProfile = profiles?.profiles.find((p) => p.id === profiles.active_id) ?? profiles?.profiles[0] ?? null;
   const activeProfile:Profile|null = !device||!globalProfile||matchesDevice(globalProfile,device)?globalProfile:profiles?.profiles.find(p=>p.id==="desktop"&&matchesDevice(p,device))??profiles?.profiles.find(p=>matchesDevice(p,device))??{id:"vendor-default-"+device.vendor_id.toString(16),name:brandName(device.vendor_id)+" Default",target_vendor:device.vendor_id,target_model:null,app_path:null,levels:[{x:state?.dpi?.x??1600,y:null}],active_level:0,report_rate_hz:null};
 
-  const activateProfile = async (id: string) => {
+  const activateProfile = async (id: string,deviceId?:string) => {
     try {
-      await reportActivation(await api.activateProfile(id));
+      await reportActivation(await api.activateProfile(id,deviceId));
     } catch (e) {
       toast.error(String(e));
     }

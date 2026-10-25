@@ -36,7 +36,7 @@ interface Props {
   devices: DeviceSummary[];
   importing: boolean;
   onAutoSwitch: (enabled: boolean) => void;
-  onActivate: (id: string) => void;
+  onActivate: (id: string,deviceId?:string) => void;
   onSave: (profile: Profile) => Promise<boolean>;
   onDelete: (id: string) => void;
   onImport: () => void;
@@ -44,6 +44,7 @@ interface Props {
 }
 
 export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivate, onSave, onDelete, }: Props) {
+  const [targets,setTargets]=useState<Record<string,string>>({});
   const [offline,setOffline]=useState(false);
   const [multiNew,setMultiNew]=useState(false);
   const [synapsePreview,setSynapsePreview]=useState(false);
@@ -94,7 +95,9 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
         {profiles.map((p) => {
           const active = p.id === view.active_id;
           const isDesktop = p.id === DESKTOP_ID;
-          const available=devices.some(d=>matchesDevice(p,d));
+          const candidates=devices.filter(d=>matchesDevice(p,d));const available=candidates.length>0;
+          const independent=!!(p.multi||p.sino),needsTarget=independent&&candidates.length>1;
+          const target=candidates.some(d=>d.id===targets[p.id])?targets[p.id]:'';
           return (
             <Card key={p.id} className={cn("gap-3 rounded-[10px] px-5 py-5 ring-0", active && "ring-2 ring-primary")}>
               <div className="flex items-start gap-2">
@@ -135,8 +138,9 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
                 )}
               </div>
 
+              {needsTarget&&<label className="text-xs text-muted-foreground">应用到哪只鼠标<select aria-label={`配置 ${p.name} 目标鼠标`} className="mt-1 w-full rounded border bg-background p-2 text-sm" value={target} onChange={e=>setTargets({...targets,[p.id]:e.target.value})}><option value="">请选择目标鼠标</option>{candidates.map((d,i)=><option key={d.id} value={d.id}>{i+1}. {d.name} · {d.id.replace(/:board:\d+$/,'').split(':').at(-1)?.slice(-48)}</option>)}</select><span>仅应用到所选鼠标；自动切换遇到多只同型号时跳过该方案。</span></label>}
               <div className="mt-1 flex items-center gap-1">
-                <Button size="sm" disabled={!available} title={available?"应用到匹配品牌与型号的鼠标":"请先连接匹配的鼠标；未适配品牌无法应用参数"} variant={active ? "secondary" : "default"} onClick={() => onActivate(p.id)}>
+                <Button size="sm" disabled={!available||needsTarget&&!target} title={available?"应用到匹配品牌与型号的鼠标":"请先连接匹配的鼠标；未适配品牌无法应用参数"} variant={active ? "secondary" : "default"} onClick={() => onActivate(p.id,independent&&target?target:undefined)}>
                   <Play /> {!available?"未连接匹配鼠标":active ? "重新应用" : "应用配置"}
                 </Button>
                 <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setEditing(p)} aria-label={`Edit ${p.name}`}>

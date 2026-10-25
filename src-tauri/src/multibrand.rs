@@ -45,6 +45,11 @@ pub struct View {
 #[derive(Clone,Default)]
 pub struct Service(Arc<Mutex<Option<DeviceManager>>>,Arc<Mutex<std::collections::HashMap<String,Cleanup>>>,Arc<AtomicBool>,Arc<Mutex<std::collections::HashMap<String,session_plan::Session>>>);
 #[derive(Clone)]struct Cleanup{source:crate::host_macros::Source,settings:Vec<Setting>,expected:std::collections::HashMap<u16,ButtonAction>,software_input:bool,cancelled:Arc<AtomicBool>,shift:Arc<Mutex<Option<gearwise_core::model::DpiState>>>,journal:Option<Arc<crate::macro_recovery::Journal>>,serial:Option<String>}
+pub fn choose_profile_device(ids:&[String],selected:Option<&str>)->Result<String,String>{
+ if selected.is_some_and(|id|id.len()>4096){return Err("设备标识过长".into());}
+ let matches=ids.iter().filter(|id|selected.is_none_or(|s|id.as_str()==s)).collect::<Vec<_>>();
+ match matches.as_slice(){[id]=>Ok((*id).clone()),[]=>Err("未连接所选配置对应的具体鼠标，请重新选择".into()),_=>Err("连接了多只同型号鼠标，请先选择目标；本次未向任何一只应用".into())}
+}
 pub fn supported(v: u16, p: u16) -> bool {
     crate::legacy::supported(v,p) || crate::atk::supported(v,p) || crate::hyperx::supported(v,p) || matches!(
         (v, p),
@@ -144,7 +149,7 @@ impl Service {
             resolve_defaults(&mut compiled,&before)?;
             for binding in compiled.bindings.iter().filter(|_|!compiled.software_input){
                 let original=before.state.buttons.get(&binding.button).cloned();
-                if plan.vendor==0x1532&&original.is_none(){return Err("无法读取此 Naga 按键原始动作，不能安全配置软件宏".into());}
+                if readable_host_buttons(plan.vendor,plan.product)&&original.is_none(){return Err("无法读取此鼠标按键的原始动作，未配置软件宏".into());}
                 restore.push(Setting::Button{id:binding.button,action:original.unwrap_or(ButtonAction::Default)});
             }
             let expected=compiled.settings.iter().filter_map(|s|if let Setting::Button{id,action}=s{compiled.bindings.iter().any(|b|b.button==*id).then(||(*id,action.clone()))}else{None}).collect::<std::collections::HashMap<_,_>>();
@@ -183,7 +188,7 @@ impl Service {
             if (device.descriptor().vendor_id,device.descriptor().product_id)!=(cleanup.source.vendor,cleanup.source.product){return Err("恢复目标与原始品牌/型号不一致".into());}
             if cleanup.serial.as_deref().filter(|s|!s.trim().is_empty()).is_some_and(|s|device.descriptor().serial.as_deref()!=Some(s)){return Err("鼠标序列号已改变，保留恢复记录，未写入其他鼠标".into());}
             if cleanup.software_input{device.stop_software_actions().map_err(|e|format!("软件按键硬件模式恢复失败：{e}"))?;let mut shift=cleanup.shift.lock().map_err(|_|"狙击 DPI 锁异常")?;if let Some(original)=shift.as_ref(){let owned=cleanup.journal.as_ref().map(|j|j.record()).transpose()?.and_then(|r|r.shift);let actual=device.read_state().map_err(|e|e.to_string())?.dpi;if owned.as_ref().is_some_and(|s|actual.as_ref()!=Some(&s.expected)&&actual.as_ref()!=Some(original)){return Err("本次会话的 DPI 已改变，保留恢复记录，未覆盖当前设置".into());}device.apply(&Setting::Dpi(original.clone())).map_err(|e|format!("狙击 DPI 恢复失败：{e}"))?;if let Some(j)=&cleanup.journal{j.shift(None)?;}*shift=None;}}
-            let actual=if cleanup.source.vendor==0x1532{Some(device.read_state().map_err(|e|format!("宏已停止，无法读取当前按键以验证恢复归属：{e}"))?)}else{None};
+            let actual=if readable_host_buttons(cleanup.source.vendor,cleanup.source.product){Some(device.read_state().map_err(|e|format!("宏已停止，无法读取当前按键以验证恢复归属：{e}"))?)}else{None};
             let mut changed=Vec::new();
             for setting in &cleanup.settings{
                 if let(Setting::Button{id,action},Some(actual))=(setting,&actual){let current=actual.buttons.get(id);if current==Some(action){continue;}if !cleanup.expected.contains_key(id)||cleanup.expected.get(id)!=current{changed.push(*id);continue;}}
@@ -252,7 +257,7 @@ impl Service {
                 if tracked.iter().any(|(_,cancelled)|!*cancelled){continue;}
                 let record=journal.record()?;
                 if runtime.is_quiescing(&record.source){continue;}
-                if record.source.vendor!=0x1532{issues.push("海盗船/赛睿待恢复设置需要手动检查：尚不能可靠核实当前软件路由归属，重启后未自动覆盖".into());continue;}
+                if !readable_host_buttons(record.source.vendor,record.source.product){issues.push("海盗船/赛睿待恢复设置需要手动检查：尚不能可靠核实当前软件路由归属，重启后未自动覆盖".into());continue;}
                 let matches=manager.devices().filter(|d|record.matches(d.descriptor())).map(|d|d.descriptor().id.clone()).collect::<Vec<_>>();
                 if matches.len()!=1{issues.push(format!("有待恢复的宏按键（{:04X}:{:04X}）；需要唯一匹配的鼠标序列号，当前未自动写入",record.source.vendor,record.source.product));continue;}
                 let id=&matches[0];
@@ -265,7 +270,7 @@ impl Service {
                 // This is the same still-observed physical input source from an
                 // explicit stop in this process, not a restart identity guess.
                 if runtime.is_quiescing(&source){if let Err(e)=self.restore_one(manager,&id,runtime){issues.push(e);}continue;}
-                if vendor!=0x1532{issues.push("宏已停止；软件路由归属仍需手动核实，保留恢复记录".into());continue;}
+                if !readable_host_buttons(vendor,product){issues.push("宏已停止；软件路由归属仍需手动核实，保留恢复记录".into());continue;}
                 let Some(serial)=serial.filter(|s|!s.trim().is_empty()) else {issues.push("宏已停止；缺少唯一序列号，保留恢复记录，等待手动检查".into());continue;};
                 if manager.devices().filter(|d|d.descriptor().vendor_id==vendor&&d.descriptor().product_id==product&&d.descriptor().serial.as_deref()==Some(&serial)).count()!=1{issues.push("宏已停止；无法唯一识别原始鼠标，未自动恢复".into());continue;}
                 if manager.device_mut(&id).is_some(){if let Err(e)=self.restore_one(manager,&id,runtime){issues.push(e);}}
@@ -319,7 +324,8 @@ pub fn validate(p: &Plan) -> Result<(), String> {
         if !seen.insert(k) {
             return Err("同一项设置不能重复".into());
         }
-        if crate::atk::model(p.vendor,p.product).is_some_and(|m|!m.native_macros){match s{Setting::Dpi(d)=>crate::atk::validate_dpi(d,p.product).map_err(|e|e.to_string())?,Setting::ReportRate(r)if crate::atk::model(p.vendor,p.product).unwrap().rates.contains(r)=>{},Setting::Lighting{zone:0,state}if state.brightness==100&&matches!(state.effect,gearwise_core::model::LightingEffect::Off|gearwise_core::model::LightingEffect::Static{..})=>{},Setting::Button{id,action} if (2..=crate::atk::model(p.vendor,p.product).unwrap().buttons).contains(id) && matches!(action,ButtonAction::Default|ButtonAction::Disabled|ButtonAction::Mouse(gearwise_core::model::MouseButton::Left|gearwise_core::model::MouseButton::Right|gearwise_core::model::MouseButton::Middle|gearwise_core::model::MouseButton::Back|gearwise_core::model::MouseButton::Forward)|ButtonAction::Dpi(DpiFunction::Cycle|DpiFunction::Up|DpiFunction::Down))=>{},_=>return Err("Pulsar 已接通基础鼠标动作、DPI 动作及禁用；键盘和板载宏格式仍待验证".into())}continue;}
+        if crate::atk::is_pulsar(p.vendor,p.product){match s{Setting::Dpi(d)=>crate::atk::validate_dpi(d,p.product).map_err(|e|e.to_string())?,Setting::ReportRate(r)if crate::atk::model(p.vendor,p.product).unwrap().rates.contains(r)=>{},Setting::Lighting{zone:0,state}if state.brightness==100&&matches!(state.effect,gearwise_core::model::LightingEffect::Off|gearwise_core::model::LightingEffect::Static{..})=>{},Setting::Button{id,action}=>validate_pulsar_button(*id,action)?,_=>return Err("此 Pulsar 型号未实现该设置".into())}continue;}
+
         if let Some(model)=crate::legacy::model(p.vendor,p.product){crate::legacy::validate_setting(model,s).map_err(|e|e.to_string())?;continue;}
         if crate::hyperx::supported(p.vendor,p.product){crate::hyperx::validate_setting(s).map_err(|e|e.to_string())?;continue;}
         match s {
@@ -604,6 +610,11 @@ pub struct Compiled {
  pub dpi_actions:std::collections::BTreeMap<u16,DpiFunction>,
 }
 fn native_macros(v:u16,p:u16)->bool{crate::legacy::native_macros(v,p)||crate::atk::model(v,p).is_some_and(|m|m.native_macros)||crate::hyperx::supported(v,p)}
+fn readable_host_buttons(v:u16,p:u16)->bool{v==0x1532||crate::atk::is_pulsar(v,p)}
+fn validate_pulsar_button(id:u16,action:&ButtonAction)->Result<(),String>{
+ if !(2..=5).contains(&id){return Err("Pulsar 保留左键，只开放右/中/后退/前进".into());}
+ match action{ButtonAction::Key{usage,mods}=>crate::atk::validate_pulsar_key(*usage,*mods).map_err(|e|e.to_string()),ButtonAction::Default|ButtonAction::Disabled|ButtonAction::Macro(_)|ButtonAction::Mouse(gearwise_core::model::MouseButton::Left|gearwise_core::model::MouseButton::Right|gearwise_core::model::MouseButton::Middle|gearwise_core::model::MouseButton::Back|gearwise_core::model::MouseButton::Forward)|ButtonAction::Dpi(DpiFunction::Cycle|DpiFunction::Up|DpiFunction::Down)=>Ok(()),_=>Err("Pulsar 未实现该按键动作".into())}
+}
 fn validate_viper_button(id:u16,action:&ButtonAction)->Result<(),String>{
  if matches!(id,9|10|0x60){return if matches!(action,ButtonAction::Default|ButtonAction::Disabled){Ok(())}else{Err("蝰蛇滚轮方向与底部 DPI 键目前只支持启用原动作或禁用".into())};}
  if !matches!(id,2|4|5){return Err("蝰蛇 V3 Pro 仅开放已核对的右键、后退、前进和滚轮/DPI 控制；保留左键".into());}
@@ -611,12 +622,13 @@ fn validate_viper_button(id:u16,action:&ButtonAction)->Result<(),String>{
 }
 pub fn compile(plan:&Plan)->Result<Compiled,String>{
  use gearwise_core::profile::{Macro,MacroMode,MacroStep};
+ let pulsar=crate::atk::is_pulsar(plan.vendor,plan.product);
  let corsair=(plan.vendor,plan.product)==(0x1b1c,0x1b2e);
  let software_input=corsair&&plan.settings.iter().any(|s|matches!(s,Setting::Button{action,..} if !matches!(action,ButtonAction::Default)));
  let mut native=Vec::new();let mut bindings=Vec::new();let mut keys=std::collections::BTreeMap::new();let mut buttons=Vec::new();let mut dpi_actions=std::collections::BTreeMap::new();
  let mut definitions=std::collections::HashMap::new();if plan.macros.len()>32{return Err("最多保存 32 个软件宏".into());}
- if crate::atk::model(plan.vendor,plan.product).is_some_and(|m|!m.native_macros)&&!plan.macros.is_empty(){return Err("Pulsar 板载宏协议尚未核对".into());}
- for m in &plan.macros{crate::host_macros::validate(m)?;if crate::legacy::supported(plan.vendor,plan.product){crate::legacy::validate_macro(plan.vendor,plan.product,m).map_err(|e|e.to_string())?;}if crate::hyperx::supported(plan.vendor,plan.product){crate::hyperx::validate_macro(m).map_err(|e|e.to_string())?;}if crate::atk::supported(plan.vendor,plan.product){crate::atk::validate_macro(m).map_err(|e|e.to_string())?;}if definitions.insert(m.id.as_str(),m).is_some(){return Err("宏标识重复".into());}}
+ if pulsar&&plan.macros.iter().any(|m|m.mode==MacroMode::WhileHeld){return Err("Pulsar 快捷键是点按触发，软件宏支持单次或再次按下停止，不支持按住循环".into());}
+ for m in &plan.macros{crate::host_macros::validate(m)?;if crate::legacy::supported(plan.vendor,plan.product){crate::legacy::validate_macro(plan.vendor,plan.product,m).map_err(|e|e.to_string())?;}if crate::hyperx::supported(plan.vendor,plan.product){crate::hyperx::validate_macro(m).map_err(|e|e.to_string())?;}if crate::atk::model(plan.vendor,plan.product).is_some_and(|m|m.native_macros){crate::atk::validate_macro(m).map_err(|e|e.to_string())?;}if definitions.insert(m.id.as_str(),m).is_some(){return Err("宏标识重复".into());}}
  if let Some(source)=&plan.source{if source.vendor!=plan.vendor||source.product!=plan.product{return Err("软件宏来源与方案品牌/型号不一致".into());}}
  for s in &plan.settings{
   if corsair {if let Setting::Button{id,action}=s{
@@ -635,9 +647,15 @@ pub fn compile(plan:&Plan)->Result<Compiled,String>{
   if plan.vendor==0x1532&&matches!(plan.product,0x00c0|0x00c1){if let Setting::Button{id,action}=s{validate_viper_button(*id,action)?;native.push(s.clone());continue;}}
   if let Some(model)=crate::legacy::model(plan.vendor,plan.product){crate::legacy::validate_setting(model,s).map_err(|e|e.to_string())?;if let Setting::Button{action:ButtonAction::Macro(id),..}=s{crate::legacy::validate_macro(plan.vendor,plan.product,definitions.get(id.as_str()).ok_or("板载宏内容缺失")?).map_err(|e|e.to_string())?;}native.push(s.clone());continue;}
   if crate::hyperx::supported(plan.vendor,plan.product){crate::hyperx::validate_setting(s).map_err(|e|e.to_string())?;if let Setting::Button{action:ButtonAction::Macro(id),..}=s{crate::hyperx::validate_macro(definitions.get(id.as_str()).ok_or("HyperX 板载宏定义缺失")?).map_err(|e|e.to_string())?;}native.push(s.clone());continue;}
-  if let Some(model)=crate::atk::model(plan.vendor,plan.product) {if let Setting::Button{action:ButtonAction::Key{usage,mods},..}=s{if !model.native_macros{return Err("Pulsar 键盘格式仍待验证".into());}crate::atk::validate_key(*usage,*mods).map_err(|e|e.to_string())?;}if let Setting::Button{action:ButtonAction::Macro(id),..}=s{if !model.native_macros{return Err("Pulsar 板载宏格式仍待验证".into());}let definition=definitions.get(id.as_str()).ok_or("ATK 板载宏定义缺失")?;crate::atk::validate_macro(definition).map_err(|e|e.to_string())?;}native.push(s.clone());continue;}
+  if let Some(model)=crate::atk::model(plan.vendor,plan.product) {
+   if pulsar{if let Setting::Button{id,action}=s{validate_pulsar_button(*id,action)?;}}
+   if let Setting::Button{action:ButtonAction::Key{usage,mods},..}=s{if pulsar{crate::atk::validate_pulsar_key(*usage,*mods)}else{crate::atk::validate_key(*usage,*mods)}.map_err(|e|e.to_string())?;}
+   if let Setting::Button{action:ButtonAction::Macro(id),..}=s{if model.native_macros{let definition=definitions.get(id.as_str()).ok_or("ATK 板载宏定义缺失")?;crate::atk::validate_macro(definition).map_err(|e|e.to_string())?;native.push(s.clone());continue;}if !pulsar{return Err("此型号未接通宏".into());}}
+   else{native.push(s.clone());continue;}
+  }
+
   if let Setting::Button{id,action:ButtonAction::Macro(macro_id)}=s{
-   if !matches!((plan.vendor,plan.product),(0x1532,0x00b4)|(0x1038,0x1720)){return Err("该型号的软件宏输入尚未接通".into());}
+   if !pulsar&&!matches!((plan.vendor,plan.product),(0x1532,0x00b4)|(0x1038,0x1720)){return Err("该型号的软件宏输入尚未接通".into());}
    if *id==1{return Err("保留左键原始点击".into());}
    let m=definitions.get(macro_id.as_str()).ok_or("按键引用的宏内容缺失")?;
    if bindings.len()>=12{return Err("同时最多绑定 12 个软件宏按钮（F13–F24）".into());}
@@ -833,7 +851,7 @@ fn resolve_defaults(compiled:&mut Compiled,before:&View)->Result<(),String>{
  #[test]fn export_hyperx_pulsar_native_dtos_and_execute_saved_plans(){
   let mut fixtures=Vec::new();for(v,p)in[(0x03f0,0x048e),(0x03f0,0x028e),(0x3554,0xf507),(0x3554,0xf508)]{
    let(mut device,_)=simulated(v,p).unwrap();let base=view(device.as_mut()).unwrap();let mut settings=vec![Setting::Dpi(DpiState{stages:vec![DpiStage::uniform(800),DpiStage::uniform(1600)],active:1}),Setting::ReportRate(500),Setting::Lighting{zone:0,state:ZoneState{effect:LightingEffect::Static{color:Rgb{r:20,g:40,b:80}},brightness:100}}];let mut macros=Vec::new();
-   if v==0x03f0{macros.push(Macro{id:"fixture-hyperx".into(),name:"HyperX test chord".into(),mode:MacroMode::Once,steps:vec![MacroStep::KeyDown(4),MacroStep::Delay(50),MacroStep::KeyUp(4)]});device.set_macro_definitions(&macros).unwrap();settings.push(Setting::Button{id:4,action:ButtonAction::Macro(macros[0].id.clone())});}else{settings.push(Setting::Button{id:4,action:ButtonAction::Mouse(gearwise_core::model::MouseButton::Middle)});}
+   if v==0x03f0{macros.push(Macro{id:"fixture-hyperx".into(),name:"HyperX test chord".into(),mode:MacroMode::Once,steps:vec![MacroStep::KeyDown(4),MacroStep::Delay(50),MacroStep::KeyUp(4)]});device.set_macro_definitions(&macros).unwrap();settings.push(Setting::Button{id:4,action:ButtonAction::Macro(macros[0].id.clone())});}else{settings.push(Setting::Button{id:4,action:ButtonAction::Key{usage:0x17,mods:gearwise_core::model::Modifiers(3)}});}
    let plan=Plan{vendor:v,product:p,source:None,macros,settings};validate(&plan).unwrap();let encoded=serde_json::to_vec(&plan).unwrap();let loaded:Plan=serde_json::from_slice(&encoded).unwrap();simulate(&loaded).unwrap();for s in &loaded.settings{device.apply(s).unwrap();}let configured=view(device.as_mut()).unwrap();assert_eq!(configured.state.dpi.as_ref().unwrap().stages[1].x,1600);assert_eq!(configured.state.report_rate,Some(500));fixtures.push(serde_json::json!({"base":base,"configured":configured}));
   }
   if let Some(dir)=std::env::var_os("OPEN_HUB_NEW_BRANDS_FIXTURE_DIR"){let dir=std::path::PathBuf::from(dir);std::fs::create_dir_all(&dir).unwrap();std::fs::write(dir.join("native-views.json"),serde_json::to_vec_pretty(&fixtures).unwrap()).unwrap();}
@@ -856,7 +874,46 @@ fn resolve_defaults(compiled:&mut Compiled,before:&View)->Result<(),String>{
    let(mut target,_)=simulated(vendor,product).unwrap();let(mut other,_)=simulated(vendor,product).unwrap();let before=other.read_state().unwrap();for s in &p.settings{target.apply(s).unwrap();}assert_eq!(target.read_state().unwrap().buttons[&id],ButtonAction::Disabled);assert_eq!(other.read_state().unwrap().buttons,before.buttons);
   }
  }
- #[test]fn pulsar_keyboard_and_viper_toggle_keyboard_are_rejected_in_both_compile_and_validation(){
-  for(vendor,product,id)in[(0x3554,0xf507,4),(0x1532,0x00c1,9)]{let p=Plan{vendor,product,settings:vec![Setting::Button{id,action:ButtonAction::Key{usage:4,mods:gearwise_core::model::Modifiers(0)}}],macros:vec![],source:None};assert!(validate(&p).is_err());assert!(compile(&p).is_err());}
+ #[test]fn invalid_pulsar_keyboard_and_viper_toggle_keyboard_are_rejected_in_compile_and_validation(){
+  for(vendor,product,id)in[(0x3554,0xf507,4),(0x1532,0x00c1,9)]{let p=Plan{vendor,product,settings:vec![Setting::Button{id,action:ButtonAction::Key{usage:0,mods:gearwise_core::model::Modifiers(0)}}],macros:vec![],source:None};assert!(validate(&p).is_err());assert!(compile(&p).is_err());}
  }
+}
+
+#[cfg(test)]mod pulsar_software_tests{
+ use super::*;use gearwise_core::{Device,transport::MockBackend,model::Modifiers,profile::{Macro,MacroMode,MacroStep}};
+ struct Identified{inner:Box<dyn Device>,desc:DeviceDescriptor}
+ impl Device for Identified{fn descriptor(&self)->&DeviceDescriptor{&self.desc}fn capabilities(&self)->&Capabilities{self.inner.capabilities()}fn read_state(&mut self)->gearwise_core::Result<DeviceState>{self.inner.read_state()}fn apply(&mut self,s:&Setting)->gearwise_core::Result<()>{self.inner.apply(s)}}
+ #[derive(Clone,Default)]struct Rec(Arc<Mutex<Vec<String>>>);
+ impl gearwise_input::InputSink for Rec{fn key_down(&mut self,k:u8)->gearwise_core::Result<()>{self.0.lock().unwrap().push(format!("d{k}"));Ok(())}fn key_up(&mut self,k:u8)->gearwise_core::Result<()>{self.0.lock().unwrap().push(format!("u{k}"));Ok(())}fn mouse_down(&mut self,_:gearwise_core::model::MouseButton)->gearwise_core::Result<()>{Ok(())}fn mouse_up(&mut self,_:gearwise_core::model::MouseButton)->gearwise_core::Result<()>{Ok(())}fn scroll(&mut self,_:i32,_:i32)->gearwise_core::Result<()>{Ok(())}fn media(&mut self,_:u16)->gearwise_core::Result<()>{Ok(())}}
+ fn key(usage:u8)->ButtonAction{ButtonAction::Key{usage,mods:Modifiers(0)}}
+ fn source(unit:&str)->crate::host_macros::Source{crate::host_macros::Source{vendor:0x3554,product:0xf507,path:format!("simulation:keyboard:{unit}")}}
+ fn plan(unit:&str,usage:u8,mode:MacroMode)->Plan{Plan{vendor:0x3554,product:0xf507,settings:vec![Setting::Button{id:4,action:ButtonAction::Macro("m".into())}],macros:vec![Macro{id:"m".into(),name:"Pulsar".into(),mode,steps:vec![MacroStep::KeyDown(usage),MacroStep::Delay(5),MacroStep::KeyUp(usage)]}],source:Some(source(unit))}}
+ fn manager(units:&[(&str,u8)])->DeviceManager{let mut m=DeviceManager::new(Box::new(MockBackend::new(vec![],|_|Err(gearwise_core::Error::Unsupported("no physical HID")))),vec![]);for(unit,usage)in units{let(mut inner,_)=crate::atk::simulated(0xf507).unwrap();inner.apply(&Setting::Button{id:4,action:key(*usage)}).unwrap();let mut desc=inner.descriptor().clone();desc.id=format!("pulsar:unit:{unit}:board:0");desc.serial=Some(unit.to_string());m.add_virtual(vec![Box::new(Identified{inner,desc})]);}m}
+ fn current(service:&Service,unit:&str)->ButtonAction{service.with(|m|Ok(m.device_mut(&format!("pulsar:unit:{unit}:board:0")).unwrap().read_state().unwrap().buttons[&4].clone())).unwrap()}
+ fn wait(rec:&Rec,n:usize){let end=std::time::Instant::now()+std::time::Duration::from_secs(2);while rec.0.lock().unwrap().len()<n&&std::time::Instant::now()<end{std::thread::sleep(std::time::Duration::from_millis(1));}assert_eq!(rec.0.lock().unwrap().len(),n);}
+ #[test]fn pulsar_software_compiles_real_shortcut_packets_and_only_supported_modes(){for mode in [MacroMode::Once,MacroMode::Toggle]{let p=plan("unit-a",5,mode);validate(&p).unwrap();let compiled=compile(&p).unwrap();assert_eq!(compiled.settings,vec![Setting::Button{id:4,action:key(0x68)}]);assert_eq!(compiled.input.keys[&0x7c],4);let r=simulate(&p).unwrap();assert_eq!(r["software_macros"][0]["events"],serde_json::json!(["key_down:5","key_up:5"]));assert!(r["packet_count"].as_u64().unwrap()>10);}assert!(validate(&plan("unit-a",5,MacroMode::WhileHeld)).is_err());let mut p=plan("unit-a",5,MacroMode::Once);p.settings.push(Setting::Button{id:3,action:key(0x68)});assert!(compile(&p).is_err());}
+ #[test]fn two_same_model_mice_route_only_their_own_macros_and_restore_independently(){
+  let service=Service::default();*service.0.lock().unwrap()=Some(manager(&[("a",4),("b",7)]));let rec=Rec::default();let runtime=crate::macro_runtime::Runtime::simulation(Arc::new(Mutex::new(rec.clone())));let root=std::env::temp_dir().join(format!("pulsar-routing-{}",crate::profiles::new_id()));
+  for(unit,usage)in[("a",5),("b",6)]{service.apply_at(&format!("pulsar:unit:{unit}:board:0"),&plan(unit,usage,MacroMode::Once),&runtime,&root,None).unwrap();assert_eq!(current(&service,unit),key(0x68));}
+  runtime.simulate_event(crate::raw_input::Event::Key{source:source("foreign"),vkey:0x7c,down:true});assert!(rec.0.lock().unwrap().is_empty());
+  for(unit,expected,n)in[("b",6,2),("a",5,4)]{for down in [true,false]{runtime.simulate_event(crate::raw_input::Event::Key{source:source(unit),vkey:0x7c,down});}wait(&rec,n);assert_eq!(rec.0.lock().unwrap()[n-2..],vec![format!("d{expected}"),format!("u{expected}")]);}
+  service.with(|m|service.restore_one(m,"pulsar:unit:a:board:0",&runtime)).unwrap();assert_eq!(current(&service,"a"),key(4));assert_eq!(current(&service,"b"),key(0x68));assert!(runtime.is_armed(&source("b")));assert!(!runtime.is_armed(&source("a")));
+  service.with(|m|service.restore_one(m,"pulsar:unit:b:board:0",&runtime)).unwrap();assert_eq!(current(&service,"b"),key(7));assert_eq!(runtime.status().source_count,0);assert!(crate::macro_recovery::load(&root.join("recovery")).0.is_empty());runtime.shutdown();std::fs::remove_dir_all(root).unwrap();
+ }
+ #[test]fn pulsar_tap_trigger_starts_and_stops_toggle_without_global_input(){
+  let service=Service::default();*service.0.lock().unwrap()=Some(manager(&[("a",4)]));let rec=Rec::default();let runtime=crate::macro_runtime::Runtime::simulation(Arc::new(Mutex::new(rec.clone())));let root=std::env::temp_dir().join(format!("pulsar-toggle-{}",crate::profiles::new_id()));let mut p=plan("a",5,MacroMode::Toggle);p.macros[0].steps[1]=MacroStep::Delay(10000);service.apply_at("pulsar:unit:a:board:0",&p,&runtime,&root,None).unwrap();
+  for down in [true,false]{runtime.simulate_event(crate::raw_input::Event::Key{source:source("a"),vkey:0x7c,down});}wait(&rec,1);assert_eq!(rec.0.lock().unwrap()[0],"d5");
+  for down in [true,false]{runtime.simulate_event(crate::raw_input::Event::Key{source:source("a"),vkey:0x7c,down});}wait(&rec,2);assert_eq!(rec.0.lock().unwrap()[1],"u5");service.with(|m|service.restore_one(m,"pulsar:unit:a:board:0",&runtime)).unwrap();runtime.shutdown();std::fs::remove_dir_all(root).unwrap();
+ }
+ #[test]fn pulsar_recovery_never_matches_a_different_hardware_bank(){let m=manager(&[("a",0x68)]);let d=m.devices().next().unwrap().descriptor().clone();let mut record=crate::macro_recovery::Record{version:1,device_id:d.id.clone(),serial:d.serial.clone(),source:source("a"),settings:vec![Setting::Button{id:4,action:key(4)}],expected:std::collections::HashMap::from([(4,key(0x68))]),software_input:false,shift:None};assert!(record.matches(&d));record.device_id="old:usb:path:board:1".into();assert!(!record.matches(&d));record.device_id="old:without-bank".into();assert!(!record.matches(&d));}
+ #[test]fn pulsar_restart_recovery_requires_unique_serial_and_keeps_external_changes(){
+  for(units,current_key,restored)in[(vec![("a",0x68)],0x68,true),(vec![("b",0x68)],0x68,false),(vec![("a",6)],6,false)]{
+   let service=Service::default();*service.0.lock().unwrap()=Some(manager(&units));let dir=std::env::temp_dir().join(format!("pulsar-restart-{}",crate::profiles::new_id()));crate::macro_recovery::Journal::create(&dir,crate::macro_recovery::Record{version:1,device_id:"old:path:board:0".into(),serial:Some("a".into()),source:source("a"),settings:vec![Setting::Button{id:4,action:key(4)}],expected:std::collections::HashMap::from([(4,key(0x68))]),software_input:false,shift:None}).unwrap();let _=service.recover_from(&dir,&crate::macro_runtime::Runtime::default()).unwrap();assert_eq!(current(&service,units[0].0),key(if restored{4}else{current_key}));if restored{assert!(crate::macro_recovery::load(&dir).0.is_empty());}std::fs::remove_dir_all(dir).unwrap();
+  }
+ }
+}
+
+#[cfg(test)]mod profile_target_tests{
+ use super::*;
+ #[test]fn profile_activation_never_fans_out_to_same_model_mice(){let ids=vec!["pulsar:a".to_string(),"pulsar:b".to_string()];assert!(choose_profile_device(&ids,None).is_err());assert_eq!(choose_profile_device(&ids,Some("pulsar:a")).unwrap(),"pulsar:a");assert!(choose_profile_device(&ids,Some("pulsar:missing")).is_err());assert_eq!(choose_profile_device(&ids[..1],None).unwrap(),"pulsar:a");assert!(choose_profile_device(&[],None).is_err());assert!(choose_profile_device(&["same".into(),"same".into()],Some("same")).is_err());}
 }

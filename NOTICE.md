@@ -28,3 +28,5 @@ HyperX Haste SVG 的 GPL-3.0 许可与可编辑源文件单独保留，协议作
 Haste SVG 仅去除独立标注引线层并收紧画布，主体路径未改；原始 SVG 另存 docs/upstream/HyperX-Pulsefire-Haste-original.svg，保留原作者与 GPL-3.0 许可。
 
 Five wired model adapters: libratbag MIT reference, fixed source and scope in [FIVE-BRAND-ADAPTERS.md](FIVE-BRAND-ADAPTERS.md), bundled copyright notices in Wired-Protocol-MIT.txt. Two additional unmodified Piper SVGs retain GPL-2.0; three original lightweight structural illustrations are labelled as illustrations.
+
+Pulsar Nordic keyboard shortcut records: independently implemented using the MIT reference by Packerlschupfer, fixed commit a18ed8fb963a296d4c5493f51017df32f30e975c of https://github.com/packerlschupfer/pulsar-mouse-linux . Copyright and MIT permission text are bundled in Pulsar-Nordic-MIT.txt. No Python/GTK runtime or official vendor application is bundled.

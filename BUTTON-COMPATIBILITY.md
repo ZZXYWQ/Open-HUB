@@ -4,11 +4,11 @@ Open HUB 仍是实验项目。识别品牌、显示设备图片或能改 DPI，�
 
 按用户选择，仅保留逐鼠标独立配置：按明确设备实例发送原生 HID 报文，软件宏按已核对的输入接口路由。不加入对所有鼠标同时生效的全局五键映射，不以全局拦截冒充设备独立控制。
 
-## 0.3.5 的实际新增
+## 当前实际范围（0.3.6）
 
 |精确型号|可改物理控制|可执行动作|仍未实现|
 |---|---|---|---|
-|Pulsar X2 V2 Mini 3554:F507 / F508|右、中、后退、前进|五种鼠标按键互换、DPI 循环/升降、禁用、恢复默认|键盘/任意宏；左键保护；其他 Pulsar 型号|
+|Pulsar X2 V2 Mini 3554:F507 / F508|右、中、后退、前进|五种鼠标按键互换、DPI 循环/升降、禁用、板载点按快捷键、单次/开关软件宏|任意板载宏、按住循环；左键保护；其他 Pulsar 型号|
 |Razer Viper V3 Pro 1532:00C0 / 00C1|右、后退、前进|已核对的鼠标动作、禁用、恢复默认|中键、键盘、宏、Hypershift|
 |同上|滚轮上、滚轮下、底部 DPI 键|启用原动作或禁用|这些控制之间任意交叉映射|
 
@@ -21,3 +21,5 @@ Open HUB 仍是实验项目。识别品牌、显示设备图片或能改 DPI，�
 更多鼠标的额外侧键、狙击键、DPI 键、拨动键、滚轮倾斜、模式层可能采用不同命令和事件，不一定向 Windows 发送标准按键。缺少协议或对应硬件时无法诚实保证“所有鼠标的所有按键都兼容”。每项新能力应包含报文证据、模型校验、实际执行与读回、按键恢复、界面以及保存方案重新执行的测试。
 
 Pulsar 来源：[MIT 参考工具](https://github.com/andrewrabert/python-pulsar-mouse-tool/tree/587f3a996a32aaea0f40e671756808f2f37e7fe2)、[OpenMouse 共享记录](https://github.com/OpenMouse-Project/mouse-protocol/blob/23f5bed75d148cabeed19c74838deb31d3f60d02/src/teevolution/index.ts)。Viper 控制来源：[固定提交的独立抓包测试](https://github.com/OpenMouse-Project/mouse-protocol/blob/23f5bed75d148cabeed19c74838deb31d3f60d02/src/drivers/razer/protocol.test.ts)。仅独立转录协议事实，没有运行厂商配置器或导入全套运行时。
+
+Pulsar 快捷键最多一个普通键及四个修饰键。软件宏必须验证目标鼠标和键盘输入接口的序列号且无重复歧义；F13–F24 点按触发也可能传递给其他程序，关闭软件会尝试恢复原绑定。原厂未知宏保留，不宣称可以导入原厂宏。多只同型号时，配置中心须选择一个设备；自动切换跳过歧义目标。协议依据另见 [Pulsar 说明](PULSAR-ADAPTER.md)。

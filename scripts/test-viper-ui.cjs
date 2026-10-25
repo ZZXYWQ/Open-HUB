@@ -1,6 +1,6 @@
 const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),assert=require('assert');
 const root=path.resolve('dist'),out=path.resolve('../viper-ui-qa');fs.mkdirSync(out,{recursive:true});
-const views=JSON.parse(fs.readFileSync(path.resolve(process.env.OPEN_HUB_VIPER_FIXTURE||'../outputs/0.3.5-native-viper-views.json'),'utf8'));assert.equal(views.length,6);
+const views=JSON.parse(fs.readFileSync(path.resolve(process.env.OPEN_HUB_VIPER_FIXTURE||'../outputs/0.3.6-native-viper-views.json'),'utf8'));assert.equal(views.length,6);
 const base=fs.readFileSync(path.join(__dirname,'test-synapse-import-ui.cjs'),'utf8'),marker='await page.addInitScript(()=>{';const start=base.indexOf(marker)+marker.length,end=base.indexOf('\n});await ',start);assert(start>=marker.length&&end>start);
 (async()=>{const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-gpu']});try{
  const page=await browser.newPage({viewport:{width:1450,height:1000},deviceScaleFactor:1}),errors=[],checks=[];page.on('pageerror',e=>errors.push(String(e)));
@@ -35,5 +35,5 @@ const base=fs.readFileSync(path.join(__dirname,'test-synapse-import-ui.cjs'),'ut
   checks.push(view.descriptor.name+': full typed plan saved to its own VID/PID after simulation');
  }
  const calls=await page.evaluate(()=>window.__qaCalls);assert.equal(calls.filter(c=>c.cmd==='multi_simulate').length,6);assert(!calls.some(c=>['multi_apply','activate_profile','sino_apply'].includes(c.cmd)));assert.deepEqual(errors,[]);checks.push('offline editor never writes USB; no browser exceptions');
- fs.writeFileSync(path.resolve('../outputs/0.3.5-viper-ui-created-profiles.json'),JSON.stringify(calls.filter(c=>c.cmd==='save_profile').map(c=>c.args.profile),null,2));fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({result:'passed',native_view_fixtures:true,mock_backend:true,checks},null,2));console.log(checks.length+' Viper UI checks passed (native DTOs, mock Tauri)');
+ fs.writeFileSync(path.resolve('../outputs/0.3.6-viper-ui-created-profiles.json'),JSON.stringify(calls.filter(c=>c.cmd==='save_profile').map(c=>c.args.profile),null,2));fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({result:'passed',native_view_fixtures:true,mock_backend:true,checks},null,2));console.log(checks.length+' Viper UI checks passed (native DTOs, mock Tauri)');
  }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -22,7 +22,9 @@ pub struct Record {
 }
 impl Record {
     pub fn matches(&self, d: &DeviceDescriptor) -> bool {
-        (self.source.vendor,self.source.product)==(d.vendor_id,d.product_id)
+        let bank=|id:&str|id.rsplit_once(":board:").and_then(|(_,v)|v.parse::<u8>().ok()).filter(|n|*n<4);
+        let same_bank=!crate::atk::is_pulsar(self.source.vendor,self.source.product)||(bank(&self.device_id).is_some()&&bank(&self.device_id)==bank(&d.id));
+        same_bank && (self.source.vendor,self.source.product)==(d.vendor_id,d.product_id)
             && self.serial.as_deref().filter(|s| !s.trim().is_empty())
                 .is_some_and(|s| d.serial.as_deref()==Some(s))
     }

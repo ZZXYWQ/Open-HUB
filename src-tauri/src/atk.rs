@@ -11,6 +11,8 @@ use gearwise_core::{
 };
 #[path = "atk_macros.rs"]
 mod native_macro;
+#[path = "pulsar_shortcuts.rs"]
+mod pulsar_shortcut;
 use gearwise_core::profile::Macro;
 use std::collections::HashMap;
 use std::{
@@ -32,6 +34,8 @@ pub fn validate_dpi(d: &DpiState, product: u16) -> Result<()> {
 pub fn validate_key(usage: u8, mods: gearwise_core::model::Modifiers) -> Result<()> {
     native_macro::encode(&native_macro::keyboard(usage, mods)).map(|_| ())
 }
+pub fn is_pulsar(v:u16,p:u16)->bool{v==0x3554&&matches!(p,0xf507|0xf508)}
+pub fn validate_pulsar_key(usage:u8,mods:gearwise_core::model::Modifiers)->Result<()>{pulsar_shortcut::encode(usage,mods).map(|_|())}
 pub fn validate_macro(m: &Macro) -> Result<()> {
     native_macro::encode(m).map(|_| ())
 }
@@ -279,7 +283,7 @@ impl Atk {
     fn identify(&mut self) -> Result<()> {
         if self.model.brand=="pulsar" {
             if self.exchange(3,0,0)?.first()!=Some(&1){return Err(Error::invalid("Pulsar receiver has no awake mouse"));}
-            let profile=self.exchange(0x0e,0,0)?;let current=*profile.first().ok_or(Error::invalid("Pulsar active profile reply"))?;
+            let profile=self.exchange(0x0e,0,0)?;let current=*profile.first().ok_or(Error::invalid("Pulsar active profile reply"))?;if current>3{return Err(Error::invalid("Pulsar active profile index"));}
             if self.profile.is_some_and(|p|p!=current){return Err(Error::invalid("Pulsar active profile changed; reopen device before writing"));}self.profile=Some(current);return Ok(());
         }
         let r = self.exchange(0x10, 0, 0)?;
@@ -394,6 +398,7 @@ impl Atk {
             this.mid=identity[1];
         }
         this.refresh()?;
+        if is_pulsar(this.model.vendor,this.model.product){this.desc.id=format!("{}:board:{}",this.desc.id,this.profile.ok_or(Error::invalid("Pulsar missing board identity"))?);}
         Ok(this)
     }
     fn read_blob(&mut self, address: u16, len: usize) -> Result<Vec<u8>> {
@@ -425,6 +430,25 @@ impl Atk {
             return Some((ButtonAction::Macro(m.id.clone()), Some(m)));
         }
         None
+    }
+    fn pulsar_action(&mut self,id:u16,raw:&[u8])->Result<Option<ButtonAction>>{
+        if let Some(action)=decode_button(raw){return Ok(Some(action));}
+        if raw.len()!=4||sum(raw)!=0x55||raw[0]!=5{return Ok(None);}
+        let address=pulsar_shortcut::address(id)?;
+        if u16::from_be_bytes([raw[1],raw[2]])!=address{return Ok(None);}
+        Ok(pulsar_shortcut::decode(&self.read_blob(address,pulsar_shortcut::SIZE)?))
+    }
+    fn pulsar_key(&mut self,id:u16,usage:u8,mods:gearwise_core::model::Modifiers)->Result<()>{
+        let payload=pulsar_shortcut::encode(usage,mods)?;let address=pulsar_shortcut::address(id)?;let target=96+(id-1)*4;
+        self.identify()?;let original=self.read(target,4)?;
+        if self.pulsar_action(id,&original)?.is_none(){return Err(Error::invalid("Pulsar unknown original binding retained"));}
+        for other in 1..=self.model.buttons{let row=self.read(96+(other-1)*4,4)?;if sum(&row)!=0x55{return Err(Error::invalid("Pulsar button allocation checksum"));}if other!=id&&row[0]==5&&u16::from_be_bytes([row[1],row[2]])==address{return Err(Error::invalid("Pulsar shortcut slot is referenced by another button"));}}
+        let before=self.read_blob(address,pulsar_shortcut::SIZE)?;
+        if !before.iter().all(|v|*v==0)&&!before.iter().all(|v|*v==255)&&pulsar_shortcut::decode(&before).is_none(){return Err(Error::invalid("Pulsar unknown shortcut slot retained"));}
+        let[hi,lo]=address.to_be_bytes();let binding=[5,hi,lo,0x55u8.wrapping_sub(5).wrapping_sub(hi).wrapping_sub(lo)];
+        let operation=(||->Result<()>{for(n,chunk)in payload.chunks(10).enumerate(){self.write_verified(address+n as u16*10,chunk)?;}self.write_verified(target,&binding)?;
+            if self.read_blob(address,pulsar_shortcut::SIZE)?!=payload||self.read(target,4)?!=binding{return Err(Error::invalid("Pulsar full shortcut did not read back"));}Ok(())})();
+        if let Err(error)=operation{let restore=(||->Result<()>{self.identify()?;for(n,chunk)in before.chunks(10).enumerate(){self.write_verified(address+n as u16*10,chunk)?;}self.write_verified(target,&original)?;Ok(())})();return Err(Error::invalid(format!("{error}; Pulsar original shortcut restoration: {restore:?}")));}Ok(())
     }
     fn native_binding(&mut self, id: u16, action: &ButtonAction) -> Result<()> {
         let macro_def = if let Some(m) = native_macro::key_action(action) {
@@ -525,7 +549,7 @@ impl Atk {
         self.read_macros.clear();
         for id in 1..=self.model.buttons {
             let raw = self.read(96 + (id - 1) * 4, 4)?;
-            let decoded = if self.model.native_macros{self.read_action(&raw)}else{decode_button(&raw).map(|a|(a,None))};
+            let decoded = if self.model.native_macros{self.read_action(&raw)}else{self.pulsar_action(id,&raw)?.map(|a|(a,None))};
             let known = decoded.is_some();
             if let Some((action, definition)) = decoded {
                 state.buttons.insert(id, action);
@@ -624,8 +648,7 @@ impl Device for Atk {
                 }
                 match action {
                     ButtonAction::Key { usage, mods } => {
-                        if !self.model.native_macros{return Err(Error::Unsupported("Pulsar keyboard payload not verified"));}
-                        native_macro::encode(&native_macro::keyboard(*usage, *mods))?;
+                        if is_pulsar(self.model.vendor,self.model.product){validate_pulsar_key(*usage,*mods)?;}else{native_macro::encode(&native_macro::keyboard(*usage, *mods))?;}
                     }
                     ButtonAction::Macro(key) => {
                         if !self.model.native_macros{return Err(Error::Unsupported("Pulsar native macro payload not verified"));}
@@ -680,6 +703,7 @@ impl Device for Atk {
                 row[..2].copy_from_slice(&pair(rate_code(*hz)?));
                 self.write_verified(0, &row)?;
             }
+            Setting::Button{id,action:ButtonAction::Key{usage,mods}} if is_pulsar(self.model.vendor,self.model.product)=>{self.pulsar_key(*id,*usage,*mods)?;}
             Setting::Button { id, action }
                 if matches!(action, ButtonAction::Macro(_) | ButtonAction::Key { .. }) =>
             {
@@ -687,7 +711,7 @@ impl Device for Atk {
             }
             Setting::Button { id, action } => {
                 let old = self.read(96 + (id - 1) * 4, 4)?;
-                if (if self.model.native_macros{self.read_action(&old).map(|v|v.0)}else{decode_button(&old)}).is_none() {
+                if (if self.model.native_macros{self.read_action(&old).map(|v|v.0)}else{self.pulsar_action(*id,&old)?}).is_none() {
                     return Err(Error::invalid("ATK unknown original action retained; native macro/shortcut is not overwritten"));
                 }
                 self.write_verified(96 + (id - 1) * 4, &button_bytes(action, *id)?)?;
@@ -1282,7 +1306,7 @@ mod dpi_limits_tests {
  use super::*;
  #[test]fn pulsar_real_driver_dpi_indicator_and_rate_roundtrip(){for product in [0xf507,0xf508]{let(mut d,l)=memory_device(product).unwrap();l.lock().unwrap().clear();let next=DpiState{stages:vec![DpiStage::uniform(50),DpiStage::uniform(12800),DpiStage::uniform(26000)],active:2};d.apply(&Setting::Dpi(next.clone())).unwrap();d.apply(&Setting::ReportRate(500)).unwrap();let color=Rgb{r:19,g:61,b:97};d.apply(&Setting::Lighting{zone:0,state:ZoneState{effect:LightingEffect::Static{color},brightness:100}}).unwrap();let state=d.read_state().unwrap();assert_eq!(state.dpi,Some(next));assert_eq!(state.report_rate,Some(500));assert_eq!(state.lighting[&0].effect,LightingEffect::Static{color});assert!(d.caps.buttons.iter().all(|b|b.remappable==(b.id!=1)));assert!(l.lock().unwrap().iter().all(|r|!matches!(r,gearwise_core::transport::MockRecord::Write(p)if p[1]==0x10)));}}
  #[test]fn pulsar_shared_codec_matches_public_known_vectors(){assert_eq!(encode_dpi(50,50,26000).unwrap(),[0,0,0,85]);assert_eq!(encode_dpi(12800,12800,26000).unwrap(),[255,255,0,87]);assert_eq!(encode_dpi(26000,26000,26000).unwrap(),[7,7,136,191]);for dpi in (50..=26000).step_by(50){assert_eq!(decode_dpi(&encode_dpi(dpi,dpi,26000).unwrap(),26000).unwrap(),DpiStage::uniform(dpi));}}
- #[test]fn pulsar_rejects_extra_stages_xy_keyboard_and_macros_before_io(){let(mut d,l)=memory_device(0xf507).unwrap();for setting in [Setting::Dpi(DpiState{stages:vec![DpiStage{x:800,y:1600}],active:0}),Setting::Dpi(DpiState{stages:vec![DpiStage::uniform(800);5],active:0}),Setting::Button{id:4,action:ButtonAction::Key{usage:4,mods:gearwise_core::model::Modifiers(0)}}]{l.lock().unwrap().clear();assert!(d.apply(&setting).is_err());assert!(l.lock().unwrap().is_empty());}}
+ #[test]fn pulsar_rejects_extra_stages_xy_keyboard_and_macros_before_io(){let(mut d,l)=memory_device(0xf507).unwrap();for setting in [Setting::Dpi(DpiState{stages:vec![DpiStage{x:800,y:1600}],active:0}),Setting::Dpi(DpiState{stages:vec![DpiStage::uniform(800);5],active:0}),Setting::Button{id:4,action:ButtonAction::Key{usage:0,mods:gearwise_core::model::Modifiers(0)}}]{l.lock().unwrap().clear();assert!(d.apply(&setting).is_err());assert!(l.lock().unwrap().is_empty());}}
  #[test]fn pulsar_profile_change_blocks_writes_instead_of_touching_other_bank(){let(mut d,l)=memory_device(0xf508).unwrap();d.profile=Some(1);l.lock().unwrap().clear();assert!(d.apply(&Setting::ReportRate(500)).unwrap_err().to_string().contains("profile changed"));assert!(!l.lock().unwrap().iter().any(|r|matches!(r,gearwise_core::transport::MockRecord::Write(p)if p[1]==7)));}
  #[test]fn pulsar_all_known_button_actions_roundtrip_without_macro_memory(){
   let actions=vec![ButtonAction::Disabled,ButtonAction::Mouse(MouseButton::Left),ButtonAction::Mouse(MouseButton::Right),ButtonAction::Mouse(MouseButton::Middle),ButtonAction::Mouse(MouseButton::Back),ButtonAction::Mouse(MouseButton::Forward),ButtonAction::Dpi(DpiFunction::Cycle),ButtonAction::Dpi(DpiFunction::Up),ButtonAction::Dpi(DpiFunction::Down)];
@@ -1297,6 +1321,26 @@ mod dpi_limits_tests {
  #[test]fn pulsar_unknown_original_custom_record_remains_locked(){
   let(mut d,l)=memory_device(0xf507).unwrap();let original=[5,0,0,0x50];d.io.write(&frame(7,108,4,&original).unwrap()).unwrap();assert!(!d.read_state().unwrap().buttons.contains_key(&4));assert!(!d.capabilities().buttons.iter().find(|b|b.id==4).unwrap().remappable);l.lock().unwrap().clear();assert!(d.apply(&Setting::Button{id:4,action:ButtonAction::Disabled}).is_err());assert!(!l.lock().unwrap().iter().any(|r|matches!(r,gearwise_core::transport::MockRecord::Write(p)if p[1]==7)));assert_eq!(d.read(108,4).unwrap(),original);
  }
+ #[test]fn pulsar_native_keys_read_import_reopen_and_replace_with_mouse_actions(){
+  for product in [0xf507,0xf508]{let(mut d,log)=memory_device(product).unwrap();for id in 2..=5{let action=ButtonAction::Key{usage:0x17,mods:gearwise_core::model::Modifiers(3)};d.apply(&Setting::Button{id,action:action.clone()}).unwrap();assert_eq!(d.read_state().unwrap().buttons[&id],action);let address=pulsar_shortcut::address(id).unwrap();let raw=d.read_blob(address,32).unwrap();assert_eq!(pulsar_shortcut::decode(&raw),Some(action));}
+   let info=HidInterfaceInfo{vendor_id:0x3554,product_id:product,interface_number:1,usage_page:0xff02,..Default::default()};let mut d=Atk::open(d.io,&info).unwrap();assert_eq!(d.read_state().unwrap().buttons[&4],ButtonAction::Key{usage:0x17,mods:gearwise_core::model::Modifiers(3)});d.apply(&Setting::Button{id:4,action:ButtonAction::Mouse(MouseButton::Back)}).unwrap();assert_eq!(d.read_state().unwrap().buttons[&4],ButtonAction::Mouse(MouseButton::Back));assert!(log.lock().unwrap().iter().any(|r|matches!(r,gearwise_core::transport::MockRecord::Write(p)if p[1]==7&&p[3..5]==[1,0x60])));
+  }
+ }
+ #[test]fn pulsar_shortcut_limits_reject_before_io(){let(mut d,l)=memory_device(0xf507).unwrap();for(usage,mods)in[(0,0),(255,0),(4,31),(4,255)]{l.lock().unwrap().clear();assert!(d.apply(&Setting::Button{id:4,action:ButtonAction::Key{usage,mods:gearwise_core::model::Modifiers(mods)}}).is_err());assert!(l.lock().unwrap().is_empty());}}
+ #[test]fn pulsar_unknown_shortcut_bytes_and_other_button_references_are_never_overwritten(){
+  for alias in [false,true]{let(mut d,l)=memory_device(0xf507).unwrap();let address=pulsar_shortcut::address(4).unwrap();if alias{let row=[5,1,0x60,0xef];d.io.write(&frame(7,96,4,&row).unwrap()).unwrap();}else{d.io.write(&frame(7,address,4,&[7,3,4,5]).unwrap()).unwrap();}let before=d.read_blob(address,32).unwrap();l.lock().unwrap().clear();assert!(d.apply(&Setting::Button{id:4,action:ButtonAction::Key{usage:4,mods:gearwise_core::model::Modifiers(0)}}).is_err());assert!(!l.lock().unwrap().iter().any(|r|matches!(r,gearwise_core::transport::MockRecord::Write(p)if p[1]==7)));assert_eq!(d.read_blob(address,32).unwrap(),before);}
+ }
+ struct ShortWriteOnce{inner:Box<dyn HidTransport>,at:usize,count:usize}
+ impl HidTransport for ShortWriteOnce{
+  fn write(&mut self,p:&[u8])->Result<usize>{let n=self.inner.write(p)?;if p.len()==17&&p[1]==7{self.count+=1;if self.count==self.at{return Ok(16);}}Ok(n)}
+  fn read_timeout(&mut self,p:&mut[u8],ms:i32)->Result<usize>{self.inner.read_timeout(p,ms)}
+  fn send_feature_report(&mut self,p:&[u8])->Result<()>{self.inner.send_feature_report(p)}fn get_feature_report(&mut self,p:&mut[u8])->Result<usize>{self.inner.get_feature_report(p)}
+ }
+ #[test]fn pulsar_uncertain_short_write_at_every_step_restores_full_record_and_binding(){
+  for at in 1..=5{let(mut d,_)=memory_device(0xf508).unwrap();let row=d.read(108,4).unwrap();let blob=d.read_blob(0x160,32).unwrap();d.io=Box::new(ShortWriteOnce{inner:d.io,at,count:0});assert!(d.apply(&Setting::Button{id:4,action:ButtonAction::Key{usage:0x17,mods:gearwise_core::model::Modifiers(15)}}).is_err());assert_eq!(d.read(108,4).unwrap(),row);assert_eq!(d.read_blob(0x160,32).unwrap(),blob);}
+ }
+ #[test]fn pulsar_shortcut_readback_corruption_restores_all_bytes(){let(mut d,_)=memory_device(0xf507).unwrap();let before=d.read_blob(0x160,32).unwrap();let row=d.read(108,4).unwrap();d.io=Box::new(CorruptOnce{inner:d.io,pending:false,used:false});assert!(d.apply(&Setting::Button{id:4,action:ButtonAction::Key{usage:4,mods:gearwise_core::model::Modifiers(3)}}).is_err());assert_eq!(d.read_blob(0x160,32).unwrap(),before);assert_eq!(d.read(108,4).unwrap(),row);}
+ #[test]fn pulsar_broken_shortcut_or_noncanonical_pointer_is_locked_on_read_and_apply(){for pointer in [0x160u16,0x120u16]{let(mut d,l)=memory_device(0xf507).unwrap();let[hi,lo]=pointer.to_be_bytes();let row=[5,hi,lo,0x55u8.wrapping_sub(5).wrapping_sub(hi).wrapping_sub(lo)];d.io.write(&frame(7,108,4,&row).unwrap()).unwrap();assert!(!d.read_state().unwrap().buttons.contains_key(&4));assert!(!d.capabilities().buttons.iter().find(|b|b.id==4).unwrap().remappable);l.lock().unwrap().clear();assert!(d.apply(&Setting::Button{id:4,action:ButtonAction::Disabled}).is_err());assert!(!l.lock().unwrap().iter().any(|r|matches!(r,gearwise_core::transport::MockRecord::Write(p)if p[1]==7)));}}
  struct CorruptOnce{inner:Box<dyn HidTransport>,pending:bool,used:bool}
  impl HidTransport for CorruptOnce{
   fn write(&mut self,p:&[u8])->Result<usize>{let n=self.inner.write(p)?;if p.len()==17&&p[1]==7&&!self.used{self.pending=true;}Ok(n)}

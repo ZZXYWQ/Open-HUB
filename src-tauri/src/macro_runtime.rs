@@ -54,16 +54,22 @@ fn native_key_down(vkey:u16)->bool{
  #[cfg(all(windows,not(test)))]{unsafe{windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow().is_null()||windows_sys::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(i32::from(vkey)) as u16&0x8000!=0}}
  #[cfg(any(not(windows),test))]{let _=vkey;false}
 }
+fn verify_pulsar_serial(source:&Source,expected:Option<&str>,actual:Option<&str>)->Result<(),String>{
+ if crate::atk::is_pulsar(source.vendor,source.product){let expected=expected.filter(|s|!s.trim().is_empty()).ok_or("Pulsar 软件宏需要可核验的鼠标序列号；当前仍可使用板载按键和快捷键")?;if actual.filter(|s|!s.trim().is_empty())!=Some(expected){return Err("Pulsar 输入接口序列号与目标鼠标不一致或不可读，未启用软件宏".into());}}Ok(())
+}
+fn verify_input_source(sources:Vec<SourceInfo>,source:&Source,serial:Option<&str>)->Result<SourceInfo,String>{
+  let candidate=sources.iter().cloned().find(|v|v.source==*source).ok_or("未找到配置指定的输入来源；请重新选择此鼠标的输入设备")?;
+  let expected_kind=if source.vendor==0x1b1c{"Vendor HID"}else{"Keyboard report"};if candidate.kind!=expected_kind{return Err(format!("此方案需要选择 {expected_kind} 输入接口"));}
+  if let(Some(expected),Some(actual))=(serial.filter(|s|!s.is_empty()),candidate.serial.as_deref().filter(|s|!s.is_empty())){if expected!=actual{return Err("输入来源序列号与当前鼠标不一致".into());}}
+  verify_pulsar_serial(source,serial,candidate.serial.as_deref())?;
+  if crate::atk::is_pulsar(source.vendor,source.product)&&sources.iter().filter(|s|s.source.vendor==source.vendor&&s.source.product==source.product&&s.kind=="Keyboard report"&&s.serial.as_deref()==serial).count()!=1{return Err("Pulsar 序列号对应多个键盘输入接口，无法确定独立鼠标，未启用软件宏".into());}
+  Ok(candidate)
+}
 #[derive(Clone,Default)]pub struct Runtime(Arc<Mutex<Option<Native>>>);
 struct Native{hub:Arc<Hub>,#[cfg(windows)]_watcher:Option<raw_input::Watcher>,#[cfg(test)]simulation:bool}
 #[derive(Serialize)]pub struct Status{pub source_count:usize,pub errors:Vec<String>}
 impl Runtime{
- pub fn verify(source:&Source,serial:Option<&str>)->Result<SourceInfo,String>{
-  let candidate=raw_input::sources()?.into_iter().find(|v|v.source==*source).ok_or("未找到配置指定的输入来源；请重新选择此鼠标的输入设备")?;
-  let expected_kind=if source.vendor==0x1b1c{"Vendor HID"}else{"Keyboard report"};if candidate.kind!=expected_kind{return Err(format!("此方案需要选择 {expected_kind} 输入接口"));}
-  if let(Some(expected),Some(actual))=(serial.filter(|s|!s.is_empty()),candidate.serial.as_deref().filter(|s|!s.is_empty())){if expected!=actual{return Err("输入来源序列号与当前鼠标不一致".into());}}
-  Ok(candidate)
- }
+ pub fn verify(source:&Source,serial:Option<&str>)->Result<SourceInfo,String>{verify_input_source(raw_input::sources()?,source,serial)}
  pub fn prepare(&self,source:&Source,serial:Option<&str>)->Result<(),String>{
   #[cfg(test)]if source.path.starts_with("simulation:")&&crate::multibrand::supported(source.vendor,source.product)&&self.0.lock().map_err(|_|"软件宏运行时锁异常")?.as_ref().is_some_and(|n|n.simulation){return Ok(());}
   Self::verify(source,serial)?;let mut native=self.0.lock().map_err(|_|"软件宏运行时锁异常")?;if native.is_none(){
@@ -113,4 +119,15 @@ impl Runtime{
  #[test]fn dpi_physical_edges_are_deduplicated_and_release_is_delivered(){let hub=Hub::new(Arc::new(Mutex::new(NoOutput)));let events=Arc::new(Mutex::new(Vec::new()));let output=events.clone();hub.configure(source(),vec![],InputMap{keys:BTreeMap::new(),buttons:vec![6,8],dpi_buttons:vec![6,8]},Hooks{dpi:Some(Arc::new(move|b,d|{output.lock().unwrap().push((b,d));Ok(())})),cancel:None}).unwrap();for mask in [128,128,160,32,0]{hub.event(Event::Buttons{source:source(),mask});}assert_eq!(*events.lock().unwrap(),vec![(8,true),(6,true),(8,false),(6,false)]);}
  #[test]fn replacing_or_removing_source_cancels_owned_callbacks(){use std::sync::atomic::{AtomicUsize,Ordering};let hub=Hub::new(Arc::new(Mutex::new(NoOutput)));let cancelled=Arc::new(AtomicUsize::new(0));for _ in 0..2{let c=cancelled.clone();hub.configure(source(),vec![],InputMap{keys:BTreeMap::new(),buttons:vec![],dpi_buttons:vec![]},Hooks{dpi:None,cancel:Some(Arc::new(move||{c.fetch_add(1,Ordering::SeqCst);} ))}).unwrap();}assert_eq!(cancelled.load(Ordering::SeqCst),1);hub.remove(&source().path);hub.remove(&source().path);assert_eq!(cancelled.load(Ordering::SeqCst),2);}
  #[test]fn held_vendor_button_defers_mode_restore_and_disables_dpi_callbacks(){use std::sync::atomic::{AtomicUsize,Ordering};let hub=Hub::new(Arc::new(Mutex::new(NoOutput)));let calls=Arc::new(AtomicUsize::new(0));let c=calls.clone();hub.configure(source(),vec![],InputMap{keys:BTreeMap::new(),buttons:vec![8],dpi_buttons:vec![8]},Hooks{dpi:Some(Arc::new(move|_,_|{c.fetch_add(1,Ordering::SeqCst);Ok(())})),cancel:None}).unwrap();hub.event(Event::Buttons{source:source(),mask:128});assert_eq!(calls.load(Ordering::SeqCst),1);assert!(!hub.quiesce(&source(),&[]).unwrap());let mut other=source();other.path.push_str("-other");hub.event(Event::Buttons{source:other,mask:0});assert!(!hub.quiesce(&source(),&[]).unwrap());hub.event(Event::Buttons{source:source(),mask:0});assert!(hub.quiesce(&source(),&[]).unwrap());assert_eq!(calls.load(Ordering::SeqCst),1);}
+}
+
+#[cfg(test)]mod pulsar_identity_tests{
+ use super::*;
+ #[test]fn pulsar_host_macros_require_matching_readable_serials(){let s=Source{vendor:0x3554,product:0xf507,path:"keyboard-a".into()};assert!(verify_pulsar_serial(&s,Some("unit-a"),Some("unit-a")).is_ok());for(expected,actual)in[(None,None),(Some("unit-a"),None),(None,Some("unit-a")),(Some("unit-a"),Some("unit-b")),(Some(""),Some(""))]{assert!(verify_pulsar_serial(&s,expected,actual).is_err());}}
+}
+
+#[cfg(test)]mod source_inventory_tests{
+ use super::*;
+ fn info(path:&str,serial:&str,kind:&str)->SourceInfo{SourceInfo{source:Source{vendor:0x3554,product:0xf507,path:path.into()},kind:kind.into(),serial:Some(serial.into())}}
+ #[test]fn serial_inventory_distinguishes_two_mice_and_refuses_ambiguous_serial_or_wrong_collection(){let a=info("keyboard-a","a","Keyboard report");let b=info("keyboard-b","b","Keyboard report");assert!(verify_input_source(vec![a.clone(),b.clone()],&a.source,Some("a")).is_ok());assert!(verify_input_source(vec![a.clone(),b.clone()],&b.source,Some("a")).is_err());let duplicate=info("other-keyboard-a","a","Keyboard report");assert!(verify_input_source(vec![a.clone(),duplicate],&a.source,Some("a")).is_err());let vendor=info("vendor-a","a","Vendor HID");assert!(verify_input_source(vec![a.clone(),vendor.clone()],&a.source,Some("a")).is_ok());assert!(verify_input_source(vec![vendor.clone()],&vendor.source,Some("a")).is_err());}
 }

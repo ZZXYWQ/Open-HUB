@@ -264,7 +264,7 @@ export const api = {
   saveProfile: (profile: Profile) => invoke<ProfilesView>("save_profile", { profile }),
   deleteProfile: (id: string) => invoke<ProfilesView>("delete_profile", { id }),
   setAutoSwitch: (enabled: boolean) => invoke<ProfilesView>("set_auto_switch", { enabled }),
-  activateProfile: (id: string) => invoke<Activation>("activate_profile", { id }),
+  activateProfile: (id: string, deviceId?:string) => invoke<Activation>("activate_profile", { id,...(deviceId?{deviceId}:{}) }),
   importGhub: () => invoke<ImportResult>("import_ghub_profiles"),
 
   onboardSnapshot: (id: string) => invoke<OnboardSnapshot>("onboard_snapshot", { id }),

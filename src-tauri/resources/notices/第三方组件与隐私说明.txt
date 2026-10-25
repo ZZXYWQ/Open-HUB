@@ -19,3 +19,5 @@ SinoWealth 原生协议参考遵循 libratbag 的 MIT 许可；Marian Beermann �
 GitHub 更新自动查询本仓库版本元数据；下载和安装都由用户选择，更新包使用独立签名并绑定版本。Windows EXE 尚无 Authenticode 代码签名。
 
 HyperX/Pulsar 协议参考保留 MIT 作者许可；HyperX 原作者 SVG 和公开抓包提取载荷保留 GPL-3.0 许可。详见 HyperX-Protocol-MIT.txt、Pulsar-Protocol-MIT.txt、HyperX-Source-GPL-3.0.txt 与对应适配说明。
+
+Pulsar Nordic 快捷键协议另参考 Packerlschupfer 的 MIT 开源实现，固定提交 a18ed8fb963a296d4c5493f51017df32f30e975c；署名和许可见 Pulsar-Nordic-MIT.txt。没有包含其 Python/GTK 运行库或厂商控制器。

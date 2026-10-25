@@ -25,6 +25,7 @@ fn target(record:&Record,descriptor:&DeviceDescriptor,source:Option<&Source>)->R
     if record.serial.as_deref().filter(|s|!s.trim().is_empty()).is_some_and(|s|descriptor.serial.as_deref()!=Some(s)){
         return Err("恢复记录序列号与所选鼠标不一致，未写入".into());
     }
+    if crate::atk::is_pulsar(record.source.vendor,record.source.product)&&!record.matches(descriptor){return Err("Pulsar 恢复记录对应其他板载组；请切回原组后重新扫描，未写入".into());}
     if source.is_some_and(|s|(s.vendor,s.product)!=(descriptor.vendor_id,descriptor.product_id)||s.path.is_empty()||s.path.len()>4096){
         return Err("恢复输入来源与所选型号不一致".into());
     }
