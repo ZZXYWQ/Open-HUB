@@ -113,8 +113,35 @@ pub struct ConfigImage {
     page: u8,
     bytes: [u8; CONFIG_LEN],
 }
+/// OEM lighting combobox entries 0..6 (language IDs 531..537).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[repr(u8)]
+pub enum LightMode {
+    Wave = 0,
+    Neon = 1,
+    CyclingFlash = 2,
+    YoyoBall = 3,
+    SingleFlash = 4,
+    BreathingLoop = 5,
+    Off = 6,
+}
+impl LightMode {
+    fn from_byte(byte: u8) -> Option<Self> {
+        Some(match byte {
+            0 => Self::Wave,
+            1 => Self::Neon,
+            2 => Self::CyclingFlash,
+            3 => Self::YoyoBall,
+            4 => Self::SingleFlash,
+            5 => Self::BreathingLoop,
+            6 => Self::Off,
+            _ => return None,
+        })
+    }
+}
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ConfigPatch {
+    pub light: Option<LightMode>,
     /// Zero-based stage; firmware stores 1..6.
     pub active: Option<u8>,
     pub dpi: Option<[u16; 6]>,
@@ -135,6 +162,9 @@ impl ConfigImage {
         let image = Self { page, bytes };
         validate_dpi(&image.dpi())?;
         Ok(image)
+    }
+    pub fn light(&self) -> Option<LightMode> {
+        LightMode::from_byte(self.bytes[1])
     }
     pub fn page(&self) -> u8 {
         self.page
@@ -162,6 +192,9 @@ impl ConfigImage {
             validate_dpi(&dpi)?;
         }
         let mut next = self.clone();
+        if let Some(light) = changes.light {
+            next.bytes[1] = light as u8;
+        }
         if let Some(active) = changes.active {
             next.bytes[4] = active + 1;
         }

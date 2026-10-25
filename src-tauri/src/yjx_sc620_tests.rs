@@ -73,6 +73,7 @@ fn complete_output_matches_reconstructed_oem_vector_and_preserves_untouched_fiel
     let f = fixture();
     let p = &f["patch"];
     let changes = ConfigPatch {
+        light: None,
         active: Some(p["active"].as_u64().unwrap() as u8),
         dpi: Some(serde_json::from_value(p["dpi"].clone()).unwrap()),
         colors: Some(serde_json::from_value(p["colors"].clone()).unwrap()),
@@ -313,4 +314,45 @@ fn transmit_checksum_wraps_and_includes_last_payload_byte_but_not_header_command
     let after = next.compile_output();
     assert_eq!(after[4].wrapping_sub(before[4]), 250u8.wrapping_sub(9));
     assert_eq!(&after[..4], &before[..4]);
+}
+
+#[test]
+fn seven_oem_lighting_modes_change_only_the_confirmed_byte_and_unknown_modes_are_preserved() {
+    let a = image();
+    assert_eq!(a.light(), None);
+    for (code, mode) in [
+        LightMode::Wave,
+        LightMode::Neon,
+        LightMode::CyclingFlash,
+        LightMode::YoyoBall,
+        LightMode::SingleFlash,
+        LightMode::BreathingLoop,
+        LightMode::Off,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let next = a
+            .patch(&ConfigPatch {
+                light: Some(mode),
+                ..Default::default()
+            })
+            .unwrap();
+        assert_eq!(next.light(), Some(mode));
+        assert_eq!(next.bytes()[1], code as u8);
+        for i in 0..46 {
+            if i != 1 {
+                assert_eq!(next.bytes()[i], a.bytes()[i]);
+            }
+        }
+        let packet = next.compile_output();
+        assert_eq!(packet[10], code as u8);
+        assert_eq!(
+            packet[4],
+            packet[5..].iter().fold(0u8, |s, b| s.wrapping_add(*b))
+        );
+    }
+    assert!(serde_json::from_str::<LightMode>("7").is_err());
+    assert!(serde_json::from_str::<LightMode>(r#""MadeUpEffect""#).is_err());
+    assert_eq!(a.light(), None);
 }

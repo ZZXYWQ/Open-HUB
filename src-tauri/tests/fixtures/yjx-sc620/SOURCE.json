@@ -12,7 +12,9 @@
     "dpi_bounds": "42AB1A..42AB2B, repeated for all six values: unsigned(value-50) <= 0x655E",
     "write_bindings": "42A4CB..42A5D5: 09/A5, 44-byte page, eleven four-byte records; six pages",
     "known_actions": "411110..4115AF: mouse, double click, wheel, DPI cycle, keyboard/modifier, eight media records",
-    "modifier_conversion": "43D390..43D3F5: E0..E7 converted to bits 0..7; other usage codes retained"
+    "modifier_conversion": "43D390..43D3F5: E0..E7 converted to bits 0..7; other usage codes retained",
+    "lighting_menu": "41307C..413195: language IDs 531..537 with item indices0..6; 416784..4167EB selected index -> light_mode; 42AA0F -> payload byte1",
+    "lighting_names": "official language/1033.lan IDs 531..537: Wave, Neon, Cycling Flash, YOYO Ball, Single Flash, Breathing Loop, Off"
   },
   "hardware_tested": false,
   "golden_kind": "reconstructed static vectors, not measured USB traces",
