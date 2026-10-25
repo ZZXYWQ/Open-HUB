@@ -137,17 +137,21 @@ impl Service {
         self.with(|m|{let mut out=view(m.device_mut(raw_id(id)).ok_or("鼠标已断开")?.as_mut())?;self.attach_session(&mut out,runtime)?;Ok(out)})
     }
     pub fn apply(&self,id:&str,plan:&Plan,runtime:&crate::macro_runtime::Runtime)->Result<View,String>{self.apply_at(id,plan,runtime,&rate_reconnect::root()?,None)}
-    fn apply_at(&self,id:&str,plan:&Plan,runtime:&crate::macro_runtime::Runtime,root:&std::path::Path,resume:Option<(&str,&str,&str)>)->Result<View,String>{
+    pub fn apply_profile(&self,id:&str,plan:&Plan,runtime:&crate::macro_runtime::Runtime,expected_identity:&str)->Result<View,String>{self.apply_at_identity(id,plan,runtime,&rate_reconnect::root()?,None,Some(expected_identity))}
+    fn apply_at(&self,id:&str,plan:&Plan,runtime:&crate::macro_runtime::Runtime,root:&std::path::Path,resume:Option<(&str,&str,&str)>)->Result<View,String>{self.apply_at_identity(id,plan,runtime,root,resume,None)}
+    fn apply_at_identity(&self,id:&str,plan:&Plan,runtime:&crate::macro_runtime::Runtime,root:&std::path::Path,resume:Option<(&str,&str,&str)>,expected_identity:Option<&str>)->Result<View,String>{
         validate(plan)?;
         let mut compiled=compile(plan)?;
         let peer=self.peers().into_iter().find(|d|d.id==raw_id(id)).ok_or("鼠标已断开")?;
         if (peer.vendor_id,peer.product_id)!=(plan.vendor,plan.product){return Err("方案与当前鼠标的品牌/型号不一致".into());}
+        if expected_identity.is_some_and(|key| key != crate::profile_routing::serial_key(peer.vendor_id,peer.product_id,peer.serial.as_deref())) { return Err("鼠标身份在配置预览后已变化；未应用配置".into()); }
         let source=if compiled.bindings.is_empty()&&!compiled.software_input{None}else{let source=plan.source.clone().ok_or("软件宏需要选择此鼠标的具体输入来源")?;runtime.prepare(&source,peer.serial.as_deref())?;Some(source)};
         self.with(|manager|{
             rate_reconnect::guard_apply(root,manager,id,resume)?;
             let current=manager.device_mut(raw_id(id)).ok_or("鼠标已断开")?.descriptor();
             if (current.vendor_id,current.product_id)!=(plan.vendor,plan.product){return Err("方案与当前鼠标的品牌/型号不一致".into());}
             if peer.serial.as_deref().filter(|s|!s.trim().is_empty()).is_some_and(|serial|current.serial.as_deref()!=Some(serial)){return Err("鼠标序列号已改变，请重新选择设备".into());}
+            if expected_identity.is_some_and(|key| key != crate::profile_routing::serial_key(current.vendor_id,current.product_id,current.serial.as_deref())) { return Err("鼠标身份在预检后已变化；未应用配置".into()); }
             self.restore_one(manager,raw_id(id),runtime)?;
             let device=manager.device_mut(raw_id(id)).ok_or("鼠标已断开")?;
             if device.descriptor().vendor_id!=plan.vendor||device.descriptor().product_id!=plan.product{return Err("方案与当前鼠标的品牌/型号不一致".into());}
@@ -953,4 +957,20 @@ fn resolve_defaults(compiled:&mut Compiled,before:&View)->Result<(),String>{
 #[cfg(test)]mod profile_target_tests{
  use super::*;
  #[test]fn profile_activation_never_fans_out_to_same_model_mice(){let ids=vec!["pulsar:a".to_string(),"pulsar:b".to_string()];assert!(choose_profile_device(&ids,None).is_err());assert_eq!(choose_profile_device(&ids,Some("pulsar:a")).unwrap(),"pulsar:a");assert!(choose_profile_device(&ids,Some("pulsar:missing")).is_err());assert_eq!(choose_profile_device(&ids[..1],None).unwrap(),"pulsar:a");assert!(choose_profile_device(&[],None).is_err());assert!(choose_profile_device(&["same".into(),"same".into()],Some("same")).is_err());}
+}
+#[cfg(test)]
+mod profile_activation_identity_tests {
+ use super::*;
+ #[test]
+ fn a_stale_profile_serial_is_rejected_before_native_packets_and_backup_creation() {
+  let (device,log)=gearwise_corsair::simulated_m65_pro();
+  let descriptor=device.descriptor().clone();
+  let mut manager=gearwise_core::DeviceManager::new(Box::new(gearwise_core::transport::MockBackend::new(vec![],|_|Err(gearwise_core::Error::Unsupported("no physical HID")))),vec![]);
+  manager.add_virtual(vec![device]);let service=Service::default();*service.0.lock().unwrap()=Some(manager);
+  let plan=Plan{vendor:0x1b1c,product:0x1b2e,settings:vec![Setting::Button{id:4,action:ButtonAction::Disabled}],macros:vec![],source:None};
+  let root=std::env::temp_dir().join(format!("profile-stale-{}",crate::profiles::new_id()));
+  let runtime=crate::macro_runtime::Runtime::default();log.lock().unwrap().clear();
+  let error=service.apply_at_identity(&descriptor.id,&plan,&runtime,&root,None,Some("serial:1b1c:1b2e:another-unit")).err().expect("must reject stale serial");
+  assert!(error.contains("身份"));assert!(log.lock().unwrap().is_empty());assert!(!root.exists());
+ }
 }

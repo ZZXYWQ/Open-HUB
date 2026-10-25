@@ -54,17 +54,17 @@ fn native_key_down(vkey:u16)->bool{
  #[cfg(all(windows,not(test)))]{unsafe{windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow().is_null()||windows_sys::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(i32::from(vkey)) as u16&0x8000!=0}}
  #[cfg(any(not(windows),test))]{let _=vkey;false}
 }
-fn serial_required(source:&Source)->bool{crate::atk::is_pulsar(source.vendor,source.product)||gearwise_razer::basilisk::supported(source.vendor,source.product)}
 fn verify_required_serial(source:&Source,expected:Option<&str>,actual:Option<&str>)->Result<(),String>{
- if serial_required(source){let expected=expected.filter(|s|!s.trim().is_empty()).ok_or("此型号软件宏需要可核验的鼠标序列号；当前仍可使用板载按键和快捷键")?;if actual.filter(|s|!s.trim().is_empty())!=Some(expected){return Err("鼠标输入接口序列号与目标鼠标不一致或不可读，未启用软件宏".into());}}Ok(())
+ let expected=expected.map(str::trim).filter(|s|!crate::profile_routing::serial_key(source.vendor,source.product,Some(s)).is_empty()).ok_or("软件宏与软件按键映射需要可核验的鼠标序列号；当前可使用已实现的板载功能")?;
+ if actual.map(str::trim)!=Some(expected){return Err("鼠标输入接口序列号与目标鼠标不一致或不可读，未启用软件宏".into());}Ok(())
 }
 fn verify_input_source(sources:Vec<SourceInfo>,source:&Source,serial:Option<&str>)->Result<SourceInfo,String>{
-  let candidate=sources.iter().cloned().find(|v|v.source==*source).ok_or("未找到配置指定的输入来源；请重新选择此鼠标的输入设备")?;
-  let expected_kind=if source.vendor==0x1b1c{"Vendor HID"}else{"Keyboard report"};if candidate.kind!=expected_kind{return Err(format!("此方案需要选择 {expected_kind} 输入接口"));}
-  if let(Some(expected),Some(actual))=(serial.filter(|s|!s.is_empty()),candidate.serial.as_deref().filter(|s|!s.is_empty())){if expected!=actual{return Err("输入来源序列号与当前鼠标不一致".into());}}
-  verify_required_serial(source,serial,candidate.serial.as_deref())?;
-  if serial_required(source)&&sources.iter().filter(|s|s.source.vendor==source.vendor&&s.source.product==source.product&&s.kind=="Keyboard report"&&s.serial.as_deref()==serial).count()!=1{return Err("鼠标序列号对应多个键盘输入接口，无法确定独立鼠标，未启用软件宏".into());}
-  Ok(candidate)
+ let candidate=sources.iter().cloned().find(|v|v.source==*source).ok_or("未找到配置指定的输入来源；请重新选择此鼠标的输入设备")?;
+ let expected_kind=if source.vendor==0x1b1c{"Vendor HID"}else{"Keyboard report"};
+ if candidate.kind!=expected_kind{return Err(format!("此方案需要选择 {expected_kind} 输入接口"));}
+ verify_required_serial(source,serial,candidate.serial.as_deref())?;
+ if sources.iter().filter(|s|s.source.vendor==source.vendor&&s.source.product==source.product&&s.kind==expected_kind&&s.serial.as_deref().map(str::trim)==serial.map(str::trim)).count()!=1{return Err("鼠标序列号对应多个输入接口，无法确定独立鼠标，未启用软件宏".into());}
+ Ok(candidate)
 }
 #[derive(Clone,Default)]pub struct Runtime(Arc<Mutex<Option<Native>>>);
 struct Native{hub:Arc<Hub>,#[cfg(windows)]_watcher:Option<raw_input::Watcher>,#[cfg(test)]simulation:bool}
@@ -136,4 +136,17 @@ impl Runtime{
 #[cfg(test)]mod basilisk_source_tests{
  use super::*;
  #[test]fn basilisk_keyboard_source_must_be_unique_and_serial_verified(){for product in [0x00aa,0x00ab]{let s=Source{vendor:0x1532,product,path:"keyboard-a".into()};let a=SourceInfo{source:s.clone(),serial:Some("a".into()),kind:"Keyboard report".into()};assert!(verify_input_source(vec![a.clone()],&s,Some("a")).is_ok());assert!(verify_input_source(vec![a.clone()],&s,None).is_err());let mut other=a.clone();other.serial=None;assert!(verify_input_source(vec![other],&s,Some("a")).is_err());let mut duplicate=a.clone();duplicate.source.path="duplicate".into();assert!(verify_input_source(vec![a.clone(),duplicate],&s,Some("a")).is_err());let mut b=a.clone();b.serial=Some("b".into());assert!(verify_input_source(vec![b],&s,Some("a")).is_err());}}
+}
+
+#[cfg(test)]mod all_brand_source_identity_tests{
+ use super::*;
+ #[test]fn corsair_steelseries_and_naga_software_routes_require_one_verified_matching_unit(){
+  for(vendor,product,kind)in[(0x1b1c,0x1b2e,"Vendor HID"),(0x1038,0x1720,"Keyboard report"),(0x1532,0x00b4,"Keyboard report")]{
+   let source=Source{vendor,product,path:"input-A".into()};let a=SourceInfo{source:source.clone(),kind:kind.into(),serial:Some("unit-A".into())};
+   assert!(verify_input_source(vec![a.clone()],&source,Some("unit-A")).is_ok());
+   for serial in[None,Some(""),Some("000000"),Some("unit-B")]{assert!(verify_input_source(vec![a.clone()],&source,serial).is_err());}
+   let mut missing=a.clone();missing.serial=None;assert!(verify_input_source(vec![missing],&source,Some("unit-A")).is_err());
+   let mut duplicate=a.clone();duplicate.source.path="input-B".into();assert!(verify_input_source(vec![a.clone(),duplicate],&source,Some("unit-A")).is_err());
+  }
+ }
 }

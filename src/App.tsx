@@ -1,4 +1,4 @@
-import {matchesDevice,brandName} from "@/lib/brands";
+import {activeDeviceProfile,brandName} from "@/lib/brands";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
@@ -220,12 +220,17 @@ export default function App() {
 
   const device = devices.find((d) => d.id === openId) ?? null;
   const state = device ? (states[device.id] ?? null) : null;
-  const globalProfile = profiles?.profiles.find((p) => p.id === profiles.active_id) ?? profiles?.profiles[0] ?? null;
-  const activeProfile:Profile|null = !device||!globalProfile||matchesDevice(globalProfile,device)?globalProfile:profiles?.profiles.find(p=>p.id==="desktop"&&matchesDevice(p,device))??profiles?.profiles.find(p=>matchesDevice(p,device))??{id:"vendor-default-"+device.vendor_id.toString(16),name:brandName(device.vendor_id)+" Default",target_vendor:device.vendor_id,target_model:null,app_path:null,levels:[{x:state?.dpi?.x??1600,y:null}],active_level:0,report_rate_hz:null};
+  // An unassigned device shows its actual current DPI, never another mouse's
+  // global/default profile. Saving creates a private copy for this exact unit.
+  const activeProfile:Profile|null = activeDeviceProfile(profiles,device) ?? (device ? {
+    id:"device-default:"+device.id,name:brandName(device.vendor_id)+" · 默认配置",target_vendor:device.vendor_id,
+    target_model:parseInt(device.model_ids[0]??device.product_id,16)||null,app_path:null,
+    levels:[{x:state?.dpi?.x??1600,y:state?.dpi?.y??null}],active_level:0,report_rate_hz:null,
+  } : null);
 
-  const activateProfile = async (id: string,deviceId?:string) => {
+  const activateProfile = async (id: string,deviceId?:string,asCopy=false) => {
     try {
-      await reportActivation(await api.activateProfile(id,deviceId));
+      await reportActivation(await api.activateProfile(id,deviceId,asCopy));
     } catch (e) {
       toast.error(String(e));
     }
@@ -233,8 +238,8 @@ export default function App() {
 
   /** Saves edited DPI levels into the active profile. */
   const saveLevels = (levels: Level[], activeLevel: number) => {
-    if (!activeProfile) return;
-    profileCall(() => api.saveProfile({ ...activeProfile, levels, active_level: activeLevel }));
+    if (!activeProfile || !device) return;
+    profileCall(() => api.saveProfile({ ...activeProfile, levels, active_level: activeLevel },device.id));
   };
 
   /** Saves the levels with `index` active, then applies that level to the open device. */
@@ -256,7 +261,7 @@ export default function App() {
 
   const setReportRate = (value: number) => {
     const hz = state?.report_rate?.choices.find((c) => c.value === value)?.hz;
-    if (activeProfile && hz) profileCall(() => api.saveProfile({ ...activeProfile, report_rate_hz: hz }));
+    if (activeProfile && device && hz) profileCall(() => api.saveProfile({ ...activeProfile, report_rate_hz: hz },device.id));
     run("Report rate", (id) => api.setReportRate(id, value));
   };
 

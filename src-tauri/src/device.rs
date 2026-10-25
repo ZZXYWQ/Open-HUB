@@ -117,6 +117,8 @@ pub struct FeatureInfo {
 pub struct Device {
     pub vendor_id: u16,
     pub id: String,
+    /// Stable only when verified through HID++ unit-id; otherwise connection-only.
+    pub profile_key: String,
     pub path: CString,
     pub index: u8,
     pub product_id: u16,
@@ -126,7 +128,7 @@ pub struct Device {
     pub name: String,
     /// Name reported by the firmware (feature 0x0005), e.g. "PRO X Wireless".
     pub firmware_name: String,
-    /// Product IDs per transport from feature 0x0003, e.g. 0x4093 over Lightspeed.
+    /// Product IDs from feature 0x0003; direct Logitech USB also includes its own PID.
     pub model_ids: Vec<u16>,
     pub kind: &'static str,
     pub protocol: String,
@@ -232,6 +234,11 @@ pub fn parse_model_ids(r: &[u8]) -> Vec<u16> {
     ids
 }
 
+fn transport_model_ids(index:u8, product_id:u16, mut models:Vec<u16>) -> Vec<u16> {
+    if index==crate::hidpp::DIRECT && !models.contains(&product_id) { models.push(product_id); }
+    models
+}
+
 impl Device {
     /// Pings `index` on `transport`, then discovers the device's features.
     pub fn probe(
@@ -250,6 +257,7 @@ impl Device {
 
         let mut device = Device {
             vendor_id: crate::hidpp::LOGITECH_VID,
+            profile_key: format!("session:{}", crate::profiles::new_id()),
             id,
             path,
             index,
@@ -280,16 +288,15 @@ impl Device {
             }
         }
         if device.has(DEVICE_INFO) {
-            if let Ok(r) = device.call(transport, DEVICE_INFO, 0, &[]) {
+            if let Ok(r) = device.call_unpadded(transport, DEVICE_INFO, 0, &[]) {
                 device.model_ids = parse_model_ids(&r);
+                if let Some(key) = crate::profile_routing::logitech_unit(&r) { device.profile_key = key; }
             }
         }
-        // Wired devices also identify by their USB product id.
-        let mut candidates = device.model_ids.clone();
-        if index == crate::hidpp::DIRECT {
-            candidates.push(product_id);
-        }
-        if let Some(name) = candidates.iter().find_map(|pid| crate::device_db::lookup(*pid).map(|(name, _)| name.to_string())) {
+        // A receiver PID identifies the receiver, never a paired mouse. Direct
+        // USB is itself a model identity even when feature 0x0003 is absent.
+        device.model_ids = transport_model_ids(index,product_id,device.model_ids);
+        if let Some(name) = device.model_ids.iter().find_map(|pid| crate::device_db::lookup(*pid).map(|(name, _)| name.to_string())) {
             device.name = name;
         }
         Ok(device)
@@ -594,4 +601,13 @@ mod tests {
         let bytes = [0x00, 0x64, 0xE0, 0x32, 0x01, 0x2C, 0x01, 0x90, 0x00, 0x00];
         assert_eq!(parse_dpi_list(&bytes), vec![100, 150, 200, 250, 300, 400]);
     }
+}
+
+#[cfg(test)]mod transport_model_tests {
+ #[test]fn direct_usb_fallback_is_also_the_profile_match_identity_but_receiver_pid_is_not(){
+  assert_eq!(super::transport_model_ids(crate::hidpp::DIRECT,0xc08b,vec![]),vec![0xc08b]);
+  assert_eq!(super::transport_model_ids(crate::hidpp::DIRECT,0xc08b,vec![0xc08b]),vec![0xc08b]);
+  assert!(super::transport_model_ids(1,0xc547,vec![]).is_empty());
+  assert_eq!(super::transport_model_ids(1,0xc547,vec![0x4093]),vec![0x4093]);
+ }
 }

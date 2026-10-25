@@ -40,6 +40,7 @@ mod effects;
 mod onboard;
 mod onboard_bindings;
 mod profiles;
+mod profile_routing;
 mod mhub_import;
 mod settings;
 mod tray;
@@ -72,6 +73,7 @@ fn manager<'a>(state: &'a State<AppState>) -> Result<MutexGuard<'a, Option<Manag
 struct DeviceSummary {
     vendor_id: u16,
     id: String,
+    profile_key: String,
     name: String,
     product: String,
     product_id: String,
@@ -94,22 +96,23 @@ fn scan_devices(app: AppHandle, state: State<AppState>) -> Result<ScanResult, St
     let mut guard = manager(&state)?;
     let warnings = guard.as_mut().expect("manager initialised").scan().map_err(|e| e.to_string())?;
     drop(guard);
-    apply_to_new_devices(&app);
     let guard = manager(&state)?;
     let mut devices=summaries(guard.as_ref().expect("manager initialised"));drop(guard);
     let mut warnings=warnings;match app.state::<sinowealth::Service>().scan(){Ok(peers)=>devices.extend(peers.iter().map(sino_summary)),Err(e)=>warnings.push(format!("SinoWealth 检测：{e}"))};
     let (multi,issues)=app.state::<multibrand::Service>().scan()?;devices.extend(multi.iter().map(multi_summary));warnings.extend(issues);warnings.extend(app.state::<multibrand::Service>().recover_pending(&app.state::<macro_runtime::Runtime>())?);
+    resolve_profile_keys(&app,&mut devices)?;
+    apply_to_new_devices(&app);
     Ok(ScanResult { devices, warnings })
 }
 
 /// Current devices without rescanning (the event loop keeps them current).
 #[tauri::command(async)]
-fn list_devices(state: State<AppState>,sino:State<sinowealth::Service>,multi:State<multibrand::Service>) -> Result<Vec<DeviceSummary>, String> {
+fn list_devices(app: AppHandle,state: State<AppState>,sino:State<sinowealth::Service>,multi:State<multibrand::Service>) -> Result<Vec<DeviceSummary>, String> {
     let guard = manager(&state)?;
-    let mut out=summaries(guard.as_ref().expect("manager initialised"));out.extend(sino.peers().iter().map(sino_summary));out.extend(multi.peers().iter().map(multi_summary));Ok(out)
+    let mut out=summaries(guard.as_ref().expect("manager initialised"));out.extend(sino.peers().iter().map(sino_summary));out.extend(multi.peers().iter().map(multi_summary));drop(guard);resolve_profile_keys(&app,&mut out)?;Ok(out)
 }
 
-fn multi_summary(d:&gearwise_core::DeviceDescriptor)->DeviceSummary{DeviceSummary{vendor_id:d.vendor_id,id:format!("multi:{}",d.id),name:d.name.clone(),product:d.name.clone(),product_id:format!("{:04X}",d.product_id),kind:"mouse",firmware_name:d.firmware.clone().unwrap_or_default(),model_ids:vec![format!("{:04X}",d.product_id)],connection:format!("{:?}",d.connection),protocol:"Open HUB 型号驱动（未实机验证）".into(),features:vec![]}}
+fn multi_summary(d:&gearwise_core::DeviceDescriptor)->DeviceSummary{DeviceSummary{vendor_id:d.vendor_id,profile_key:profile_routing::serial_key(d.vendor_id,d.product_id,d.serial.as_deref()),id:format!("multi:{}",d.id),name:d.name.clone(),product:d.name.clone(),product_id:format!("{:04X}",d.product_id),kind:"mouse",firmware_name:d.firmware.clone().unwrap_or_default(),model_ids:vec![format!("{:04X}",d.product_id)],connection:format!("{:?}",d.connection),protocol:"Open HUB 型号驱动（未实机验证）".into(),features:vec![]}}
 #[tauri::command(async)]
 fn multi_read(service:State<multibrand::Service>,runtime:State<macro_runtime::Runtime>,id:String)->Result<multibrand::View,String>{service.read(&id,&runtime)}
 #[tauri::command(async)]
@@ -146,7 +149,7 @@ fn multi_reconnect_resume(service:State<multibrand::Service>,runtime:State<macro
 fn multi_reconnect_retry(service:State<multibrand::Service>,key:String,revision:String,id:String,candidate_revision:String,confirmed:bool)->Result<String,String>{service.reconnect_retry(&key,&revision,&id,&candidate_revision,confirmed)}
 #[tauri::command(async)]
 fn multi_reconnect_discard(service:State<multibrand::Service>,key:String,revision:String)->Result<(),String>{service.reconnect_discard(&key,&revision)}
-fn sino_summary(p:&sinowealth::Peer)->DeviceSummary{DeviceSummary{vendor_id:p.model.vendor,id:p.id.clone(),name:p.model.name.clone(),product:p.model.name.clone(),product_id:format!("{:04X}",p.model.product),kind:"mouse",firmware_name:p.model.firmware.clone(),model_ids:vec![format!("{:04X}",p.model.product)],connection:"USB 有线".into(),protocol:"SinoWealth wired".into(),features:vec![]}}
+fn sino_summary(p:&sinowealth::Peer)->DeviceSummary{DeviceSummary{vendor_id:p.model.vendor,profile_key:profile_routing::serial_key(p.model.vendor,p.model.product,Some(&p.serial)),id:p.id.clone(),name:p.model.name.clone(),product:p.model.name.clone(),product_id:format!("{:04X}",p.model.product),kind:"mouse",firmware_name:p.model.firmware.clone(),model_ids:vec![format!("{:04X}",p.model.product)],connection:"USB 有线".into(),protocol:"SinoWealth wired".into(),features:vec![]}}
 #[tauri::command(async)]
 fn sino_read(sino:State<sinowealth::Service>,id:String,profile:Option<u8>)->Result<sinowealth::View,String>{sino.read(&id,profile)}
 #[tauri::command(async)]
@@ -171,6 +174,7 @@ fn summaries(manager: &Manager) -> Vec<DeviceSummary> {
         .iter()
         .map(|d| DeviceSummary {
             vendor_id: d.vendor_id,
+            profile_key: d.profile_key.clone(),
             id: d.id.clone(),
             name: d.name.clone(),
             product: d.product.clone(),
@@ -314,17 +318,21 @@ struct ProfilesView {
     profiles: Vec<Profile>,
     auto_switch: bool,
     active_id: String,
+    device_profiles: std::collections::BTreeMap<String, profile_routing::DeviceProfiles>,
+    profile_owners: std::collections::BTreeMap<String, String>,
 }
 
 fn view(store: &ProfileStore) -> ProfilesView {
-    ProfilesView { profiles: store.profiles.clone(), auto_switch: store.auto_switch, active_id: store.active_id.clone() }
+    ProfilesView { profiles: store.profiles.clone(), auto_switch: store.auto_switch, active_id: store.active_id.clone(), device_profiles: store.device_profiles.clone(), profile_owners: store.profile_owners.clone() }
 }
 
 /// Mutates the store, persists it, and returns the new view.
 fn update_store(state: &ProfilesState, f: impl FnOnce(&mut ProfileStore)) -> Result<ProfilesView, String> {
     let mut store = lock_store(state)?;
-    f(&mut store);
-    store.save(&state.path).map_err(|e| format!("could not save profiles: {e}"))?;
+    let mut updated = store.clone();
+    f(&mut updated);
+    updated.save(&state.path).map_err(|e| format!("could not save profiles: {e}"))?;
+    *store = updated;
     Ok(view(&store))
 }
 
@@ -334,99 +342,117 @@ struct Activation {
     name: String,
     /// "manual" or "auto"
     reason: &'static str,
+    device_id: String,
     errors: Vec<String>,
 }
 
-/// Activates a profile; native multi-brand plans require one exact target.
-/// Lock order is always profiles, then devices.
-fn activate(app: &AppHandle, id: &str, reason: &'static str) -> Result<Activation, String> {activate_target(app,id,reason,None)}
-fn activate_target(app: &AppHandle, id: &str, reason: &'static str, device_id:Option<&str>) -> Result<Activation, String> {
-    let profiles = app.state::<ProfilesState>();
-    let profile = {
-        let mut store = lock_store(&profiles)?;
-        let profile = store.get(id).cloned().ok_or_else(|| "profile not found".to_string())?;
-        if profile.sino.is_some()||profile.multi.is_some(){profile_transfer::validate(&profile)?;}
-        if profile.sino.is_none()&&profile.multi.is_none(){store.active_id = profile.id.clone();store.save(&profiles.path).map_err(|e| format!("could not save profiles: {e}"))?;}
-        profile
+/// Owns fallback identities only for currently connected endpoints. Stable unit
+/// ids/serials are independently checked; USB path is never a durable identity.
+#[derive(Default)]
+struct ProfileConnections(Mutex<profile_routing::Sessions>);
+fn endpoints(devices: &[DeviceSummary]) -> Vec<profile_routing::Endpoint> {
+    devices.iter().filter(|d| d.kind.eq_ignore_ascii_case("mouse") || d.kind.eq_ignore_ascii_case("trackball") || d.features.iter().any(|f|matches!(f.id,0x2201|0x2202))).map(|d| profile_routing::Endpoint {
+        id: d.id.clone(), name: d.name.clone(), key: d.profile_key.clone(), observed_key: d.profile_key.clone(), vendor: d.vendor_id,
+        models: d.model_ids.iter().filter_map(|v| u16::from_str_radix(v,16).ok()).collect(),
+        firmware: d.firmware_name.clone(),
+        route: if d.id.starts_with("multi:") { profile_routing::Route::Multi } else if d.id.starts_with("sino:") { profile_routing::Route::Sino } else { profile_routing::Route::Native },
+    }).collect()
+}
+fn resolve_profile_keys(app: &AppHandle, devices: &mut [DeviceSummary]) -> Result<Vec<profile_routing::Endpoint>, String> {
+    let mut peers = endpoints(devices);
+    let collisions = {
+        let state = app.state::<ProfileConnections>();
+        let mut sessions = state.0.lock().map_err(|_| "profile identity lock poisoned")?;
+        sessions.resolve(&mut peers);
+        sessions.collisions().clone()
     };
-
-    let devices = app.state::<AppState>();
-    let mut guard = manager(&devices)?;
-    let manager = guard.as_mut().expect("manager initialised");
-    if manager.devices().is_empty() {
-        manager.scan().map_err(|e| e.to_string())?;
-    }
-    let mut errors = Vec::new();
-    for d in manager.devices() {
-        match manager.with_device(&d.id, |d, t| Ok(profiles::apply_to_device(&profile, d, t))) {
-            Ok(errs) => errors.extend(errs),
-            Err(e) => errors.push(format!("{}: {e}", d.name)),
+    if !collisions.is_empty() {
+        let state = app.state::<ProfilesState>();
+        let mut store = lock_store(&state)?;
+        if collisions.iter().any(|key| !store.ambiguous_keys.contains(key)) {
+            let mut updated = store.clone();
+            updated.ambiguous_keys.extend(collisions);
+            updated.save(&state.path).map_err(|e| format!("重复设备身份已隔离，但记录保存失败：{e}"))?;
+            *store = updated;
         }
     }
-    if let Ok(mut applied) = app.state::<AppliedDevices>().0.lock() {
-        applied.extend(manager.devices().iter().map(|d| d.id.clone()));
-    }
+    for d in devices.iter_mut() { if let Some(e)=peers.iter().find(|e|e.id==d.id) { d.profile_key = e.key.clone(); } }
+    Ok(peers)
+}
+fn connected_profile_targets(app: &AppHandle) -> Result<Vec<profile_routing::Endpoint>, String> {
+    let state = app.state::<AppState>();
+    let guard = manager(&state)?;
+    let mut peers = summaries(guard.as_ref().expect("manager initialised"));
     drop(guard);
-
-    if let Some(plan)=&profile.multi{let service=app.state::<multibrand::Service>();let ids=service.peers().into_iter().filter(|d|d.vendor_id==plan.vendor&&d.product_id==plan.product).map(|d|d.id).collect::<Vec<_>>();match multibrand::choose_profile_device(&ids,device_id.map(|id|id.strip_prefix("multi:").unwrap_or(id))){Ok(id)=>if let Err(e)=service.apply(&id,plan,&app.state::<macro_runtime::Runtime>()){errors.push(e);},Err(e)=>errors.push(e)}}
-    if let Some(plan)=&profile.sino{let service=app.state::<sinowealth::Service>();let ids=service.peers().into_iter().filter(|d|d.model==plan.model).map(|d|d.id).collect::<Vec<_>>();match multibrand::choose_profile_device(&ids,device_id.map(|id|id.strip_prefix("sino:").unwrap_or(id))){Ok(id)=>if let Err(e)=service.activate(&id,plan.clone()){errors.push(e);},Err(e)=>errors.push(e)}}
-
-    if profile.multi.is_none()&&profile.sino.is_none()&&profile.target_vendor.is_none()&&profile.target_model.is_none()&&profile.ghub_id.is_none()&&profile.mchose_board.is_none(){let service=app.state::<sinowealth::Service>();for d in service.peers(){if let Err(e)=service.apply_generic(&d.id,&profile){errors.push(format!("{}: {e}",d.model.name));}}}
-    if (profile.sino.is_some()||profile.multi.is_some())&&errors.is_empty(){let mut store=lock_store(&profiles)?;store.active_id=profile.id.clone();store.save(&profiles.path).map_err(|e|e.to_string())?;}
-    let activation = Activation { id: profile.id, name: profile.name, reason, errors };
+    peers.extend(app.state::<sinowealth::Service>().peers().iter().map(sino_summary));
+    peers.extend(app.state::<multibrand::Service>().peers().iter().map(multi_summary));
+    resolve_profile_keys(app, &mut peers)
+}
+/// All brands select exactly one target before profile writes or store changes.
+/// Lock order during I/O: profile store, then one device service.
+fn activate_target(app: &AppHandle, id: &str, reason: &'static str, device_id: Option<&str>) -> Result<Activation, String> { activate_target_copy(app,id,reason,device_id,false) }
+fn activate_target_copy(app: &AppHandle, id: &str, reason: &'static str, device_id: Option<&str>, as_copy: bool) -> Result<Activation, String> {
+    let peers = connected_profile_targets(app)?;
+    let state = app.state::<ProfilesState>();
+    let mut store = lock_store(&state)?;
+    let profile_routing::Prepared { target, profile, mut updated } = profile_routing::prepare(&store,&peers,id,device_id,as_copy,reason=="manual" || reason=="tray")?;
+    let errors = match target.route {
+        profile_routing::Route::Native => {
+            let devices = app.state::<AppState>();
+            let guard = manager(&devices)?;
+            guard.as_ref().expect("manager initialised").with_device(&target.id, |d,t| {
+                if d.profile_key != target.observed_key { return Err(hidpp::Error::Other("设备在配置预览后发生变化，请重新选择；未写入配置".into())); }
+                if d.profile_key.starts_with("unit:") {
+                    let current = d.call_unpadded(t, device::feature::DEVICE_INFO, 0, &[])?;
+                    if profile_routing::logitech_unit(&current).as_ref() != Some(&d.profile_key) {
+                        return Err(hidpp::Error::Other("鼠标身份已变化，请重新扫描；未写入配置".into()));
+                    }
+                }
+                Ok(profiles::apply_to_device(&profile,d,t))
+            }).map_err(|e| e.to_string())?
+        }
+        profile_routing::Route::Multi => match app.state::<multibrand::Service>().apply_profile(target.id.strip_prefix("multi:").unwrap_or(&target.id), profile.multi.as_ref().ok_or("missing model plan")?, &app.state::<macro_runtime::Runtime>(),&target.observed_key) { Ok(_) => vec![], Err(e) => vec![e] },
+        profile_routing::Route::Sino => {
+            let service = app.state::<sinowealth::Service>();
+            let result = if let Some(plan) = &profile.sino { service.activate_profile(&target.id,plan.clone(),Some(&target.observed_key)).map(|_| ()) } else { service.apply_generic_profile(&target.id,&profile,Some(&target.observed_key)).map(|_| ()) };
+            match result { Ok(_) => vec![], Err(e) => vec![e] }
+        }
+    };
+    if errors.is_empty() {
+        updated.select_for(&target,&profile.id)?;
+        updated.save(&state.path).map_err(|e| format!("鼠标已应用，但独立配置保存失败：{e}"))?;
+        *store = updated;
+        if let Ok(mut applied) = app.state::<AppliedDevices>().0.lock() { applied.insert((target.id.clone(),target.key.clone())); }
+    }
+    let activation = Activation { id: profile.id, name: profile.name, reason, device_id: target.id, errors };
+    drop(store);
     tray::refresh(app);
-    let _ = app.emit("profile-activated", activation.clone());
+    let _ = app.emit("profile-activated",activation.clone());
     Ok(activation)
 }
-
-/// Devices the active profile has been applied to since they connected.
-/// A device that disconnects drops out, so it gets the profile again on return.
 #[derive(Default)]
-struct AppliedDevices(Mutex<HashSet<String>>);
-
-/// Applies the active profile to devices that connected (or reconnected)
-/// since it was last applied: after power-cycling the mouse, waking it, or
-/// starting Open HUB. Does nothing until the user has saved settings, so a
-/// first launch never changes the mouse unasked.
-/// Lock order: profiles, then devices, then the applied set.
+struct AppliedDevices(Mutex<HashSet<(String,String)>>);
+/// No legacy global-Desktop migration writes. Only a previously assigned,
+/// uniquely identified mouse can restore its own profile after reconnect.
 fn apply_to_new_devices(app: &AppHandle) {
-    let profiles = app.state::<ProfilesState>();
-    if !profiles.path.exists() {
-        return;
-    }
-    let (profile,auto_switch) = match lock_store(&profiles) {
-        Ok(store) => match store.get(&store.active_id) {
-            Some(p) => (p.clone(),store.auto_switch),
-            None => return,
-        },
-        Err(_) => return,
-    };
-
-    let devices = app.state::<AppState>();
-    let Ok(guard) = manager(&devices) else { return };
-    let Some(manager) = guard.as_ref() else { return };
-    let present: Vec<String> = manager.devices().iter().map(|d| d.id.clone()).collect();
+    let Ok(peers) = connected_profile_targets(app) else { return };
+    let state = app.state::<ProfilesState>();
+    let Ok(store) = lock_store(&state) else { return };
     let applied_state = app.state::<AppliedDevices>();
     let Ok(mut applied) = applied_state.0.lock() else { return };
-    applied.retain(|id| present.contains(id));
-    let new: Vec<String> = present.into_iter().filter(|id| !applied.contains(id)).collect();
-    for id in &new {
-        if !auto_switch && manager.devices().iter().any(|d|d.id==*id&&d.vendor_id==mchose::VID){
-            applied.insert(id.clone());continue;
+    applied.retain(|pair| peers.iter().any(|e| pair == &(e.id.clone(),e.key.clone())));
+    let exe = store.auto_switch.then(foreground::foreground_exe).flatten();
+    let mut jobs = Vec::new();
+    for e in peers.iter().filter(|e| e.can_auto_apply()) {
+        if applied.insert((e.id.clone(),e.key.clone())) {
+            let p = if let Some(exe) = &exe { store.match_for(e,exe) } else { store.active_for(e) };
+            if let Some(p) = p { jobs.push((e.id.clone(),p.id.clone())); }
         }
-        match manager.with_device(id, |d, t| Ok(profiles::apply_to_device(&profile, d, t))) {
-            Ok(errors) => errors.iter().for_each(|e| eprintln!("reapply {}: {e}", profile.name)),
-            Err(e) => eprintln!("reapply {}: {e}", profile.name),
-        }
-        if events::logging() {
-            eprintln!("[event] applied profile '{}' to {id}", profile.name);
-        }
-        applied.insert(id.clone());
     }
-    drop(applied);
-    drop(guard);
-    for id in new {
-        let _ = app.emit("device-changed", id);
+    drop(applied); drop(store);
+    for (device,id) in jobs {
+        if let Err(e) = activate_target(app,&id,"reconnect",Some(&device)) { eprintln!("independent profile restore failed: {e}"); }
+        let _ = app.emit("device-changed",device);
     }
 }
 
@@ -450,20 +476,18 @@ fn spawn_profile_watcher(app: AppHandle) {
         if own_exe.as_deref() == Some(exe.to_lowercase().as_str()) {
             return;
         }
-        let target = {
+        let Ok(peers) = connected_profile_targets(&app) else { return };
+        let targets = {
             let state = app.state::<ProfilesState>();
             let Ok(store) = lock_store(&state) else { return };
-            if !store.auto_switch {
-                return;
-            }
-            let profile = store.match_exe(&exe);
-            if profile.id == store.active_id {
-                return;
-            }
-            profile.id.clone()
+            if !store.auto_switch { return; }
+            peers.iter().filter(|e| e.can_auto_apply()).filter_map(|e| {
+                let target = store.match_for(e,&exe)?;
+                (store.active_for(e).map(|p| p.id.as_str()) != Some(target.id.as_str())).then(|| (e.id.clone(),target.id.clone()))
+            }).collect::<Vec<_>>()
         };
-        if let Err(e) = activate(&app, &target, "auto") {
-            eprintln!("auto-switch failed: {e}");
+        for (device, target) in targets {
+            if let Err(e) = activate_target(&app,&target,"auto",Some(&device)) { eprintln!("independent auto-switch failed: {e}"); }
         }
     });
 }
@@ -664,7 +688,7 @@ fn get_profiles(state: State<ProfilesState>) -> Result<ProfilesView, String> {
 }
 
 #[tauri::command(async)]
-fn save_profile(app: AppHandle, state: State<ProfilesState>, mut profile: Profile) -> Result<ProfilesView, String> {
+fn save_profile(app: AppHandle, state: State<ProfilesState>, mut profile: Profile, device_id: Option<String>, make_active: Option<bool>) -> Result<ProfilesView, String> {
     if profile.sino.is_some()||profile.multi.is_some(){profile_transfer::validate(&profile)?;}
     if profile.mchose_board.is_some()&&profile.target_vendor.is_some_and(|v|v!=mchose::VID){return Err("板载引用与品牌不一致".into())}
     if profile.mchose_board.is_some_and(|b|b>2){return Err("迈从板载配置必须为 1–3".into())}
@@ -674,7 +698,16 @@ fn save_profile(app: AppHandle, state: State<ProfilesState>, mut profile: Profil
     if profile.name.trim().is_empty() || (profile.levels.is_empty()&&profile.mchose_board.is_none()) {
         return Err("a profile needs a name and at least one DPI level".into());
     }
-    let view = update_store(&state, |store| store.upsert(profile))?;
+    let view = if let Some(device_id) = device_id {
+        let peers = connected_profile_targets(&app)?;
+        let mut store = lock_store(&state)?;
+        let target = profile_routing::choose(&store,&peers,&profile,Some(&device_id))?.clone();
+        let mut updated = store.clone();
+        if make_active.unwrap_or(true) { updated.save_for(&target,&profile)?; } else { updated.save_private(&target,&profile)?; }
+        updated.save(&state.path).map_err(|e| e.to_string())?;
+        *store = updated;
+        view(&store)
+    } else { update_store(&state, |store| store.upsert(profile))? };
     tray::refresh(&app);
     Ok(view)
 }
@@ -694,8 +727,8 @@ fn set_auto_switch(app: AppHandle, state: State<ProfilesState>, enabled: bool) -
 }
 
 #[tauri::command(async)]
-fn activate_profile(app: AppHandle, id: String,device_id:Option<String>) -> Result<Activation, String> {
-    activate_target(&app, &id, "manual",device_id.as_deref())
+fn activate_profile(app: AppHandle, id: String,device_id:Option<String>,as_copy:Option<bool>) -> Result<Activation, String> {
+    activate_target_copy(&app, &id, "manual",device_id.as_deref(),as_copy.unwrap_or(false))
 }
 
 #[derive(Serialize)]
@@ -987,12 +1020,14 @@ fn main() {
         .manage(updater::UpdateState::default())
         .manage(tray::BatteryCache::default())
         .manage(AppliedDevices::default())
+        .manage(ProfileConnections::default())
         .manage(AppState(Mutex::new(None)))
         .setup(|app| {
             if std::env::args().any(|a|a=="--prepare-update"){app.handle().exit(0);return Ok(());}
 
             let path = app.path().app_data_dir()?.join("profiles.json");
             let store = ProfileStore::load(&path);
+            if let Ok(mut sessions) = app.state::<ProfileConnections>().0.lock() { sessions.quarantine(store.ambiguous_keys.iter().cloned()); }
             app.manage(ProfilesState { store: Mutex::new(store), path });
             let settings_path = app.path().app_data_dir()?.join("settings.json");
             app.manage(settings::SettingsState::load(settings_path));

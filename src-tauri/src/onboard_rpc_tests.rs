@@ -52,6 +52,7 @@ fn memory() -> Memory {
 fn device() -> Device {
     Device {
         vendor_id: 0x046d,
+        profile_key: "session:memory-only".into(),
         id: "logitech-test-A".into(),
         path: CString::new("memory-only").unwrap(),
         index: 0xff,

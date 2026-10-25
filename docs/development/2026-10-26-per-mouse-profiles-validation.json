@@ -1,0 +1,28 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "replace legacy profile broadcast with exact-one-device dispatch and private per-mouse profiles",
+  "default_application_tests": 416,
+  "explicit_cross_tests": 13,
+  "headless_ui_suites": 27,
+  "new_native_profile_ui_fixture": "two Logitech plus two MCHOSE simulated endpoints",
+  "new_native_identity_negative_test": "real Corsair memory driver rejects stale profile serial before any packet or backup",
+  "scope": [
+    "one exact endpoint before all profile writes/store mutations",
+    "private copies, independent edits and source re-import isolation",
+    "per-device application matching, defaults and unique-identity reconnect",
+    "native receiver re-pair detection and locked identity snapshot checks",
+    "persistent duplicate identity quarantine and session-only fallback",
+    "online full-profile draft saves are owned but inactive",
+    "all supported host input routes require a unique matching serial",
+    "device header, profile cards and per-mouse tray menus",
+    "non-mouse profile exclusion and direct Logitech USB model fallback"
+  ],
+  "physical_new_mouse_writes_tested": false,
+  "user_screen_controlled": false,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7",
+  "accepted_full_models": 0,
+  "development_exe_memory_transports": 32,
+  "development_exe_sha256": "832d4846c7d799cdcee151d74daa445aee5ad4d946ede03b0f5453b26cd03843",
+  "frontend_js_gzip_kb": 218.34
+}

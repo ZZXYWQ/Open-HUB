@@ -93,7 +93,7 @@ fn tooltip(app: &AppHandle) -> String {
     if let Some(profiles) = app.try_state::<ProfilesState>() {
         if let Ok(store) = lock_store(&profiles) {
             if let Some(p) = store.get(&store.active_id) {
-                lines.push(format!("Profile: {}", p.name));
+                lines.push(format!("最近使用配置：{}", p.name));
             }
         }
     }
@@ -120,22 +120,20 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     }
     menu.append(&PredefinedMenuItem::separator(app)?)?;
 
+    let peers = crate::connected_profile_targets(app).unwrap_or_default();
     if let Some(profiles) = app.try_state::<ProfilesState>() {
         if let Ok(store) = lock_store(&profiles) {
-            let active = store.get(&store.active_id).map(|p| p.name.clone()).unwrap_or_default();
-            let submenu = Submenu::with_id(app, "profiles", format!("Profile: {active}"), true)?;
-            for p in &store.profiles {
-                submenu.append(&CheckMenuItem::with_id(
-                    app,
-                    format!("profile:{}", p.id),
-                    &p.name,
-                    true,
-                    p.id == store.active_id,
-                    None::<&str>,
-                )?)?;
+            for (i, device) in peers.iter().enumerate() {
+                let active = store.active_for(device);
+                let label = format!("{}. {} · {}",i+1,device.name,active.map(|p|p.name.as_str()).unwrap_or("未分配配置"));
+                let submenu = Submenu::with_id(app,format!("device-profiles:{i}"),label,true)?;
+                for p in store.profiles.iter().filter(|p| device.matches(p) && store.profile_owners.get(&p.id).is_none_or(|owner| owner == &device.key)) {
+                    let payload = serde_json::to_string(&(device.id.as_str(),p.id.as_str())).expect("string pair serializes");
+                    submenu.append(&CheckMenuItem::with_id(app,format!("device-profile:{payload}"),&p.name,true,active.is_some_and(|a|a.id==p.id),None::<&str>)?)?;
+                }
+                menu.append(&submenu)?;
             }
-            menu.append(&submenu)?;
-            menu.append(&CheckMenuItem::with_id(app, "auto_switch", "Auto-switch profiles", true, store.auto_switch, None::<&str>)?)?;
+            menu.append(&CheckMenuItem::with_id(app, "auto_switch", "按鼠标自动切换配置", true, store.auto_switch, None::<&str>)?)?;
             menu.append(&PredefinedMenuItem::separator(app)?)?;
         }
     }
@@ -194,14 +192,17 @@ fn on_menu_event(app: &AppHandle, event: MenuEvent) {
             refresh(app);
         }
         _ => {
-            if let Some(profile_id) = id.strip_prefix("profile:") {
-                // Device I/O happens off the UI thread.
-                let (app, profile_id) = (app.clone(), profile_id.to_string());
-                std::thread::spawn(move || {
-                    if let Err(e) = crate::activate(&app, &profile_id, "tray") {
-                        notify(&app, "Open HUB", &format!("Could not apply profile: {e}"));
-                    }
-                });
+            if let Some(payload) = id.strip_prefix("device-profile:") {
+                if let Ok((device_id,profile_id)) = serde_json::from_str::<(String,String)>(payload) {
+                    let app = app.clone();
+                    std::thread::spawn(move || {
+                        match crate::activate_target(&app,&profile_id,"tray",Some(&device_id)) {
+                            Err(e) => notify(&app,"Open HUB",&format!("Could not apply profile: {e}")),
+                            Ok(result) if !result.errors.is_empty() => notify(&app,"Open HUB",&result.errors.join("\n")),
+                            _ => {},
+                        }
+                    });
+                }
             }
         }
     }

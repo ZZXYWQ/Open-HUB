@@ -157,6 +157,7 @@ impl Manager {
         self.transports
             .retain(|path, t| t.is_alive() && collections.iter().any(|c| &c.long == path));
 
+        let retained_paths = self.transports.keys().cloned().collect::<std::collections::HashSet<_>>();
         for c in &collections {
             if self.transports.contains_key(&c.long) {
                 continue;
@@ -193,6 +194,7 @@ impl Manager {
                 match transport.mchose().expect("MCHOSE transport").identity() {
                     Ok(_) => found.push(Device {
                         vendor_id: crate::mchose::VID,
+                        profile_key: self.devices.iter().find(|d| d.path == c.long && retained_paths.contains(&c.long)).map(|d| d.profile_key.clone()).unwrap_or_else(|| format!("session:{}", crate::profiles::new_id())),
                         id: format!("{}#{DIRECT}", c.long.to_string_lossy()),
                         path: c.long.clone(),
                         index: DIRECT,
@@ -216,11 +218,15 @@ impl Manager {
             };
             for index in slots {
                 let id = format!("{}#{index}", c.long.to_string_lossy());
-                if let Some(known) = self.devices.iter().find(|d| d.id == id) {
-                    if known.ping(transport) {
-                        found.push(known.clone());
-                    }
-                    continue;
+                if let Some(known) = self.devices.iter().find(|d| d.id == id && retained_paths.contains(&c.long)) {
+                    if !known.ping(transport) { continue; }
+                    let same_unit = if known.profile_key.starts_with("unit:") {
+                        known.call_unpadded(transport, crate::device::feature::DEVICE_INFO, 0, &[]).ok()
+                            .and_then(|r| crate::profile_routing::logitech_unit(&r)).as_ref() == Some(&known.profile_key)
+                    } else { true };
+                    if same_unit { found.push(known.clone()); continue; }
+                    // A receiver slot can be re-paired without its USB path changing.
+                    // Discover the new mouse instead of copying the previous unit's key.
                 }
                 match Device::probe(
                     transport,

@@ -51,9 +51,9 @@ const start=base.indexOf(marker)+marker.length,end=base.indexOf('\n});await ',st
   assert.equal(await page.getByRole('textbox',{name:'软件宏名称',exact:true}).inputValue(),expected.macros[0].name);
   await page.getByRole('button',{name:'保存完整方案到配置中心',exact:true}).click();
   await page.waitForFunction(()=>window.__qaCalls.some(c=>c.cmd==='save_profile'));
-  calls=await page.evaluate(()=>window.__qaCalls);const saved=calls.filter(c=>c.cmd==='save_profile').at(-1).args.profile;
+  calls=await page.evaluate(()=>window.__qaCalls);const saveArgs=calls.filter(c=>c.cmd==='save_profile').at(-1).args;assert.equal(saveArgs.deviceId,'multi:'+v.descriptor.id);assert.equal(saveArgs.makeActive,false);const saved=saveArgs.profile;
   assert(saved.multi);assert.equal(saved.multi.vendor,expected.vendor);assert.equal(saved.multi.product,expected.product);assert.deepEqual(saved.multi.macros,expected.macros);assert.deepEqual(saved.multi.source,expected.source);assert.equal(saved.multi.settings.find(s=>s.Dpi).Dpi.stages[0].x,2400);
-  checks.push(v.descriptor.name+': fresh page mount and configuration save preserve full scoped plan');
+  checks.push(v.descriptor.name+': fresh mount saves full private draft to exact mouse without activation');
   await page.reload();await open(v);
   const before=await page.evaluate(()=>JSON.parse(localStorage.getItem('open-hub-session-qa')));
   await page.getByRole('button',{name:'停止此鼠标的软件动作并恢复临时映射',exact:true}).click();

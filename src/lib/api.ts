@@ -12,6 +12,8 @@ export interface FeatureInfo {
 }
 
 export interface DeviceSummary {
+  /** Local ownership identity; connection-only when no reliable unit id exists. */
+  profile_key?: string;
   vendor_id: number;
   id: string;
   name: string;
@@ -107,12 +109,15 @@ export interface ProfilesView {
   profiles: Profile[];
   auto_switch: boolean;
   active_id: string;
+  profile_owners?: Record<string,string>;
+  device_profiles?: Record<string,{active_id:string|null;default_id:string|null;copies:Record<string,string>}>;
 }
 
 export interface Activation {
   id: string;
   name: string;
-  reason: "manual" | "auto" | "tray";
+  reason: "manual" | "auto" | "tray" | "reconnect";
+  device_id?: string;
   errors: string[];
 }
 
@@ -267,10 +272,10 @@ export const api = {
   setOnboardMode: (id: string, host: boolean) => invoke<void>("set_onboard_mode", { id, host }),
 
   profiles: () => invoke<ProfilesView>("get_profiles"),
-  saveProfile: (profile: Profile) => invoke<ProfilesView>("save_profile", { profile }),
+  saveProfile: (profile: Profile, deviceId?:string, makeActive?:boolean) => invoke<ProfilesView>("save_profile", { profile,...(deviceId?{deviceId}:{}),...(makeActive==null?{}:{makeActive}) }),
   deleteProfile: (id: string) => invoke<ProfilesView>("delete_profile", { id }),
   setAutoSwitch: (enabled: boolean) => invoke<ProfilesView>("set_auto_switch", { enabled }),
-  activateProfile: (id: string, deviceId?:string) => invoke<Activation>("activate_profile", { id,...(deviceId?{deviceId}:{}) }),
+  activateProfile: (id: string, deviceId?:string, asCopy=false) => invoke<Activation>("activate_profile", { id,...(deviceId?{deviceId}:{}),...(asCopy?{asCopy:true}:{}) }),
   importGhub: () => invoke<ImportResult>("import_ghub_profiles"),
 
   onboardSnapshot: (id: string) => invoke<OnboardSnapshot>("onboard_snapshot", { id }),

@@ -2,7 +2,7 @@
 //!
 //! G HUB stores Application -> Profile -> (slot -> card) in one JSON document
 //! inside `%LOCALAPPDATA%\LGHUB\settings.db`. Open HUB keeps a flatter model
-//! (one settings set per profile, applied to every connected mouse) in
+//! (library templates plus separate copies owned by each device) in
 //! `profiles.json` under the app data directory.
 
 use std::path::{Path, PathBuf};
@@ -90,7 +90,15 @@ impl Profile {
 pub struct ProfileStore {
     pub profiles: Vec<Profile>,
     pub auto_switch: bool,
+    /// Last selected profile, retained for older clients; never a broadcast target.
     pub active_id: String,
+    #[serde(default)]
+    pub device_profiles: std::collections::BTreeMap<String, crate::profile_routing::DeviceProfiles>,
+    #[serde(default)]
+    pub profile_owners: std::collections::BTreeMap<String, String>,
+    /// Once observed duplicate unit IDs must remain blocked across app restarts.
+    #[serde(default)]
+    pub ambiguous_keys: std::collections::BTreeSet<String>,
 }
 
 impl Default for ProfileStore {
@@ -100,6 +108,9 @@ impl Default for ProfileStore {
             profiles: vec![Profile::desktop()],
             auto_switch: false,
             active_id: DESKTOP_ID.into(),
+            device_profiles: Default::default(),
+            profile_owners: Default::default(),
+            ambiguous_keys: Default::default(),
         }
     }
 }
@@ -114,13 +125,6 @@ pub fn new_id() -> String {
     format!("p{nanos:x}{n:x}")
 }
 
-fn normalize(path: &str) -> String {
-    path.trim()
-        .replace('/', "\\")
-        .trim_end_matches('\\')
-        .to_lowercase()
-}
-
 impl ProfileStore {
     pub fn load(path: &Path) -> Self {
         let mut store: Self = std::fs::read(path)
@@ -133,6 +137,7 @@ impl ProfileStore {
         if !store.profiles.iter().any(|p| p.id == store.active_id) {
             store.active_id = DESKTOP_ID.into();
         }
+        store.repair_device_profiles();
         store
     }
 
@@ -168,27 +173,14 @@ impl ProfileStore {
             return;
         }
         self.profiles.retain(|p| p.id != id);
+        self.profile_owners.remove(id);
+        self.repair_device_profiles();
         if self.active_id == id {
             self.active_id = DESKTOP_ID.into();
         }
     }
 
-    /// Profile for a foreground executable: the longest matching app path
-    /// (exact exe, or any exe inside the profile's folder), else Desktop.
-    pub fn match_exe(&self, exe: &str) -> &Profile {
-        let exe = normalize(exe);
-        self.profiles
-            .iter()
-            .filter_map(|p| {
-                let path = normalize(p.app_path.as_deref()?);
-                let hit =
-                    !path.is_empty() && (exe == path || exe.starts_with(&format!("{path}\\")));
-                hit.then_some((path.len(), p))
-            })
-            .max_by_key(|(len, _)| *len)
-            .map(|(_, p)| p)
-            .unwrap_or_else(|| self.get(DESKTOP_ID).unwrap_or(&self.profiles[0]))
-    }
+
 }
 
 /// Applies a profile's active DPI level and report rate to one device.
@@ -427,29 +419,6 @@ mod tests {
         v.as_object_mut().unwrap().remove("mchose_board");
         let p: Profile = serde_json::from_value(v).unwrap();
         assert!(p.mchose_board.is_none());
-    }
-
-    fn profile(id: &str, path: Option<&str>) -> Profile {
-        Profile {
-            id: id.into(),
-            name: id.into(),
-            app_path: path.map(Into::into),
-            ..Profile::desktop()
-        }
-    }
-
-    #[test]
-    fn matches_folder_exe_and_falls_back_to_desktop() {
-        let mut store = ProfileStore::default();
-        store.upsert(profile("valorant", Some(r"H:\Riot Games\VALORANT\live\")));
-        store.upsert(profile("game", Some(r"C:\Games\Game\game.exe")));
-        assert_eq!(store.match_exe(r"h:\riot games\valorant\live\ShooterGame\Binaries\Win64\VALORANT-Win64-Shipping.exe").id, "valorant");
-        assert_eq!(store.match_exe(r"C:\Games\Game\game.exe").id, "game");
-        assert_eq!(store.match_exe(r"C:\Games\Game\other.exe").id, DESKTOP_ID);
-        assert_eq!(
-            store.match_exe(r"H:\Riot Games\VALORANT\live2\x.exe").id,
-            DESKTOP_ID
-        );
     }
 
     #[test]

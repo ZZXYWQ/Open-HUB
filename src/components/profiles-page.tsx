@@ -36,7 +36,7 @@ interface Props {
   devices: DeviceSummary[];
   importing: boolean;
   onAutoSwitch: (enabled: boolean) => void;
-  onActivate: (id: string,deviceId?:string) => void;
+  onActivate: (id: string,deviceId?:string,asCopy?:boolean) => void;
   onSave: (profile: Profile) => Promise<boolean>;
   onDelete: (id: string) => void;
   onImport: () => void;
@@ -70,7 +70,7 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
         <div className="mr-auto min-w-64 flex-1">
           <h1 className="text-2xl font-extrabold tracking-tight uppercase">配置中心</h1>
           <p className="text-sm text-muted-foreground">
-            统一管理品牌、型号和配置来源。先预览再导入，配置仅应用到匹配的设备。
+            按品牌管理配置，每只鼠标使用独立副本；自动切换仅对可唯一识别且已分配配置的鼠标生效。
           </p>
         </div>
         <Label className="gap-3 rounded-full bg-card py-2 pr-2 pl-4 text-sm font-semibold">
@@ -93,11 +93,15 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
       <div className="mx-auto mt-6 max-w-6xl"><ReconnectPlans/></div>
       <div className="mx-auto mt-6 grid max-w-6xl grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
         {profiles.map((p) => {
-          const active = p.id === view.active_id;
+          const owner=view.profile_owners?.[p.id];
+          const ownerDevice=owner?devices.find(d=>d.profile_key===owner):undefined;
+          const active=!!owner&&view.device_profiles?.[owner]?.active_id===p.id&&!!ownerDevice;
           const isDesktop = p.id === DESKTOP_ID;
           const candidates=devices.filter(d=>matchesDevice(p,d));const available=candidates.length>0;
-          const independent=!!(p.multi||p.sino),needsTarget=independent&&candidates.length>1;
-          const target=candidates.some(d=>d.id===targets[p.id])?targets[p.id]:'';
+          const needsTarget=candidates.length>1;
+          const target=candidates.some(d=>d.id===targets[p.id])?targets[p.id]:ownerDevice?.id??(candidates.length===1?candidates[0].id:'');
+          const selected=candidates.find(d=>d.id===target);
+          const asCopy=!!owner&&!!selected&&selected.profile_key!==owner;
           return (
             <Card key={p.id} className={cn("gap-3 rounded-[10px] px-5 py-5 ring-0", active && "ring-2 ring-primary")}>
               <div className="flex items-start gap-2">
@@ -118,6 +122,7 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
                 {active && <Badge>当前使用</Badge>}
               </div>
 
+              {owner&&<p className="text-xs text-muted-foreground" aria-label={`配置 ${p.name} 归属`}>{ownerDevice?`独立配置 · ${candidates.findIndex(d=>d.id===ownerDevice.id)+1}. ${ownerDevice.name}`:"独立配置 · 所属鼠标未连接"}{owner.startsWith('session:')?' · 本次连接':''}</p>}
               <div className="flex flex-wrap gap-1.5">
                 <Badge variant="outline">{p.sino?.model.brand??brandName(profileVendor(p),p.target_model??p.multi?.product)}</Badge>
                 {p.sino&&<Badge variant="outline">完整按键 / {p.sino.macros.length} 个已记录宏 / {p.sino.model.firmware}</Badge>}
@@ -138,10 +143,11 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
                 )}
               </div>
 
-              {needsTarget&&<label className="text-xs text-muted-foreground">应用到哪只鼠标<select aria-label={`配置 ${p.name} 目标鼠标`} className="mt-1 w-full rounded border bg-background p-2 text-sm" value={target} onChange={e=>setTargets({...targets,[p.id]:e.target.value})}><option value="">请选择目标鼠标</option>{candidates.map((d,i)=><option key={d.id} value={d.id}>{i+1}. {d.name} · {d.id.replace(/:board:\d+$/,'').split(':').at(-1)?.slice(-48)}</option>)}</select><span>仅应用到所选鼠标；自动切换遇到多只同型号时跳过该方案。</span></label>}
+              {needsTarget&&<label className="text-xs text-muted-foreground">应用到哪只鼠标<select aria-label={`配置 ${p.name} 目标鼠标`} className="mt-1 w-full rounded border bg-background p-2 text-sm" value={target} onChange={e=>setTargets({...targets,[p.id]:e.target.value})}><option value="">请选择目标鼠标</option>{candidates.map((d,i)=><option key={d.id} value={d.id}>{i+1}. {d.name} · {d.id.replace(/:board:\d+$/,'').split(':').at(-1)?.slice(-48)}</option>)}</select><span>仅应用到所选鼠标。导入的模板会生成独立副本。</span></label>}
+              {asCopy&&<p className="text-xs text-muted-foreground">将保留原配置，为所选鼠标创建独立副本。</p>}
               <div className="mt-1 flex items-center gap-1">
-                <Button size="sm" disabled={!available||needsTarget&&!target} title={available?"应用到匹配品牌与型号的鼠标":"请先连接匹配的鼠标；未适配品牌无法应用参数"} variant={active ? "secondary" : "default"} onClick={() => onActivate(p.id,independent&&target?target:undefined)}>
-                  <Play /> {!available?"未连接匹配鼠标":active ? "重新应用" : "应用配置"}
+                <Button size="sm" disabled={!available||needsTarget&&!target} title={available?"应用到匹配品牌与型号的鼠标":"请先连接匹配的鼠标；未适配品牌无法应用参数"} variant={active ? "secondary" : "default"} onClick={() => onActivate(p.id,target||undefined,asCopy)}>
+                  <Play /> {!available?"未连接匹配鼠标":asCopy?"复制并应用":active ? "重新应用" : "应用配置"}
                 </Button>
                 <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setEditing(p)} aria-label={`Edit ${p.name}`}>
                   <Pencil /> 编辑

@@ -1,4 +1,4 @@
-import {matchesDevice} from "@/lib/brands";
+import {ownedProfileMatches,activeDeviceProfile} from "@/lib/brands";
 import { ArrowLeft, MonitorCog, RefreshCw } from "lucide-react";
 
 import { AppSettingsDialog } from "@/components/app-settings-dialog";
@@ -15,7 +15,7 @@ interface Props {
   section: Section;
   onSection: (s: Section) => void;
   profiles: ProfilesView | null;
-  onActivateProfile: (id: string) => void;
+  onActivateProfile: (id: string,deviceId?:string) => void;
   device: DeviceSummary | null;
   state: DeviceState | null;
   scanning: boolean;
@@ -38,10 +38,11 @@ const tabClass =
   "relative flex items-center text-[15px] font-semibold hover:text-primary data-[active=true]:text-primary data-[active=true]:after:absolute data-[active=true]:after:-bottom-px data-[active=true]:after:left-1/2 data-[active=true]:after:h-0.5 data-[active=true]:after:w-9 data-[active=true]:after:-translate-x-1/2 data-[active=true]:after:bg-muted-foreground";
 
 /** G HUB-style "Desktop: Default" pill: shows and switches the active profile. */
-function ProfilePicker({ profiles, onActivate,device }: { profiles: ProfilesView; onActivate: (id: string) => void;device?:DeviceSummary|null }) {
-  const choices=device?profiles.profiles.filter(p=>matchesDevice(p,device)):profiles.profiles;
+function ProfilePicker({ profiles, onActivate,device }: { profiles: ProfilesView; onActivate: (id: string,deviceId?:string) => void;device?:DeviceSummary|null }) {
+  const choices=device?profiles.profiles.filter(p=>ownedProfileMatches(p,device,profiles)):[];
+  const active=activeDeviceProfile(profiles,device);
   return (
-    <Select value={choices.some(p=>p.id===profiles.active_id)?profiles.active_id:""} onValueChange={onActivate}>
+    <Select value={active?.id??""} onValueChange={id=>onActivate(id,device?.id)}>
       <SelectTrigger className="h-[42px] max-w-72 gap-2.5 border-0 bg-card px-4 text-sm font-bold dark:bg-card dark:hover:bg-secondary" aria-label="Active profile">
         <MonitorCog className="size-5 text-foreground" />
         <span className="text-muted-foreground">Profile:</span>
@@ -80,7 +81,7 @@ export function AppHeader({ section, onSection, profiles, onActivateProfile, dev
         </div>
         <div />
         <div className="flex items-center justify-end gap-2">
-          {profiles && <ProfilePicker profiles={profiles} onActivate={onActivateProfile} device={device}/>}
+          {profiles && <Button variant="secondary" onClick={()=>onSection("profiles")}><MonitorCog/>按鼠标配置</Button>}
           <AppSettingsDialog {...updates} />
           <Tooltip>
             <TooltipTrigger asChild>
@@ -118,6 +119,7 @@ export function AppHeader({ section, onSection, profiles, onActivateProfile, dev
               </>
             )}
             {device.connection}
+            {device.profile_key?.startsWith("session:")&&<span title="暂无经过验证的唯一身份；可手动应用独立配置，重连后请手动复制应用。">· 需手动应用配置</span>}
           </span>
         </div>
       </div>
@@ -137,7 +139,8 @@ export function AppHeader({ section, onSection, profiles, onActivateProfile, dev
         )}
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-2">
+        {profiles&&<ProfilePicker profiles={profiles} onActivate={onActivateProfile} device={device}/>}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon-lg" className="rounded-full text-muted-foreground" onClick={onScan} aria-label="Rescan devices">

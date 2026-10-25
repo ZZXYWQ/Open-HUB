@@ -640,16 +640,16 @@ fn known(peer: &Peer) -> Vec<Macro> {
         .unwrap_or_default()
 }
 impl Service {
-    pub fn apply_generic(&self, id: &str, profile: &crate::profiles::Profile) -> R<View> {
-        if profile.target_vendor.is_some()
-            || profile.target_model.is_some()
-            || profile.ghub_id.is_some()
+    pub fn apply_generic_profile(&self, id: &str, profile: &crate::profiles::Profile, expected_identity: Option<&str>) -> R<View> {
+        if profile.ghub_id.is_some()
             || profile.mchose_board.is_some()
             || profile.sino.is_some()
+            || profile.multi.is_some()
         {
             return Err("此配置需要完整的型号与固件方案".into());
         }
         let mut p = self.read(id, None)?.plan;
+        if !profile.targets(p.model.vendor, &[p.model.product]) { return Err("配置与目标鼠标型号不一致".into()); }
         if !profile.levels.is_empty() {
             let max = p
                 .model
@@ -674,13 +674,15 @@ impl Service {
                 .unwrap();
         }
         p.macros.clear();
-        self.write(id, p)
+        self.write_profile(id, p, expected_identity)
     }
-    pub fn activate(&self, id: &str, plan: Plan) -> R<View> {
+    pub fn activate_profile(&self, id: &str, plan: Plan, expected_identity: Option<&str>) -> R<View> {
         let profile = plan.profile;
-        let view = self.write(id, plan)?;
+        let expected_model = plan.model.clone();
+        let view = self.write_profile(id, plan, expected_identity)?;
         let peers = self.0.lock().map_err(|_| "设备锁失败")?;
         let peer = peers.get(id).ok_or("设备已断开")?;
+        if peer.model != expected_model || expected_identity.is_some_and(|key| key != crate::profile_routing::serial_key(peer.model.vendor,peer.model.product,Some(&peer.serial))) { return Err("鼠标身份已变化，未选择其他鼠标的板载组".into()); }
         let api = hidapi::HidApi::new().map_err(|e| e.to_string())?;
         let (mut io, _) = identity(&api, peer)?;
         select_profile(&mut io, profile, peer.model.profiles)?;
@@ -766,11 +768,13 @@ impl Service {
             backup: None,
         })
     }
-    pub fn write(&self, id: &str, plan: Plan) -> R<View> {
+    pub fn write(&self, id: &str, plan: Plan) -> R<View> { self.write_profile(id,plan,None) }
+    fn write_profile(&self, id: &str, plan: Plan, expected_identity: Option<&str>) -> R<View> {
         validate(&plan)?;
         {
             let peers = self.0.lock().map_err(|_| "设备锁失败")?;
             let peer = peers.get(id).ok_or("未识别的鼠标")?.clone();
+            if expected_identity.is_some_and(|key| key != crate::profile_routing::serial_key(peer.model.vendor,peer.model.product,Some(&peer.serial))) { return Err("鼠标身份在配置预览后已变化；未写入配置".into()); }
             if peer.model != plan.model {
                 return Err("配置品牌、型号或固件不匹配".into());
             }
@@ -804,6 +808,7 @@ impl Service {
             drop(io);
             drop(peers);
             let mut v = self.read(id, Some(plan.profile))?;
+            if v.peer.model != peer.model || v.peer.serial != peer.serial { return Err("原鼠标已写入，但连接在读取结果前发生变化，请重新扫描".into()); }
             v.backup = Some(backup.to_string_lossy().into_owned());
             return Ok(v);
         }

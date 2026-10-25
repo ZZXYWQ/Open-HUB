@@ -47,6 +47,7 @@ fn mem() -> Memory {
 fn device() -> Device {
     Device {
         vendor_id: 0x046d,
+        profile_key: "session:memory-only".into(),
         id: "lighting-unit-A".into(),
         path: CString::new("memory-only-A").unwrap(),
         index: 0xff,
