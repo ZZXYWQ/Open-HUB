@@ -105,13 +105,17 @@ impl Shared {
     fn deliver(&self, r: &[u8]) -> bool {
         let Ok(mut slot) = self.slot.lock() else { return false };
         let Some([device, b2, b3]) = slot.key else { return false };
-        if r.len() < SHORT_LEN - 1 || r[1] != device {
+        if r.len() < 4 || r[1] != device || !matches!(r[0], REPORT_SHORT | REPORT_LONG) {
             return false;
         }
-        let reply = if r[2] == b2 && r[3] == b3 {
-            let mut payload = r[4..].to_vec();
-            payload.resize(PAYLOAD_LEN, 0);
-            Ok(payload)
+        let matching = r[2] == b2 && r[3] == b3;
+        let matching_error = r.len() >= 5 && matches!(r[2], 0xFF | 0x8F) && r[3] == b2 && r[4] == b3;
+        if !matching && !matching_error { return false; }
+        let expected_len = if r[0] == REPORT_SHORT { SHORT_LEN } else { LONG_LEN };
+        let reply = if r.len() != expected_len {
+            Err(Error::Other(format!("Malformed HID++ reply: report {:02X} has {} bytes, expected {expected_len}", r[0], r.len())))
+        } else if matching {
+            Ok(r[4..].to_vec())
         } else if r[2] == 0xFF && r[3] == b2 && r[4] == b3 {
             Err(Error::Hidpp20(r[5], hidpp20_error_name(r[5])))
         } else if r[2] == 0x8F && r[3] == b2 && r[4] == b3 {
@@ -234,9 +238,13 @@ impl Transport {
             slot.key = Some(key);
             slot.reply = None;
         }
-        if let Err(e) = dev.write(packet) {
-            lock()?.key = None;
-            return Err(e.into());
+        match dev.write(packet) {
+            Ok(n) if n != packet.len() => {
+                lock()?.key = None;
+                return Err(Error::Other("short HID++ write; request was not retried".into()));
+            }
+            Err(e) => { lock()?.key = None; return Err(e.into()); }
+            _ => {}
         }
         let deadline = Instant::now() + timeout;
         let mut slot = lock()?;
@@ -258,24 +266,18 @@ impl Transport {
         }
     }
 
-    /// HID++ 2.0 feature request. Returns the 16 payload bytes of the reply.
-    pub fn request(
-        &self,
-        device: u8,
-        feature_index: u8,
-        function: u8,
-        params: &[u8],
-        timeout: Duration,
-    ) -> Result<Vec<u8>> {
+    /// Compatibility interface: valid short replies retain the historical
+    /// 16-byte padding. Truncated/malformed reports are rejected before this.
+    pub fn request(&self, device:u8, feature_index:u8, function:u8, params:&[u8], timeout:Duration)->Result<Vec<u8>> {
+        let mut reply=self.request_unpadded(device,feature_index,function,params,timeout)?;
+        reply.resize(PAYLOAD_LEN,0);
+        Ok(reply)
+    }
+    /// Preserve the actual protocol payload (3 bytes short / 16 bytes long).
+    pub fn request_unpadded(&self,device:u8,feature_index:u8,function:u8,params:&[u8],timeout:Duration)->Result<Vec<u8>> {
         if self.mchose.is_some() {return Err(Error::Other("HID++ requests cannot be sent to a MCHOSE device".into()))}
-        let mut packet = [0u8; LONG_LEN];
-        packet[0] = REPORT_LONG;
-        packet[1] = device;
-        packet[2] = feature_index;
-        packet[3] = (function << 4) | SW_ID;
-        let n = params.len().min(PAYLOAD_LEN);
-        packet[4..4 + n].copy_from_slice(&params[..n]);
-        self.exchange(&self.long, [device, feature_index, packet[3]], &packet, timeout)
+        let packet=feature_packet(device,feature_index,function,params)?;
+        self.exchange(&self.long,[device,feature_index,packet[3]],&packet,timeout)
     }
 
     /// HID++ 1.0 register access on a receiver (sub id 0x80 set / 0x81 get),
@@ -288,15 +290,31 @@ impl Transport {
     }
 }
 
+/// Compile a complete long report without silently truncating a request.
+fn feature_packet(device:u8,feature_index:u8,function:u8,params:&[u8])->Result<[u8;LONG_LEN]> {
+    if function>15 || params.len()>PAYLOAD_LEN {return Err(Error::Other("invalid HID++ function or payload length".into()));}
+    let mut packet=[0u8;LONG_LEN];
+    packet[..4].copy_from_slice(&[REPORT_LONG,device,feature_index,(function<<4)|SW_ID]);
+    packet[4..4+params.len()].copy_from_slice(params);
+    Ok(packet)
+}
+
 /// HID++ feature requests used by on-board operations. The production
 /// implementation keeps the same device handle and existing reply routing;
 /// tests can execute the complete flash transaction against simulated memory.
 pub trait FeatureRequest {
     fn request(&self,device:u8,feature_index:u8,function:u8,params:&[u8],timeout:Duration)->Result<Vec<u8>>;
+    fn request_unpadded(&self,device:u8,feature_index:u8,function:u8,params:&[u8],timeout:Duration)->Result<Vec<u8>> {
+        self.request(device,feature_index,function,params,timeout)
+    }
+
 }
 impl FeatureRequest for Transport {
     fn request(&self,device:u8,feature_index:u8,function:u8,params:&[u8],timeout:Duration)->Result<Vec<u8>>{
         Transport::request(self,device,feature_index,function,params,timeout)
+    }
+    fn request_unpadded(&self,device:u8,feature_index:u8,function:u8,params:&[u8],timeout:Duration)->Result<Vec<u8>> {
+        Transport::request_unpadded(self,device,feature_index,function,params,timeout)
     }
 }
 
@@ -321,11 +339,12 @@ mod tests {
     fn delivers_matching_reply_and_errors() {
         let s = shared_waiting_for([0x01, 0x05, 0x2B]);
         assert!(!s.deliver(&[0x11, 0x02, 0x05, 0x2B, 0, 0, 0])); // other device
-        assert!(s.deliver(&[0x11, 0x01, 0x05, 0x2B, 0xAA, 0, 0]));
+        let mut response=[0u8;LONG_LEN];response[..5].copy_from_slice(&[0x11,0x01,0x05,0x2B,0xAA]);
+        assert!(s.deliver(&response));
         assert_eq!(s.slot.lock().unwrap().reply.take().unwrap().unwrap()[0], 0xAA);
 
         let s = shared_waiting_for([0x01, 0x05, 0x2B]);
-        assert!(s.deliver(&[0x11, 0x01, 0xFF, 0x05, 0x2B, 0x07, 0]));
+        assert!(s.deliver(&[0x10, 0x01, 0xFF, 0x05, 0x2B, 0x07, 0]));
         assert!(matches!(s.slot.lock().unwrap().reply.take(), Some(Err(Error::Hidpp20(0x07, _)))));
 
         let s = shared_waiting_for([0x03, 0x00, 0x1B]);
@@ -340,4 +359,25 @@ mod tests {
         assert!(!is_notification(&[0x11, 0x01, 0x04, 0x1A, 0x1A])); // reply to other software
         assert!(!is_notification(&[0x10, 0xFF, 0x81, 0x00, 0, 0, 0])); // register reply
     }
+    #[test]
+    fn raw_reply_routing_never_pads_a_short_payload_or_accepts_a_truncated_long_frame() {
+        let s=shared_waiting_for([1,5,0x2b]);
+        assert!(s.deliver(&[REPORT_SHORT,1,5,0x2b,0xaa,0xbb,0xcc]));
+        assert_eq!(s.slot.lock().unwrap().reply.take().unwrap().unwrap(),vec![0xaa,0xbb,0xcc]);
+        for (tag,size) in [(REPORT_LONG,4),(REPORT_LONG,7),(REPORT_LONG,19),(REPORT_LONG,21),(REPORT_SHORT,6),(REPORT_SHORT,8)] {
+            let s=shared_waiting_for([1,5,0x2b]);let mut r=vec![0;size];r[..4].copy_from_slice(&[tag,1,5,0x2b]);
+            assert!(s.deliver(&r));assert!(matches!(s.slot.lock().unwrap().reply.take(),Some(Err(Error::Other(_)))));assert!(s.slot.lock().unwrap().key.is_none());
+        }
+    }
+    #[test]
+    fn unrelated_or_unknown_reports_do_not_consume_pending_strict_requests() {
+        let s=shared_waiting_for([1,5,0x2b]);
+        for r in [vec![0x12,1,5,0x2b,0,0,0],vec![REPORT_LONG,2,5,0x2b,0,0,0],vec![REPORT_LONG,1,6,0x2b,0,0,0],vec![REPORT_SHORT,1,0xff,6,0x2b,7,0]]{assert!(!s.deliver(&r));assert_eq!(s.slot.lock().unwrap().key,Some([1,5,0x2b]));}
+    }
+    #[test]
+    fn complete_feature_packets_reject_overflow_instead_of_truncating_data() {
+        let r=feature_packet(0xff,0x24,3,&[1,2,3]).unwrap();assert_eq!(&r[..7],&[0x11,0xff,0x24,0x3b,1,2,3]);assert!(r[7..].iter().all(|v|*v==0));
+        assert!(feature_packet(1,5,16,&[]).is_err());assert!(feature_packet(1,5,1,&[0;17]).is_err());assert_eq!(feature_packet(1,5,15,&[0xa5;16]).unwrap()[19],0xa5);
+    }
+
 }

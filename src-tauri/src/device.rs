@@ -334,6 +334,13 @@ impl Device {
         self.call_with_timeout(t, feature, function, params, TIMEOUT)
     }
 
+    /// Strict payload boundary for memory/lighting reads. Unlike the legacy
+    /// request interface, a valid short reply is not extended with zeros.
+    pub(crate) fn call_unpadded(&self,t:&dyn FeatureRequest,feature:u16,function:u8,params:&[u8])->Result<Vec<u8>> {
+        let info=self.features.get(&feature).ok_or(Error::Unsupported(feature))?;
+        t.request_unpadded(self.index,info.index,function,params,TIMEOUT)
+    }
+
     /// For slow operations such as committing a flash write.
     pub(crate) fn call_with_timeout(
         &self,

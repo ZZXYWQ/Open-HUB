@@ -68,7 +68,7 @@ pub struct View {
     pub zones: Vec<Zone>,
 }
 fn raw(d: &Device, t: &dyn FeatureRequest, zone: u8) -> Result<[u8; 11]> {
-    let reply = d.call(t, COLOR, 14, &[zone])?;
+    let reply = d.call_unpadded(t, COLOR, 14, &[zone])?;
     let r = len(&reply, 12)?;
     if r[0] != zone {
         return Err(fail("current effect belongs to another zone"));
@@ -85,7 +85,7 @@ pub fn read(d: &Device, t: &dyn FeatureRequest) -> Result<View> {
         }));
     }
     let version = d.features[&COLOR].version;
-    let reply = d.call(t, COLOR, 0, &[])?;
+    let reply = d.call_unpadded(t, COLOR, 0, &[])?;
     let info = len(&reply, 5)?;
     if info[0] > 16 {
         return Err(fail("unverified zone count"));
@@ -96,7 +96,7 @@ pub fn read(d: &Device, t: &dyn FeatureRequest) -> Result<View> {
     let mut zones = Vec::new();
     let mut total = 0usize;
     for index in 0..info[0] {
-        let reply = d.call(t, COLOR, 1, &[index])?;
+        let reply = d.call_unpadded(t, COLOR, 1, &[index])?;
         let r = len(&reply, 5)?;
         if r[0] != index || r[3] > 32 {
             return Err(fail("zone descriptor echo/count mismatch"));
@@ -113,7 +113,7 @@ pub fn read(d: &Device, t: &dyn FeatureRequest) -> Result<View> {
             current: None,
         };
         for slot in 0..r[3] {
-            let reply = d.call(t, COLOR, 2, &[index, slot])?;
+            let reply = d.call_unpadded(t, COLOR, 2, &[index, slot])?;
             let e = len(&reply, 8)?;
             if e[0] != index || e[1] != slot {
                 return Err(fail("effect descriptor echo mismatch"));
@@ -201,13 +201,13 @@ fn owner(d: &Device, t: &dyn FeatureRequest) -> Result<Option<Owner>> {
     if !d.has(crate::device::feature::ONBOARD_PROFILES) {
         return Ok(None);
     }
-    let reply = d.call(t, 0x8100, 2, &[])?;
+    let reply = d.call_unpadded(t, 0x8100, 2, &[])?;
     let mode = *len(&reply, 1)?.first().unwrap();
     if !matches!(mode, 1 | 2) {
         return Err(fail("unknown onboard ownership mode"));
     }
     let profile = if mode == 1 {
-        let r = d.call(t, 0x8100, 4, &[])?;
+        let r = d.call_unpadded(t, 0x8100, 4, &[])?;
         Some(len(&r, 2)?[..2].to_vec())
     } else {
         None
@@ -245,7 +245,7 @@ pub fn apply(d: &Device, t: &dyn FeatureRequest, change: &Change) -> Result<Appl
     }
     let ownership = owner(d, t)?;
     let write = (|| -> Result<()> {
-        d.call(t, COLOR, 3, &packet)?;
+        d.call_unpadded(t, COLOR, 3, &packet)?;
         if raw(d, t, change.zone)? != expected {
             return Err(fail("effect readback differs from requested value"));
         }
@@ -285,7 +285,7 @@ pub fn apply(d: &Device, t: &dyn FeatureRequest, change: &Change) -> Result<Appl
             if owner(d, t)? != ownership {
                 return Err(fail("ownership changed before restoration"));
             }
-            d.call(t, COLOR, 3, &rollback)?;
+            d.call_unpadded(t, COLOR, 3, &rollback)?;
             if raw(d, t, change.zone)? != change.expected {
                 return Err(fail("original effect could not be verified"));
             }

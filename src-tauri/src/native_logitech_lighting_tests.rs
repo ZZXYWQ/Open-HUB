@@ -387,3 +387,22 @@ fn browser_logitech_lighting_change_executes_production_transaction() {
         [1, 18, 52, 86, 2, 0, 0, 0, 0, 0, 0]
     );
 }
+
+#[test]
+fn lighting_and_onboard_reads_use_unpadded_transport_payloads() {
+    struct Short;
+    impl FeatureRequest for Short {
+        fn request(&self, _: u8, _: u8, _: u8, _: &[u8], _: Duration) -> Result<Vec<u8>> {
+            panic!("strict read reached legacy padded request");
+        }
+        fn request_unpadded(&self, _: u8, _: u8, _: u8, _: &[u8], _: Duration) -> Result<Vec<u8>> {
+            Ok(vec![1, 0, 0])
+        }
+    }
+    let d = device();
+    assert!(read(&d, &Short)
+        .unwrap_err()
+        .to_string()
+        .contains("short feature response"));
+    assert!(d.onboard_info(&Short).is_err());
+}

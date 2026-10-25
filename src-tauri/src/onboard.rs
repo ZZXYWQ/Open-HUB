@@ -316,7 +316,7 @@ pub fn restorable_sectors(raw: &[RawSector]) -> std::result::Result<Vec<(u16, Ve
 
 impl Device {
     pub fn onboard_info(&self, t: &dyn FeatureRequest) -> Result<Info> {
-        let r = self.call(t, ONBOARD_PROFILES, func::GET_INFO, &[])?;
+        let r = self.call_unpadded(t, ONBOARD_PROFILES, func::GET_INFO, &[])?;
         if r.len()<11{return Err(Error::Other("truncated on-board descriptor".into()));}
         Ok(Info {
             memory_model: r[0],
@@ -344,7 +344,7 @@ impl Device {
             let at = if size - offset < 16 { size - 16 } else { offset };
             let [sh, sl] = sector.to_be_bytes();
             let [oh, ol] = (at as u16).to_be_bytes();
-            let r = self.call(t, ONBOARD_PROFILES, func::READ, &[sh, sl, oh, ol])?;
+            let r = self.call_unpadded(t, ONBOARD_PROFILES, func::READ, &[sh, sl, oh, ol])?;
             if r.len()<16{return Err(Error::Other("truncated on-board sector reply".into()));}
             data[at..at + 16].copy_from_slice(&r[..16]);
             offset = at + 16;

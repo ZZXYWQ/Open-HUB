@@ -1,0 +1,17 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "reject malformed observed HID++ frame lengths, preserve actual payload for native lighting and onboard info/sector reads",
+  "default_application_tests": 395,
+  "explicit_cross_tests": 12,
+  "new_tests": 4,
+  "scope": [
+    "report10=7bytes/report11=20bytes at hidapi-to-router boundary",
+    "strict3/16-byte payload route for onboard descriptors/sectors and native lighting",
+    "legacy valid short replies retain compatibility padding",
+    "oversized outbound payload/functions rejected, short writes fail without retry"
+  ],
+  "physical_Logitech_USB_tested": false,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7",
+  "accepted_full_models": 0
+}
