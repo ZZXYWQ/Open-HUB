@@ -570,6 +570,7 @@ fn write_onboard_bindings(
     let guard = manager(&state)?;
     let manager = guard.as_ref().expect("manager initialised");
     manager.with_device(&id,|d,t|{
+        onboard_bindings::validate_target(d).map_err(hidpp::Error::Other)?;
         let(before,raw)=d.onboard_snapshot(t)?;
         let backup=auto_backup_path(&app,d).map_err(hidpp::Error::Other)?;
         write_onboard_backup(&app.package_info().version.to_string(),&backup,d,&before,&raw).map_err(hidpp::Error::Other)?;
