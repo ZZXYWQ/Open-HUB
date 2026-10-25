@@ -90,6 +90,7 @@ pub struct DeviceState {
 
 /// A single change to apply to a device. Profiles are lists of these.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub enum Setting {
     Dpi(DpiState),
     /// Switch the active stage only.

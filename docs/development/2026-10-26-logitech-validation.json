@@ -1,0 +1,32 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "date": "2026-10-26",
+  "installed_published_version_unchanged": "0.3.7",
+  "installer_generated": false,
+  "update_feed_changed": false,
+  "hundred_model_target_complete": false,
+  "new_fully_accepted_models": 0,
+  "change": "Logitech native direct-USB onboard Normal/G-Shift binding editor with scoped record writes and verified recovery",
+  "limitations": [
+    "receiver physical identity pinning remains incomplete, new binding writes blocked before I/O",
+    "new native macros not implemented",
+    "per-model button names/hotspots and full OEM import pending",
+    "no physical Logitech hardware tested"
+  ],
+  "validation": {
+    "default_application_tests": 362,
+    "explicit_import_and_saved_UI_tests": 10,
+    "vendor_core_driver_tests": 253,
+    "UI_suites": 26,
+    "UI_initial_failed_suites": [
+      "test-compx-ui.cjs"
+    ],
+    "UI_recheck_note": "One COMPX lazy-image decode timing failure retained in initial report; changed image readiness suites and final Logitech editor retested successfully. Latest direct-USB capability gate separately passed targeted native tests and Logitech UI.",
+    "uncertain_write_stages_tested": 18,
+    "current_development_EXE_memory_selftest_transports": 32,
+    "hardware_accessed": false
+  },
+  "backup_scope": "readable directory/profile/ROM sectors, not undocumented factory macro content",
+  "runtime_new_dependencies": 0,
+  "source": "LOGITECH-ONBOARD-BINDINGS.md"
+}

@@ -58,6 +58,7 @@ pub struct Preferences {
     pub debounce_ms: u8,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub enum Action {
     Disabled,
     Left,
@@ -96,6 +97,7 @@ pub enum Media {
     BrowserSearch,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub enum Playback {
     Times {
         count: u8,

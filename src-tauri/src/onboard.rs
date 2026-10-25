@@ -17,7 +17,7 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 
 use crate::device::{feature::ONBOARD_PROFILES, Device};
-use crate::hidpp::{Error, Result, Transport};
+use crate::hidpp::{Error, Result, FeatureRequest};
 
 const DIRECTORY_SECTOR: u16 = 0x0000;
 const ROM_BASE: u16 = 0x0100;
@@ -117,7 +117,7 @@ pub fn crc_ccitt(data: &[u8]) -> u16 {
     crc
 }
 
-fn sector_crc_ok(data: &[u8]) -> bool {
+pub(crate) fn sector_crc_ok(data: &[u8]) -> bool {
     data.len() >= 2 && crc_ccitt(&data[..data.len() - 2]) == u16::from_be_bytes([data[data.len() - 2], data[data.len() - 1]])
 }
 
@@ -133,6 +133,8 @@ pub struct Info {
     pub sector_size: u16,
     pub mechanical_layout: u8,
     pub various_info: u8,
+    /// New binding writes currently require a direct physical HID++ handle.
+    pub bindings_writable:bool,
 }
 
 /// One 4-byte button binding, decoded for display.
@@ -313,8 +315,9 @@ pub fn restorable_sectors(raw: &[RawSector]) -> std::result::Result<Vec<(u16, Ve
 }
 
 impl Device {
-    pub fn onboard_info(&self, t: &Transport) -> Result<Info> {
+    pub fn onboard_info(&self, t: &dyn FeatureRequest) -> Result<Info> {
         let r = self.call(t, ONBOARD_PROFILES, func::GET_INFO, &[])?;
+        if r.len()<11{return Err(Error::Other("truncated on-board descriptor".into()));}
         Ok(Info {
             memory_model: r[0],
             profile_format: r[1],
@@ -326,13 +329,15 @@ impl Device {
             sector_size: u16::from_be_bytes([r[7], r[8]]),
             mechanical_layout: r[9],
             various_info: r[10],
+            bindings_writable:self.index==crate::hidpp::DIRECT&&self.vendor_id==0x046d&&self.kind.eq_ignore_ascii_case("mouse"),
         })
     }
 
     /// Reads a whole sector, 16 bytes at a time. The last read is aligned to
     /// `size - 16`, since the firmware rejects reads past the sector end.
-    pub fn read_sector(&self, t: &Transport, sector: u16, size: u16) -> Result<Vec<u8>> {
+    pub fn read_sector(&self, t: &dyn FeatureRequest, sector: u16, size: u16) -> Result<Vec<u8>> {
         let size = usize::from(size);
+        if !(16..=4096).contains(&size){return Err(Error::Other("unsupported on-board sector size".into()));}
         let mut data = vec![0u8; size];
         let mut offset = 0usize;
         while offset < size {
@@ -340,6 +345,7 @@ impl Device {
             let [sh, sl] = sector.to_be_bytes();
             let [oh, ol] = (at as u16).to_be_bytes();
             let r = self.call(t, ONBOARD_PROFILES, func::READ, &[sh, sl, oh, ol])?;
+            if r.len()<16{return Err(Error::Other("truncated on-board sector reply".into()));}
             data[at..at + 16].copy_from_slice(&r[..16]);
             offset = at + 16;
         }
@@ -347,9 +353,10 @@ impl Device {
     }
 
     /// Reads and decodes the directory, user profiles and ROM profiles.
-    pub fn onboard_snapshot(&self, t: &Transport) -> Result<(Snapshot, Vec<RawSector>)> {
+    pub fn onboard_snapshot(&self, t: &dyn FeatureRequest) -> Result<(Snapshot, Vec<RawSector>)> {
         let info = self.onboard_info(t)?;
         let size = info.sector_size;
+        if !(210..=4096).contains(&size)||usize::from(info.profile_count)*4+2>usize::from(size){return Err(Error::Other("unsupported profile/directory geometry".into()));}
         let buttons = usize::from(info.button_count);
         let mut raw = Vec::new();
 
@@ -392,7 +399,7 @@ impl Device {
 
     /// Writes one whole sector: start (sector, offset 0, length), 16-byte
     /// chunks, then end, which commits it to flash.
-    fn write_sector(&self, t: &Transport, sector: u16, data: &[u8]) -> Result<()> {
+    fn write_sector(&self, t: &dyn FeatureRequest, sector: u16, data: &[u8]) -> Result<()> {
         if sector >= ROM_BASE {
             return Err(Error::Other("refusing to write a factory (ROM) sector".into()));
         }
@@ -410,7 +417,7 @@ impl Device {
 
     /// Writes `data` to `sector` and reads it back. On a mismatch the
     /// original bytes are written back and an error explains what happened.
-    fn write_sector_verified(&self, t: &Transport, sector: u16, data: &[u8], original: &[u8]) -> Result<()> {
+    fn write_sector_verified(&self, t: &dyn FeatureRequest, sector: u16, data: &[u8], original: &[u8]) -> Result<()> {
         let size = data.len() as u16;
         let outcome = self.write_sector(t, sector, data).and_then(|()| self.read_sector(t, sector, size));
         let reason = match outcome {
@@ -430,7 +437,7 @@ impl Device {
     }
 
     /// Changes one user slot's DPI levels, starting level and report rate.
-    pub fn write_slot_settings(&self, t: &Transport, settings: &SlotSettings) -> Result<WriteReport> {
+    pub fn write_slot_settings(&self, t: &dyn FeatureRequest, settings: &SlotSettings) -> Result<WriteReport> {
         let info = self.onboard_info(t)?;
         if settings.slot == 0 || settings.slot > info.profile_count {
             return Err(Error::Other(format!("slot {} doesn't exist (1–{})", settings.slot, info.profile_count)));
@@ -462,9 +469,138 @@ impl Device {
         Ok(WriteReport { slot: settings.slot, sector, bytes_changed, unchanged: false })
     }
 
+    /// Changes only explicitly reviewed physical bindings in one user sector.
+    /// Caller persists the readable directory/profile backup before this method.
+    pub fn write_slot_bindings(
+        &self,
+        t: &dyn FeatureRequest,
+        settings: &crate::onboard_bindings::Settings,
+    ) -> Result<crate::onboard_bindings::Report> {
+        use crate::onboard_bindings::{patch, validate_info, Report};
+        crate::onboard_bindings::validate_target(self).map_err(Error::Other)?;
+        if settings.changes.is_empty() || settings.changes.len() > 32 {
+            return Err(Error::Other("select 1..32 bindings".into()));
+        }
+        let info = self.onboard_info(t)?;
+        validate_info(&info).map_err(Error::Other)?;
+        if settings.slot == 0
+            || settings.slot > info.profile_count
+            || settings.sector == 0
+            || settings.sector >= ROM_BASE
+        {
+            return Err(Error::Other("invalid on-board slot or user sector".into()));
+        }
+        let directory = self.read_sector(t, DIRECTORY_SECTOR, info.sector_size)?;
+        if !sector_crc_ok(&directory) {
+            return Err(Error::Other("profile directory checksum failed".into()));
+        }
+        let offset = usize::from(settings.slot - 1) * 4;
+        let sector = u16::from_be_bytes([directory[offset], directory[offset + 1]]);
+        if sector != settings.sector {
+            return Err(Error::Other(
+                "profile directory changed since it was read; refresh before editing".into(),
+            ));
+        }
+        let original = self.read_sector(t, sector, info.sector_size)?;
+        let patched = patch(&original, &info, &settings.changes).map_err(Error::Other)?;
+        let bytes_changed = patched
+            .iter()
+            .zip(&original)
+            .filter(|(a, b)| a != b)
+            .count();
+        let mut report = Report {
+            slot: settings.slot,
+            sector,
+            bytes_changed,
+            unchanged: bytes_changed == 0,
+            active_reloaded: false,
+            reload_note: None,
+        };
+        if bytes_changed == 0 {
+            return Ok(report);
+        }
+        let outcome = self
+            .write_sector(t, sector, &patched)
+            .and_then(|()| self.read_sector(t, sector, info.sector_size));
+        let error = match outcome {
+            Ok(readback) if readback == patched => None,
+            Ok(_) => Some("the stored profile differs from the submitted bindings".to_string()),
+            Err(e) => Some(e.to_string()),
+        };
+        if let Some(error) = error {
+            // Do not restore into a sector whose directory ownership changed.
+            let ownership = (|| -> Result<()> {
+                let now = self.onboard_info(t)?;
+                if (
+                    now.memory_model,
+                    now.profile_format,
+                    now.macro_format,
+                    now.sector_size,
+                    now.button_count,
+                    now.mechanical_layout,
+                ) != (
+                    info.memory_model,
+                    info.profile_format,
+                    info.macro_format,
+                    info.sector_size,
+                    info.button_count,
+                    info.mechanical_layout,
+                ) {
+                    return Err(Error::Other("memory layout changed".into()));
+                }
+                let now = self.read_sector(t, DIRECTORY_SECTOR, info.sector_size)?;
+                if !sector_crc_ok(&now) || now != directory {
+                    return Err(Error::Other("profile directory changed".into()));
+                }
+                Ok(())
+            })();
+            let restored = ownership
+                .and_then(|()| self.write_sector(t, sector, &original))
+                .and_then(|()| self.read_sector(t, sector, info.sector_size))
+                .is_ok_and(|back| back == original);
+            return Err(Error::Other(format!(
+                "binding write failed ({error}); {}",
+                if restored {
+                    "original sector restored and verified"
+                } else {
+                    "original state could not be confirmed; keep the backup and refresh, no blind retry"
+                }
+            )));
+        }
+        // Persisting a slot does not force board mode or activate another slot.
+        // A reload error is distinct from a verified successful flash write.
+        let reload = (|| -> Result<bool> {
+            let mode = self.call(t, ONBOARD_PROFILES, 2, &[])?;
+            if mode.first() != Some(&1) {
+                return Ok(false);
+            }
+            let active = self.call(t, ONBOARD_PROFILES, func::GET_ACTIVE_PROFILE, &[])?;
+            if active.len() < 2 {
+                return Err(Error::Other("truncated active-profile reply".into()));
+            }
+            if active[1] != settings.slot {
+                return Ok(false);
+            }
+            self.call(
+                t,
+                ONBOARD_PROFILES,
+                func::SET_ACTIVE_PROFILE,
+                &[0, settings.slot],
+            )?;
+            Ok(true)
+        })();
+        match reload {
+            Ok(reloaded) => report.active_reloaded = reloaded,
+            Err(e) => report.reload_note = Some(format!(
+                "bindings saved and readback verified; active slot reload was not confirmed: {e}"
+            )),
+        };
+        Ok(report)
+    }
+
     /// Writes backed-up sectors (directory and user profiles only) back to
     /// the mouse, skipping those already identical. Returns how many changed.
-    pub fn restore_sectors(&self, t: &Transport, sectors: &[(u16, Vec<u8>)]) -> Result<usize> {
+    pub fn restore_sectors(&self, t: &dyn FeatureRequest, sectors: &[(u16, Vec<u8>)]) -> Result<usize> {
         let info = self.onboard_info(t)?;
         if let Some((sector, data)) = sectors.iter().find(|(_, d)| d.len() != usize::from(info.sector_size)) {
             return Err(Error::Other(format!(
@@ -557,3 +693,7 @@ mod tests {
         assert_eq!(decode_binding([0xFF, 0xFF, 0xFF, 0xFF]).kind, "disabled");
     }
 }
+
+#[cfg(test)]
+#[path="onboard_rpc_tests.rs"]
+mod rpc_tests;

@@ -1,3 +1,4 @@
+import {OnboardBindingsEditor} from "@/components/onboard-bindings-editor";
 import { useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { Download, HardDrive, Pencil, RefreshCw, Upload } from "lucide-react";
@@ -8,7 +9,7 @@ import { PanelSection } from "@/components/panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { api, type DeviceSummary, type OnboardButton, type OnboardProfile, type OnboardSnapshot, type SlotSettings } from "@/lib/api";
+import { api, type DeviceSummary, type OnboardButton, type OnboardProfile, type OnboardSnapshot, type SlotSettings,type OnboardBindingSettings } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 /** Buttons that do something other than their own mouse button. */
@@ -16,7 +17,7 @@ function remapped(buttons: OnboardButton[]): OnboardButton[] {
   return buttons.filter((b, i) => b.description !== `Mouse button ${i + 1}`);
 }
 
-function ProfileCard({ profile, active, onEdit }: { profile: OnboardProfile; active: boolean; onEdit?: () => void }) {
+function ProfileCard({ profile, active, onEdit,onEditBindings }: { profile: OnboardProfile; active: boolean; onEdit?: () => void;onEditBindings?:()=>void }) {
   const changed = remapped(profile.buttons);
   const gshift = profile.gshift_buttons.filter((b) => b.kind !== "disabled");
   return (
@@ -30,6 +31,7 @@ function ProfileCard({ profile, active, onEdit }: { profile: OnboardProfile; act
         {!profile.enabled && <Badge variant="secondary">Disabled</Badge>}
         {profile.crc_valid === false && <Badge variant="destructive">Checksum error</Badge>}
         <span className="ml-auto text-xs text-muted-foreground tabular-nums">{profile.report_rate_hz} Hz</span>
+        {onEditBindings&&<Button variant="outline" size="sm" onClick={onEditBindings}>编辑按键</Button>}
         {onEdit && (
           <Button variant="ghost" size="icon-sm" aria-label={`Edit slot ${profile.slot}`} onClick={onEdit}>
             <Pencil />
@@ -68,9 +70,16 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
   const [reading, setReading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<OnboardProfile | null>(null);
+  const [editingBindings,setEditingBindings]=useState<OnboardProfile|null>(null);
   const [restorePath, setRestorePath] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
 
+  const writeBindings=async(settings:OnboardBindingSettings)=>{
+    try{const result=await api.writeOnboardBindings(device.id,settings);setSnapshot(result.snapshot);
+      const note=[result.report.reload_note,result.refresh_note].filter(Boolean).join('；');
+      if(note)toast.warning('按键已保存并通过读回校验',{description:note});else toast.success(result.report.unchanged?'按键配置已是所选设置':'按键已保存到此鼠标',{description:`已读回校验。备份：${result.backup_path}`});return true;
+    }catch(e){toast.error(String(e));return false;}
+  };
   const writeSlot = async (settings: SlotSettings) => {
     try {
       const result = await api.writeOnboardSlot(device.id, settings);
@@ -176,12 +185,14 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
           {!snapshot.directory_crc_valid && (
             <p className="text-xs text-destructive">The profile directory failed its checksum; the mouse is using its factory profile.</p>
           )}
+          {info.bindings_writable===false&&<p className="text-xs text-muted-foreground">此连接的独立按键写入尚未开放；这项实验功能目前使用有线 USB。现有板载读取和 DPI 编辑仍可使用。</p>}
           {snapshot.profiles.map((p) => (
             <ProfileCard
               key={`u${p.slot}`}
               profile={p}
               active={snapshot.active_profile === p.slot}
               onEdit={p.crc_valid ? () => setEditing(p) : undefined}
+              onEditBindings={p.crc_valid&&info.bindings_writable&&info.memory_model===1&&info.profile_format>=1&&info.profile_format<=5&&info.macro_format===1&&info.button_count>0&&info.button_count<=16?()=>setEditingBindings(p):undefined}
             />
           ))}
           {snapshot.rom_profiles.map((p) => (
@@ -190,6 +201,7 @@ export function OnboardSection({ device, supportedDpi }: { device: DeviceSummary
         </div>
       )}
 
+      <OnboardBindingsEditor device={device} profile={editingBindings} info={snapshot?.info??null} onClose={()=>setEditingBindings(null)} onSave={writeBindings}/>
       <OnboardSlotEditor profile={editing} supportedDpi={supportedDpi} onClose={() => setEditing(null)} onSave={writeSlot} />
 
       <Dialog open={restorePath !== null} onOpenChange={(o) => !o && setRestorePath(null)}>

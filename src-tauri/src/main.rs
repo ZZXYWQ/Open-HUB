@@ -35,6 +35,7 @@ mod rgb;
 mod screen;
 mod effects;
 mod onboard;
+mod onboard_bindings;
 mod profiles;
 mod mhub_import;
 mod settings;
@@ -491,7 +492,9 @@ fn write_onboard_backup(
         std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     }
     let bytes = serde_json::to_vec_pretty(&backup).map_err(|e| e.to_string())?;
-    std::fs::write(path, bytes).map_err(|e| format!("could not write {}: {e}", path.display()))
+    use std::io::Write;
+    let mut file=std::fs::File::create(path).map_err(|e|format!("could not create {}: {e}",path.display()))?;
+    file.write_all(&bytes).and_then(|()|file.sync_all()).map_err(|e|format!("could not persist {}: {e}",path.display()))
 }
 
 /// Automatic backup taken before every on-board write.
@@ -499,7 +502,7 @@ fn auto_backup_path(app: &AppHandle, device: &device::Device) -> Result<PathBuf,
     let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     let name: String = device.name.chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '_' }).collect();
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("onboard-backups");
-    Ok(dir.join(format!("{name}-{stamp}.json")))
+    Ok(dir.join(format!("{name}-{stamp}-{}.json",profiles::new_id())))
 }
 
 /// G HUB's agent also writes on-board memory; two writers at once could
@@ -543,6 +546,34 @@ struct OnboardWriteResult {
     snapshot: onboard::Snapshot,
 }
 
+#[derive(Serialize)]
+struct OnboardBindingWriteResult {
+    report: onboard_bindings::Report,
+    backup_path: String,
+    snapshot: Option<onboard::Snapshot>,
+    refresh_note: Option<String>,
+}
+#[tauri::command(async)]
+fn write_onboard_bindings(
+    app: AppHandle,
+    state: State<AppState>,
+    id: String,
+    settings: onboard_bindings::Settings,
+) -> Result<OnboardBindingWriteResult, String> {
+    if ghub_agent_running() {
+        return Err(GHUB_RUNNING.into());
+    }
+    let guard = manager(&state)?;
+    let manager = guard.as_ref().expect("manager initialised");
+    manager.with_device(&id,|d,t|{
+        let(before,raw)=d.onboard_snapshot(t)?;
+        let backup=auto_backup_path(&app,d).map_err(hidpp::Error::Other)?;
+        write_onboard_backup(&app.package_info().version.to_string(),&backup,d,&before,&raw).map_err(hidpp::Error::Other)?;
+        let report=d.write_slot_bindings(t,&settings)?;let(snapshot,refresh_note)=match d.onboard_snapshot(t){Ok((s,_))=>(Some(s),None),Err(e)=>(None,Some(format!("Bindings were saved and verified, but the full memory view could not be refreshed: {e}")))};
+        Ok(OnboardBindingWriteResult{report,backup_path:backup.display().to_string(),snapshot,refresh_note})
+    }).map_err(|e|e.to_string())
+}
+
 /// Backs up the on-board memory, then writes new DPI levels, starting level
 /// and report rate into one user slot, verified by reading back.
 #[tauri::command(async)]
@@ -559,6 +590,7 @@ fn write_onboard_slot(
     let manager = guard.as_ref().expect("manager initialised");
     manager
         .with_device(&id, |d, t| {
+            onboard_bindings::validate_target(d).map_err(hidpp::Error::Other)?;
             let (before, raw) = d.onboard_snapshot(t)?;
             let backup = auto_backup_path(&app, d).map_err(hidpp::Error::Other)?;
             write_onboard_backup(&app.package_info().version.to_string(), &backup, d, &before, &raw).map_err(hidpp::Error::Other)?;
@@ -1003,6 +1035,7 @@ fn main() {
             onboard_snapshot,
             save_onboard_backup,
             write_onboard_slot,
+            write_onboard_bindings,
             restore_onboard_backup,
             get_app_info,
             set_app_settings,

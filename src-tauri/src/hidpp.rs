@@ -288,6 +288,18 @@ impl Transport {
     }
 }
 
+/// HID++ feature requests used by on-board operations. The production
+/// implementation keeps the same device handle and existing reply routing;
+/// tests can execute the complete flash transaction against simulated memory.
+pub trait FeatureRequest {
+    fn request(&self,device:u8,feature_index:u8,function:u8,params:&[u8],timeout:Duration)->Result<Vec<u8>>;
+}
+impl FeatureRequest for Transport {
+    fn request(&self,device:u8,feature_index:u8,function:u8,params:&[u8],timeout:Duration)->Result<Vec<u8>>{
+        Transport::request(self,device,feature_index,function,params,timeout)
+    }
+}
+
 impl Drop for Transport {
     fn drop(&mut self) {
         // Readers notice within READ_SLICE_MS and exit, closing their handles.

@@ -150,6 +150,7 @@ export interface UpdateProgress {
 // Mirrors src-tauri/src/onboard.rs (read-only on-board memory view).
 
 export interface OnboardInfo {
+  bindings_writable?:boolean;
   memory_model: number;
   profile_format: number;
   macro_format: number;
@@ -196,6 +197,11 @@ export interface OnboardSnapshot {
   profiles: OnboardProfile[];
   rom_profiles: OnboardProfile[];
 }
+
+export type OnboardBindingAction='Disabled'|{Mouse:number}|{Key:{usage:number;modifiers:number}}|{Consumer:number}|{Special:'WheelLeft'|'WheelRight'|'DpiUp'|'DpiDown'|'DpiCycle'|'DpiDefault'|'DpiShift'|'ProfileUp'|'ProfileDown'|'ProfileCycle'|'GShift'};
+export interface OnboardBindingChange {button:number;layer:'Normal'|'GShift';expected:number[];action:OnboardBindingAction}
+export interface OnboardBindingSettings {slot:number;sector:number;changes:OnboardBindingChange[]}
+export interface OnboardBindingWriteResult {report:{slot:number;sector:number;bytes_changed:number;unchanged:boolean;active_reloaded:boolean;reload_note:string|null};backup_path:string;snapshot:OnboardSnapshot|null;refresh_note:string|null}
 
 export interface SlotSettings {
   slot: number;
@@ -269,6 +275,7 @@ export const api = {
 
   onboardSnapshot: (id: string) => invoke<OnboardSnapshot>("onboard_snapshot", { id }),
   saveOnboardBackup: (id: string, path: string) => invoke<void>("save_onboard_backup", { id, path }),
+  writeOnboardBindings:(id:string,settings:OnboardBindingSettings)=>invoke<OnboardBindingWriteResult>("write_onboard_bindings",{id,settings}),
   writeOnboardSlot: (id: string, settings: SlotSettings) =>
     invoke<OnboardWriteResult>("write_onboard_slot", { id, settings }),
   restoreOnboardBackup: (id: string, path: string) =>

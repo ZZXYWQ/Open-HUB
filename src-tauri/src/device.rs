@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use serde::Serialize;
 
-use crate::hidpp::{Error, Result, Transport};
+use crate::hidpp::{Error, Result, Transport,FeatureRequest};
 
 pub mod feature {
     pub const ROOT: u16 = 0x0000;
@@ -330,14 +330,14 @@ impl Device {
         self.features.contains_key(&feature)
     }
 
-    pub(crate) fn call(&self, t: &Transport, feature: u16, function: u8, params: &[u8]) -> Result<Vec<u8>> {
+    pub(crate) fn call(&self, t: &dyn FeatureRequest, feature: u16, function: u8, params: &[u8]) -> Result<Vec<u8>> {
         self.call_with_timeout(t, feature, function, params, TIMEOUT)
     }
 
     /// For slow operations such as committing a flash write.
     pub(crate) fn call_with_timeout(
         &self,
-        t: &Transport,
+        t: &dyn FeatureRequest,
         feature: u16,
         function: u8,
         params: &[u8],
