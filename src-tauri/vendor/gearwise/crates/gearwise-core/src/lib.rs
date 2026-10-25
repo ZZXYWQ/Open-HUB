@@ -15,6 +15,7 @@ pub mod manager;
 pub mod model;
 pub mod profile;
 pub mod transport;
+pub mod tuning;
 
 pub use device::{
     Capabilities, Device, DeviceDescriptor, DeviceEvent, DeviceState, Driver, Setting,

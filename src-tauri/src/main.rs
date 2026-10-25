@@ -9,6 +9,7 @@ mod feature_transport;
 mod naga;
 mod atk;
 mod hyperx;
+mod x11;
 mod legacy;
 mod appearance;
 mod host_macros;
@@ -816,7 +817,7 @@ fn main() {
         std::process::exit(if report["passed"]==true{0}else{1});
     }
 
-    if std::env::args().any(|v|v=="--three-brand-self-test"){let result=(||->Result<serde_json::Value,String>{let templates=multibrand::templates()?;let mut results=Vec::new();for v in templates{let d=v.state.dpi.ok_or("模拟设备未报告 DPI")?;let p=multibrand::Plan { macros:vec![], source:None,vendor:v.descriptor.vendor_id,product:v.descriptor.product_id,settings:vec![gearwise_core::Setting::Dpi(d),gearwise_core::Setting::ReportRate(500)]};results.push(serde_json::json!({"model":v.descriptor.name,"result":multibrand::simulate(&p)?}));}Ok(serde_json::json!({"simulated":true,"hardware_tested":false,"devices":results}))})();match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;}
+    if std::env::args().any(|v|v=="--three-brand-self-test"){let result=(||->Result<serde_json::Value,String>{let templates=multibrand::templates()?;let mut results=Vec::new();for v in templates{let p=multibrand::template_plan(&v)?;results.push(serde_json::json!({"model":v.descriptor.name,"result":multibrand::simulate(&p)?}));}Ok(serde_json::json!({"simulated":true,"hardware_tested":false,"devices":results}))})();match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;}
 
     let args:Vec<String>=std::env::args().collect();
     if let Some(i)=args.iter().position(|v|v=="--synapse-import-probe"){let result=args.get(i+1).ok_or_else(||"缺少配置文件路径".to_string()).and_then(|p|synapse_import::preview(std::path::Path::new(p)));match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;}

@@ -41,8 +41,8 @@ const start=base.indexOf(marker)+marker.length,end=base.indexOf('\n});await ',st
     assert.equal(await page.getByRole('region',{name:'按品牌导入配置'}).count(),0);
     await page.getByRole('button',{name:'导入配置',exact:true}).click();
     const region=page.getByRole('region',{name:'按品牌导入配置'}),cards=region.locator('.hub-source-grid').first();
-    assert.equal(await cards.getByRole('button').count(),15);
-    for(const brand of ['华硕 / ASUS','Roccat','芝奇 / G.Skill','Etekcity','Mars Gaming','罗技 / Logitech','迈从 / MCHOSE','雷蛇 / Razer','海盗船 / Corsair','赛睿 / SteelSeries','ATK','蜻蜓 / VXE','VGN','HyperX','Pulsar'])assert(await cards.getByText(brand,{exact:true}).isVisible());
+    assert.equal(await cards.getByRole('button').count(),16);
+    for(const brand of ['Attack Shark','华硕 / ASUS','Roccat','芝奇 / G.Skill','Etekcity','Mars Gaming','罗技 / Logitech','迈从 / MCHOSE','雷蛇 / Razer','海盗船 / Corsair','赛睿 / SteelSeries','ATK','蜻蜓 / VXE','VGN','HyperX','Pulsar'])assert(await cards.getByText(brand,{exact:true}).isVisible());
     assert(await cards.getByText('Synapse · Naga V2 HyperSpeed · Synapse 4',{exact:true}).isVisible());
     assert(await cards.getByText('M HUB · A7 V3 Ultra+',{exact:true}).isVisible());
     assert.equal(await region.getByText('多品牌',{exact:true}).count(),0);
@@ -50,7 +50,7 @@ const start=base.indexOf(marker)+marker.length,end=base.indexOf('\n});await ',st
     await page.evaluate(()=>window.__qaCatalogFail=false);
     await page.getByRole('button',{name:'重试支持列表',exact:true}).click();
     assert.equal(await region.locator('details').count(),0);
-    assert.equal(await region.getByRole('button').count(),23);
+    assert.equal(await region.getByRole('button').count(),24);
     for(const brand of ['Glorious','DreamMachines','Marvo','G-Wolves','Genesis','Machenike','Mad Dog','T-Dagger'])assert(await region.getByRole('button',{name:brand+' 板载配置导入',exact:true}).isVisible());
     const gloriousCard=region.getByRole('button',{name:'Glorious 板载配置导入',exact:true});
     assert.equal(await gloriousCard.getByText('Glorious Model O/O-',{exact:true}).count(),1);
@@ -91,6 +91,15 @@ const start=base.indexOf(marker)+marker.length,end=base.indexOf('\n});await ',st
       assert.equal(calls.filter(c=>c.cmd==='preview_profile_import').at(-1).args.source,kind);
       await dialog.getByRole('button',{name:'取消',exact:true}).click();
     }
+    await page.getByRole('button',{name:'导入配置',exact:true}).click();
+    await cards.getByRole('button',{name:'Attack Shark X11 配置导入',exact:true}).click();
+    dialog=page.getByRole('dialog');await dialog.getByRole('heading',{name:'导入 Attack Shark X11 配置',exact:true}).waitFor();
+    assert.equal(await dialog.getByRole('button',{name:'读取本地配置',exact:true}).count(),0);
+    assert.equal(await dialog.getByRole('button',{name:'选择配置文件',exact:true}).count(),1);
+    await dialog.getByRole('button',{name:'选择配置文件',exact:true}).click();
+    await dialog.getByRole('button',{name:'导入 1 项',exact:true}).waitFor();
+    assert.equal((await page.evaluate(()=>window.__qaCalls.filter(c=>c.cmd==='preview_profile_import').at(-1))).args.source,'attackshark');
+    await dialog.getByRole('button',{name:'取消',exact:true}).click();
     await page.getByRole('button',{name:'导入配置',exact:true}).click();
     await page.getByRole('button',{name:'恢复 Open HUB 备份',exact:true}).click();
     dialog=page.getByRole('dialog');await dialog.getByRole('heading',{name:'导入 Open HUB 配置包',exact:true}).waitFor();

@@ -1,0 +1,32 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "date": "2026-10-26",
+  "published_installed_version_unchanged": "0.3.7",
+  "installer_generated": false,
+  "update_feed_changed": false,
+  "hundred_model_target_complete": false,
+  "new_fully_accepted_models": 0,
+  "new_experimental_model": "Attack Shark X11",
+  "new_model_transport_variants": 2,
+  "performance_existing_distinct_models": 8,
+  "performance_existing_transport_variants": 9,
+  "other_existing_model_improvement": "Corsair M65 PRO native LOD and angle snapping UI",
+  "validation": {
+    "application_default_tests": 350,
+    "explicit_import_and_saved_ui_tests": 9,
+    "vendor_core_and_drivers_tests": 253,
+    "ui_suites": 25,
+    "ui_initial_failure_count": 2,
+    "ui_rechecks_passed": true,
+    "initial_ui_failures": "Two outdated brand-count expectations; retained in private initial report and corrected with passing affected-suite rechecks.",
+    "native_development_exe_transports": 32,
+    "hardware_accessed": false,
+    "hardware_tested_new_models": false,
+    "dpi_source_capture_matches": 320,
+    "valid_macro_source_capture_matches": 50,
+    "invalid_unbalanced_macro_capture_rejections": 3
+  },
+  "runtime_new_dependencies": 0,
+  "new_original_svg_bytes": 1184,
+  "source": "See X11-ADAPTER.md and development/2026-10-26-performance-x11.md; no private profile contents included."
+}

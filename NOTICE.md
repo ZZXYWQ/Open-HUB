@@ -1,6 +1,6 @@
 # 来源与第三方组件
 
-本项目是基于 Abidur Rahman 的 [Open GHub](https://github.com/abidr/open-ghub) 修改的独立实验分支，保留上游 Git 历史与 [GPL-3.0-or-later](LICENSE)。基线：2853a6251a31a376a0f7287c1c846bd9bff97198。修改日期截至 2026-10-25。
+本项目是基于 Abidur Rahman 的 [Open GHub](https://github.com/abidr/open-ghub) 修改的独立实验分支，保留上游 Git 历史与 [GPL-3.0-or-later](LICENSE)。基线：2853a6251a31a376a0f7287c1c846bd9bff97198。修改日期截至 2026-10-26。
 
 新增多品牌适配与隔离、配置导入、板载/软件宏、灯光、外观和新图标；不代表上游或硬件厂商认证。
 
@@ -32,3 +32,5 @@ Five wired model adapters: libratbag MIT reference, fixed source and scope in [F
 Pulsar Nordic keyboard shortcut records: independently implemented using the MIT reference by Packerlschupfer, fixed commit a18ed8fb963a296d4c5493f51017df32f30e975c of https://github.com/packerlschupfer/pulsar-mouse-linux . Copyright and MIT permission text are bundled in Pulsar-Nordic-MIT.txt. No Python/GTK runtime or official vendor application is bundled.
 
 Basilisk V3 Pro button protocol: independently implemented from kev-landry/basilisk-configurator commit 2bb8b3c81a201465e2b888bafa46b6cbb05ad9ae (MIT, Kevin Landry). Scope and evidence in BASILISK-ADAPTER.md; original license bundled as Basilisk-Configurator-MIT.txt. No vendor runtime or application bundled.
+
+Attack Shark X11 codec, table and test capture reference: HarukaYamamoto0 (MIT), akawazak/attack-shark-x11-community-driver commit 49ecf8e6d3bd83bf71e231209d28c5e0e8b71d12. Original permission text: AttackShark-X11-MIT.txt. Scope, contradictions and readback limits: [docs/X11-ADAPTER.md](docs/X11-ADAPTER.md). No vendor runtime, WinUSB replacement, or factory application is bundled.

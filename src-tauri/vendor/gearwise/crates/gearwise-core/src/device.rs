@@ -58,6 +58,10 @@ pub struct Capabilities {
     pub angle_snapping: bool,
     /// Keyboard "game mode" (disables Super/Alt+Tab etc.).
     pub game_mode: bool,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub tuning: Option<crate::tuning::TuningCaps>,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub vendor_profile: Option<String>,
 }
 
 /// Current values of everything in [`Capabilities`]. Drivers fill what they
@@ -78,6 +82,10 @@ pub struct DeviceState {
     pub lift_off: Option<u8>,
     pub angle_snapping: Option<bool>,
     pub game_mode: Option<bool>,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub tuning: Option<crate::tuning::MouseTuning>,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub vendor_profile: Option<serde_json::Value>,
 }
 
 /// A single change to apply to a device. Profiles are lists of these.
@@ -101,6 +109,10 @@ pub enum Setting {
     LiftOff(u8),
     AngleSnapping(bool),
     GameMode(bool),
+    Tuning(crate::tuning::MouseTuning),
+    /// Strict driver-owned schema for a complete native profile. Unsupported
+    /// drivers must reject this; never a raw USB command passthrough.
+    VendorProfile {schema:String,data:serde_json::Value},
 }
 
 impl Setting {
@@ -116,6 +128,8 @@ impl Setting {
             Setting::LiftOff(_) => "Lift-off distance",
             Setting::AngleSnapping(_) => "Angle snapping",
             Setting::GameMode(_) => "Game mode",
+            Setting::Tuning(_) => "Mouse performance",
+            Setting::VendorProfile{..} => "Complete native profile",
         }
     }
 
@@ -148,6 +162,8 @@ impl Setting {
             Setting::LiftOff(l) => s.lift_off = Some(*l),
             Setting::AngleSnapping(b) => s.angle_snapping = Some(*b),
             Setting::GameMode(b) => s.game_mode = Some(*b),
+            Setting::Tuning(patch)=>patch.merge(s.tuning.get_or_insert_with(Default::default)),
+            Setting::VendorProfile{data,..}=>s.vendor_profile=Some(data.clone()),
         }
     }
 }

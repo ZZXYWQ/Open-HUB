@@ -9,7 +9,7 @@ fn same_device(a:&DeviceDescriptor,b:&DeviceDescriptor)->bool{
  (a.vendor_id,a.product_id,a.id.as_str(),a.serial.as_deref())==(b.vendor_id,b.product_id,b.id.as_str(),b.serial.as_deref())
 }
 fn put(settings:&mut Vec<Setting>,value:Setting){
- let is_same=|s:&Setting|matches!((s,&value),(Setting::Dpi(_),Setting::Dpi(_))|(Setting::ReportRate(_),Setting::ReportRate(_)));
+ let is_same=|s:&Setting|matches!((s,&value),(Setting::Dpi(_),Setting::Dpi(_))|(Setting::ReportRate(_),Setting::ReportRate(_))|(Setting::Tuning(_),Setting::Tuning(_))|(Setting::LiftOff(_),Setting::LiftOff(_))|(Setting::AngleSnapping(_),Setting::AngleSnapping(_)));
  if let Some(index)=settings.iter().position(is_same){settings[index]=value;}else{settings.push(value);}
 }
 impl Service {
@@ -33,6 +33,9 @@ impl Service {
   }
   if let Some(dpi)=dpi {put(&mut plan.settings,Setting::Dpi(dpi));}
   if let Some(rate)=out.state.report_rate {put(&mut plan.settings,Setting::ReportRate(rate));}
+  if plan.settings.iter().any(|s|matches!(s,Setting::LiftOff(_))){if let Some(lift)=out.state.lift_off{put(&mut plan.settings,Setting::LiftOff(lift));}}
+  if plan.settings.iter().any(|s|matches!(s,Setting::AngleSnapping(_))){if let Some(angle)=out.state.angle_snapping{put(&mut plan.settings,Setting::AngleSnapping(angle));}}
+  if let Some(live)=out.state.tuning.as_ref(){if let Some(Setting::Tuning(selected))=plan.settings.iter_mut().find(|s|matches!(s,Setting::Tuning(_))){selected.refresh_selected(live);}}
   let software_state=if !session.needs_software{"hardware"}else if plan.source.as_ref().is_some_and(|s|runtime.is_armed(s))&&cleanup.as_ref().is_some_and(|c|!c.cancelled.load(Ordering::Acquire)){"running"}else{"stopped"};
   out.session=Some(SessionView{plan,software_state,temporary_dpi});Ok(())
  }

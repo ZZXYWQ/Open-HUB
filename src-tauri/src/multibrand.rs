@@ -18,6 +18,12 @@ pub use session_plan::SessionView;
 #[path="import_execution_tests.rs"]
 mod import_execution_tests;
 #[cfg(test)]
+#[path="tuning_models.rs"]
+mod tuning_models;
+#[cfg(test)]
+#[path="x11_models.rs"]
+mod x11_models;
+#[cfg(test)]
 #[path="basilisk_models.rs"]
 mod basilisk_models;
 #[cfg(test)]
@@ -54,7 +60,7 @@ pub fn choose_profile_device(ids:&[String],selected:Option<&str>)->Result<String
  match matches.as_slice(){[id]=>Ok((*id).clone()),[]=>Err("未连接所选配置对应的具体鼠标，请重新选择".into()),_=>Err("连接了多只同型号鼠标，请先选择目标；本次未向任何一只应用".into())}
 }
 pub fn supported(v: u16, p: u16) -> bool {
-    gearwise_razer::basilisk::supported(v,p) || crate::legacy::supported(v,p) || crate::atk::supported(v,p) || crate::hyperx::supported(v,p) || matches!(
+    crate::x11::supported(v,p) || gearwise_razer::basilisk::supported(v,p) || crate::legacy::supported(v,p) || crate::atk::supported(v,p) || crate::hyperx::supported(v,p) || matches!(
         (v, p),
         (0x1532, 0x0084) | (0x1532, 0x00b4) | (0x1532, 0x007a | 0x007b | 0x00a5 | 0x00a6 | 0x00c0 | 0x00c1) | (0x1b1c, 0x1b2e) | (0x1038, 0x1720)
     )
@@ -65,7 +71,7 @@ fn view(d: &mut dyn gearwise_core::Device) -> Result<View, String> {
         descriptor: d.descriptor().clone(),
         capabilities: d.capabilities().clone(),
         state,
-        readback: if d.descriptor().vendor_id == 0x1038 {
+        readback: if crate::x11::supported(d.descriptor().vendor_id,d.descriptor().product_id){"write_only_session_cached"} else if d.descriptor().vendor_id == 0x1038 {
             "write_only_cached"
         } else if d.descriptor().vendor_id == 0x1b1c {
             "stored_and_session_cached"
@@ -87,7 +93,7 @@ impl Service {
             .lock()
             .map_err(|_| "Three-brand manager lock poisoned")?;
         if guard.is_none() {
-            let backend = HidapiBackend::with_filter(VendorFilter::only([0x1532, 0x1b1c, 0x1038, 0x373b, 0x3554, 0x03f0, 0x0b05, 0x1e7d, 0x28da, 0x1ea7, 0x04d9]))
+            let backend = HidapiBackend::with_filter(VendorFilter::only([0x1532, 0x1b1c, 0x1038, 0x373b, 0x3554, 0x03f0, 0x0b05, 0x1e7d, 0x28da, 0x1ea7, 0x04d9, 0x1d57]))
                 .map_err(|e| e.to_string())?;
             *guard = Some(DeviceManager::new(
                 Box::new(ExactBackend(backend)),
@@ -95,6 +101,7 @@ impl Service {
                     Box::new(crate::naga::NagaDriver),
                     Box::new(crate::atk::AtkDriver),
                     Box::new(crate::hyperx::HasteDriver),
+                    Box::new(crate::x11::X11Driver),
                     Box::new(crate::legacy::WiredDriver),
                     Box::new(gearwise_razer::RazerDriver::new()),
                     Box::new(gearwise_corsair::CorsairDriver),
@@ -308,6 +315,7 @@ impl gearwise_core::HidBackend for ExactBackend {
     }
 }
 pub fn validate(p: &Plan) -> Result<(), String> {
+    if crate::x11::supported(p.vendor,p.product){return crate::x11::validate_plan(p);}
     let _compiled=compile(p)?;
     if !supported(p.vendor, p.product) {
         return Err("尚未实现该具体型号".into());
@@ -320,6 +328,8 @@ pub fn validate(p: &Plan) -> Result<(), String> {
         let k = match s {
             Setting::Dpi(_) => "dpi".into(),
             Setting::ReportRate(_) => "rate".into(),
+            Setting::Tuning(_) => "tuning".into(),
+            Setting::LiftOff(_)=>"lift-off".into(),Setting::AngleSnapping(_)=>"angle-snapping".into(),
             Setting::Lighting { zone, .. } => format!("light:{zone}"),
             Setting::Button { id, .. } => format!("button:{id}"),
             _ => return Err("该设置尚未接入".into()),
@@ -327,6 +337,8 @@ pub fn validate(p: &Plan) -> Result<(), String> {
         if !seen.insert(k) {
             return Err("同一项设置不能重复".into());
         }
+        if matches!(s,Setting::LiftOff(_)|Setting::AngleSnapping(_)){if (p.vendor,p.product)!=(0x1b1c,0x1b2e){return Err("此型号的原生抬升高度/直线修正尚未接通".into());}if matches!(s,Setting::LiftOff(v)if *v>=5){return Err("M65 PRO 抬升高度需要在五个原生档位内选择".into());}continue;}
+        if let Setting::Tuning(tuning)=s{crate::atk::validate_tuning(p.vendor,p.product,tuning).map_err(|e|e.to_string())?;continue;}
         if crate::atk::is_pulsar(p.vendor,p.product){match s{Setting::Dpi(d)=>crate::atk::validate_dpi(d,p.product).map_err(|e|e.to_string())?,Setting::ReportRate(r)if crate::atk::model(p.vendor,p.product).unwrap().rates.contains(r)=>{},Setting::Lighting{zone:0,state}if state.brightness==100&&matches!(state.effect,gearwise_core::model::LightingEffect::Off|gearwise_core::model::LightingEffect::Static{..})=>{},Setting::Button{id,action}=>validate_pulsar_button(*id,action)?,_=>return Err("此 Pulsar 型号未实现该设置".into())}continue;}
 
         if let Some(model)=crate::legacy::model(p.vendor,p.product){crate::legacy::validate_setting(model,s).map_err(|e|e.to_string())?;continue;}
@@ -411,6 +423,10 @@ pub fn validate(p: &Plan) -> Result<(), String> {
 fn validate_capabilities(p: &Plan, c: &Capabilities) -> Result<(), String> {
     for s in &p.settings {
         match s {
+            Setting::LiftOff(v)if usize::from(*v)>=c.lift_off.len()=>return Err("抬升档位超出设备能力".into()),
+            Setting::AngleSnapping(_)if !c.angle_snapping=>return Err("此设备未报告直线修正能力".into()),
+            Setting::Tuning(t)=>t.validate(c.tuning.as_ref().ok_or("此鼠标未报告性能设置能力")?).map_err(|e|e.to_string())?,
+            Setting::VendorProfile{schema,..} if c.vendor_profile.as_deref()!=Some(schema.as_str())=>return Err("设备不接受此原生配置格式".into()),
             Setting::Dpi(d) => {
                 let cap = c.dpi.as_ref().ok_or("设备未报告 DPI 能力")?;
                 if d.stages.len() > cap.max_stages as usize
@@ -523,6 +539,7 @@ fn simulated(
         (v,p) if crate::legacy::supported(v,p)=>crate::legacy::simulated(v,p).map_err(|e|e.to_string()),
         (v,p) if crate::atk::supported(v,p)=>crate::atk::simulated(product).map_err(|e|e.to_string()),
         (v,p) if crate::hyperx::supported(v,p)=>crate::hyperx::simulated(product).map_err(|e|e.to_string()),
+        (v,p) if crate::x11::supported(v,p)=>crate::x11::simulated(product).map_err(|e|e.to_string()),
         (v,p) if gearwise_razer::basilisk::supported(v,p)=>gearwise_razer::simulated_basilisk(p).map_err(|e|e.to_string()),
         (0x1532, 0x0084) => Ok(gearwise_razer::simulated_deathadder_v2()),
         (0x1532, 0x007a|0x007b|0x00a5|0x00a6|0x00c0|0x00c1) => gearwise_razer::simulated_viper(product).map_err(|e|e.to_string()),
@@ -533,7 +550,7 @@ fn simulated(
     }
 }
 pub fn templates() -> Result<Vec<View>, String> {
-    crate::legacy::models().iter().map(|m|(m.vendor,m.product)).chain(crate::atk::models().iter().map(|m|(m.vendor,m.product))).chain([(0x03f0,0x048e),(0x03f0,0x028e),(0x1532, 0x0084), (0x1532, 0x00b4), (0x1b1c, 0x1b2e), (0x1038, 0x1720),(0x1532,0x007a),(0x1532,0x007b),(0x1532,0x00a5),(0x1532,0x00a6),(0x1532,0x00c0),(0x1532,0x00c1),(0x1532,0x00aa),(0x1532,0x00ab)].into_iter())
+    crate::legacy::models().iter().map(|m|(m.vendor,m.product)).chain(crate::atk::models().iter().map(|m|(m.vendor,m.product))).chain([(0x1d57,0xfa55),(0x1d57,0xfa60),(0x03f0,0x048e),(0x03f0,0x028e),(0x1532, 0x0084), (0x1532, 0x00b4), (0x1b1c, 0x1b2e), (0x1038, 0x1720),(0x1532,0x007a),(0x1532,0x007b),(0x1532,0x00a5),(0x1532,0x00a6),(0x1532,0x00c0),(0x1532,0x00c1),(0x1532,0x00aa),(0x1532,0x00ab)].into_iter())
         .map(|(v, p)| {
             let (mut d, _) = simulated(v, p)?;
             let mut out = view(d.as_mut())?;
@@ -542,6 +559,10 @@ pub fn templates() -> Result<Vec<View>, String> {
             Ok(out)
         })
         .collect()
+}
+pub fn template_plan(v:&View)->Result<Plan,String>{
+ let settings=if crate::x11::supported(v.descriptor.vendor_id,v.descriptor.product_id){vec![Setting::VendorProfile{schema:crate::x11::SCHEMA.into(),data:v.state.vendor_profile.clone().ok_or("离线模板缺少完整配置")?}]}else{vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500)]};
+ let plan=Plan{vendor:v.descriptor.vendor_id,product:v.descriptor.product_id,settings,macros:vec![],source:None};validate(&plan)?;Ok(plan)
 }
 pub fn simulate(plan: &Plan) -> Result<serde_json::Value, String> {
     validate(plan)?;

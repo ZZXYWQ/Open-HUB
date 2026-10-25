@@ -11,6 +11,9 @@ use gearwise_core::{
 };
 #[path = "atk_macros.rs"]
 mod native_macro;
+#[path="atk_tuning.rs"]
+mod tuning;
+pub fn validate_tuning(v:u16,p:u16,t:&gearwise_core::tuning::MouseTuning)->Result<()>{tuning::validate(model(v,p).ok_or(Error::Unsupported("COMPX tuning model"))?,t)}
 #[path = "pulsar_shortcuts.rs"]
 mod pulsar_shortcut;
 use gearwise_core::profile::Macro;
@@ -363,6 +366,7 @@ impl Atk {
                     separate_xy: model.separate_xy,
                 }),
                 report_rates: model.rates.clone(),
+                tuning:tuning::capabilities(model),
                 buttons: (1..=model.buttons)
                     .map(|id| ButtonCaps {
                         id,
@@ -593,6 +597,7 @@ impl Atk {
                 );
             }
         }
+        if self.caps.tuning.is_some(){state.tuning=self.read_tuning().ok();}
         Ok(state)
     }
 }
@@ -624,6 +629,7 @@ impl Device for Atk {
     fn apply(&mut self, s: &Setting) -> Result<()> {
         // Validate the complete operation before any write. Never trust the caller's UI.
         match s {
+            Setting::Tuning(p)=>tuning::validate(self.model,p)?,
             Setting::Dpi(d) => {
                 if d.stages.is_empty()
                     || d.stages.len() > self.model.max_stages as usize
@@ -678,6 +684,7 @@ impl Device for Atk {
         }
         self.identify()?;
         match s {
+            Setting::Tuning(p)=>self.apply_tuning(p)?,
             Setting::Dpi(d) => {
                 for (index, stage) in d.stages.iter().enumerate() {
                     self.write_verified(
@@ -788,6 +795,9 @@ fn memory_device(
     for index in 0..8 {
         eeprom[44 + index * 4..48 + index * 4].copy_from_slice(&[0, 255, 0, 86]);
     }
+    eeprom[10..12].copy_from_slice(&pair(1));
+    for(index,v)in[8,1,6,0,0].into_iter().enumerate(){eeprom[169+2*index..171+2*index].copy_from_slice(&pair(v));}
+    for(index,v)in[1,6,2].into_iter().enumerate(){eeprom[181+2*index..183+2*index].copy_from_slice(&pair(v));}
     for (index, value) in [1, 128, 3, 1].into_iter().enumerate() {
         eeprom[76 + index * 2..78 + index * 2].copy_from_slice(&pair(value));
     }

@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/akawazak/attack-shark-x11-community-driver",
+  "commit": "49ecf8e6d3bd83bf71e231209d28c5e0e8b71d12",
+  "license": "MIT",
+  "dpi_capture_sha256": "f4dd0e951d3db0ac229f3bdb76f10a9c735723ab59c3d6393b7d95ea296865f9",
+  "macro_capture_source_sha256": "8f6a26b066d6155ebac9bc8cc779b240ff60fad769b5946309fc144a87a639ca",
+  "note": "Test-only independent source captures. Labels contain known inaccuracies; inspect bytes. No device access."
+}

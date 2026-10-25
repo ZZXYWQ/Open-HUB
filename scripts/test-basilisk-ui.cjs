@@ -8,7 +8,7 @@ await page.addInitScript(views=>{const old=window.__TAURI_INTERNALS__.invoke;win
 await require('./ui-static-route.cjs')(page,root);await page.goto('http://127.0.0.1:1431');await page.getByRole('button',{name:'配置',exact:true}).click();
 for(const view of views){for(const mode of ['keyboard','Once','Toggle']){
  await page.getByRole('button',{name:'按品牌新建配置',exact:true}).click();const dialog=page.getByRole('dialog');await dialog.getByRole('button',{name:view.descriptor.name,exact:true}).click();
- const img=dialog.getByRole('img',{name:view.descriptor.name+' 外观图',exact:true});await img.evaluate(img=>img.decode());assert((await img.getAttribute('src')).endsWith('basilisk-v3-pro.svg'));await dialog.getByText('型号结构示意图',{exact:true}).waitFor();
+ const img=dialog.getByRole('img',{name:view.descriptor.name+' 外观图',exact:true});await img.scrollIntoViewIfNeeded();await img.evaluate(async img=>{if(!img.complete)await new Promise((resolve,reject)=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',()=>reject(Error('Basilisk image failed to load')),{once:true});});await img.decode();});assert((await img.getAttribute('src')).endsWith('basilisk-v3-pro.svg'));await dialog.getByText('型号结构示意图',{exact:true}).waitFor();
  assert.equal(await dialog.getByRole('combobox',{name:/^鼠标按键[0-9]+动作$/}).count(),12);assert.equal(await dialog.getByRole('combobox',{name:'鼠标按键1动作',exact:true}).count(),0);
  assert.equal(await dialog.getByRole('spinbutton',{name:'鼠标档位1X',exact:true}).getAttribute('step'),'1');await dialog.getByRole('spinbutton',{name:'鼠标档位1X',exact:true}).fill('1601');await dialog.getByRole('combobox',{name:'鼠标回报率',exact:true}).selectOption('500');
  if(mode==='keyboard'){

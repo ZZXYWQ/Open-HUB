@@ -14,7 +14,7 @@ export function ProfileImportDialog({source,onClose,onDone,devices=[],models=[]}
   const kind=boardBrand?'device':source??'ghub';
   const nativeDevices=devices.filter(d=>d.id.startsWith('sino:')&&(!boardBrand||models.some(m=>m.brand===boardBrand&&m.vendor===d.vendor_id&&m.firmware===d.firmware_name&&d.model_ids.some(id=>parseInt(id,16)===m.product))));
   const selectedDevice=nativeDevices.find(d=>d.id===deviceId)??nativeDevices[0];
-  const title=kind==='ghub'?'导入罗技 G HUB 配置':kind==='mhub'?'导入迈从 M HUB 配置':kind==='device'?(boardBrand??'鼠标')+' · 读取板载配置':'导入 Open HUB 配置包';
+  const title=kind==='attackshark'?'导入 Attack Shark X11 配置':kind==='ghub'?'导入罗技 G HUB 配置':kind==='mhub'?'导入迈从 M HUB 配置':kind==='device'?(boardBrand??'鼠标')+' · 读取板载配置':'导入 Open HUB 配置包';
   useEffect(()=>{generation.current++;setItems([]);setSelected(new Set());setNote('');setError('');setFile('');setDeviceId('');setBusy(false);return()=>{generation.current++;};},[source]);
   const load=async(pick:boolean)=>{
     const current=generation.current;
@@ -29,7 +29,7 @@ export function ProfileImportDialog({source,onClose,onDone,devices=[],models=[]}
         setNote('从鼠标读取 DPI、回报率和按键；原厂宏内容不可读回，只有本程序记录的宏可带入。');return;
       }
       let path:string|null=null;
-      if(pick||kind==='openhub') {
+      if(pick||kind==='openhub'||kind==='attackshark') {
         const value=await open({multiple:false,filters:[{name:kind==='ghub'?'G HUB 配置数据库':'配置文件',extensions:kind==='ghub'?['db','json']:['json']}]});
         if(current!==generation.current||typeof value!=='string')return;
         path=value;
@@ -51,9 +51,9 @@ export function ProfileImportDialog({source,onClose,onDone,devices=[],models=[]}
     <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-3xl">
       <DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>预览内容后导入配置中心，再选择是否应用到匹配的鼠标。</DialogDescription></DialogHeader>
       {kind==='device'&&<label className="light-select-label">选择{boardBrand??''}鼠标<select aria-label="选择导入鼠标" disabled={busy} value={selectedDevice?.id??''} onChange={e=>{setDeviceId(e.target.value);setItems([]);setSelected(new Set());setError('');}}>{!nativeDevices.length&&<option value="">没有已连接的兼容鼠标</option>}{nativeDevices.map(d=><option key={d.id} value={d.id}>{d.name} · {d.firmware_name}</option>)}</select></label>}
-      <p className="light-help">{kind==='device'?'读取此品牌指定型号当前使用的板载组，不修改设备。'+(models.length?'支持型号：'+[...new Set(models.map(m=>m.name+'（'+m.firmware+'）'))].join(' / '):''):kind==='ghub'?'罗技 G HUB：导入 DPI、回报率和应用关联；暂不转换官方灯效、按键及宏。':kind==='mhub'?'迈从 M HUB：导入 A7 V3 Ultra+ 的三组板载名称与引用。设备已有参数不复制、不改写。':'导入本程序导出的 Open HUB 配置包，保留每项的品牌、型号和完整方案。'}</p>
+      <p className="light-help">{kind==='device'?'读取此品牌指定型号当前使用的板载组，不修改设备。'+(models.length?'支持型号：'+[...new Set(models.map(m=>m.name+'（'+m.firmware+'）'))].join(' / '):''):kind==='attackshark'?'仅导入本程序导出的 X11 完整方案，按精确型号过滤；不解析原厂私有文件，不从设备虚构读回。':kind==='ghub'?'罗技 G HUB：导入 DPI、回报率和应用关联；暂不转换官方灯效、按键及宏。':kind==='mhub'?'迈从 M HUB：导入 A7 V3 Ultra+ 的三组板载名称与引用。设备已有参数不复制、不改写。':'导入本程序导出的 Open HUB 配置包，保留每项的品牌、型号和完整方案。'}</p>
       <div className="flex flex-wrap gap-2">
-        {kind!=='openhub'&&<Button disabled={busy||(kind==='device'&&!selectedDevice)} onClick={()=>void load(false)}><Download size={15}/>{kind==='device'?'读取鼠标板载配置':'读取本地配置'}</Button>}
+        {kind!=='openhub'&&kind!=='attackshark'&&<Button disabled={busy||(kind==='device'&&!selectedDevice)} onClick={()=>void load(false)}><Download size={15}/>{kind==='device'?'读取鼠标板载配置':'读取本地配置'}</Button>}
         {kind!=='device'&&<Button variant="outline" disabled={busy} onClick={()=>void load(true)}><FolderOpen size={15}/>{busy?'正在读取…':'选择配置文件'}</Button>}
       </div>
       {error&&<div role="alert" className="lighting-error">{error}</div>}

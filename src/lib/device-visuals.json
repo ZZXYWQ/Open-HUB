@@ -783,5 +783,23 @@
         "src": "/devices/basilisk-v3-pro.svg"
       }
     ]
+  },
+  {
+    "id": "attack-shark-x11",
+    "label": "Attack Shark X11",
+    "vendor": 7511,
+    "products": [
+      64085,
+      64096
+    ],
+    "names": [
+      "Attack Shark X11"
+    ],
+    "images": [
+      {
+        "label": "结构示意",
+        "src": "/devices/attack-shark-x11.svg"
+      }
+    ]
   }
 ]

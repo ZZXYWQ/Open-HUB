@@ -426,6 +426,7 @@ impl Device for RazerDevice {
             Setting::OnboardProfile(_) => return Err(Error::Unsupported("onboard profiles")),
             Setting::LiftOff(_) => return Err(Error::Unsupported("lift-off distance")),
             Setting::AngleSnapping(_) => return Err(Error::Unsupported("angle snapping")),
+            Setting::VendorProfile{..} | Setting::Tuning(_) => return Err(Error::Unsupported("mouse performance")),
         }
         setting.apply_to(&mut self.state);
         Ok(())

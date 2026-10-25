@@ -71,6 +71,7 @@ impl SteelSeriesDevice {
     fn plan(&self, setting: &Setting) -> Result<(Setting, Vec<Packet>)> {
         let spec = self.spec;
         match setting {
+            Setting::VendorProfile{..} | Setting::Tuning(_) => return Err(Error::Unsupported("mouse performance")),
             Setting::Dpi(want) => {
                 let (applied, packets) = dpi::plan(&spec.dpi, want)?;
                 Ok((Setting::Dpi(applied), packets))

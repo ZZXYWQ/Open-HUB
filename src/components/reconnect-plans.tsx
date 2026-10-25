@@ -13,8 +13,12 @@ interface Candidate{descriptor:Target;rate:number|null;revision:string;blocked:s
 interface Candidates{record:Item;devices:Candidate[];needs_source:boolean;warnings:string[]}
 interface SourceInfo{source:MultiSource;kind:string;serial:string|null}
 function settingLabel(s:MultiSetting,plan:MultiPlan){
+ if('VendorProfile'in s)return 'X11 完整原生配置：DPI、性能、灯效、八个控制项和板载宏';
  if('Dpi'in s)return `DPI：${s.Dpi.stages.map(v=>`${v.x} × ${v.y}`).join(' / ')}，活动档位 ${s.Dpi.active+1}`;
  if('ReportRate'in s)return `目标回报率：${s.ReportRate} Hz`;
+ if('LiftOff'in s)return `抬升高度：原生档位 ${s.LiftOff+1}`;
+ if('AngleSnapping'in s)return `直线修正：${s.AngleSnapping?'开启':'关闭'}`;
+ if('Tuning'in s){const labels:Record<string,string>={debounce_ms:'按键消抖',motion_sync:'Motion Sync',angle_snapping:'直线修正',ripple_control:'波纹修正',led_idle_seconds:'闲置熄灯时间',sensor_sleep_enabled:'自定义传感器休眠',sensor_sleep_seconds:'传感器休眠时间',lift_off_microns:'抬升高度'};return Object.entries(s.Tuning).map(([k,v])=>`${labels[k]??k}：${typeof v==='boolean'?(v?'开启':'关闭'):k==='lift_off_microns'?Number(v)/1000+' mm':v+(k==='debounce_ms'?' ms':' 秒')}`).join('；');}
  if('Button'in s){const a=s.Button.action;let action:string;
   if(typeof a==='string')action=a==='Default'?'默认动作':'禁用';
   else if('Macro'in a)action=`软件宏“${plan.macros?.find(m=>m.id===a.Macro)?.name??a.Macro}”`;

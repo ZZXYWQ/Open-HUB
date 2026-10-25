@@ -410,6 +410,7 @@ impl BragiDevice {
             Setting::Button { .. } => Err(Error::Unsupported("button remapping")),
             Setting::OnboardProfile(_) => Err(Error::Unsupported("onboard profiles")),
             Setting::GameMode(_) => Err(Error::Unsupported("game mode")),
+            Setting::VendorProfile{..} | Setting::Tuning(_) => Err(Error::Unsupported("mouse performance")),
         }
     }
 }
@@ -513,7 +514,7 @@ impl Device for BragiDevice {
                 .set(prop::LIFT_OFF, u32::from(self.spec.lift[*i as usize].1))?,
             Setting::AngleSnapping(on) => self.link.set(prop::ANGLE_SNAP, u32::from(*on))?,
             // Rejected by validate().
-            Setting::Button { .. } | Setting::OnboardProfile(_) | Setting::GameMode(_) => {
+            Setting::Button { .. } | Setting::OnboardProfile(_) | Setting::GameMode(_) | Setting::VendorProfile{..} | Setting::Tuning(_) => {
                 return Err(Error::Unsupported("setting"));
             }
         }
