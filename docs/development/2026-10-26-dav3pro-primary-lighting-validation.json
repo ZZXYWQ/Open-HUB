@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-26",
+  "status": "development_only",
+  "full_accepted_distinct_models": 0,
+  "application_default_tests": 548,
+  "explicit_ui_config_native_cross_tests": 36,
+  "core_driver_unit_tests": 332,
+  "doctests": 1,
+  "headless_ui_suites": 47,
+  "focused_independent_output_ui_checks": 18,
+  "memory_transport_cases": 38,
+  "counts_are_not_mouse_acceptance": true,
+  "hardware_tested": false,
+  "target": {
+    "vendor": "1532",
+    "products": [
+      "00B6",
+      "00B7"
+    ],
+    "distinct_models": 1,
+    "transports": 2
+  },
+  "implemented": [
+    "conditional primary remap with a freshly verified ordinary left click",
+    "click additions before normal changes before secondary changes",
+    "all sixteen complete known native button records persisted from fresh reads",
+    "OEM logical Hypershift pair and default fallback on exit",
+    "paired final readback, foreign-context preservation and single recovery attempts",
+    "unknown secondary preflight and unknown parent mutation lock",
+    "UI only offers implemented keyboard usage range",
+    "explicit Synapse refusal on confirmed parser normalization loss",
+    "independent PC RGB and dock effects/music/restore with command coordination",
+    "background discovery and status polling preserve target selection/drafts and discard stale mutation replies"
+  ],
+  "proof_limits": [
+    "Fn12 pair wire composition is reconstructed from same-protocol action facts and exact B6 record transport; no DA physical capture",
+    "authored parser fixtures prove refusal and normalization loss, not real DA export acceptance",
+    "calibration exact bridge/selectors confirmed but 26-level host conversion unresolved; remains disabled",
+    "thread and UI output-routing tests use synthetic workers/mock IPC; no audio, RGB server or HID opened",
+    "complete scroll outputs, reverse DPI cycle, complete key selection, macros, calibration, private import and physical acceptance remain gaps"
+  ],
+  "frontend": {
+    "javascript_bytes": 745076,
+    "javascript_gzip9_bytes": 224515,
+    "new_runtime_dependencies": 0
+  },
+  "development_exe_sha256": "9ea2bebc18fd9d0817b8ebb8d5b8bb5343336a1ab4b18235369fa130f3ed4ce5",
+  "installed_exe_sha256_unchanged": "e77fc588993d0a7f2d1c1cd12313610731d5b3ecec293ba2c7d7f5e397ea06b0",
+  "release_version_unchanged": "0.3.7",
+  "installer_created": false,
+  "release_published": false,
+  "source_sha256": {
+    "src-tauri/vendor/gearwise/crates/gearwise-razer/src/dav3pro_buttons.rs": "9afdf9e510bdff76e40705e1dcc53777023ae6fe9b371a501190667b3817ad88",
+    "src-tauri/vendor/gearwise/crates/gearwise-razer/src/device.rs": "cb0794368704653b260d605d33df407eb2d315be781763d5f16abef5e14d4a70",
+    "src-tauri/src/multibrand.rs": "395d62046595f34f41929008fe072e065ea8dc6649f1f22436f1a05d5021a5b3",
+    "src-tauri/src/dav3pro_models.rs": "9c21d95cbd0e0db1ce3e8e8539e4d8552e22b29de83623b99b192c001b1d3123",
+    "src-tauri/src/synapse_profiles.rs": "8622b73b9972272de3d0309249c234b209304051abb7d1a319787c5d478f46bf",
+    "src-tauri/src/synapse_dav3pro_import_tests.rs": "e96e7e5f76dc443b2a8a460f41fe8edc5c95f664da685accca37044987e6365c",
+    "src-tauri/src/effects.rs": "1ea122f3ad653047b5187640ca468e6afba9bb4c69277722326280656fd659f4",
+    "src-tauri/src/effects_ownership_tests.rs": "ae0362e992b7b66aad928b247b8a2f74b460010e37cc2886ae22aed68f59fccd",
+    "src-tauri/src/main.rs": "b7e4f188d11a3c0f260d1c411e8466ad33e504da19678ee7a6c765b4dfa780a3",
+    "src/components/multi-panel.tsx": "745d9a89083c6b566236d9b3e2c645009ade62a120861c08caf1296c21f8800c",
+    "src/components/lighting-panel.tsx": "ea5f1043bfc5dc6dff807c64331a40fb65353e5500685a55047765d8b70ac5a0",
+    "src/lib/multi.ts": "363ce57bdc2492ce780495e03d86c6bd1247cfe778a299a94bf21ea7ce8724c5",
+    "scripts/test-dav3pro-power-ui.cjs": "f1ff2efd824033e7bbf4347041a4bb15c39af7b6e6798884d3c303d8ca2f36bf",
+    "scripts/test-lighting-independent-outputs-ui.cjs": "ceb0be72e2b240e15384570ca33beb6f13ae593f708c9352508c5a828abb3368"
+  }
+}

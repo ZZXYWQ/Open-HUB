@@ -612,7 +612,7 @@ pub fn template_plan(v:&View)->Result<Plan,String>{
   settings.extend(v.capabilities.buttons.iter().filter(|b|b.remappable&&b.id!=1).map(|b|Setting::Button{id:b.id,action:v.state.buttons.get(&b.id).cloned().unwrap_or_else(||b.default_action.clone())}));
   settings.extend(v.capabilities.lighting.iter().filter_map(|z|v.state.lighting.get(&z.id).map(|state|Setting::Lighting{zone:z.id,state:state.clone()})));
   if let Some(level)=v.state.lift_off{settings.push(Setting::LiftOff(level));}settings
- }else if v.descriptor.vendor_id==0x1532&&matches!(v.descriptor.product_id,0x00b6|0x00b7){let mut settings=vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500),Setting::Tuning(gearwise_core::tuning::MouseTuning{device_sleep_seconds:Some(60),low_power_percent:Some(5),..Default::default()})];settings.extend(v.capabilities.buttons.iter().filter(|b|b.remappable&&b.id!=1).filter_map(|b|v.state.buttons.get(&b.id).map(|action|Setting::Button{id:b.id,action:action.clone()})));settings}else if crate::x11::supported(v.descriptor.vendor_id,v.descriptor.product_id){vec![Setting::VendorProfile{schema:crate::x11::SCHEMA.into(),data:v.state.vendor_profile.clone().ok_or("离线模板缺少完整配置")?}]}else{vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500)]};
+ }else if v.descriptor.vendor_id==0x1532&&matches!(v.descriptor.product_id,0x00b6|0x00b7){let mut settings=vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500),Setting::Tuning(gearwise_core::tuning::MouseTuning{device_sleep_seconds:Some(60),low_power_percent:Some(5),..Default::default()})];settings.extend(v.capabilities.buttons.iter().filter(|b|b.remappable).filter_map(|b|v.state.buttons.get(&b.id).map(|action|Setting::Button{id:b.id,action:action.clone()})));settings}else if crate::x11::supported(v.descriptor.vendor_id,v.descriptor.product_id){vec![Setting::VendorProfile{schema:crate::x11::SCHEMA.into(),data:v.state.vendor_profile.clone().ok_or("离线模板缺少完整配置")?}]}else{vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500)]};
  let plan=Plan{vendor:v.descriptor.vendor_id,product:v.descriptor.product_id,settings,macros:vec![],source:None};validate(&plan)?;Ok(plan)
 }
 pub fn simulate(plan: &Plan) -> Result<serde_json::Value, String> {
@@ -755,6 +755,17 @@ pub fn compile(plan:&Plan)->Result<Compiled,String>{
  if !keys.is_empty(){let reserved=keys.keys().map(|v|0x68+(*v-0x7c) as u8).collect::<Vec<_>>();for s in &plan.settings{if let Setting::Button{action:ButtonAction::Key{usage,..},..}=s{if reserved.contains(usage){return Err("普通快捷键与软件宏的 F13–F24 触发键冲突".into());}}}}
  // Indicator colours address the active DPI stage; establish that stage first.
  if crate::atk::supported(plan.vendor,plan.product){native.sort_by_key(|s|matches!(s,Setting::Lighting{..}));}
+ if plan.vendor==0x1532&&matches!(plan.product,0x00b6|0x00b7){
+  let normal=gearwise_razer::dav3pro_buttons::BUTTONS;
+  let left=|id,action:&ButtonAction|gearwise_razer::dav3pro_buttons::encode(id,action).ok()==Some([1,1,1,0,0,0,0]);
+  let assignments=plan.settings.iter().filter_map(|s|if let Setting::Button{id,action}=s{Some((*id,action))}else{None}).collect::<std::collections::BTreeMap<_,_>>();
+  if normal.iter().all(|(id,_)|assignments.contains_key(id))&&!normal.iter().any(|(id,_)|left(*id,assignments[id])){return Err("普通层完整按键表必须保留至少一个左键".into());}
+  // Establish ordinary click witnesses before removing an old binding. Stable
+  // sorting keeps all unrelated native settings in their original order.
+  for (id,action) in &assignments{if *id>=256&&matches!(action,ButtonAction::Hypershift){if let Some(normal)=assignments.get(&(*id&255)){if !matches!(normal,ButtonAction::Hypershift){return Err("第二层 Hypershift 必须与普通层切层按键一致".into());}}}}
+  for (id,action) in &assignments{if *id<256&&matches!(action,ButtonAction::Hypershift){if let Some(paired)=assignments.get(&(*id|256)){if !matches!(paired,ButtonAction::Hypershift){return Err("Hypershift 切层按键的第二层必须由切层动作占用".into());}}}}
+  native.sort_by_key(|s|match s{Setting::Button{id,action}if *id<256&&left(*id,action)=>0,Setting::Button{id,..}if *id>=256=>2,_=>1});
+ }
  Ok(Compiled{settings:native,bindings,input:crate::macro_runtime::InputMap{keys,buttons,dpi_buttons:dpi_actions.keys().copied().collect()},software_input,dpi_actions})
 }#[cfg(test)]mod macro_compile_tests{
  use super::*;use gearwise_core::{profile::{Macro,MacroMode,MacroStep},model::Modifiers};

@@ -54,12 +54,12 @@ pub fn default_block(id: u16) -> Option<[u8; 7]> {
     basilisk::default_block(u16::from(physical))
 }
 pub fn encode(id: u16, action: &ButtonAction) -> Result<[u8; 7]> {
-    if id == 1 || wire(id).is_none() {
+    if wire(id).is_none() {
         return Err(Error::Unsupported(
-            "DeathAdder protected/unknown physical input",
+            "DeathAdder unknown physical input",
         ));
     }
-    let (physical, layer) = wire(id).unwrap();
+    let (physical, _) = wire(id).unwrap();
     if matches!(
         action,
         ButtonAction::Mouse(MouseButton::WheelLeft | MouseButton::WheelRight)
@@ -75,7 +75,7 @@ pub fn encode(id: u16, action: &ButtonAction) -> Result<[u8; 7]> {
     }
     match action {
         ButtonAction::Default => Ok(default_block(id).unwrap()),
-        ButtonAction::Hypershift if layer == 0 && matches!(physical, 2..=5) => {
+        ButtonAction::Hypershift if matches!(physical, 1..=5) => {
             Ok([12, 1, 1, 0, 0, 0, 0])
         }
         ButtonAction::Media(usage) if MEDIA.contains(usage) => {
@@ -102,9 +102,9 @@ pub fn decode(id: u16, raw: &[u8]) -> Option<ButtonAction> {
     if raw.len() != 7 || default_block(id).is_none() {
         return None;
     }
-    let (physical, layer) = wire(id)?;
+    let (physical, _) = wire(id)?;
     if raw == [12, 1, 1, 0, 0, 0, 0] {
-        return (layer == 0 && matches!(physical, 2..=5)).then_some(ButtonAction::Hypershift);
+        return matches!(physical, 1..=5).then_some(ButtonAction::Hypershift);
     }
     if raw[..2] == [10, 2] && raw[4..] == [0, 0, 0] {
         let usage = u16::from_be_bytes([raw[2], raw[3]]);
@@ -169,16 +169,18 @@ pub fn read(link: &mut Link) -> Result<BTreeMap<u16, ButtonAction>> {
 }
 // Synapse can leave the primary physical input reassigned before Open HUB opens.
 // Protecting physical input1 alone therefore cannot protect the last left click.
-fn keep_normal_left(link: &mut Link, id: u16, from: &[u8; 10], to: &[u8; 10]) -> Result<()> {
+fn keep_normal_left(link: &mut Link, id: u16, from: &[u8; 10], to: &[u8; 10]) -> Result<Option<(u16, [u8; 10])>> {
     const LEFT: [u8; 7] = [1, 1, 1, 0, 0, 0, 0];
-    if from[2] != 0 || from[3..] != LEFT || to[3..] == LEFT {
-        return Ok(());
+    // Reassigning primary also requires a witness when it was already non-left
+    // before this session. A secondary-layer click is never an ordinary witness.
+    if from[2] != 0 || to[3..] == LEFT || (id != 1 && from[3..] != LEFT) {
+        return Ok(None);
     }
     for (other, _) in BUTTONS {
         if other != id {
             if let Ok(raw) = get(link, other) {
                 if raw[3..] == LEFT {
-                    return Ok(());
+                    return Ok(Some((other, raw)));
                 }
             }
         }
@@ -187,56 +189,107 @@ fn keep_normal_left(link: &mut Link, id: u16, from: &[u8; 10], to: &[u8; 10]) ->
         "retain at least one verified normal-layer left click before replacing this binding",
     ))
 }
+fn verify_owned_before_write(link: &mut Link, id: u16, from: &[u8; 10], to: &[u8; 10], parent: Option<(u16, [u8; 10])>) -> Result<()> {
+    mode(link)?;
+    if let Some((witness, expected)) = keep_normal_left(link, id, from, to)? {
+        if get(link, witness)? != expected {
+            return Err(Error::protocol("DeathAdder normal left-click witness changed; read again"));
+        }
+    }
+    verify_parent(link, parent)?;
+    if get(link, id)? != *from {
+        return Err(Error::protocol("foreign DeathAdder binding retained before write"));
+    }
+    Ok(())
+}
+fn verify_parent(link: &mut Link, parent: Option<(u16, [u8; 10])>) -> Result<()> {
+    if let Some((id, expected)) = parent {
+        if get(link, id)? != expected { return Err(Error::protocol("foreign DeathAdder normal-layer context retained")); }
+    }
+    Ok(())
+}
+fn desired(before: &[u8; 10], block: &[u8; 7]) -> [u8; 10] {
+    let mut want = *before;
+    want[3..].copy_from_slice(block);
+    want
+}
+fn recover_owned(link: &mut Link, id: u16, before: &[u8; 10], want: &[u8; 10], parent: Option<(u16, [u8; 10])>) -> Result<()> {
+    mode(link)?;
+    let actual = get(link, id)?;
+    if actual == *before { return Ok(()); }
+    if actual != *want { return Err(Error::protocol("foreign DeathAdder binding retained")); }
+    verify_owned_before_write(link, id, &actual, before, parent)?;
+    link.exec(Report::new(2, 0x0c, 10, before))?;
+    if get(link, id)? != *before {
+        return Err(Error::protocol("DeathAdder original assignment restore mismatch"));
+    }
+    mode(link)
+}
+fn apply_record(link: &mut Link, id: u16, before: &[u8; 10], want: &[u8; 10], parent: Option<(u16, [u8; 10])>) -> Result<()> {
+    if want == before {
+        if parent.is_some() { verify_parent(link, parent)?; if get(link, id)? != *before { return Err(Error::protocol("foreign DeathAdder paired binding retained")); } }
+        return Ok(());
+    }
+    verify_owned_before_write(link, id, before, want, parent)?;
+    let result = link.exec(Report::new(2, 0x0c, 10, want))
+        .and_then(|_| get(link, id))
+        .and_then(|raw| if raw == *want { Ok(()) } else { Err(Error::protocol("DeathAdder button readback mismatch")) })
+        .and_then(|_| verify_parent(link, parent))
+        .and_then(|_| mode(link));
+    if let Err(error) = result {
+        let restored = recover_owned(link, id, before, want, parent);
+        return Err(Error::protocol(format!("{error}; original binding recovery: {restored:?}; uncertain writes not retried")));
+    }
+    Ok(())
+}
 pub fn apply(link: &mut Link, id: u16, action: &ButtonAction) -> Result<()> {
     let block = encode(id, action)?;
     mode(link)?;
     let before = get(link, id)?;
-    if decode(id, &before[3..]).is_none() {
-        return Err(Error::Unsupported(
-            "unknown original DeathAdder binding retained",
-        ));
+    let original = decode(id, &before[3..]).ok_or(Error::Unsupported("unknown original DeathAdder binding retained"))?;
+    let want = desired(&before, &block);
+    let (physical, layer) = wire(id).unwrap();
+    if layer == 1 {
+        // A paired OEM Hypershift record may be preserved, but it is not an
+        // independent secondary action. Release must still leave the held layer.
+        if want == before { return Ok(()); }
+        let normal = get(link, u16::from(physical))?;
+        let normal_action = decode(u16::from(physical), &normal[3..]).ok_or(Error::Unsupported("unknown DeathAdder normal binding retained with its secondary input"))?;
+        if matches!(normal_action, ButtonAction::Hypershift) || matches!(action, ButtonAction::Hypershift) {
+            return Err(Error::Unsupported("DeathAdder Hypershift actuator owns its secondary binding; change its normal action first"));
+        }
+        return apply_record(link, id, &before, &want, Some((u16::from(physical), normal)));
     }
-    let mut want = before;
-    want[3..].copy_from_slice(&block);
-    if want == before {
-        return Ok(());
-    }
-    keep_normal_left(link, id, &before, &want)?;
-    mode(link)?;
-    let result = link
-        .exec(Report::new(2, 0x0c, 10, &want))
-        .and_then(|_| get(link, id))
-        .and_then(|raw| {
-            if raw == want {
-                Ok(())
-            } else {
-                Err(Error::protocol("DeathAdder button readback mismatch"))
-            }
-        })
-        .and_then(|_| mode(link));
+    let entering = matches!(action, ButtonAction::Hypershift);
+    let leaving = matches!(original, ButtonAction::Hypershift) && !entering;
+    if !entering && !leaving { return apply_record(link, id, &before, &want, None); }
+    let secondary = id | 0x100;
+    let paired_before = get(link, secondary)?;
+    let paired_want = if entering {
+        // Unknown original second-layer actions are never erased as a side effect.
+        if decode(secondary, &paired_before[3..]).is_none() {
+            return Err(Error::Unsupported("unknown original DeathAdder secondary binding retained before Hypershift"));
+        }
+        desired(&paired_before, &block)
+    } else if paired_before[3..] == [12, 1, 1, 0, 0, 0, 0] {
+        // OEM removes this override on leaving Hypershift: use physical fallback,
+        // rather than resurrecting an old pre-Hypershift assignment.
+        desired(&paired_before, &default_block(secondary).unwrap())
+    } else { paired_before };
+    apply_record(link, id, &before, &want, None)?;
+    let second = apply_record(link, secondary, &paired_before, &paired_want, Some((id, want)));
+    let second_completed = second.is_ok();
+    let result = second.and_then(|_| {
+        mode(link)?;
+        if get(link, id)? != want || get(link, secondary)? != paired_want {
+            return Err(Error::protocol("DeathAdder paired binding final readback mismatch"));
+        }
+        Ok(())
+    });
     if let Err(error) = result {
-        let restored = (|| {
-            mode(link)?;
-            let actual = get(link, id)?;
-            if actual == before {
-                return Ok(());
-            }
-            if actual != want {
-                return Err(Error::protocol("foreign DeathAdder binding retained"));
-            }
-            keep_normal_left(link, id, &actual, &before)?;
-            mode(link)?;
-            link.exec(Report::new(2, 0x0c, 10, &before))?;
-            if get(link, id)? != before {
-                return Err(Error::protocol(
-                    "DeathAdder original assignment restore mismatch",
-                ));
-            }
-            mode(link)
-        })();
-        return Err(Error::protocol(format!(
-            "{error}; original binding recovery: {restored:?}; uncertain writes not retried"
-        )));
+        let secondary_restored = if second_completed {Some(recover_owned(link, secondary, &paired_before, &paired_want, Some((id, want))))} else {None};
+        let restored = recover_owned(link, id, &before, &want, None);
+        return Err(Error::protocol(format!("{error}; paired secondary recovery: {secondary_restored:?}; paired normal binding recovery: {restored:?}; uncertain writes not retried")));
     }
     Ok(())
 }
@@ -284,7 +337,7 @@ mod tests {
     }
     #[test]
     fn modifiers_media_dpi_and_unknown_records_are_exactly_scoped() {
-        for id in BUTTONS.map(|b| b.0).into_iter().filter(|id| *id != 1) {
+        for id in BUTTONS.map(|b| b.0) {
             for mods in 0..=255 {
                 let a = ButtonAction::Key {
                     usage: 4,
@@ -310,7 +363,7 @@ mod tests {
                 }
             }
         }
-        for id in [0, 1, 6, 7, 8, 14, 106, 512, 65535] {
+        for id in [0, 6, 7, 8, 14, 106, 512, 65535] {
             assert!(encode(id, &ButtonAction::Disabled).is_err());
         }
         for a in [
@@ -343,11 +396,21 @@ mod tests {
         OtherLayer,
         UnknownOriginal,
         DriverMode,
+        ForeignBeforeWrite,
+        WitnessChanged,
+        PairedFailure,
+        PairedForeign,
+        PairedUnrestored,
+        UnknownSecondary,
+        UnknownNormal,
+        ParentChangedBeforeSecondary,
+        ParentChangedAfterSecondary,
     }
     struct State {
         blocks: BTreeMap<u16, [u8; 7]>,
         writes: Vec<(u16, [u8; 7])>,
         gets: usize,
+        bad_readback_sent: bool,
     }
     fn rig(pid: u16, fault: Fault) -> (RazerDevice, Arc<Mutex<State>>) {
         let state = Arc::new(Mutex::new(State {
@@ -357,6 +420,7 @@ mod tests {
                 .collect(),
             writes: vec![],
             gets: 0,
+            bad_readback_sent: false,
         }));
         let shared = state.clone();
         let io = MockTransport::new(move |op| {
@@ -378,12 +442,22 @@ mod tests {
                     let id = u16::from(req.args[1]) | (u16::from(req.args[2]) << 8);
                     let mut s = shared.lock().unwrap();
                     s.gets += 1;
+                    if fault == Fault::ForeignBeforeWrite && s.gets == 2 && s.writes.is_empty() {
+                        s.blocks.insert(id, [2, 2, 0, 5, 0, 0, 0]);
+                    }
+                    if fault == Fault::WitnessChanged && id == 2 && s.gets == 3 {
+                        s.blocks.insert(id, default_block(id).unwrap());
+                    }
+                    if fault == Fault::ParentChangedBeforeSecondary && id == 2 && s.gets == 3 {
+                        s.blocks.insert(2, [12,1,1,0,0,0,0]);s.blocks.insert(258, [12,1,1,0,0,0,0]);
+                    }
                     r.args[..3].copy_from_slice(&req.args[..3]);
                     r.args[3..10].copy_from_slice(&s.blocks[&id]);
-                    if fault == Fault::UnknownOriginal && matches!(id, 2 | 258) {
+                    if (fault == Fault::UnknownOriginal && matches!(id, 2 | 258)) || (fault == Fault::UnknownSecondary && id == 260) || (fault == Fault::UnknownNormal && id == 2) {
                         r.args[3..10].copy_from_slice(&[3, 3, 0, 1, 1, 0, 0]);
                     }
-                    corrupt = fault == Fault::BadReadback && s.gets == 2;
+                    corrupt = fault == Fault::BadReadback && s.writes.len() == 1 && !s.bad_readback_sent;
+                    s.bad_readback_sent |= corrupt;
                 }
                 (2, 0x0c) => {
                     let id = u16::from(req.args[1]) | (u16::from(req.args[2]) << 8);
@@ -392,8 +466,9 @@ mod tests {
                     let mut block = [0; 7];
                     block.copy_from_slice(&req.args[3..10]);
                     let mut s = shared.lock().unwrap();
-                    s.blocks.insert(id, block);
+                    if !(fault == Fault::PairedUnrestored && s.writes.len() == 2) {s.blocks.insert(id, block);}
                     s.writes.push((id, block));
+                    if fault == Fault::ParentChangedAfterSecondary && id == 260 { s.blocks.insert(4, [2,2,0,5,0,0,0]); }
                     r.args[..10].copy_from_slice(&req.args[..10]);
                     if s.writes.len() == 1 {
                         match fault {
@@ -407,6 +482,11 @@ mod tests {
                         if fault == Fault::Foreign {
                             s.blocks.insert(id, [2, 2, 0, 5, 0, 0, 0]);
                         }
+                    } else if s.writes.len() == 2 && matches!(fault, Fault::PairedFailure | Fault::PairedForeign | Fault::PairedUnrestored) {
+                        r.status = 3;
+                        if fault == Fault::PairedForeign { s.blocks.insert(id, [2, 2, 0, 5, 0, 0, 0]); }
+                    } else if fault == Fault::PairedUnrestored && s.writes.len() == 3 {
+                        r.status = 3;
                     } else if fault == Fault::RestoreFailure {
                         r.status = 3;
                     }
@@ -443,7 +523,7 @@ mod tests {
                     .iter()
                     .filter(|b| b.remappable)
                     .count(),
-                15
+                16
             );
             for id in [2, 3, 4, 5, 9, 10, 96] {
                 let action = ButtonAction::Key {
@@ -540,7 +620,7 @@ mod tests {
                 }
             }
             let (mut d, s) = rig(pid, Fault::None);
-            for id in [1, 6, 512, 65535] {
+            for id in [6, 512, 65535] {
                 assert!(
                     d.apply(&Setting::Button {
                         id,
@@ -585,19 +665,19 @@ mod tests {
             assert_eq!(r.to_wire(), full);
             assert_eq!(decode(id, &data[3..]), Some(action));
         }
-        for id in [1, 9, 10, 96, 257, 258, 259, 260, 261, 265, 266, 352] {
+        for id in [9, 10, 96, 265, 266, 352] {
             assert!(encode(id, &ButtonAction::Hypershift).is_err());
         }
         for id in [9, 10, 265, 266] {
             assert!(encode(id, &ButtonAction::Dpi(DpiFunction::Up)).is_err());
         }
-        assert!(decode(258, &[12, 1, 1, 0, 0, 0, 0]).is_none());
+        assert_eq!(decode(258, &[12, 1, 1, 0, 0, 0, 0]), Some(ButtonAction::Hypershift));
         for id in [9, 10, 265, 266] {
             assert!(decode(id, &[6, 1, 6, 0, 0, 0, 0]).is_none());
         }
     }
     #[test]
-    fn all_secondary_bindings_and_switch_are_independent_from_normal_records() {
+    fn secondary_bindings_are_independent_except_the_paired_hypershift_actuator() {
         for pid in [0xb6, 0xb7] {
             let (mut d, s) = rig(pid, Fault::None);
             let before = d.read_state().unwrap().buttons;
@@ -606,7 +686,7 @@ mod tests {
                 action: ButtonAction::Hypershift,
             })
             .unwrap();
-            for (id, _) in controls().into_iter().filter(|b| b.0 >= 256) {
+            for (id, _) in controls().into_iter().filter(|b| b.0 >= 256 && b.0 != 260) {
                 let action = ButtonAction::Key {
                     usage: (id as u8 % 20) + 4,
                     mods: Modifiers(0x80),
@@ -624,6 +704,7 @@ mod tests {
                 }
             }
             assert_eq!(s.lock().unwrap().writes.len(), 9);
+            assert!(d.apply(&Setting::Button { id: 260, action: ButtonAction::Disabled }).is_err());
             for (id, _) in controls().into_iter().filter(|b| b.0 != 1) {
                 d.apply(&Setting::Button {
                     id,
@@ -742,4 +823,99 @@ mod tests {
             assert_eq!(s.blocks[&2], [1, 1, 1, 0, 0, 0, 0]);
         }
     }
+    #[test]
+    fn primary_remap_requires_a_fresh_normal_left_and_can_be_restored() {
+        for pid in [0xb6, 0xb7] {
+            let (mut d, state) = rig(pid, Fault::None);
+            let key = ButtonAction::Key { usage: 6, mods: Modifiers(0x81) };
+            assert!(d.apply(&Setting::Button { id: 1, action: key.clone() }).is_err());
+            assert!(state.lock().unwrap().writes.is_empty());
+            d.apply(&Setting::Button { id: 257, action: ButtonAction::Mouse(MouseButton::Left) }).unwrap();
+            assert!(d.apply(&Setting::Button { id: 1, action: key.clone() }).is_err());
+            d.apply(&Setting::Button { id: 2, action: ButtonAction::Mouse(MouseButton::Left) }).unwrap();
+            d.apply(&Setting::Button { id: 1, action: key.clone() }).unwrap();
+            assert_eq!(d.read_state().unwrap().buttons.get(&1), Some(&key));
+            assert!(d.apply(&Setting::Button { id: 2, action: ButtonAction::Default }).is_err());
+            d.apply(&Setting::Button { id: 1, action: ButtonAction::Default }).unwrap();
+            d.apply(&Setting::Button { id: 2, action: ButtonAction::Default }).unwrap();
+            assert_eq!(state.lock().unwrap().blocks[&1], default_block(1).unwrap());
+            // Starting without any normal click is not a license to change primary again.
+            state.lock().unwrap().blocks.insert(1, encode(1, &key).unwrap());
+            assert!(d.apply(&Setting::Button { id: 1, action: ButtonAction::Disabled }).is_err());
+            d.apply(&Setting::Button { id: 1, action: ButtonAction::Default }).unwrap();
+        }
+    }
+    #[test]
+    fn changed_target_or_click_witness_is_retained_without_any_setter() {
+        for pid in [0xb6, 0xb7] {
+            let (mut d, state) = rig(pid, Fault::ForeignBeforeWrite);
+            assert!(d.apply(&Setting::Button { id: 2, action: ButtonAction::Disabled }).is_err());
+            let state = state.lock().unwrap();
+            assert!(state.writes.is_empty());
+            assert_eq!(state.blocks[&2], [2, 2, 0, 5, 0, 0, 0]);
+            drop(state);
+            let (mut d, state) = rig(pid, Fault::WitnessChanged);
+            state.lock().unwrap().blocks.insert(2, [1, 1, 1, 0, 0, 0, 0]);
+            assert!(d.apply(&Setting::Button { id: 1, action: ButtonAction::Disabled }).is_err());
+            let state = state.lock().unwrap();
+            assert!(state.writes.is_empty());
+            assert_eq!(state.blocks[&1], default_block(1).unwrap());
+        }
+    }
+
+    #[test]
+    fn hypershift_pairs_both_layers_and_restores_owned_pair_on_second_failure() {
+        for pid in [0xb6, 0xb7] {
+            let (mut d, state) = rig(pid, Fault::None);
+            d.apply(&Setting::Button { id: 260, action: ButtonAction::Media(0xcd) }).unwrap();
+            d.apply(&Setting::Button { id: 4, action: ButtonAction::Hypershift }).unwrap();
+            let now = d.read_state().unwrap();
+            assert_eq!(now.buttons.get(&4), Some(&ButtonAction::Hypershift));
+            assert_eq!(now.buttons.get(&260), Some(&ButtonAction::Hypershift));
+            assert!(d.apply(&Setting::Button { id: 260, action: ButtonAction::Disabled }).is_err());
+            d.apply(&Setting::Button { id: 4, action: ButtonAction::Default }).unwrap();
+            assert_eq!(state.lock().unwrap().blocks[&260], default_block(260).unwrap());
+            for fault in [Fault::PairedFailure, Fault::PairedForeign, Fault::PairedUnrestored] {
+                let (mut d, state) = rig(pid, fault);
+                assert!(d.apply(&Setting::Button { id: 4, action: ButtonAction::Hypershift }).is_err());
+                let state=state.lock().unwrap();
+                assert_eq!(state.blocks[&4], default_block(4).unwrap());
+                if fault == Fault::PairedForeign { assert_eq!(state.blocks[&260], [2,2,0,5,0,0,0]); }
+                else if fault == Fault::PairedUnrestored {assert_eq!(state.blocks[&260], [12,1,1,0,0,0,0]);assert_eq!(state.writes.iter().filter(|(id,_)|*id==260).count(),2);}
+                else { assert_eq!(state.blocks[&260], default_block(260).unwrap()); }
+                assert_eq!(state.writes.iter().filter(|(id,block)|*id==4&&block[0]==12).count(),1);
+                assert_eq!(state.writes.iter().filter(|(id,block)|*id==260&&block[0]==12).count(),1);
+            }
+            let (mut d, state) = rig(pid, Fault::UnknownSecondary);
+            assert!(d.apply(&Setting::Button { id: 4, action: ButtonAction::Hypershift }).is_err());
+            assert!(state.lock().unwrap().writes.is_empty());
+        }
+    }
+
+    #[test]
+    fn foreign_normal_context_never_reports_a_successful_hypershift_pair() {
+        for pid in [0xb6, 0xb7] {
+            let (mut d, state) = rig(pid, Fault::ParentChangedBeforeSecondary);
+            assert!(d.apply(&Setting::Button { id: 258, action: ButtonAction::Disabled }).is_err());
+            let state=state.lock().unwrap();assert!(state.writes.is_empty());assert_eq!(state.blocks[&258], [12,1,1,0,0,0,0]);drop(state);
+            let (mut d, state) = rig(pid, Fault::ParentChangedAfterSecondary);
+            assert!(d.apply(&Setting::Button { id: 4, action: ButtonAction::Hypershift }).is_err());
+            let state=state.lock().unwrap();assert_eq!(state.blocks[&4],[2,2,0,5,0,0,0]);assert_eq!(state.writes.iter().filter(|(id,_)|*id==4).count(),1);
+        }
+    }
+
+    #[test]
+    fn unknown_parent_binding_locks_secondary_edits_but_preserves_known_noop() {
+        for pid in [0xb6,0xb7] {
+            let (mut d,state)=rig(pid,Fault::UnknownNormal);
+            d.apply(&Setting::Button{id:258,action:ButtonAction::Default}).unwrap();
+            assert!(d.apply(&Setting::Button{id:258,action:ButtonAction::Disabled}).is_err());
+            assert!(state.lock().unwrap().writes.is_empty());
+            let (mut d,state)=rig(pid,Fault::UnknownSecondary);
+            state.lock().unwrap().blocks.insert(4,[12,1,1,0,0,0,0]);
+            d.apply(&Setting::Button{id:4,action:ButtonAction::Default}).unwrap();
+            let state=state.lock().unwrap();assert_eq!(state.writes.len(),1);assert_eq!(state.writes[0].0,4);
+        }
+    }
+
 }

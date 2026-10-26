@@ -21,10 +21,11 @@ export function fromMulti(v:MultiView):MultiPlan{
  // untouched. Cache-only drivers are not promoted to this readback guarantee.
  const board=compxModel(v.descriptor.vendor_id,v.descriptor.product_id);
  const steel=isSteelseries(v.descriptor.vendor_id,v.descriptor.product_id);
+ const dav3=v.descriptor.vendor_id===0x1532&&[0x00b6,0x00b7].includes(v.descriptor.product_id);
  const nativeSettings:MultiSetting[]=steel?[
   ...v.capabilities.buttons.filter(b=>b.remappable&&b.id!==1).map(b=>({Button:{id:b.id,action:v.state.buttons[String(b.id)]??b.default_action??'Default'}})),
   ...v.capabilities.lighting.filter(z=>v.state.lighting[String(z.id)]!=null).map(z=>({Lighting:{zone:z.id,state:v.state.lighting[String(z.id)]}})),
- ]:board?[
+ ]:board||dav3?[
   ...v.capabilities.buttons.filter(b=>b.remappable&&v.state.buttons[String(b.id)]!=null).map(b=>({Button:{id:b.id,action:v.state.buttons[String(b.id)]}})),
   ...v.capabilities.lighting.filter(z=>v.state.lighting[String(z.id)]!=null).map(z=>({Lighting:{zone:z.id,state:v.state.lighting[String(z.id)]}})),
  ]:[];

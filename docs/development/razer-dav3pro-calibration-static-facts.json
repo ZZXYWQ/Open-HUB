@@ -40,7 +40,23 @@
       "set_function": "0x10031040",
       "size": "two selectors plus caller-specified data up to16 bytes"
     },
-    "dispatch": "same strict GET read-bit and SET ack1/override0 native dispatch; no target execution"
+    "dispatch": "same strict GET read-bit and SET ack1/override0 native dispatch; no target execution",
+    "State": {
+      "get": "0B/83",
+      "get_function": "0x1002D780",
+      "set": "0B/03",
+      "set_function": "0x10030F90",
+      "size": 3,
+      "fields": "selectors 0,4 followed by one raw state byte; required high-level state for 26-level apply is unresolved"
+    },
+    "Configuration": {
+      "get": "0B/85",
+      "get_function": "0x1002D310",
+      "set": "0B/05",
+      "set_function": "0x10030D10",
+      "size": "two selectors plus caller-specified configuration bytes; native SET accepts 0..20 data bytes and hardware GET requires an explicit length of 1..20",
+      "fields": "selectors 0,4 followed by Data bytes in original JSON array order; semantic lift/landing conversion is unresolved"
+    }
   },
   "verified_static_chain": {
     "proximity_vtable": "0x10063CB4",
@@ -53,9 +69,9 @@
     "legacy_SmartTracking": "SurfaceBase1002AEA0 maps only three fixed entries; do not substitute for the26-level factory Pro schema"
   },
   "remaining": [
-    "3950 high-level saved state to native apply chain",
-    "exact mode and index conversion matched to this model rather than only other products",
-    "effective native GET/readback vs storage-only values",
+    "3950 high-level saved Standard/26-level Pro state to raw native apply conversion",
+    "exact mode and index conversion matched to product182 rather than only other products",
+    "known-length configuration GET semantics and physical effective write/readback; JSON zero-length convenience GET is only a size inquiry",
     "unknown native fields preservation and recovery",
     "native independent vectors and corresponding persisted UI"
   ],
@@ -112,7 +128,7 @@
     "V2_storage_sha256": "a7c1bc8cdd842935a998dcf8269f6c94c56976f79f9cdf79c5a04175f930b740",
     "storage_read": "ReadSensorCalibration gets serialized data through storage server; not a hardware getter",
     "storage_write": "SetAdjustment/Standard/Pro update cached typed configuration and serialized calibration file",
-    "state": "hardware application path and effective readback still require independent trace"
+    "state": "The raw JSON-to-native application and hardware GET routes are traced below. The saved Standard/26-level Pro state-to-raw conversion and physical readback are still unresolved."
   },
   "secondary_comparison": {
     "repository": "han1548772930/razer_ui",
@@ -122,5 +138,99 @@
     "licensed_code_copied": false,
     "limitation": "explicit capability list170/204/226/45066 excludes182; no effective lift getter claimed; cannot use as exact-model acceptance proof",
     "candidate_facts_for_independent_check": "0B03 sensor state;0B0B symmetric mode1/index distance-1 or asymmetric mode4/index0;0B05 cutoff slots lift-1/landing-1; confirmed same selectors0,4 independently from B6 primary constructor"
+  },
+  "RSy3_GenericFeature_sha256": "8801d4e6fd189b1cf34dce7bc9bdf0b39f9bea7747a4ec7dfabf232ef1837143",
+  "primary_generic_json_bridge": {
+    "RSy3_GenericFeature_sha256": "8801d4e6fd189b1cf34dce7bc9bdf0b39f9bea7747a4ec7dfabf232ef1837143",
+    "parameter_record": {
+      "file": "RzCtl_00B6.dll",
+      "file_offset": "0x6D778",
+      "VA": "0x1006F378",
+      "property_id": "0x0102F000",
+      "type": "0x60000000",
+      "declared_parameter_size": 28,
+      "key": "Sensor_GenericJson",
+      "key_offset": 16,
+      "table_entry_stride": 60
+    },
+    "managed": {
+      "GenericDeviceFeature_Set_RVA": "0x8FD6",
+      "GenericDeviceFeature_Get_RVA": "0x8F54",
+      "resolver_class": "Resolver.GenericFeatureResolverM",
+      "resolver_Set_RVA": "0x46A38",
+      "resolver_Get_RVA": "0x4722C",
+      "ParamType": 5,
+      "route": "GenericDeviceFeature uses the device resolver; ParamType 5 routes to native GenericFeature_SetJson/GetJson"
+    },
+    "native": {
+      "GenericFeature_SetJson_RVA": "0x217B0",
+      "GenericFeature_GetJson_RVA": "0x22600",
+      "instance_SetJSON_VA": "0x1000A3C0",
+      "instance_GetJSON_VA": "0x10005BE0",
+      "set_router_VA": "0x10004420",
+      "get_router_VA": "0x10003FD0",
+      "subfeature": "property high word 0x0102 selects the sensor subfeature",
+      "proximity_set_JSON_VA": "0x10040780",
+      "proximity_get_JSON_VA": "0x1003FBC0",
+      "setter_key_table_VA": "0x10055810",
+      "getter_key_table_VA": "0x10055330"
+    },
+    "exact_JSON_routes": {
+      "ProximitySensor_State": {
+        "set": "0x10054F20 -> proximity vslot80 -> 0x10046510 -> controller vslot1D0 -> 0x10030F90",
+        "get": "0x100543E0 -> proximity vslot88 -> 0x10046250 -> controller vslot1D4 -> 0x1002D780"
+      },
+      "ProximitySensor_LiftSetting": {
+        "set": "0x10054BA0 -> proximity vslotDC -> 0x10046480 -> controller vslot210 -> 0x10030E70",
+        "get": "0x10054060 -> proximity vslotE4 -> 0x10046080 -> controller vslot214 -> 0x1002D5B0"
+      },
+      "ProximitySensor_Configuration": {
+        "set": "0x100548A0 -> proximity vslotA0 -> 0x10046420 -> controller vslot1E4 -> 0x10030D10",
+        "get": "0x10053E10 -> proximity vslotA8 -> 0x10045FA0 -> controller vslot1E8 -> 0x1002D310"
+      }
+    },
+    "conversion": "Native LiftMode/LiftHeight JSON values and configuration Data elements are converted to raw bytes without subtracting one, changing modes, or reordering. This does not prove the earlier host-side conversion from UI levels."
+  },
+  "effective_hardware_readback": {
+    "lift_setting": "The JSON LiftSetting getter reaches native 0B/8B hardware dispatch and returns the two raw bytes; it is distinct from the storage resolver.",
+    "state": "The JSON State getter reaches native 0B/83 hardware dispatch.",
+    "configuration_explicit_length": "The native configuration getter dispatches 0B/85 when caller length is 1..20; its data count is supplied by the caller.",
+    "configuration_zero_length": {
+      "native_function": "0x1002D310",
+      "hardware_dispatch": false,
+      "status": "0x57",
+      "returned_length": 22,
+      "instruction_locations": [
+        "0x1002D349: zero length branches past dispatch",
+        "0x1002D39C: returns positive status 0x57",
+        "0x1002D3A1: writes length 0x16"
+      ]
+    },
+    "configuration_JSON_convenience_getter": {
+      "function": "0x10053E10",
+      "requested_length": 0,
+      "calls_native_getter_once": true,
+      "instruction_locations": [
+        "0x10053E79: initializes requested length to zero",
+        "0x10053E8E: calls proximity vslotA8 once",
+        "0x10053E9B: checks only whether returned status is negative"
+      ],
+      "limitation": "This route reaches the zero-length size-inquiry branch, so its returned JSON is not evidence of effective hardware configuration readback."
+    },
+    "implementation_boundary": "Wire-level raw getters are traced; exact 26-level mode/index conversion, unknown-field preservation and physical write/readback remain unverified."
+  },
+  "high_level_application_boundary": {
+    "no_calibration_enable": true,
+    "unresolved": "Exact product182 Standard/26-level Pro UI values -> raw state, lift mode, lift height and configuration values are not established.",
+    "frontend": "The product182 renderer has smartTracking UI values and constraints but no ProximitySensor, LiftHeight or 3950 transport calls. Its smart-only save action posts smartTracking to mwBroadcastChannel; host-side conversion is outside that renderer.",
+    "secondary_reference": "Products 170/204/226/45066 remain comparison evidence only; do not substitute their conversion for product182.",
+    "static_implementation_now": "Raw report shapes and validation facts can be used for static codecs; they do not authorize enabling semantic calibration writes."
+  },
+  "analysis_retention": {
+    "current_OEM_application": "Razer Synapse product182 / DeathAdder V3 Pro",
+    "downloaded_payloads_retained": true,
+    "reason": "Analysis is still pending for the exact high-level 26-level conversion; retain current downloaded payloads until this application is finished.",
+    "cleanup_performed": false,
+    "new_other_OEM_payload_downloads_during_this_analysis": 0
   }
 }

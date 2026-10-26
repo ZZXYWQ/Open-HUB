@@ -285,11 +285,11 @@ fn open_mhub(app:AppHandle)->Result<(),String>{
 #[tauri::command(async)]
 fn magdock_state(c:State<magdock::Controller>)->Result<magdock::View,String>{c.view()}
 #[tauri::command(async)]
-fn magdock_apply(c:State<magdock::Controller>,engine:State<effects::Engine>,light:magdock::Light)->Result<magdock::View,String>{engine.stop()?;c.apply(light)}
+fn magdock_apply(c:State<magdock::Controller>,engine:State<effects::Engine>,light:magdock::Light)->Result<magdock::View,String>{light.validate()?;engine.route(||{engine.stop_for_dock()?;c.apply(light)})}
 #[tauri::command(async)]
-fn magdock_music(c:State<magdock::Controller>,enabled:bool,light:magdock::Light,gain:f32)->Result<magdock::View,String>{if enabled{c.music(light,gain)}else{c.stop()?;c.view()}}
+fn magdock_music(c:State<magdock::Controller>,engine:State<effects::Engine>,enabled:bool,light:magdock::Light,gain:f32)->Result<magdock::View,String>{if enabled{light.validate()?;if !gain.is_finite()||!(0.5..=8.0).contains(&gain){return Err("律动灵敏度应为 0.5–8".into())}}engine.route(||if enabled{engine.stop_for_dock()?;c.music(light,gain)}else{c.stop()?;c.view()})}
 #[tauri::command(async)]
-fn magdock_reset(c:State<magdock::Controller>,engine:State<effects::Engine>)->Result<magdock::View,String>{engine.stop()?;c.reset()}
+fn magdock_reset(c:State<magdock::Controller>,engine:State<effects::Engine>)->Result<magdock::View,String>{engine.route(||{engine.stop_for_dock()?;c.reset()})}
 
 
 #[tauri::command(async)]
@@ -299,9 +299,9 @@ async fn rgb_devices(app:tauri::AppHandle)->Result<Vec<rgb::Device>,String>{
 #[tauri::command(async)]
 fn effects_status(engine:State<effects::Engine>)->Result<effects::Status,String>{engine.status()}
 #[tauri::command(async)]
-fn effects_start(engine:State<effects::Engine>,dock:State<magdock::Controller>,config:effects::Config)->Result<effects::Status,String>{dock.stop()?;engine.start(config,dock.inner().clone())}
+fn effects_start(engine:State<effects::Engine>,dock:State<magdock::Controller>,config:effects::Config)->Result<effects::Status,String>{config.validate()?;engine.route(||{if config.dock{dock.stop()?;}engine.start(config,dock.inner().clone())})}
 #[tauri::command(async)]
-fn effects_stop(engine:State<effects::Engine>)->Result<effects::Status,String>{engine.stop()}
+fn effects_stop(engine:State<effects::Engine>)->Result<effects::Status,String>{engine.route(||engine.stop())}
 
 #[tauri::command(async)]
 fn effects_preset(path:String,mut config:effects::Config,target_keys:Option<Vec<String>>)->Result<(),String>{let keys=target_keys.unwrap_or_default();if keys.len()>64||keys.iter().any(|s|s.len()>4096){return Err("设备标识过长".into())}config.rgb.clear();let mut check=config.clone();check.dock=true;check.validate()?;std::fs::write(path,serde_json::to_vec_pretty(&serde_json::json!({"format":"open-hub-lighting/1","config":config,"target_keys":keys})).map_err(|e|e.to_string())?).map_err(|e|e.to_string())}

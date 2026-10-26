@@ -1,0 +1,81 @@
+{
+  "status": "Exact DeathAdder V3 Pro Synapse conversion remains disabled; parser gaps reproduced through file entry points",
+  "date": "2026-10-26",
+  "identity_scope": {
+    "vendor": "1532",
+    "wired_product": "00B6",
+    "stock_receiver_product": "00B7",
+    "distinct_models": 1,
+    "new_fully_accepted_models": 0
+  },
+  "primary_source": {
+    "official_component_url": "https://cdn.razersynapse.com/1728899625Euq9w9FwRazer_182_0_Setup_v3.9.1130.101413.exe",
+    "component_sha256": "d5ee1fb1b293e2c8f5a92357494f9c15874970dd89d30d9ff26e4699ecfaaa62",
+    "static_path": "$APPDATA/Razer/Synapse3/Service/Staging/Devices/Defaults/182/",
+    "read_method": "Read existing locally unpacked XML only; no new download and no OEM binary or script execution",
+    "sha256": {
+      "DefaultMappings.xml": "2a16da98370fee72ff083e6e84a064633b036acb7fa03c0d11467b78504595e0",
+      "Mappings.xml": "0f32cdfb94f2f5d0156d0d4597cbde1fb25e36d912d605467daed6e51c4f79d8",
+      "DPI.xml": "8e60477a255c3f86085ad0482db3879a593170326e080fadacc0517d4d9a5d75",
+      "DPIStages.xml": "e6a6a3cce226092f0dc7e46f46a9532c0e2150b6d0cdee06eea1044afc84625b",
+      "PollingRate.xml": "33ec7917a87a4fda73d0775a16b83fe83034fb2c243cc9f99902274cec9b54b1",
+      "HighSpeedPollingRate.xml": "14afdeb050c9347b512f9af8e37d8a7f4a48b7bd591004363c2ea2c74c221b6c",
+      "PowerManagement.xml": "463a92512d3954f43ddcf74d31737716ebddadf1c3414e451f74dc4393493d2d",
+      "LowPowerMode.xml": "03a10e6a08db45177b71bb308eb2019d165b6fffc5c5888dd680cdb433b4b9af"
+    }
+  },
+  "verified_static_mapping_facts": {
+    "both_layers_present": "DefaultMappings has corresponding ordinary and IsHyperShift=true records",
+    "model_specific_aliases": [
+      {"input_type": "DKMInput", "input": "DKM_M_03", "same_factory_action_as": "MouseInput/Button4", "action": "MouseGroup/MouseAssignment=Previous"},
+      {"input_type": "DKMInput", "input": "DKM_M_04", "same_factory_action_as": "MouseInput/Button5", "action": "MouseGroup/MouseAssignment=Next"},
+      {"input_type": "DKMInput", "input": "DKM_SB_03", "action": "SensitivityGroup/SensitivityAssignment=DPI_CycleUp", "physical_control": "bottom DPI button"}
+    ],
+    "alias_limit": "Matching default actions alone do not establish precedence when an exported alias pair disagrees; reject conflicts until lossless export semantics are established",
+    "dpi": {"x": 1600, "y": 1600, "Independent": false},
+    "dpi_stages": {
+      "xy_pairs": [[400, 400], [800, 800], [1600, 1600], [3200, 3200], [6400, 6400]],
+      "root_Active": 2,
+      "per_stage_Active": true,
+      "per_stage_Independent": false,
+      "limit": "Factory XML shape is established; exported inactive/hidden/reordered stage semantics are not established by this factory file"
+    },
+    "polling_defaults": {"PollingRate_Value": 1000, "HighSpeedPollingRate_Value": 1000},
+    "power_defaults": {"PowerManagement_SleepModeInSeconds": 300, "PowerManagement_BlinkLedPercentage": 5, "LowPowerMode_BatteryLevel": 30},
+    "power_limit": "BlinkLedPercentage and BatteryLevel are distinct source fields, not interchangeable low-battery thresholds"
+  },
+  "current_parser_gaps": {
+    "v3": [
+      {"source": "src-tauri/vendor/sidearm-synapse-parser/src/format_v3.rs", "symbols": ["parse_synapse_v3_reader", "collect_profile_bindings"], "fact": "DeviceInfo entry is used only as archive recognition; output device=None. Profiles receive performance=None. Feature XML without a <Mappings substring is skipped, including DPI, DPIStages, polling and power."},
+      {"source": "src-tauri/vendor/sidearm-synapse-parser/src/mapping.rs", "symbol": "THUMB_GRID_DKM", "fact": "DKM_M_03/04 become Naga thumb_03/04; DKM_SB_03 is dropped with a warning."},
+      {"source": "src-tauri/vendor/sidearm-synapse-parser/src/format_v3.rs", "symbols": ["OutputGroup", "build_action", "build_binding"], "fact": "Only KeyGroup, MouseGroup and MacroGroup are recognized; SensitivityGroup and unknown groups become Disabled. raw_mapping=None prevents downstream recovery or exact unknown-field detection."},
+      {"source": "src-tauri/vendor/sidearm-synapse-parser/src/format_v3.rs", "symbol": "build_shortcut_from_key_group", "fact": "Only boolean modifier families survive; original right/left modifier and full raw source options are not retained."}
+    ],
+    "v4": [
+      {"source": "src-tauri/vendor/sidearm-synapse-parser/src/format_v4.rs", "symbols": ["ProfilePayload", "RawMapping", "KeyboardGroup", "SourceStages"], "fact": "Serde mirrors do not retain unknown fields. Extra profile features, nested keyboard options and per-stage visibility/index/count metadata can disappear before app conversion. raw_mapping serializes the restricted mirror rather than the original JSON."},
+      {"source": "src-tauri/vendor/sidearm-synapse-parser/src/format_v4.rs", "symbol": "transform_mapping", "fact": "The shared Naga mapping dictionary is reused. Bottom DPI alias is dropped; side aliases get Naga control IDs. Some outputs are explicitly Unmappable, but their missing raw group fields cannot be reconstructed downstream."}
+    ]
+  },
+  "required_evidence_and_implementation": [
+    "Establish actual exported DeviceInfo identity schema and conflicting identity rejection for exact B6/B7; factory defaults are not an exported device identity fixture.",
+    "Retain complete raw feature and mapping blocks before normalization, including every unknown field, and block candidate creation for unsupported content.",
+    "Resolve model-specific DKM aliases per layer and reject conflicting aliases or duplicate physical controls rather than copying the Naga table.",
+    "Parse full XY stage table, root active selection, enabled/visible stage semantics and connection-specific polling rate without clamping or flattening.",
+    "Distinguish known disabled/default bindings from sensitivity, Hypershift, media, macro, calibration and unknown output groups; retain source options and exact modifier sides.",
+    "Do not import DA macros or text as software macros until exact mouse input ownership is implemented. No customizable RGB is established for this model.",
+    "Only after those semantics are preserved, convert supported actions, persist/reload imported Profile and replay through the production native simulation. No executable DA Profile is produced by the current refusal gate."
+  ],
+  "validation": {
+    "command": "cargo test --manifest-path src-tauri/Cargo.toml synapse_profiles:: -- --nocapture",
+    "result": "10 passed, 0 failed: five new DA parser-entry safety tests and five existing Naga conversion tests",
+    "new_test_source": "src-tauri/src/synapse_dav3pro_import_tests.rs",
+    "new_test_inputs": "Authored synthetic v4 JSON/base64 and stored v3 ZIP files read through production prepare(path); not real DA export captures",
+    "coverage": ["B6/B7 model-specific refusal", "wrong model and brand isolation", "five XY stages and active slot parsed before refusal", "lost unknown v4 fields/options", "wrong Naga side-key aliases and dropped DPI alias", "missing v3 identity/performance", "v3 sensitivity and unknown groups collapsed to Disabled but never executed"],
+    "hardware_tested": false,
+    "OEM_code_executed": false,
+    "new_runtime_dependencies": false,
+    "DA_import_conversion_supported": false,
+    "DA_persisted_native_simulation_applicable": false,
+    "release_or_install_performed": false
+  }
+}

@@ -179,7 +179,7 @@ impl RazerDevice {
     }
 
     fn set_button(&mut self, id:u16, action:&ButtonAction) -> Result<()> {
-        if crate::power::supported(self.model.pid){let result=crate::dav3pro_buttons::apply(&mut self.link,id,action);if result.is_err(){self.state.buttons.remove(&id);}return result;}
+        if crate::power::supported(self.model.pid){let result=crate::dav3pro_buttons::apply(&mut self.link,id,action);if result.is_err(){self.state.buttons.remove(&id);if id<256{self.state.buttons.remove(&(id|0x100));}}return result;}
         if self.board.is_some(){return self.set_basilisk_button(id,action);}
         if !matches!(self.model.pid,0x00c0|0x00c1) || !matches!(id,2|4|5|9|10|0x60) {
             return Err(Error::Unsupported("exact Viper V3 Pro remappable control"));
@@ -424,7 +424,7 @@ impl Device for RazerDevice {
 
         if crate::power::supported(self.model.pid){
             s.buttons=soft(crate::dav3pro_buttons::read(&mut self.link))?.unwrap_or_default();
-            for cap in &mut self.caps.buttons{cap.remappable=cap.id!=1&&s.buttons.contains_key(&cap.id);}
+            for cap in &mut self.caps.buttons{cap.remappable=s.buttons.contains_key(&cap.id);}
         }
         if self.caps.dpi.is_some() {
             if crate::power::supported(self.model.pid) { s.dpi = soft(self.read_dpi())?; }

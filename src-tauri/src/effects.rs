@@ -53,13 +53,31 @@ pub struct Status {
 struct Worker {
     stop: Arc<AtomicBool>,
     handle: std::thread::JoinHandle<()>,
+    // Bound to this worker, including while it is starting. The status DTO is
+    // published later and may still describe the preceding effect session.
+    owns_dock: bool,
+}
+fn stop_worker(worker: &mut Option<Worker>) -> R<()> {
+    if let Some(w) = worker.take() {
+        w.stop.store(true, Ordering::SeqCst);
+        w.handle.join().map_err(|_| "灯光线程异常退出")?;
+    }
+    Ok(())
 }
 #[derive(Default)]
 pub struct Engine {
+    routing: Mutex<()>,
     worker: Mutex<Option<Worker>>,
     state: Arc<Mutex<Status>>,
 }
 impl Engine {
+    /// One command owns the complete stop/restore/mutate/start handoff. Worker
+    /// methods do not take this lock themselves, so a routed handoff never
+    /// recursively locks it while stopping or starting either output worker.
+    pub fn route<T>(&self, action: impl FnOnce() -> R<T>) -> R<T> {
+        let _routing = self.routing.lock().map_err(|_| "灯光输出协调锁定失败")?;
+        action()
+    }
     pub fn status(&self) -> R<Status> {
         self.state
             .lock()
@@ -68,9 +86,15 @@ impl Engine {
     }
     pub fn stop(&self) -> R<Status> {
         let mut worker = self.worker.lock().map_err(|_| "灯光线程锁定失败")?;
-        if let Some(w) = worker.take() {
-            w.stop.store(true, Ordering::SeqCst);
-            w.handle.join().map_err(|_| "灯光线程异常退出")?;
+        stop_worker(&mut worker)?;
+        self.status()
+    }
+    /// Release an effect session only if that session controls the dock.
+    /// A dock-only edit must leave an independent PC RGB session running.
+    pub fn stop_for_dock(&self) -> R<Status> {
+        let mut worker = self.worker.lock().map_err(|_| "灯光线程锁定失败")?;
+        if worker.as_ref().is_some_and(|w| w.owns_dock) {
+            stop_worker(&mut worker)?;
         }
         self.status()
     }
@@ -81,6 +105,7 @@ impl Engine {
         let stop = Arc::new(AtomicBool::new(false));
         let signal = stop.clone();
         let state = self.state.clone();
+        let owns_dock = config.dock;
         let (tx, rx) = std::sync::mpsc::sync_channel(1);
         let handle = std::thread::spawn(move || {
             let mut rgb: Option<crate::rgb::Client> = None;
@@ -189,7 +214,7 @@ impl Engine {
                 };
             }
         });
-        *worker = Some(Worker { stop, handle });
+        *worker = Some(Worker { stop, handle, owns_dock });
         drop(worker);
         match rx.recv_timeout(Duration::from_secs(12)) {
             Ok(Ok(())) => self.status(),
@@ -204,6 +229,10 @@ impl Engine {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "effects_ownership_tests.rs"]
+mod ownership_tests;
 fn scale(c: [u8; 3], v: f32) -> [u8; 3] {
     c.map(|n| (n as f32 * v.clamp(0.0, 1.0)).round() as u8)
 }
