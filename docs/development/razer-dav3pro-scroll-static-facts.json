@@ -1,0 +1,90 @@
+{
+  "device": "Razer DeathAdder V3 Pro",
+  "vendor": "1532",
+  "products": [
+    "00B6",
+    "00B7"
+  ],
+  "distinct_models": 1,
+  "status": "reconstructed_native_actions_simulation_only",
+  "sources": [
+    {
+      "kind": "exact OEM logical actions",
+      "url": "https://apps.razer.com/synapse/products/182/ui/static/js/main.998a1822.js",
+      "sha256": "c5f739f700e7e1613a7ef27fb862f2b49a727f90dcdb9f6d3d130d8a2a1eccf7",
+      "locations": {
+        "mouse_outputs": "module9267 oe, offsets4124634/4124670",
+        "reverse_dpi_cycle": "module9267 be offset4133743; product182 OBMSpecs offset109609; OBMconverter7319 Oe offset4064333"
+      }
+    },
+    {
+      "kind": "same-protocol scalar record facts, different mouse",
+      "url": "https://github.com/geezmolycos/razerqdhid/blob/4363a8836ab970c712fa8f2a9dd530a7e7bc5011/docs/cmd_button-en.md",
+      "sha256": "fbb35b84ab7dca465bfe8e848426cb035293eb5925d6f04ebc8dc8743a24380a"
+    },
+    {
+      "kind": "exact B6 full raw assignment transport",
+      "file": "RzCtl_00B6.dll",
+      "sha256": "caffd8cf48986e3559aca551d9069a36563b77c01e3061373d8b5a4ee223c217",
+      "setter": "0x1002E2D0",
+      "getter": "0x1002A510",
+      "commands": [
+        "02/0C",
+        "02/8C"
+      ],
+      "bytes": 10,
+      "layout": [
+        "profile",
+        "physical_input",
+        "layer",
+        "seven unchanged action bytes"
+      ]
+    }
+  ],
+  "records": {
+    "ScrollUp": [
+      1,
+      1,
+      9,
+      0,
+      0,
+      0,
+      0
+    ],
+    "ScrollDown": [
+      1,
+      1,
+      10,
+      0,
+      0,
+      0,
+      0
+    ],
+    "CycleDown": [
+      6,
+      1,
+      7,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "rules": [
+    "input IDs are only1,2,3,4,5,9,10,96; layer only0or1",
+    "physical wheel9/10 in either layer rejects all sensitivity assignments including CycleDown",
+    "native ordinary left-click witness and Hypershift pair ownership guards apply unchanged",
+    "factory wheel records canonicalize to explicit Scroll",
+    "other models retain closed action lists; no automatic support inference",
+    "Scroll is separate from MouseButton and cannot expand MacroStep MouseDown/Up",
+    "M65PRO compiler/runtime reject unsupported reverse cycling before DPI I/O"
+  ],
+  "limitations": [
+    "no new B6/B7 physical capture",
+    "same-protocol scalar composition is reconstructed; OEM logical lists alone do not prove physical wire behavior",
+    "not full original action set or complete mouse acceptance"
+  ],
+  "source_code_copied": false,
+  "vendor_code_executed": false,
+  "new_downloads": false
+}

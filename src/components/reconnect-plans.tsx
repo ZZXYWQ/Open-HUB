@@ -21,12 +21,13 @@ function settingLabel(s:MultiSetting,plan:MultiPlan){
  if('AngleSnapping'in s)return `直线修正：${s.AngleSnapping?'开启':'关闭'}`;
  if('Tuning'in s){const labels:Record<string,string>={debounce_ms:'按键消抖',motion_sync:'Motion Sync',angle_snapping:'直线修正',ripple_control:'波纹修正',led_idle_seconds:'闲置熄灯时间',sensor_sleep_enabled:'自定义传感器休眠',sensor_sleep_seconds:'传感器休眠时间',lift_off_microns:'抬升高度'};return Object.entries(s.Tuning).map(([k,v])=>`${labels[k]??k}：${typeof v==='boolean'?(v?'开启':'关闭'):k==='lift_off_microns'?Number(v)/1000+' mm':v+(k==='debounce_ms'?' ms':' 秒')}`).join('；');}
  if('Button'in s){const a=s.Button.action;let action:string;
-  if(typeof a==='string')action=a==='Default'?'默认动作':'禁用';
+  if(typeof a==='string')action=a==='Default'?'默认动作':a==='Hypershift'?'按住 Hypershift':'禁用';
   else if('Macro'in a)action=`软件宏“${plan.macros?.find(m=>m.id===a.Macro)?.name??a.Macro}”`;
   else if('Key'in a){const modifiers=['左 Ctrl','左 Shift','左 Alt','左 Win','右 Ctrl','右 Shift','右 Alt','右 Win'].filter((_,i)=>a.Key.mods&(1<<i));action=`键盘 ${[...modifiers,KEY_NAMES.find(([k])=>k===a.Key.usage)?.[1]??String(a.Key.usage)].join(' + ')}`;}
   else if('Mouse'in a)action=`鼠标 ${{Left:'左键',Right:'右键',Middle:'中键',Back:'后退',Forward:'前进',WheelLeft:'滚轮左倾',WheelRight:'滚轮右倾'}[a.Mouse]}`;
+  else if('Scroll'in a)action=a.Scroll==='Up'?'向上滚动':'向下滚动';
   else if('Media'in a)action=`媒体 ${NATIVE_MEDIA_KEYS.find(([id])=>id===a.Media)?.[1]??'0x'+a.Media.toString(16)}`;
-  else action=typeof a.Dpi==='string'?`DPI ${{Cycle:'循环档位',Up:'提高一档',Down:'降低一档'}[a.Dpi]}`:`按住狙击 DPI ${a.Dpi.Shift}`;
+  else action=typeof a.Dpi==='string'?`DPI ${{Cycle:'循环档位',CycleDown:'反向循环档位',Up:'提高一档',Down:'降低一档'}[a.Dpi]}`:`按住狙击 DPI ${a.Dpi.Shift}`;
   return `按键 ${s.Button.id}：${action}`;
  }
  const effect=s.Lighting.state.effect;

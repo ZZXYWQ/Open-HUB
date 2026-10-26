@@ -258,3 +258,20 @@ fn dav3pro_click_transfer_is_compiled_before_primary_remap_and_rejects_clickless
         p.settings=vec![Setting::Button{id:4,action:ButtonAction::Hypershift},Setting::Button{id:260,action:ButtonAction::Disabled}];assert!(compile(&p).err().unwrap().contains("第二层"));
     }
 }
+
+
+#[test]
+fn scroll_outputs_and_reverse_cycle_are_exact_deathadder_native_actions_without_host_input(){
+    use gearwise_core::model::ScrollDirection;
+    for v in templates().unwrap(){
+        for action in [ButtonAction::Scroll(ScrollDirection::Up),ButtonAction::Scroll(ScrollDirection::Down),ButtonAction::Dpi(DpiFunction::CycleDown)]{
+            let p=Plan{vendor:v.descriptor.vendor_id,product:v.descriptor.product_id,settings:vec![Setting::Button{id:2,action:action.clone()}],macros:vec![],source:None};
+            let exact=p.vendor==0x1532&&matches!(p.product,0xb6|0xb7);
+            if exact{
+                validate(&p).unwrap();let compiled=compile(&p).unwrap();assert!(compiled.bindings.is_empty()&&compiled.input.keys.is_empty()&&compiled.dpi_actions.is_empty());assert!(!compiled.software_input);
+                let(mut d,_)=gearwise_razer::simulated_dav3pro(p.product).unwrap();for s in &compiled.settings{d.apply(s).unwrap();}assert_eq!(d.read_state().unwrap().buttons.get(&2),Some(&action));
+                assert_eq!(simulate(&p).unwrap()["hardware_tested"],false);
+            }else{assert!(validate(&p).is_err(),"new native action leaked to {}: {action:?}",v.descriptor.name);}
+        }
+    }
+}

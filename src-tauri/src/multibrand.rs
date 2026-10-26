@@ -724,7 +724,7 @@ pub fn compile(plan:&Plan)->Result<Compiled,String>{
     ButtonAction::Key{usage,mods}=>{let mut steps=Vec::new();let modifiers=(0..8).filter(|n|mods.0&(1<<n)!=0).map(|n|0xe0+n).collect::<Vec<_>>();for m in &modifiers{steps.push(MacroStep::KeyDown(*m));}steps.push(MacroStep::KeyDown(*usage));steps.push(MacroStep::WaitForRelease);steps.push(MacroStep::KeyUp(*usage));for m in modifiers.iter().rev(){steps.push(MacroStep::KeyUp(*m));}Some(steps)},
     ButtonAction::Mouse(b)=>Some(vec![MacroStep::MouseDown(*b),MacroStep::WaitForRelease,MacroStep::MouseUp(*b)]),
     ButtonAction::Macro(macro_id)=>{let m=definitions.get(macro_id.as_str()).ok_or("按键引用的宏内容缺失")?;bindings.push(crate::host_macros::Binding{button:*id,action:(*m).clone()});buttons.push(*id);None},
-    ButtonAction::Dpi(f)=>{dpi_actions.insert(*id,f.clone());None},
+    ButtonAction::Dpi(f)if matches!(f,DpiFunction::Up|DpiFunction::Down|DpiFunction::Cycle|DpiFunction::Shift(_))=>{dpi_actions.insert(*id,f.clone());None},
     ButtonAction::Default|ButtonAction::Disabled=>None,
     _=>return Err("M65 PRO 尚不支持此动作".into()),
    };
@@ -782,6 +782,7 @@ fn software_dpi(device:&mut dyn gearwise_core::Device,action:&DpiFunction,down:b
 fn software_dpi_journal(device:&mut dyn gearwise_core::Device,action:&DpiFunction,down:bool,saved:&Mutex<Option<gearwise_core::model::DpiState>>,journal:Option<&crate::macro_recovery::Journal>)->Result<(),String>{
  use gearwise_core::model::DpiStage;
  if (device.descriptor().vendor_id,device.descriptor().product_id)!=(0x1b1c,0x1b2e){return Err("软件 DPI 仅用于 M65 PRO".into());}
+ if !matches!(action,DpiFunction::Up|DpiFunction::Down|DpiFunction::Cycle|DpiFunction::Shift(_)){return Err("M65 PRO 尚未接通此软件 DPI 动作".into());}
  let mut shift=saved.lock().map_err(|_|"狙击 DPI 锁异常")?;
  if let DpiFunction::Shift(value)=action{
   if down{if shift.is_some(){return Ok(());}if !(100..=12000).contains(value){return Err("狙击 DPI 超出范围".into());}let original=device.read_state().map_err(|e|e.to_string())?.dpi.ok_or("没有 DPI 状态")?;let mut next=original.clone();let stage=next.stages.get_mut(next.active as usize).ok_or("活动档位无效")?;*stage=DpiStage::uniform(*value);if let Some(j)=journal{j.shift(Some(crate::macro_recovery::ShiftRestore{original:original.clone(),expected:next.clone()}))?;}*shift=Some(original);device.apply(&Setting::Dpi(next)).map_err(|e|e.to_string())?;}
@@ -790,12 +791,26 @@ fn software_dpi_journal(device:&mut dyn gearwise_core::Device,action:&DpiFunctio
  }
  if !down{return Ok(());}if shift.is_some(){return Err("狙击键按住时暂不切换档位".into());}
  let dpi=device.read_state().map_err(|e|e.to_string())?.dpi.ok_or("没有 DPI 状态")?;let count=dpi.stages.len();if count==0||usize::from(dpi.active)>=count{return Err("DPI 档位无效".into());}
- let active=usize::from(dpi.active);let target=match action{DpiFunction::Up=>(active+1).min(count-1),DpiFunction::Down=>active.saturating_sub(1),DpiFunction::Cycle=>(active+1)%count,_=>unreachable!()};
+ let active=usize::from(dpi.active);let target=match action{DpiFunction::Up=>(active+1).min(count-1),DpiFunction::Down=>active.saturating_sub(1),DpiFunction::Cycle=>(active+1)%count,_=>return Err("M65 PRO 尚未接通此软件 DPI 动作".into())};
  if target!=active{device.apply(&Setting::DpiActiveStage(target as u8)).map_err(|e|e.to_string())?;}Ok(())
 }
 #[cfg(test)]mod corsair_action_tests{
  use super::*;use gearwise_core::{model::{DpiStage,DpiState,Modifiers},profile::{Macro,MacroMode,MacroStep}};
  fn plan(settings:Vec<Setting>)->Plan{Plan{vendor:0x1b1c,product:0x1b2e,settings,macros:vec![],source:None}}
+ struct NoDpiIo(Box<dyn gearwise_core::Device>);
+ impl gearwise_core::Device for NoDpiIo{
+  fn descriptor(&self)->&gearwise_core::device::DeviceDescriptor{self.0.descriptor()}
+  fn capabilities(&self)->&gearwise_core::device::Capabilities{self.0.capabilities()}
+  fn read_state(&mut self)->gearwise_core::Result<gearwise_core::device::DeviceState>{panic!("unexpected DPI read for unsupported function")}
+  fn apply(&mut self,_:&Setting)->gearwise_core::Result<()>{panic!("unexpected DPI write for unsupported function")}
+ }
+ #[test]fn unsupported_reverse_cycle_is_refused_by_compiler_and_runtime_before_any_dpi_io(){
+  let p=plan(vec![Setting::Button{id:6,action:ButtonAction::Dpi(DpiFunction::CycleDown)}]);
+  assert!(validate(&p).is_err());assert!(compile(&p).is_err());
+  let(inner,_)=gearwise_corsair::simulated_m65_pro();let mut device=NoDpiIo(inner);let saved=Mutex::new(None);
+  for down in [true,false]{assert!(software_dpi(&mut device,&DpiFunction::CycleDown,down,&saved).err().unwrap().contains("尚未接通"));}
+  assert!(saved.lock().unwrap().is_none());
+ }
  #[test]fn simple_remap_preserves_default_dpi_controls(){let p=plan(vec![Setting::Button{id:4,action:ButtonAction::Key{usage:4,mods:Modifiers(1)}}]);validate(&p).unwrap();let c=compile(&p).unwrap();assert!(c.software_input);assert_eq!(c.input.buttons,vec![4,6,7,8]);assert_eq!(c.dpi_actions[&6],DpiFunction::Up);assert_eq!(c.dpi_actions[&7],DpiFunction::Down);assert_eq!(c.dpi_actions[&8],DpiFunction::Shift(0));assert_eq!(c.bindings[0].action.mode,MacroMode::WhileHeld);assert_eq!(c.bindings[0].action.steps,vec![MacroStep::KeyDown(0xe0),MacroStep::KeyDown(4),MacroStep::WaitForRelease,MacroStep::KeyUp(4),MacroStep::KeyUp(0xe0)]);}
  #[test]fn macro_on_sniper_replaces_only_its_default_action(){let mut p=plan(vec![Setting::Button{id:8,action:ButtonAction::Macro("m".into())}]);p.macros.push(Macro{id:"m".into(),name:"test".into(),mode:MacroMode::Once,steps:vec![MacroStep::KeyDown(5),MacroStep::KeyUp(5)]});validate(&p).unwrap();let c=compile(&p).unwrap();assert!(!c.dpi_actions.contains_key(&8));assert!(c.input.buttons.contains(&8));assert_eq!(c.bindings[0].button,8);assert!(c.input.keys.is_empty());}
  #[test]fn unchanged_defaults_do_not_take_over_input(){let p=plan(vec![Setting::Button{id:4,action:ButtonAction::Default}]);let c=compile(&p).unwrap();assert!(!c.software_input);assert!(c.bindings.is_empty()&&c.dpi_actions.is_empty());}

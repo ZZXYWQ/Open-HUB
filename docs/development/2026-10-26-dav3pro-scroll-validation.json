@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-26",
+  "status": "development_only",
+  "full_accepted_distinct_models": 0,
+  "application_default_tests": 550,
+  "explicit_ui_config_native_cross_tests": 36,
+  "core_driver_unit_tests": 340,
+  "doctests": 1,
+  "headless_ui_suites": 47,
+  "focused_dav3pro_driver_tests": 19,
+  "gui_saved_plans": 4,
+  "negative_ui_identity_cases": 2,
+  "memory_transport_cases": 38,
+  "counts_are_not_mouse_acceptance": true,
+  "hardware_tested": false,
+  "target": {
+    "vendor": "1532",
+    "products": [
+      "00B6",
+      "00B7"
+    ],
+    "distinct_models": 1,
+    "transports": 2
+  },
+  "implemented": [
+    "scoped native scroll outputs Up/Down",
+    "reverse DPI stage cycling on appropriate exactDA controls",
+    "wheel sensitivity refusal in both layers remains",
+    "all known original records, ordinary left-click and HS ownership guards remain",
+    "complete GUI save-store-reload-production-driver replay of new actions",
+    "shared enum additions preserve existing serialized actions and MacroStep hold types",
+    "other model templates refuse new actions; exact model UI gates",
+    "M65 compiler/runtime refuse reverse cycle before DPI I/O instead of unexpected-function panic"
+  ],
+  "proof_limits": [
+    "OEM exactmodel logical list + same-protocol scalar records + exactB6 raw transport compose reconstructed native behavior",
+    "no physical DA capture, physical acceptance or complete original feature claim",
+    "complete key naming, original advanced actions, macros, calibration and privateimport remain gaps"
+  ],
+  "frontend": {
+    "javascript_bytes": 745772,
+    "javascript_gzip9_bytes": 224681,
+    "new_runtime_dependencies": 0
+  },
+  "development_exe_sha256": "f33b6d91ee00e58afa23110cef3c15f9409091b24a14e8668ade9c9c443b9dd1",
+  "installed_exe_sha256_unchanged": "e77fc588993d0a7f2d1c1cd12313610731d5b3ecec293ba2c7d7f5e397ea06b0",
+  "release_version_unchanged": "0.3.7",
+  "installer_created": false,
+  "release_published": false,
+  "source_sha256": {
+    "src-tauri/vendor/gearwise/crates/gearwise-core/src/model.rs": "05981e29f6a2f777c1fa2f92173f37c50a6c743a3b96741c76cb59b3a6f43d3d",
+    "src-tauri/vendor/gearwise/crates/gearwise-steelseries/src/buttons.rs": "025c4acef38fdc075a85369b2799fd19ba0615977df4cc9b63867b5996b123da",
+    "src-tauri/vendor/gearwise/crates/gearwise-razer/src/dav3pro_buttons.rs": "0c4e3f73b8e004f2c148063fdbcdd348d007b2f94e8b6d690fa689aa0cbfb2a6",
+    "src-tauri/src/multibrand.rs": "45599d3acfd95a651237cc905e520c98fe79ca52c037fc428457eec9240b3827",
+    "src-tauri/src/dav3pro_models.rs": "58cc50af0c3162018ec43852b497551ceb7cfbbd2ee6c465d09240c48936839f",
+    "src/lib/multi.ts": "38c79542db84a930a304cf157639734f5180ae427420272c395e6a0ef1c4669b",
+    "src/components/multi-panel.tsx": "cedc4c09acd667d490de7362bd4d8ebe336760c9703a8bd5d6ee5193120e83a3",
+    "src/components/reconnect-plans.tsx": "810586086ab94254714ea15e990d016b55bf779406a4a3e0cfee95fb13edd3b2",
+    "scripts/test-dav3pro-power-ui.cjs": "c93f9bfaa408fb9acec86791db36e6e0f42f2437b1ac89a947a3f012cdee43bf"
+  }
+}

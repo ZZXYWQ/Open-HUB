@@ -2,10 +2,12 @@
 //! Official RzCtl_00B6 uses 02/8C and 02/0C with ten-byte assignments.
 //! Layer selectors follow the official record; momentary switch facts are documented
 //! by razerqdhid 4363a883 (MIT). Host macros and unknown originals stay locked.
+//! Scroll and reverse-cycle outputs combine exact OEM logical support with
+//! reconstructed scalar records from that protocol reference; no hardware capture.
 use crate::{basilisk, link::Link, report::Report};
 use gearwise_core::{
     Error, Result,
-    model::{ButtonAction, DpiFunction, MouseButton},
+    model::{ButtonAction, DpiFunction, MouseButton, ScrollDirection},
 };
 use std::collections::BTreeMap;
 pub const BUTTONS: [(u16, &str); 8] = [
@@ -78,12 +80,25 @@ pub fn encode(id: u16, action: &ButtonAction) -> Result<[u8; 7]> {
         ButtonAction::Hypershift if matches!(physical, 1..=5) => {
             Ok([12, 1, 1, 0, 0, 0, 0])
         }
+        ButtonAction::Scroll(direction) => Ok([
+            1,
+            1,
+            match direction {
+                ScrollDirection::Up => 9,
+                ScrollDirection::Down => 10,
+            },
+            0,
+            0,
+            0,
+            0,
+        ]),
         ButtonAction::Media(usage) if MEDIA.contains(usage) => {
             let [hi, lo] = usage.to_be_bytes();
             Ok([10, 2, hi, lo, 0, 0, 0])
         }
         ButtonAction::Dpi(DpiFunction::Up) => Ok([6, 1, 1, 0, 0, 0, 0]),
         ButtonAction::Dpi(DpiFunction::Down) => Ok([6, 1, 2, 0, 0, 0, 0]),
+        ButtonAction::Dpi(DpiFunction::CycleDown) => Ok([6, 1, 7, 0, 0, 0, 0]),
         ButtonAction::Dpi(DpiFunction::Shift(v)) if (100..=30000).contains(v) => {
             let [hi, lo] = v.to_be_bytes();
             Ok([6, 5, 5, hi, lo, hi, lo])
@@ -106,6 +121,13 @@ pub fn decode(id: u16, raw: &[u8]) -> Option<ButtonAction> {
     if raw == [12, 1, 1, 0, 0, 0, 0] {
         return matches!(physical, 1..=5).then_some(ButtonAction::Hypershift);
     }
+    if raw[..2] == [1, 1] && raw[3..] == [0; 4] {
+        match raw[2] {
+            9 => return Some(ButtonAction::Scroll(ScrollDirection::Up)),
+            10 => return Some(ButtonAction::Scroll(ScrollDirection::Down)),
+            _ => {}
+        }
+    }
     if raw[..2] == [10, 2] && raw[4..] == [0, 0, 0] {
         let usage = u16::from_be_bytes([raw[2], raw[3]]);
         return MEDIA.contains(&usage).then_some(ButtonAction::Media(usage));
@@ -114,6 +136,7 @@ pub fn decode(id: u16, raw: &[u8]) -> Option<ButtonAction> {
         match raw[2] {
             1 => return Some(ButtonAction::Dpi(DpiFunction::Up)),
             2 => return Some(ButtonAction::Dpi(DpiFunction::Down)),
+            7 => return Some(ButtonAction::Dpi(DpiFunction::CycleDown)),
             _ => {}
         }
     }
@@ -356,6 +379,7 @@ mod tests {
                     DpiFunction::Up,
                     DpiFunction::Down,
                     DpiFunction::Cycle,
+                    DpiFunction::CycleDown,
                     DpiFunction::Shift(30000),
                 ] {
                     let a = ButtonAction::Dpi(function);
@@ -915,6 +939,133 @@ mod tests {
             state.lock().unwrap().blocks.insert(4,[12,1,1,0,0,0,0]);
             d.apply(&Setting::Button{id:4,action:ButtonAction::Default}).unwrap();
             let state=state.lock().unwrap();assert_eq!(state.writes.len(),1);assert_eq!(state.writes[0].0,4);
+        }
+    }
+
+    #[test]
+    fn scroll_and_reverse_cycle_match_reconstructed_scalar_vectors_with_exact_layer_identity() {
+        // Exact OEM logical outputs plus scalar protocol facts, not captured HID traffic.
+        for (id, action, args, crc) in [
+            (4, ButtonAction::Scroll(ScrollDirection::Up), [1, 4, 0, 1, 1, 9, 0, 0, 0, 0], 0x08),
+            (260, ButtonAction::Scroll(ScrollDirection::Down), [1, 4, 1, 1, 1, 10, 0, 0, 0, 0], 0x0a),
+            (2, ButtonAction::Dpi(DpiFunction::CycleDown), [1, 2, 0, 6, 1, 7, 0, 0, 0, 0], 0x07),
+            (258, ButtonAction::Dpi(DpiFunction::CycleDown), [1, 2, 1, 6, 1, 7, 0, 0, 0, 0], 0x06),
+        ] {
+            assert_eq!(encode(id, &action).unwrap(), args[3..]);
+            assert_eq!(decode(id, &args[3..]), Some(action));
+            let mut expected = [0; 91];
+            expected[..9].copy_from_slice(&[0, 0, 31, 0, 0, 0, 10, 2, 12]);
+            expected[9..19].copy_from_slice(&args);
+            expected[89] = crc;
+            let mut report = Report::new(2, 12, 10, &args);
+            report.transaction_id = 31;
+            assert_eq!(report.to_wire(), expected);
+            let mut unknown = args;
+            unknown[9] = 1;
+            assert!(decode(id, &unknown[3..]).is_none());
+        }
+        for id in [9, 10, 265, 266] {
+            for function in [DpiFunction::Up, DpiFunction::Down, DpiFunction::Cycle, DpiFunction::CycleDown, DpiFunction::Shift(400)] {
+                assert!(encode(id, &ButtonAction::Dpi(function)).is_err());
+            }
+            assert!(decode(id, &[6, 1, 7, 0, 0, 0, 0]).is_none());
+        }
+        // Sharing scalar types must not enable these assignments on another driver.
+        for action in [ButtonAction::Scroll(ScrollDirection::Up), ButtonAction::Scroll(ScrollDirection::Down), ButtonAction::Dpi(DpiFunction::CycleDown)] {
+            assert!(basilisk::encode(2, &action).is_err());
+        }
+        assert!(basilisk::decode(2, &[6, 1, 7, 0, 0, 0, 0]).is_none());
+    }
+
+    #[test]
+    fn scroll_and_reverse_cycle_roundtrip_exact_controls_without_changing_other_records() {
+        for pid in [0xb6, 0xb7] {
+            for (id, _) in controls() {
+                for action in [ButtonAction::Scroll(ScrollDirection::Up), ButtonAction::Scroll(ScrollDirection::Down), ButtonAction::Dpi(DpiFunction::CycleDown)] {
+                    if matches!(id & 255, 9 | 10) && matches!(action, ButtonAction::Dpi(_)) {
+                        continue;
+                    }
+                    let (mut d, state) = rig(pid, Fault::None);
+                    if id == 1 {
+                        state.lock().unwrap().blocks.insert(2, [1, 1, 1, 0, 0, 0, 0]);
+                    }
+                    let before = state.lock().unwrap().blocks.clone();
+                    let wanted = encode(id, &action).unwrap();
+                    d.apply(&Setting::Button { id, action: action.clone() }).unwrap();
+                    assert_eq!(d.read_state().unwrap().buttons.get(&id), Some(&action));
+                    {
+                        let state = state.lock().unwrap();
+                        assert_eq!(state.blocks[&id], wanted);
+                        assert_eq!(state.writes.len(), usize::from(before[&id] != wanted));
+                        for (other, block) in &before {
+                            if *other != id { assert_eq!(state.blocks[other], *block); }
+                        }
+                    }
+                    d.apply(&Setting::Button { id, action: ButtonAction::Default }).unwrap();
+                    assert_eq!(state.lock().unwrap().blocks, before);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn new_scalar_actions_keep_mode_original_parent_click_and_hypershift_guards() {
+        for pid in [0xb6, 0xb7] {
+            for action in [ButtonAction::Scroll(ScrollDirection::Up), ButtonAction::Scroll(ScrollDirection::Down), ButtonAction::Dpi(DpiFunction::CycleDown)] {
+                for (id, fault) in [(2, Fault::UnknownOriginal), (258, Fault::UnknownOriginal), (2, Fault::DriverMode), (258, Fault::DriverMode), (258, Fault::UnknownNormal), (1, Fault::None)] {
+                    let (mut d, state) = rig(pid, fault);
+                    assert!(d.apply(&Setting::Button { id, action: action.clone() }).is_err());
+                    assert!(state.lock().unwrap().writes.is_empty());
+                }
+                let (mut d, state) = rig(pid, Fault::None);
+                {
+                    let mut state = state.lock().unwrap();
+                    state.blocks.insert(4, [12, 1, 1, 0, 0, 0, 0]);
+                    state.blocks.insert(260, [12, 1, 1, 0, 0, 0, 0]);
+                }
+                assert!(d.apply(&Setting::Button { id: 260, action: action.clone() }).is_err());
+                assert!(state.lock().unwrap().writes.is_empty());
+                d.apply(&Setting::Button { id: 4, action: action.clone() }).unwrap();
+                let state = state.lock().unwrap();
+                assert_eq!(state.blocks[&4], encode(4, &action).unwrap());
+                assert_eq!(state.blocks[&260], default_block(260).unwrap());
+                assert_eq!(state.writes.len(), 2);
+            }
+        }
+    }
+
+    #[test]
+    fn failed_new_scalar_writes_restore_exact_new_originals_once_and_preserve_foreign_records() {
+        for pid in [0xb6, 0xb7] {
+            for id in [2, 258] {
+                for (action, original) in [
+                    (ButtonAction::Scroll(ScrollDirection::Up), [6, 1, 7, 0, 0, 0, 0]),
+                    (ButtonAction::Scroll(ScrollDirection::Down), [1, 1, 9, 0, 0, 0, 0]),
+                    (ButtonAction::Dpi(DpiFunction::CycleDown), [1, 1, 10, 0, 0, 0, 0]),
+                ] {
+                    for fault in [Fault::SetterFailure, Fault::Busy, Fault::BadReadback, Fault::Foreign, Fault::RestoreFailure, Fault::OtherLayer] {
+                        let (mut d, state) = rig(pid, fault);
+                        state.lock().unwrap().blocks.insert(id, original);
+                        let before = state.lock().unwrap().blocks.clone();
+                        let error = d.apply(&Setting::Button { id, action: action.clone() }).unwrap_err().to_string();
+                        assert!(error.contains("not retried"));
+                        let state = state.lock().unwrap();
+                        let wanted = encode(id, &action).unwrap();
+                        assert_eq!(state.writes.iter().filter(|(input, block)| *input == id && *block == wanted).count(), 1);
+                        if fault == Fault::Foreign {
+                            assert_eq!(state.writes.len(), 1);
+                            assert_eq!(state.blocks[&id], [2, 2, 0, 5, 0, 0, 0]);
+                        } else {
+                            assert_eq!(state.writes.len(), 2);
+                            assert_eq!(state.writes[1], (id, original));
+                            assert_eq!(state.blocks[&id], original);
+                        }
+                        for (other, block) in &before {
+                            if *other != id { assert_eq!(state.blocks[other], *block); }
+                        }
+                    }
+                }
+            }
         }
     }
 

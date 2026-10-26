@@ -78,6 +78,7 @@ fn encode(spec: &ButtonSpec, action: &ButtonAction) -> Result<Vec<u8>> {
         ButtonAction::Default => Err(Error::invalid("a default mapping has no slot value")),
         ButtonAction::Disabled => Ok(vec![DISABLED]),
         ButtonAction::Mouse(b) => Ok(vec![mouse_button(*b)?]),
+        ButtonAction::Scroll(_) => Err(Error::Unsupported("vertical scroll output")),
         ButtonAction::Key { usage, mods } => key(spec, *usage, *mods),
         ButtonAction::Media(usage) => {
             if !MEDIA.contains(usage) {
@@ -288,5 +289,30 @@ mod tests {
             plan(&SPEC, &none(), 7, &ButtonAction::Disabled),
             Err(Error::InvalidValue(_))
         ));
+    }
+
+    #[test]
+    fn scoped_scroll_and_reverse_cycle_never_produce_a_steelseries_table() {
+        use gearwise_core::model::ScrollDirection;
+
+        for spec in [&SPEC, &NARROW] {
+            for action in [
+                ButtonAction::Scroll(ScrollDirection::Up),
+                ButtonAction::Scroll(ScrollDirection::Down),
+                ButtonAction::Dpi(DpiFunction::CycleDown),
+            ] {
+                assert!(matches!(
+                    plan(spec, &none(), 1, &action),
+                    Err(Error::Unsupported(_))
+                ));
+                // The whole table is rebuilt, so an unsupported saved binding
+                // must also prevent a packet when changing a different button.
+                let current = BTreeMap::from([(1, action)]);
+                assert!(matches!(
+                    plan(spec, &current, 6, &ButtonAction::Disabled),
+                    Err(Error::Unsupported(_))
+                ));
+            }
+        }
     }
 }

@@ -434,6 +434,14 @@ impl MouseButton {
     }
 }
 
+/// A one-shot vertical scroll output, available only where a driver supports it.
+/// Kept separate from mouse-button holds and macro press/release steps.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ScrollDirection {
+    Up,
+    Down,
+}
+
 /// HID keyboard modifier bits (usage page 0x07, report byte 0 layout).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Modifiers(pub u8);
@@ -474,9 +482,12 @@ impl Modifiers {
 pub enum DpiFunction {
     Up,
     Down,
+    /// Next stage, wrapping to the first stage after the last.
     Cycle,
     /// "Sniper"/DPI-shift: hold for this DPI, release to restore.
     Shift(u16),
+    /// Previous stage, wrapping to the last stage before the first.
+    CycleDown,
 }
 
 /// HID consumer-page usages worth offering in a picker.
@@ -528,6 +539,8 @@ pub enum ButtonAction {
     Hypershift,
     /// Software macro by id; played back by the host while the app runs.
     Macro(String),
+    /// A scroll output; support is advertised by the exact device driver.
+    Scroll(ScrollDirection),
 }
 
 impl ButtonAction {
@@ -551,9 +564,12 @@ impl ButtonAction {
             ButtonAction::Dpi(DpiFunction::Down) => "DPI down".into(),
             ButtonAction::Dpi(DpiFunction::Cycle) => "DPI cycle".into(),
             ButtonAction::Dpi(DpiFunction::Shift(d)) => format!("DPI shift ({d})"),
+            ButtonAction::Dpi(DpiFunction::CycleDown) => "DPI cycle down".into(),
             ButtonAction::ProfileCycle => "Profile cycle".into(),
             ButtonAction::Hypershift => "Hold Hypershift".into(),
             ButtonAction::Macro(id) => format!("Macro: {id}"),
+            ButtonAction::Scroll(ScrollDirection::Up) => "Scroll up".into(),
+            ButtonAction::Scroll(ScrollDirection::Down) => "Scroll down".into(),
         }
     }
 }
@@ -585,4 +601,67 @@ pub struct Battery {
  use super::*;
  #[test]fn half_percent_positions_round_trip_without_changing_integer_json(){for (text,halves)in[("0",0),("33",66),("100",200),("16.5",33),("49.5",99)]{let p:ColorPosition=serde_json::from_str(text).unwrap();assert_eq!(p.half_percent(),halves);assert_eq!(serde_json::to_string(&p).unwrap(),text);}}
  #[test]fn positions_reject_out_of_range_quarter_percent_non_numeric_and_non_finite_inputs(){for s in["-0.5","100.5","101","16.25","true","null","\"16.5\"","1e100"]{assert!(serde_json::from_str::<ColorPosition>(s).is_err(),"{s}");}assert!(serde_json::to_string(&ColorPosition::from_half_percent(201)).is_err());}
+}
+
+#[cfg(test)]
+mod button_action_serialization_tests {
+    use super::*;
+    use crate::profile::MacroStep;
+    use serde_json::json;
+
+    #[test]
+    fn existing_button_action_json_remains_compatible() {
+        let fixtures = [
+            (ButtonAction::Default, json!("Default")),
+            (ButtonAction::Disabled, json!("Disabled")),
+            (ButtonAction::Mouse(MouseButton::Left), json!({"Mouse": "Left"})),
+            (ButtonAction::Mouse(MouseButton::WheelLeft), json!({"Mouse": "WheelLeft"})),
+            (ButtonAction::Mouse(MouseButton::WheelRight), json!({"Mouse": "WheelRight"})),
+            (ButtonAction::Key { usage: 4, mods: Modifiers(0x81) }, json!({"Key": {"usage": 4, "mods": 129}})),
+            (ButtonAction::Media(0xe9), json!({"Media": 233})),
+            (ButtonAction::Dpi(DpiFunction::Up), json!({"Dpi": "Up"})),
+            (ButtonAction::Dpi(DpiFunction::Down), json!({"Dpi": "Down"})),
+            (ButtonAction::Dpi(DpiFunction::Cycle), json!({"Dpi": "Cycle"})),
+            (ButtonAction::Dpi(DpiFunction::Shift(400)), json!({"Dpi": {"Shift": 400}})),
+            (ButtonAction::ProfileCycle, json!("ProfileCycle")),
+            (ButtonAction::Hypershift, json!("Hypershift")),
+            (ButtonAction::Macro("saved-macro".into()), json!({"Macro": "saved-macro"})),
+        ];
+        for (action, value) in fixtures {
+            assert_eq!(serde_json::to_value(&action).unwrap(), value);
+            assert_eq!(serde_json::from_value::<ButtonAction>(value).unwrap(), action);
+        }
+        assert_eq!(ButtonAction::Dpi(DpiFunction::Cycle).label(), "DPI cycle");
+    }
+
+    #[test]
+    fn scoped_scroll_and_reverse_cycle_have_distinct_strict_json() {
+        for (action, value, label) in [
+            (ButtonAction::Scroll(ScrollDirection::Up), json!({"Scroll": "Up"}), "Scroll up"),
+            (ButtonAction::Scroll(ScrollDirection::Down), json!({"Scroll": "Down"}), "Scroll down"),
+            (ButtonAction::Dpi(DpiFunction::CycleDown), json!({"Dpi": "CycleDown"}), "DPI cycle down"),
+        ] {
+            assert_eq!(serde_json::to_value(&action).unwrap(), value);
+            assert_eq!(serde_json::from_value::<ButtonAction>(value).unwrap(), action);
+            assert_eq!(action.label(), label);
+        }
+        for value in [json!({"Scroll": "Left"}), json!({"Scroll": "up"}), json!({"Scroll": 1})] {
+            assert!(serde_json::from_value::<ButtonAction>(value).is_err());
+        }
+    }
+
+    #[test]
+    fn scroll_outputs_do_not_expand_mouse_or_macro_hold_inputs() {
+        assert_eq!(MouseButton::ALL, [
+            MouseButton::Left, MouseButton::Right, MouseButton::Middle,
+            MouseButton::Back, MouseButton::Forward,
+            MouseButton::WheelLeft, MouseButton::WheelRight,
+        ]);
+        for direction in ["WheelUp", "WheelDown"] {
+            assert!(serde_json::from_value::<MouseButton>(json!(direction)).is_err());
+            assert!(serde_json::from_value::<MacroStep>(json!({"MouseDown": direction})).is_err());
+            assert!(serde_json::from_value::<MacroStep>(json!({"MouseUp": direction})).is_err());
+        }
+        assert!(serde_json::from_value::<MacroStep>(json!({"Scroll": "Up"})).is_err());
+    }
 }
