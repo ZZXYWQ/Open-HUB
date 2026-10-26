@@ -41,10 +41,10 @@ await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimatio
 await apply.click();await page.waitForFunction(()=>window.__fullRequests.length===3);
 assert.equal((await page.evaluate(()=>window.__fullRequests))[2].args.expectedConnection,'connection:mchose-A:2');
 await target.selectOption('mchose-B');await apply.click();await page.waitForFunction(()=>window.__fullRequests.length===4);
-// Generic profile editor must not independently change a full plan's summary.
+// Full profiles open the dedicated editor rather than a generic summary editor.
 await card.getByRole('button',{name:`Edit ${profile.name}`,exact:true}).click();
-await page.getByText('迈从完整设备方案',{exact:true}).waitFor();assert.equal(await page.getByLabel('Level 1 DPI',{exact:true}).count(),0);
-await page.getByRole('button',{name:'Cancel',exact:true}).click();
+await page.getByRole('heading',{name:'迈从完整方案编辑',exact:true}).waitFor();assert.equal(await page.getByLabel('Level 1 DPI',{exact:true}).count(),0);
+await page.getByLabel('方案档位 1 X',{exact:true}).waitFor();await page.getByRole('button',{name:'取消',exact:true}).click();
 await page.getByRole('button',{name:'设备',exact:true}).click();await page.getByRole('button',{name:'Open A7 V3 Ultra+ A',exact:true}).click();
 const picker=page.getByRole('combobox',{name:'Active profile',exact:true});await picker.waitFor();await picker.click();await page.getByRole('option',{name:profile.name,exact:true}).click();
 await page.waitForFunction(()=>window.__fullRequests.length===5);
@@ -53,5 +53,5 @@ await target.selectOption('mchose-A');const listsBefore=await page.evaluate(()=>
 await page.waitForFunction(n=>window.__qaCalls.filter(c=>c.cmd==='list_devices').length>n,listsBefore);await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));assert(await apply.isDisabled());
 const requests=await page.evaluate(()=>window.__fullRequests);assert.deepEqual(requests.map(r=>r.expected_success),[true,false,true,true,true]);assert.deepEqual(requests.map(r=>r.args.expectedConnection),['connection:mchose-A:1','connection:mchose-A:1','connection:mchose-A:2','connection:mchose-B:1','connection:mchose-A:2']);assert.deepEqual(errors,[]);
 fs.writeFileSync(path.join(out,'activation-requests.json'),JSON.stringify(requests,null,2));await page.screenshot({path:path.join(out,'full-profile-connections.png')});
-fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({passed:true,hardware_accessed:false,source_fixture:'native to_profile(Plan)',checks:['two same-model mice require explicit target','Logitech excluded','separate USB/wireless and XY summary','selected connection captured by profile center','reconnect race rejects old selection without retry','fresh generation can apply','second mouse retains own connection','generic editor preserves complete payload','header captures current connection','missing connection disables activation']},null,2));console.log('10 full MCHOSE profile UI checks passed; native replay requests saved');
+fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({passed:true,hardware_accessed:false,source_fixture:'native to_profile(Plan)',checks:['two same-model mice require explicit target','Logitech excluded','separate USB/wireless and XY summary','selected connection captured by profile center','reconnect race rejects old selection without retry','fresh generation can apply','second mouse retains own connection','full payload opens dedicated editor','header captures current connection','missing connection disables activation']},null,2));console.log('10 full MCHOSE profile UI checks passed; native replay requests saved');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

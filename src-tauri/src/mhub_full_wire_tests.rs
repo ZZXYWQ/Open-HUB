@@ -1,6 +1,5 @@
-// Full known-field conversion replay over the existing production restore path.
-// This fixture starts with no existing macros. Production import is not enabled:
-// its future commit path must consume macro_writes rather than reupload all slots.
+// Full source/editor plans replay production codecs, differential transactions
+// and per-device routing over isolated stateful memory transports. No HID I/O.
 use super::*;
 use crate::{
     hidpp::{Error, Result},
@@ -720,4 +719,27 @@ fn actual_full_profile_ui_requests_replay_connection_guard_routing_store_and_tra
     assert!(owners.contains(&"session:mchose-B".to_owned()));
     assert_eq!(a.mouse.lock().unwrap().state.raw_settings[2] >> 4, 4);
     assert_eq!(b.mouse.lock().unwrap().state.raw_settings[2] >> 4, 4);
+}
+#[test]
+#[ignore = "requires actual full import/editor UI saved profiles capture"]
+fn actual_import_editor_saved_profiles_apply_via_production_transaction() {
+    let bytes=std::fs::read(std::env::var("OPEN_HUB_MHUB_EDITOR_UI_SAVED").unwrap()).unwrap();
+    let saved:Vec<crate::profiles::Profile>=serde_json::from_slice(&bytes).unwrap();assert_eq!(saved.len(),2);assert_eq!(saved[0].mchose,saved[1].mchose);
+    let profile=&saved[0];crate::profile_transfer::validate(profile).unwrap();let p=profile.mchose.as_ref().unwrap();
+    assert_eq!(p.dpi_x[1],1350);assert_eq!(p.dpi_y.as_ref().unwrap()[1],1450);assert_eq!((p.count,p.active),(3,2));
+    assert_eq!((p.usb_rate,p.wireless_rate),(2,5));assert_eq!((p.left_debounce,p.right_debounce,p.sleep,p.never_sleep,p.rotation,p.lod),(10,6,9,false,12,4));
+    assert_eq!(p.buttons[1],[0x13,1,14]);assert_eq!(p.buttons[3],[0x21,0,0]);assert_eq!(p.buttons[5],[255;3]);assert_eq!(p.macros.len(),2);
+    let original=p.macros.iter().find(|m|m.slot==10).unwrap();assert_eq!(original.name,"界面编辑宏");assert_eq!(original.mode,1);
+    assert_eq!(original.events[2].delay_ms,75);assert_eq!((original.events[5].kind.as_str(),original.events[5].code,original.events[5].down),("mouse",2,true));assert_eq!((original.events[6].code,original.events[6].down),(2,false));assert_eq!((original.events[7].kind.as_str(),original.events[7].code),("scroll",0));
+    assert_eq!(original.events.len(),11);assert_eq!((original.events[8].code,original.events[8].down),(5,true));assert_eq!(original.events[9].kind,"delay");assert_eq!(original.events[9].delay_ms,50);assert_eq!((original.events[10].code,original.events[10].down),(5,false));
+    let recorded=p.macros.iter().find(|m|m.slot==0).unwrap();let keys=recorded.events.iter().filter(|e|e.kind=="key").map(|e|(e.code,e.down)).collect::<Vec<_>>();assert_eq!(keys,[(224,true),(4,true),(4,false),(224,false)]);
+    assert_ne!(p.sensor&8,0);
+    let mut store=crate::profiles::ProfileStore::default();crate::profile_transfer::merge(&mut store,vec![profile.clone()]).unwrap();
+    let a=Rig::new();let b=Rig::new();
+    let device=crate::mchose_target::simulated_device("mchose-editor-A");
+    assert!(crate::profiles::apply_mchose_profile(profile,&device,&a.t).is_empty());
+    assert!(b.mouse.lock().unwrap().requests.is_empty());
+    let actual=a.t.hardware_state().unwrap();assert_eq!(actual.dpi_x,p.dpi_x);assert_eq!(actual.dpi_y,p.dpi_y.clone().unwrap());assert_eq!(actual.sensor,p.sensor);
+    for logical in [0,10] {let target=actual.buttons[if logical==0 {3}else{4}][1];let m=p.macros.iter().find(|m|m.slot==logical).unwrap();assert_eq!(a.mouse.lock().unwrap().macros[&target],m.raw);}
+    let setters=set_records(&a.mouse.lock().unwrap()).len();assert!(crate::profiles::apply_mchose_profile(profile,&device,&a.t).is_empty());assert_eq!(set_records(&a.mouse.lock().unwrap()).len(),setters);
 }

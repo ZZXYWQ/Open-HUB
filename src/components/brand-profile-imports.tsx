@@ -14,7 +14,7 @@ const sources = [
   {id:'vgn',brand:'VGN',software:'读取板载配置',label:'VGN 板载配置导入',models:'蜻蜓 F1 Pro / F1 Pro Max · 精确 USB ID',scope:'预览 DPI、回报率、按键、板载宏和指示灯 · 模拟验证'},
   {id:'atk',brand:'ATK',software:'读取板载配置',label:'ATK 板载配置导入',models:'A9 Plus NK · USB / NearLink；X1 Pro Max · USB',scope:'预览 DPI、回报率、按键、板载宏和指示灯 · 模拟验证'},
   {id:'ghub',brand:'罗技 / Logitech',software:'G HUB',label:'G HUB 配置导入',models:'已适配的 HID++ 鼠标',scope:'DPI、回报率、应用关联'},
-  {id:'mhub',brand:'迈从 / MCHOSE',software:'M HUB',label:'M HUB 板载配置导入',models:'A7 V3 Ultra+',scope:'三组板载名称与引用'},
+  {id:'mhub',brand:'迈从 / MCHOSE',software:'M HUB',label:'M HUB 配置导入',models:'A7 V3 Ultra+',scope:'完整 JSON 方案、显式宏库正文、参数编辑；也可导入板载引用 · 实验适配'},
   {id:'synapse',brand:'雷蛇 / Razer',software:'Synapse',label:'导入 Synapse 配置',models:'Naga V2 HyperSpeed · Synapse 4',scope:'预览 DPI、按键和可转换的宏'},
   {id:'icue',brand:'海盗船 / Corsair',software:'iCUE',label:'导入 iCUE 配置',models:'M65 PRO RGB',scope:'预览 DPI、按键和可转换的宏'},
   {id:'gg',brand:'赛睿 / SteelSeries',software:'GG',label:'导入 GG 配置',models:'Rival 300 / Rival 310 / Sensei 310 / Sensei Ten / Rival 600',scope:'预览 DPI、按键、宏和对应灯区效果'},

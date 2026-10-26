@@ -10,20 +10,7 @@ import {PanelShell,PanelSection} from "@/components/panel";
 import {api,type MchoseHardware,type MchoseMacro,type MchoseMacroEvent} from "@/lib/api";
 import {MCHOSE_MAIN_KEYS,MCHOSE_COMBINATION_MODIFIERS,mchoseKeyUsage,mchoseKeyboardBinding,mchoseKeyboardLabel} from "@/lib/mchose-keys";
 
-const RATES=[[0,125],[2,500],[3,1000],[4,2000],[5,4000],[6,8000]];
-const BUTTONS=["左键","右键","中键","前侧键","后侧键","DPI 键"];
-const LOD=["0.7 mm","0.9 mm","1.2 mm","1.4 mm","1.7 mm"];
-const BINDINGS:[string,number[]][]=[
- ["左键",[0,1,0]],["右键",[0,2,0]],["中键",[0,4,0]],["前进",[0,16,0]],["后退",[0,8,0]],
- ["滚轮上",[5,0,0]],["滚轮下",[5,1,0]],["DPI 循环",[1,0,0,0]],["DPI +",[1,2,0,0]],["DPI −",[1,3,0,0]],
- ["Esc",[17,41,0]],["Enter",[17,40,0]],["空格",[17,44,0]],["Tab",[17,43,0]],
- ["复制",[22,1,6]],["粘贴",[22,1,25]],["剪切",[22,1,27]],["全选",[22,1,4]],
- ["音量 +",[20,233,0]],["音量 −",[20,234,0]],["静音",[20,226,0]],["播放/暂停",[20,205,0]],
- ["上一曲",[20,182,0]],["下一曲",[20,181,0]],["板载 1",[51,0,0]],["板载 2",[51,1,0]],["板载 3",[51,2,0]],["循环板载",[51,255,0]],["禁用",[254,0,0]],
- ...Array.from({length:26},(_,i):[string,number[]]=>[String.fromCharCode(65+i),[17,4+i,0]]),
- ...Array.from({length:12},(_,i):[string,number[]]=>[`F${i+1}`,[17,58+i,0]]),
- ...Array.from({length:18},(_,i):[string,number[]]=>[`宏槽 ${i+1}`,[33,i,0]]),
-];
+import {MCHOSE_RATES as RATES,MCHOSE_BUTTONS as BUTTONS,MCHOSE_LOD as LOD,MCHOSE_BINDINGS as BINDINGS} from "@/lib/mchose-options";
 const selectClass="h-9 min-w-0 rounded-md border border-input bg-background px-2 text-sm";
 function Pick({value,onChange,children,label}:{value:number|string;onChange:(v:string)=>void;children:React.ReactNode;label:string}){
  return <select aria-label={label} className={selectClass} value={value} onChange={e=>onChange(e.target.value)}>{children}</select>;

@@ -223,3 +223,61 @@ fn ambiguous_same_model_requires_target_and_cannot_route_to_other_brands_or_serv
     assert_eq!(store.profiles.len(), 2);
     assert!(store.profile_owners.is_empty());
 }
+#[test]
+fn editor_preparation_reencodes_canonical_edits_and_preserves_opaque_macros() {
+    let original=full();
+    let mut edit=original.clone();
+    let plan=edit.mchose.as_mut().unwrap();
+    plan.dpi_x[1]=1250;plan.dpi_y.as_mut().unwrap()[1]=1300;
+    plan.wireless_rate=5;plan.usb_rate=2;plan.macros[0].name="编辑后的宏".into();plan.macros[0].mode=0;
+    let ready=prepare_profile(edit).unwrap();
+    assert_eq!(ready.levels[1],crate::profiles::Level{x:1250,y:Some(1300)});
+    assert_eq!(ready.report_rate_hz,Some(4000));
+    let edited=&ready.mchose.as_ref().unwrap().macros[0];
+    assert_eq!(edited.raw[4],0);assert_ne!(edited.raw,original.mchose.as_ref().unwrap().macros[0].raw);
+    crate::profile_transfer::validate(&ready).unwrap();
+    let mut opaque=original.clone();opaque.mchose.as_mut().unwrap().macros[0].raw[6]=0xa7;
+    let kept=prepare_profile(opaque.clone()).unwrap();assert_eq!(kept.mchose,opaque.mchose);
+    opaque.mchose.as_mut().unwrap().macros[0].name="不可清空未解释字段".into();
+    assert!(prepare_profile(opaque).unwrap_err().contains("未解释"));
+}
+#[test]
+fn editor_preparation_does_not_fix_invalid_sources_missing_refs_or_unbalanced_events() {
+    let mut p=full();p.target_vendor=Some(0x046d);assert!(prepare_profile(p).is_err());
+    let mut p=full();p.mchose.as_mut().unwrap().buttons[4]=vec![0x21,17,0];assert!(prepare_profile(p).is_err());
+    let mut p=full();let m=&mut p.mchose.as_mut().unwrap().macros[0];m.raw.clear();m.events=vec![MacroEvent{kind:"key".into(),code:4,down:true,delay_ms:0}];assert!(prepare_profile(p).is_err());
+    let mut p=full();p.mchose.as_mut().unwrap().active=5;p.mchose.as_mut().unwrap().count=2;assert!(prepare_profile(p).is_err());
+    let mut p=full();p.mchose.as_mut().unwrap().buttons[0]=vec![0xfe,0,0];assert!(prepare_profile(p).is_err());
+}
+#[test]
+fn explicit_source_files_prepare_complete_profile_without_mutation_or_device_access() {
+    let dir=std::env::temp_dir().join(format!("open-hub-explicit-mhub-{}-{}",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+    std::fs::create_dir(&dir).unwrap();let source=dir.join("template.json");let library=dir.join("library.json");
+    let source_bytes=include_bytes!("../tests/fixtures/mhub-full-template.json");let library_bytes=include_bytes!("../tests/fixtures/mhub-macro-library.json");
+    std::fs::write(&source,source_bytes).unwrap();std::fs::write(&library,library_bytes).unwrap();
+    assert!(prepare_file(&source,None).unwrap_err().contains("缺少正文"));
+    let imported=prepare_file(&source,Some(&library)).unwrap();assert_eq!(imported.mchose,full().mchose);
+    assert_eq!(std::fs::read(&source).unwrap(),source_bytes);assert_eq!(std::fs::read(&library).unwrap(),library_bytes);
+    assert_eq!(std::fs::read_dir(&dir).unwrap().count(),2);assert!(prepare_file(&dir,None).is_err());
+    let oversized=dir.join("large.json");std::fs::File::create(&oversized).unwrap().set_len(8*1024*1024+1).unwrap();assert!(prepare_file(&oversized,None).unwrap_err().contains("8 MiB"));
+    for file in [&source,&library,&oversized] {std::fs::remove_file(file).unwrap();}std::fs::remove_dir(dir).unwrap();
+}
+#[test]
+#[ignore = "test-only pure-function bridge, explicit request and response paths required"]
+fn mhub_editor_ui_bridge() {
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all="camelCase",deny_unknown_fields)]
+    struct ImportArgs {path:String,macro_library_path:Option<String>}
+    #[derive(serde::Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct EditArgs {profile:Profile}
+    let bytes=std::fs::read(std::env::var("OPEN_HUB_MHUB_EDITOR_UI_REQUEST").unwrap()).unwrap();assert!(bytes.len()<2*1024*1024);
+    let request:Value=serde_json::from_slice(&bytes).unwrap();
+    let result=match request["cmd"].as_str().unwrap() {
+        "prepare_mhub_import"=>{let args:ImportArgs=serde_json::from_value(request["args"].clone()).unwrap();prepare_file(std::path::Path::new(&args.path),args.macro_library_path.as_deref().map(std::path::Path::new))},
+        "prepare_mchose_profile"=>{let args:EditArgs=serde_json::from_value(request["args"].clone()).unwrap();prepare_profile(args.profile)},
+        _=>panic!("bridge only permits pure preparation functions"),
+    };
+    let response=match result {Ok(profile)=>json!({"ok":profile}),Err(error)=>json!({"error":error})};
+    std::fs::write(std::env::var("OPEN_HUB_MHUB_EDITOR_UI_RESPONSE").unwrap(),serde_json::to_vec_pretty(&response).unwrap()).unwrap();
+}

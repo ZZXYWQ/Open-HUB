@@ -1,4 +1,5 @@
-//! Complete known A7 template conversion; no file/device access and no UI entry.
+//! Complete known A7 template conversion and explicit file/editor preparation.
+//! These functions never enumerate or write devices.
 //! OEM JSON export names macros but does not include their bodies. Missing or
 //! ambiguous bodies must remain an error, never become an empty macro.
 use crate::mchose_config::{self as native, MacroEvent, MouseMacro, Snapshot};
@@ -60,6 +61,40 @@ pub fn to_profile(plan:Plan)->Result<crate::profiles::Profile> {
     };
     crate::profile_transfer::validate(&profile)?;
     Ok(profile)
+}
+
+/// Explicit editor preparation regenerates canonical macro bytes and summaries.
+/// Opaque raw baselines remain immutable unless the user replaces the macro.
+/// Package import/save still uses strict validation, never this normalization.
+pub fn prepare_profile(mut profile:crate::profiles::Profile)->Result<crate::profiles::Profile> {
+    let plan=profile.mchose.as_mut().ok_or("缺少完整迈从方案")?;
+    if plan.macros.len()>18 {return Err("完整方案最多18个宏".into());}
+    for m in &mut plan.macros {
+        *m=native::macro_record(m.slot,&m.name,m.mode,&m.events,if m.raw.is_empty(){None}else{Some(&m.raw)}).map_err(|e|e.to_string())?;
+    }
+    validate(plan)?;
+    profile.levels=profile_levels(plan);
+    profile.active_level=usize::from(plan.active);
+    profile.report_rate_hz=rate_hz(plan.wireless_rate);
+    crate::profile_transfer::validate(&profile)?;
+    Ok(profile)
+}
+fn read_explicit_file(path:&std::path::Path)->Result<Vec<u8>> {
+    use std::io::Read;
+    const MAX:u64=8*1024*1024;
+    let file=std::fs::File::open(path).map_err(|e|format!("无法读取所选配置文件：{e}"))?;
+    let meta=file.metadata().map_err(|e|e.to_string())?;
+    if !meta.is_file()||meta.len()>MAX {return Err("请选择不超过8 MiB的普通JSON文件".into());}
+    let mut bytes=Vec::new();
+    file.take(MAX+1).read_to_end(&mut bytes).map_err(|e|e.to_string())?;
+    if bytes.len() as u64>MAX {return Err("配置文件超过8 MiB".into());}
+    Ok(bytes)
+}
+/// Only user-selected files. No discovery of unrelated OEM/browser databases.
+pub fn prepare_file(path:&std::path::Path,library:Option<&std::path::Path>)->Result<crate::profiles::Profile> {
+    let bytes=read_explicit_file(path)?;
+    let library=library.map(read_explicit_file).transpose()?;
+    to_profile(parse_bytes(&bytes,library.as_deref())?)
 }
 
 // Preserve ambiguity as an error instead of letting a JSON map silently use

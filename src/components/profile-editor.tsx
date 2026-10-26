@@ -107,7 +107,7 @@ export function ProfileEditor({ profile, onClose, onSave }: Props) {
             </div>
           )}
 
-          {draft.mchose?<div className="grid gap-2 rounded-md border border-input p-3 text-sm"><Label>迈从完整设备方案</Label><p>保留完整 DPI、独立回报率、性能、按键和宏内容。本窗口仅编辑配置名称和关联应用。</p><p className="text-xs text-muted-foreground">完整参数编辑器尚未接通；不会使用通用 DPI 摘要覆盖设备方案。</p></div>:<>
+          {draft.mchose?<div className="grid gap-2 rounded-md border border-input p-3 text-sm"><Label>迈从完整设备方案</Label><p>保留完整 DPI、独立回报率、性能、按键和宏内容。本窗口仅编辑配置名称和关联应用。</p><p className="text-xs text-muted-foreground">请使用迈从完整方案编辑器调整设备参数。</p></div>:<>
           <div className="grid gap-2"><Label>适用品牌</Label><select aria-label="配置适用品牌" className="h-9 rounded-md border border-input bg-background px-3 text-sm" value={profileVendor(draft)??"any"} onChange={e=>{const vendor=e.target.value==="any"?null:Number(e.target.value);set({target_vendor:vendor,target_model:vendor===0x3837?0x4026:null,mchose_board:vendor===0x3837?draft.mchose_board:null,ghub_id:vendor===0x046d?draft.ghub_id:null,levels:draft.levels.length?draft.levels:newProfile().levels});}}><option value="any">通用（所有兼容设备）</option>{BRANDS.map(b=><option value={b.vendor} key={b.vendor}>{b.name}</option>)}</select><p className="text-xs text-muted-foreground">专属品牌配置只应用到匹配品牌；板载引用还会校验型号。</p></div>
           {profileVendor(draft)===0x3837&&<div className="grid gap-2">
             <Label>迈从自动板载切换</Label>

@@ -80,16 +80,18 @@ const start=base.indexOf(marker)+marker.length,end=base.indexOf('\n});await ',st
     assert.equal(await dialog.getByRole('combobox').inputValue(),'');
     assert(await dialog.getByText(/Marvo Scorpion G961（9677）/).isVisible());
     await dialog.getByRole('button',{name:'取消',exact:true}).click();
-    for(const [label,title,kind] of [['G HUB 配置导入','导入罗技 G HUB 配置','ghub'],['M HUB 板载配置导入','导入迈从 M HUB 配置','mhub']]) {
+    for(const [label,title,kind] of [['G HUB 配置导入','导入罗技 G HUB 配置','ghub'],['M HUB 配置导入','导入迈从 M HUB 配置','mhub']]) {
       await page.getByRole('button',{name:'导入配置',exact:true}).click();
       await cards.getByRole('button',{name:label,exact:true}).click();
-      dialog=page.getByRole('dialog');await dialog.getByRole('heading',{name:title,exact:true}).waitFor();
+      if(kind==='mhub')await page.getByRole('button',{name:'读取 M HUB 板载引用',exact:true}).click();
+      dialog=page.getByRole('dialog').filter({has:page.getByRole('heading',{name:title,exact:true})});await dialog.getByRole('heading',{name:title,exact:true}).waitFor();
       assert.equal(await dialog.locator('.hub-source-grid').count(),0);
       await dialog.getByRole('button',{name:'读取本地配置',exact:true}).click();
       await dialog.getByRole('button',{name:'导入 1 项',exact:true}).waitFor();
       const calls=await page.evaluate(()=>window.__qaCalls);
       assert.equal(calls.filter(c=>c.cmd==='preview_profile_import').at(-1).args.source,kind);
       await dialog.getByRole('button',{name:'取消',exact:true}).click();
+      if(kind==='mhub')await page.getByRole('button',{name:'Close',exact:true}).click();
     }
     await page.getByRole('button',{name:'导入配置',exact:true}).click();
     await cards.getByRole('button',{name:'Attack Shark X11 配置导入',exact:true}).click();

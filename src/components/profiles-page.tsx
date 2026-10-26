@@ -1,3 +1,5 @@
+import {MhubProfileImport} from "@/components/mhub-profile-import";
+import {MchoseProfileEditor} from "@/components/mchose-profile-editor";
 import {mchoseRateHz} from "@/lib/mchose-plan";
 import {isLegacyBrand} from '@/lib/legacy';
 import {compxModel,compxBrand} from '@/lib/compx';
@@ -49,13 +51,14 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
   const [offline,setOffline]=useState(false);
   const [multiNew,setMultiNew]=useState(false);
   const [synapsePreview,setSynapsePreview]=useState(false);
+  const [mhubImport,setMhubImport]=useState(false);
   const [icueImport,setIcueImport]=useState(false);
   const [ggImport,setGgImport]=useState(false);
   const [editing, setEditing] = useState<Profile | null>(null);
   const brandKey=(p:Profile)=>p.sino?'sino:'+p.sino.model.brand:p.multi&&compxModel(p.multi.vendor,p.multi.product)?'compx:'+compxModel(p.multi.vendor,p.multi.product)!.brand:String(profileVendor(p));
   const brandLabel=(v:string)=>v.startsWith('sino:')?v.slice(5):v.startsWith('compx:')?compxBrand(v.slice(6)):brandName(v==='null'?null:Number(v));
   const [importChooser,setImportChooser]=useState(false);
-  const chooseImport=(source:string,models:SinoModel[])=>{setImportChooser(false);setImportModels(models);if(source==='synapse')setSynapsePreview(true);else if(source==='icue')setIcueImport(true);else if(source==='gg')setGgImport(true);else if(isLegacyBrand(source)||source==='atk'||source==='vxe'||source==='vgn'||source==='hyperx'||source==='pulsar')setAtkImport(source);else setImportSource(source);};
+  const chooseImport=(source:string,models:SinoModel[])=>{setImportChooser(false);setImportModels(models);if(source==='mhub')setMhubImport(true);else if(source==='synapse')setSynapsePreview(true);else if(source==='icue')setIcueImport(true);else if(source==='gg')setGgImport(true);else if(isLegacyBrand(source)||source==='atk'||source==='vxe'||source==='vgn'||source==='hyperx'||source==='pulsar')setAtkImport(source);else setImportSource(source);};
   const [atkImport,setAtkImport]=useState<BoardImportBrand|null>(null);
   const [importModels,setImportModels]=useState<SinoModel[]>([]);
   const [importSource,setImportSource]=useState<string|null>(null),[vendor,setVendor]=useState('all');
@@ -181,11 +184,12 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
       <ProfileImportDialog key={importSource??'closed'} devices={devices} models={importModels} source={importSource} onClose={()=>setImportSource(null)} onDone={()=>toast.success('配置已导入，可按品牌查看并手动应用')}/>
       {atkImport&&<AtkProfileImport brand={atkImport} devices={devices} onClose={()=>setAtkImport(null)} onSave={onSave}/>}
       {synapsePreview&&<SynapsePreview onClose={()=>setSynapsePreview(false)}/>}
+      {mhubImport&&<MhubProfileImport onClose={()=>setMhubImport(false)} onSave={onSave}/>}
       {icueImport&&<VendorProfileImport kind="icue" onClose={()=>setIcueImport(false)} onSave={onSave}/>}
       {ggImport&&<VendorProfileImport kind="gg" onClose={()=>setGgImport(false)} onSave={onSave}/>}
       {offline&&<SinoNewProfile onClose={()=>setOffline(false)} onSave={onSave}/>}
       {multiNew&&<MultiProfileEditor profile={null} onClose={()=>setMultiNew(false)} onSave={onSave}/>}
-      {editing?.multi?<MultiProfileEditor key={editing.id} profile={editing} onClose={()=>setEditing(null)} onSave={onSave}/>:editing?.sino?<SinoProfileEditor key={editing.id} profile={editing} onClose={()=>setEditing(null)} onSave={onSave}/>:<ProfileEditor profile={editing} onClose={() => setEditing(null)} onSave={onSave} />}
+      {editing?.mchose?<MchoseProfileEditor key={editing.id} profile={editing} onClose={()=>setEditing(null)} onSave={onSave}/>:editing?.multi?<MultiProfileEditor key={editing.id} profile={editing} onClose={()=>setEditing(null)} onSave={onSave}/>:editing?.sino?<SinoProfileEditor key={editing.id} profile={editing} onClose={()=>setEditing(null)} onSave={onSave}/>:<ProfileEditor profile={editing} onClose={() => setEditing(null)} onSave={onSave} />}
     </section>
   );
 }
