@@ -1,0 +1,674 @@
+{
+  "status": "Static key-name evidence for exact product182 DeathAdder V3 Pro options; no physical-device validation claimed.",
+  "source": {
+    "file": "main.998a1822.js",
+    "sha256": "c5f739f700e7e1613a7ef27fb862f2b49a727f90dcdb9f6d3d130d8a2a1eccf7",
+    "encoding": "UTF-8",
+    "byte_length": 5796885,
+    "location_unit": "Zero-based UTF-8 file byte offsets at the start of each option object.",
+    "method": "Static inspection of explicit keyboard option metadata; the OEM JavaScript was not evaluated.",
+    "unique_key_input_ids": 123,
+    "main_key_options": 115,
+    "function_keys": "F13-F24 have explicit official names and virtual-key values 124..135; usages 0x68..0x73 are matched to the existing core key table."
+  },
+  "core_source": {
+    "file": "src-tauri/vendor/gearwise/crates/gearwise-core/src/keys.rs",
+    "sha256": "4bb0dd095fa222e447c9c8f26b4de1e80c1a95a2a0e6a89986e80719ac5b84cc",
+    "table": "pub const KEYS",
+    "table_line": 9,
+    "named_entries": 116,
+    "main_key_entries": 108,
+    "all_core_main_keys_present_in_official_table": true
+  },
+  "selection_rules": {
+    "explicit_options_only": true,
+    "exclude_main_key_usages": [
+      224,
+      225,
+      226,
+      227,
+      228,
+      229,
+      230,
+      231
+    ],
+    "excluded_modifiers": "Standalone modifier usages 0xE0..0xE7 remain modifier-mask choices.",
+    "excluded_invalid": {
+      "name": "Cancel",
+      "official_byte_offset": 4726207,
+      "reason": "Empty HID usage."
+    },
+    "retained_lock_usages": [
+      57,
+      71
+    ],
+    "retained_locks": "Caps Lock and Scroll Lock are main-key choices even though the OEM groups them with modifiers.",
+    "reserved_usage_rule": "Do not fill unnamed usage ranges."
+  },
+  "difference_from_core": {
+    "core_main_key_entries": 108,
+    "regional_additions": [
+      {
+        "usage": 50,
+        "name": "Non-US #"
+      },
+      {
+        "usage": 100,
+        "name": "Non-US backslash"
+      },
+      {
+        "usage": 135,
+        "name": "Ro"
+      },
+      {
+        "usage": 136,
+        "name": "Katakana/Hiragana"
+      },
+      {
+        "usage": 137,
+        "name": "Yen"
+      },
+      {
+        "usage": 138,
+        "name": "Henkan"
+      },
+      {
+        "usage": 139,
+        "name": "Muhenkan"
+      }
+    ],
+    "total_main_key_options": 115
+  },
+  "entries": [
+    {
+      "usage": 4,
+      "name": "A",
+      "official_byte_offset": 4713370
+    },
+    {
+      "usage": 5,
+      "name": "B",
+      "official_byte_offset": 4713499
+    },
+    {
+      "usage": 6,
+      "name": "C",
+      "official_byte_offset": 4713628
+    },
+    {
+      "usage": 7,
+      "name": "D",
+      "official_byte_offset": 4713757
+    },
+    {
+      "usage": 8,
+      "name": "E",
+      "official_byte_offset": 4713886
+    },
+    {
+      "usage": 9,
+      "name": "F",
+      "official_byte_offset": 4714015
+    },
+    {
+      "usage": 10,
+      "name": "G",
+      "official_byte_offset": 4714144
+    },
+    {
+      "usage": 11,
+      "name": "H",
+      "official_byte_offset": 4714274
+    },
+    {
+      "usage": 12,
+      "name": "I",
+      "official_byte_offset": 4714404
+    },
+    {
+      "usage": 13,
+      "name": "J",
+      "official_byte_offset": 4714534
+    },
+    {
+      "usage": 14,
+      "name": "K",
+      "official_byte_offset": 4714664
+    },
+    {
+      "usage": 15,
+      "name": "L",
+      "official_byte_offset": 4714794
+    },
+    {
+      "usage": 16,
+      "name": "M",
+      "official_byte_offset": 4714924
+    },
+    {
+      "usage": 17,
+      "name": "N",
+      "official_byte_offset": 4715054
+    },
+    {
+      "usage": 18,
+      "name": "O",
+      "official_byte_offset": 4715184
+    },
+    {
+      "usage": 19,
+      "name": "P",
+      "official_byte_offset": 4715314
+    },
+    {
+      "usage": 20,
+      "name": "Q",
+      "official_byte_offset": 4715444
+    },
+    {
+      "usage": 21,
+      "name": "R",
+      "official_byte_offset": 4715574
+    },
+    {
+      "usage": 22,
+      "name": "S",
+      "official_byte_offset": 4715704
+    },
+    {
+      "usage": 23,
+      "name": "T",
+      "official_byte_offset": 4715834
+    },
+    {
+      "usage": 24,
+      "name": "U",
+      "official_byte_offset": 4715964
+    },
+    {
+      "usage": 25,
+      "name": "V",
+      "official_byte_offset": 4716094
+    },
+    {
+      "usage": 26,
+      "name": "W",
+      "official_byte_offset": 4716224
+    },
+    {
+      "usage": 27,
+      "name": "X",
+      "official_byte_offset": 4716354
+    },
+    {
+      "usage": 28,
+      "name": "Y",
+      "official_byte_offset": 4716484
+    },
+    {
+      "usage": 29,
+      "name": "Z",
+      "official_byte_offset": 4716614
+    },
+    {
+      "usage": 30,
+      "name": "1",
+      "official_byte_offset": 4716874
+    },
+    {
+      "usage": 31,
+      "name": "2",
+      "official_byte_offset": 4717004
+    },
+    {
+      "usage": 32,
+      "name": "3",
+      "official_byte_offset": 4717134
+    },
+    {
+      "usage": 33,
+      "name": "4",
+      "official_byte_offset": 4717264
+    },
+    {
+      "usage": 34,
+      "name": "5",
+      "official_byte_offset": 4717394
+    },
+    {
+      "usage": 35,
+      "name": "6",
+      "official_byte_offset": 4717524
+    },
+    {
+      "usage": 36,
+      "name": "7",
+      "official_byte_offset": 4717654
+    },
+    {
+      "usage": 37,
+      "name": "8",
+      "official_byte_offset": 4717784
+    },
+    {
+      "usage": 38,
+      "name": "9",
+      "official_byte_offset": 4717914
+    },
+    {
+      "usage": 39,
+      "name": "0",
+      "official_byte_offset": 4716744
+    },
+    {
+      "usage": 40,
+      "name": "Enter",
+      "official_byte_offset": 4724903
+    },
+    {
+      "usage": 41,
+      "name": "Esc",
+      "official_byte_offset": 4725039
+    },
+    {
+      "usage": 42,
+      "name": "Backspace",
+      "official_byte_offset": 4724492
+    },
+    {
+      "usage": 43,
+      "name": "Tab",
+      "official_byte_offset": 4724634
+    },
+    {
+      "usage": 44,
+      "name": "Space",
+      "official_byte_offset": 4724764
+    },
+    {
+      "usage": 45,
+      "name": "-",
+      "official_byte_offset": 4729409
+    },
+    {
+      "usage": 46,
+      "name": "=",
+      "official_byte_offset": 4729540
+    },
+    {
+      "usage": 47,
+      "name": "[",
+      "official_byte_offset": 4729881
+    },
+    {
+      "usage": 48,
+      "name": "]",
+      "official_byte_offset": 4730026
+    },
+    {
+      "usage": 49,
+      "name": "\\",
+      "official_byte_offset": 4730172
+    },
+    {
+      "usage": 50,
+      "name": "Non-US #",
+      "official_byte_offset": 4728538
+    },
+    {
+      "usage": 51,
+      "name": ";",
+      "official_byte_offset": 4730623
+    },
+    {
+      "usage": 52,
+      "name": "'",
+      "official_byte_offset": 4730758
+    },
+    {
+      "usage": 53,
+      "name": "`",
+      "official_byte_offset": 4728096
+    },
+    {
+      "usage": 54,
+      "name": ",",
+      "official_byte_offset": 4731104
+    },
+    {
+      "usage": 55,
+      "name": ".",
+      "official_byte_offset": 4731235
+    },
+    {
+      "usage": 56,
+      "name": "/",
+      "official_byte_offset": 4731367
+    },
+    {
+      "usage": 57,
+      "name": "Caps Lock",
+      "official_byte_offset": 4727628
+    },
+    {
+      "usage": 58,
+      "name": "F1",
+      "official_byte_offset": 4718044
+    },
+    {
+      "usage": 59,
+      "name": "F2",
+      "official_byte_offset": 4718174
+    },
+    {
+      "usage": 60,
+      "name": "F3",
+      "official_byte_offset": 4718304
+    },
+    {
+      "usage": 61,
+      "name": "F4",
+      "official_byte_offset": 4718434
+    },
+    {
+      "usage": 62,
+      "name": "F5",
+      "official_byte_offset": 4718564
+    },
+    {
+      "usage": 63,
+      "name": "F6",
+      "official_byte_offset": 4718694
+    },
+    {
+      "usage": 64,
+      "name": "F7",
+      "official_byte_offset": 4718824
+    },
+    {
+      "usage": 65,
+      "name": "F8",
+      "official_byte_offset": 4718954
+    },
+    {
+      "usage": 66,
+      "name": "F9",
+      "official_byte_offset": 4719084
+    },
+    {
+      "usage": 67,
+      "name": "F10",
+      "official_byte_offset": 4719214
+    },
+    {
+      "usage": 68,
+      "name": "F11",
+      "official_byte_offset": 4719346
+    },
+    {
+      "usage": 69,
+      "name": "F12",
+      "official_byte_offset": 4719478
+    },
+    {
+      "usage": 70,
+      "name": "Print Screen",
+      "official_byte_offset": 4725869
+    },
+    {
+      "usage": 71,
+      "name": "Scroll Lock",
+      "official_byte_offset": 4727771
+    },
+    {
+      "usage": 72,
+      "name": "Pause",
+      "official_byte_offset": 4726058
+    },
+    {
+      "usage": 73,
+      "name": "Insert",
+      "official_byte_offset": 4725171
+    },
+    {
+      "usage": 74,
+      "name": "Home",
+      "official_byte_offset": 4725348
+    },
+    {
+      "usage": 75,
+      "name": "Page Up",
+      "official_byte_offset": 4724130
+    },
+    {
+      "usage": 76,
+      "name": "Delete",
+      "official_byte_offset": 4725521
+    },
+    {
+      "usage": 77,
+      "name": "End",
+      "official_byte_offset": 4725698
+    },
+    {
+      "usage": 78,
+      "name": "Page Down",
+      "official_byte_offset": 4724309
+    },
+    {
+      "usage": 79,
+      "name": "Right",
+      "official_byte_offset": 4723949
+    },
+    {
+      "usage": 80,
+      "name": "Left",
+      "official_byte_offset": 4723770
+    },
+    {
+      "usage": 81,
+      "name": "Down",
+      "official_byte_offset": 4723591
+    },
+    {
+      "usage": 82,
+      "name": "Up",
+      "official_byte_offset": 4723416
+    },
+    {
+      "usage": 83,
+      "name": "Num Lock",
+      "official_byte_offset": 4720954
+    },
+    {
+      "usage": 84,
+      "name": "KP /",
+      "official_byte_offset": 4722489
+    },
+    {
+      "usage": 85,
+      "name": "KP *",
+      "official_byte_offset": 4722669
+    },
+    {
+      "usage": 86,
+      "name": "KP -",
+      "official_byte_offset": 4722813
+    },
+    {
+      "usage": 87,
+      "name": "KP +",
+      "official_byte_offset": 4722953
+    },
+    {
+      "usage": 88,
+      "name": "KP Enter",
+      "official_byte_offset": 4723234
+    },
+    {
+      "usage": 89,
+      "name": "KP 1",
+      "official_byte_offset": 4721262
+    },
+    {
+      "usage": 90,
+      "name": "KP 2",
+      "official_byte_offset": 4721397
+    },
+    {
+      "usage": 91,
+      "name": "KP 3",
+      "official_byte_offset": 4721532
+    },
+    {
+      "usage": 92,
+      "name": "KP 4",
+      "official_byte_offset": 4721667
+    },
+    {
+      "usage": 93,
+      "name": "KP 5",
+      "official_byte_offset": 4721804
+    },
+    {
+      "usage": 94,
+      "name": "KP 6",
+      "official_byte_offset": 4721941
+    },
+    {
+      "usage": 95,
+      "name": "KP 7",
+      "official_byte_offset": 4722078
+    },
+    {
+      "usage": 96,
+      "name": "KP 8",
+      "official_byte_offset": 4722215
+    },
+    {
+      "usage": 97,
+      "name": "KP 9",
+      "official_byte_offset": 4722352
+    },
+    {
+      "usage": 98,
+      "name": "KP 0",
+      "official_byte_offset": 4721127
+    },
+    {
+      "usage": 99,
+      "name": "KP .",
+      "official_byte_offset": 4723093
+    },
+    {
+      "usage": 100,
+      "name": "Non-US backslash",
+      "official_byte_offset": 4732523
+    },
+    {
+      "usage": 101,
+      "name": "Menu",
+      "official_byte_offset": 4726352
+    },
+    {
+      "usage": 104,
+      "name": "F13",
+      "official_byte_offset": 4719610,
+      "usage_basis": "existing core keys.rs; official F13-F24 names use virtual-key fields without a HID literal"
+    },
+    {
+      "usage": 105,
+      "name": "F14",
+      "official_byte_offset": 4719722,
+      "usage_basis": "existing core keys.rs; official F13-F24 names use virtual-key fields without a HID literal"
+    },
+    {
+      "usage": 106,
+      "name": "F15",
+      "official_byte_offset": 4719834,
+      "usage_basis": "existing core keys.rs; official F13-F24 names use virtual-key fields without a HID literal"
+    },
+    {
+      "usage": 107,
+      "name": "F16",
+      "official_byte_offset": 4719946,
+      "usage_basis": "existing core keys.rs; official F13-F24 names use virtual-key fields without a HID literal"
+    },
+    {
+      "usage": 108,
+      "name": "F17",
+      "official_byte_offset": 4720058,
+      "usage_basis": "existing core keys.rs; official F13-F24 names use virtual-key fields without a HID literal"
+    },
+    {
+      "usage": 109,
+      "name": "F18",
+      "official_byte_offset": 4720170,
+      "usage_basis": "existing core keys.rs; official F13-F24 names use virtual-key fields without a HID literal"
+    },
+    {
+      "usage": 110,
+      "name": "F19",
+      "official_byte_offset": 4720282,
+      "usage_basis": "existing core keys.rs; official F13-F24 names use virtual-key fields without a HID literal"
+    },
+    {
+      "usage": 111,
+      "name": "F20",
+      "official_byte_offset": 4720394,
+      "usage_basis": "existing core keys.rs; official F13-F24 names use virtual-key fields without a HID literal"
+    },
+    {
+      "usage": 112,
+      "name": "F21",
+      "official_byte_offset": 4720506,
+      "usage_basis": "existing core keys.rs; official F13-F24 names use virtual-key fields without a HID literal"
+    },
+    {
+      "usage": 113,
+      "name": "F22",
+      "official_byte_offset": 4720618,
+      "usage_basis": "existing core keys.rs; official F13-F24 names use virtual-key fields without a HID literal"
+    },
+    {
+      "usage": 114,
+      "name": "F23",
+      "official_byte_offset": 4720730,
+      "usage_basis": "existing core keys.rs; official F13-F24 names use virtual-key fields without a HID literal"
+    },
+    {
+      "usage": 115,
+      "name": "F24",
+      "official_byte_offset": 4720842,
+      "usage_basis": "existing core keys.rs; official F13-F24 names use virtual-key fields without a HID literal"
+    },
+    {
+      "usage": 135,
+      "name": "Ro",
+      "official_byte_offset": 4731957
+    },
+    {
+      "usage": 136,
+      "name": "Katakana/Hiragana",
+      "official_byte_offset": 4732370
+    },
+    {
+      "usage": 137,
+      "name": "Yen",
+      "official_byte_offset": 4731834
+    },
+    {
+      "usage": 138,
+      "name": "Henkan",
+      "official_byte_offset": 4732233
+    },
+    {
+      "usage": 139,
+      "name": "Muhenkan",
+      "official_byte_offset": 4732093
+    }
+  ],
+  "OEM_code_executed": false,
+  "OEM_code_included": false,
+  "physical_tested": false
+}

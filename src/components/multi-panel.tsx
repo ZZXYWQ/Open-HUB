@@ -18,6 +18,7 @@ import {type MultiView,type MultiPlan,type MultiSetting,type MultiAction,fromMul
 import {Button} from '@/components/ui/button';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {KEY_NAMES} from '@/lib/sino';
+import {DAV3PRO_KEYS} from '@/lib/dav3pro-keys';
 export function MultiControls({plan,onChange,view,onRecording,live=false}:{live?:boolean;plan:MultiPlan;onChange:(p:MultiPlan)=>void;view:MultiView;onRecording?:(b:boolean)=>void}){
  const [buttonLayer,setButtonLayer]=useState(0);
  if(isX11(plan.vendor,plan.product))return <X11Controls plan={plan} onChange={onChange} view={view} onRecording={onRecording}/>;
@@ -25,7 +26,7 @@ export function MultiControls({plan,onChange,view,onRecording,live=false}:{live?
  const dav3=plan.vendor===0x1532&&[0x00b6,0x00b7].includes(plan.product);
  const fixedSteel=steel&&steelseriesFixedStages(plan.product)!=null;
  const minStages=plan.vendor===0x1532&&[0x00b6,0x00b7].includes(plan.product)&&(view.state.dpi?.stages.length??0)>1?2:1;
- const keyOptions=steel?STEELSERIES_KEYS:dav3?KEY_NAMES.filter(([usage])=>usage>=4&&usage<=0xa4):KEY_NAMES;
+ const keyOptions=steel?STEELSERIES_KEYS:dav3?DAV3PRO_KEYS:KEY_NAMES;
  const buttonAction=(id:number):MultiAction=>{const s=plan.settings.find(s=>'Button'in s&&s.Button.id===id);return s&&'Button'in s?s.Button.action:view.state.buttons[String(id)]??'Default';};
  const isOrdinaryLeft=(id:number,a:MultiAction)=>id<256&&(a==='Default'&&id===1||typeof a==='object'&&'Mouse'in a&&a.Mouse==='Left');
  const put=(setting:MultiSetting,test:(s:MultiSetting)=>boolean)=>onChange({...plan,settings:[...plan.settings.filter(s=>!test(s)),setting]});

@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-26",
+  "status": "development_only",
+  "full_accepted_distinct_models": 0,
+  "source_baseline_full_regression_commit": "e0b39a9",
+  "this_change_scope": "exact DA-only static keyboard picker and extended existing ignored native UI cross-test; native production codecs unchanged",
+  "verification": {
+    "typescript": true,
+    "vite": true,
+    "ui_saved_model_views": 4,
+    "negative_ui_identities": 2,
+    "dom_observed_main_keys": 115,
+    "native_key_assignment_cases": 460,
+    "native_key_assignment_matrix": {
+      "main_keys": 115,
+      "layers": 2,
+      "transports": 2
+    },
+    "production_ui_config_store_native_cross_test": true,
+    "development_exe_memory_transport_cases": 38
+  },
+  "previous_baseline_verification": {
+    "application_default_tests": 550,
+    "explicit_native_ui_cross_tests": 36,
+    "core_driver_unit_tests": 340,
+    "doctests": 1,
+    "headless_ui_suites": 47,
+    "all_repeated_for_static_picker_only": false
+  },
+  "rules": [
+    "source-backed115 main-key options only",
+    "Caps Lock/Scroll Lock retained",
+    "standalone modifiers E0–E7 and invalid/cancel excluded",
+    "existing unknown-usage preservation option retained",
+    "other brand pickers and shared native key tables unchanged",
+    "modifier checkboxes remain independent"
+  ],
+  "frontend": {
+    "javascript_bytes": 747049,
+    "javascript_raw_growth_bytes": 1277,
+    "javascript_gzip_consistent_growth_bytes": 755,
+    "new_runtime_dependencies": 0
+  },
+  "development_exe_sha256": "f33b6d91ee00e58afa23110cef3c15f9409091b24a14e8668ade9c9c443b9dd1",
+  "hardware_tested": false,
+  "installer_created": false,
+  "release_published": false,
+  "installed_version_unchanged": "0.3.7",
+  "remaining": [
+    "original advanced actions and macros",
+    "private configuration import",
+    "calibration highlevel conversion",
+    "physical acceptance"
+  ],
+  "source_sha256": {
+    "src/lib/dav3pro-keys.ts": "be4a18172967f28abf2d8908e826f9179d7c19d940a40cd8072df85309088811",
+    "src/components/multi-panel.tsx": "c69639b0d2aa5436de57c16332b17c3e3b260e98ab00d90fdcedda33b79daf32",
+    "scripts/test-dav3pro-power-ui.cjs": "a2f9b0466a422f80d2b1997de7aac0fa2559dae7e4c63287324e6dcfb4f0e3fa",
+    "src-tauri/src/dav3pro_models.rs": "4493aee1f2787f3c02aa0d154de7525d21537c407eb7216669c1b9f15d90b74b",
+    "docs/development/razer-dav3pro-key-options-static-facts.json": "ab43bf605ca3fb303c66d190d5395e73a01df4f1b2b4a20d70d509a4950596b2"
+  }
+}

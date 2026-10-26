@@ -168,6 +168,22 @@ fn dav3pro_unverified_button_macro_rgb_wrong_power_or_excessive_stage_count_are_
 #[test]
 #[ignore = "requires current native DeathAdder power UI profiles"]
 fn browser_dav3pro_known_plans_roundtrip_store_and_native_power_readback() {
+    let key_path=std::path::PathBuf::from(std::env::var_os("OPEN_HUB_DAV3PRO_UI_PROFILES").unwrap()).with_file_name("dav3pro-key-picker-usages.json");
+    let offered:Vec<u8>=serde_json::from_slice(&std::fs::read(key_path).unwrap()).unwrap();
+    assert_eq!(offered.len(),115);assert_eq!(offered.iter().copied().collect::<std::collections::BTreeSet<_>>().len(),115);
+    assert!(offered.iter().all(|usage|(4..=0xa4).contains(usage)));
+    assert!(offered.contains(&0x39)&&offered.contains(&0x47));
+    for pid in [0xb6,0xb7]{
+        let(mut device,_)=gearwise_razer::simulated_dav3pro(pid).unwrap();
+        for usage in &offered{
+            for id in [2,258]{
+                let wanted=ButtonAction::Key{usage:*usage,mods:Modifiers(0x81)};
+                let p=Plan{vendor:0x1532,product:pid,settings:vec![Setting::Button{id,action:wanted.clone()}],macros:vec![],source:None};
+                validate(&p).unwrap();for setting in compile(&p).unwrap().settings{device.apply(&setting).unwrap();}
+                assert_eq!(device.read_state().unwrap().buttons.get(&id),Some(&wanted));
+            }
+        }
+    }
     let mut profiles: Vec<crate::profiles::Profile> = serde_json::from_slice(
         &std::fs::read(std::env::var_os("OPEN_HUB_DAV3PRO_UI_PROFILES").unwrap()).unwrap(),
     )
