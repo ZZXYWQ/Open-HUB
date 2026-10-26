@@ -48,6 +48,7 @@ mod onboard_bindings;
 mod profiles;
 mod profile_routing;
 mod mhub_import;
+mod mhub_full;
 mod settings;
 mod tray;
 mod updater;

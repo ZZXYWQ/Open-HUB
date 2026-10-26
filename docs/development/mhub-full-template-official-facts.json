@@ -1,0 +1,187 @@
+{
+  "date_local": "2026-10-27",
+  "status": "converter and pure shared-slot planning implemented; production import UI/persistence/commit still pending",
+  "source": {
+    "url": "https://www.mchose.com.cn/assets/purify.es-BufdR6vO.js",
+    "sha256": "c3e91c2828283cbcb8edb24474b45d64b2526bcbed0a2740919a0deef7ad61bc",
+    "bytes": 7763164,
+    "method": "Authenticated public static cache body, Babel AST and inert text inspection; no OEM execution"
+  },
+  "spans": {
+    "tT": {
+      "utf16_start": 4220197,
+      "utf16_end": 4221442,
+      "utf8_start": 4229293,
+      "utf8_end": 4230548
+    },
+    "Yv": {
+      "utf16_start": 4218801,
+      "utf16_end": 4218917,
+      "utf8_start": 4227865,
+      "utf8_end": 4227981
+    },
+    "igt": {
+      "utf16_start": 4210516,
+      "utf16_end": 4211221,
+      "utf8_start": 4219520,
+      "utf8_end": 4220225
+    },
+    "tgt": {
+      "utf16_start": 4209149,
+      "utf16_end": 4210207,
+      "utf8_start": 4218153,
+      "utf8_end": 4219211
+    },
+    "egt": {
+      "utf16_start": 4207969,
+      "utf16_end": 4209148,
+      "utf8_start": 4216973,
+      "utf8_end": 4218152
+    },
+    "NJ": {
+      "utf16_start": 4205012,
+      "utf16_end": 4205063,
+      "utf8_start": 4214006,
+      "utf8_end": 4214057
+    },
+    "vbt": {
+      "utf16_start": 4186633,
+      "utf16_end": 4187293,
+      "utf8_start": 4194361,
+      "utf8_end": 4195021
+    },
+    "xbt": {
+      "utf16_start": 4186576,
+      "utf16_end": 4186615,
+      "utf8_start": 4194304,
+      "utf8_end": 4194343
+    },
+    "wbt": {
+      "utf16_start": 4186506,
+      "utf16_end": 4186575,
+      "utf8_start": 4194234,
+      "utf8_end": 4194303
+    },
+    "qM": {
+      "utf16_start": 4185087,
+      "utf16_end": 4186505,
+      "utf8_start": 4192801,
+      "utf8_end": 4194233
+    },
+    "template_export": {
+      "utf16_start": 4489061,
+      "utf8_start": 4498556
+    },
+    "template_import": {
+      "utf16_start": 4463482,
+      "utf8_start": 4472977
+    },
+    "macro_library_key": {
+      "utf16_start": 1497100,
+      "utf8_start": 1503523
+    },
+    "macro_record_shape": {
+      "utf16_start": 1507390,
+      "utf8_start": 1513813
+    },
+    "event_shape": {
+      "utf16_start": 1572159,
+      "utf8_start": 1578618
+    }
+  },
+  "template": {
+    "wrapper": "one product-name property containing a flat template",
+    "accepted_product": "MCHOSE A7 V3 Ultra+",
+    "export_removes_metadata": [
+      "uid",
+      "cid",
+      "id",
+      "updateTime",
+      "orderNum",
+      "source"
+    ],
+    "full_native_fields": [
+      "profileIndex",
+      "usbDpiIndex",
+      "usbRateIndex",
+      "gRateIndex",
+      "sleep",
+      "sleepMode",
+      "leftKeyDebounce",
+      "rightKeyDebounce",
+      "sensor",
+      "rotateVal",
+      "dpiHasY",
+      "dpiSum",
+      "dpi0..dpi5",
+      "dpiY0..dpiY5 when present",
+      "lodIndex",
+      "left/right/mid/forward/retreat/dpi KeyType and KeyVal",
+      "macroInfo"
+    ],
+    "macroInfo": "slot hex string to macro name only, not events or raw bytes",
+    "inactive_Y": "OEM Yv writes Y only when dpiHasY==1; portable source values can remain stored without overwriting inactive target axis"
+  },
+  "bindings": {
+    "known_record_lengths": {
+      "22": 4,
+      "23": 8,
+      "24": 8,
+      "01": 4,
+      "others": 3
+    },
+    "type13_and16": "keep value-byte order",
+    "other_types": "reverse the displayed value bytes after retaining type",
+    "hex_slot_example": {
+      "display": "000a",
+      "native_slot": 10
+    },
+    "unconverted_actions": [
+      "22",
+      "23",
+      "24"
+    ]
+  },
+  "macro_library": {
+    "key": "macroListM7",
+    "shape": "JSON array of records with name,type,delay,info.keyList",
+    "event_fields": [
+      "press",
+      "type",
+      "val",
+      "hover"
+    ],
+    "native_event_types": [
+      "key",
+      "mouse",
+      "mousescroll",
+      "time"
+    ],
+    "record_delay": "recording preference; V3 encoder reads time events from keyList, not this outer field",
+    "content_resolution": "explicit unique referenced-name match against provided bodies; no target name-only assumption"
+  },
+  "lookup_tables": {
+    "file": "../../src-tauri/src/mhub-key-usages.json",
+    "sha256": "9573425874fb02ab61dfa524bbbff2ce869135c46e4497c53da575c3804e02e9",
+    "keyboard_aliases": 170,
+    "mouse_aliases": 5,
+    "scroll_aliases": 2
+  },
+  "local_index_observation": {
+    "method": "Only device/profile field names and types from the authorized M HUB index; no account settings values inspected",
+    "board_field_names": [
+      "name",
+      "index",
+      "source"
+    ],
+    "contains_full_native_plan": false
+  },
+  "limits": [
+    "Fixtures are authored from source-defined schema, not claimed to be an OEM export captured from hardware",
+    "No additional USB/model identity is enabled; existing3837:4026 scope and catalog discrepancy remain",
+    "No native production importer, Profile payload or UI entry is exposed in this increment",
+    "Source22/23/24 bindings and unknown fields reject instead of partially importing",
+    "The future commit must verify fresh owner/connection/read set and upload only macro_writes; the isolated restore replay is not a general commit implementation",
+    "Automatic local IndexedDB/Local Storage extraction and physical verification remain pending"
+  ]
+}

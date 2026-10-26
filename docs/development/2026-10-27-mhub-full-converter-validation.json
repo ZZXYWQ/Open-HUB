@@ -1,0 +1,71 @@
+{
+  "date_local": "2026-10-27",
+  "recorded_at": "2026-10-27T03:47:17.378973+08:00",
+  "base_commit": "45ae8c6",
+  "release_version": "0.3.7",
+  "accepted_complete_models": 0,
+  "installer_built_published_or_installed": false,
+  "scope": "M HUB A7 source-defined full native data converter and pure shared-macro-slot planner; no UI or general commit entry enabled",
+  "facts": "mhub-full-template-official-facts.json",
+  "validation": {
+    "default_application_tests_passed": 655,
+    "default_application_tests_failed": 0,
+    "default_ignored_tests": 43,
+    "new_converter_native_tests_passed": 18,
+    "keyboard_alias_mode_combinations_encoded": 680,
+    "explicit_keyboard_aliases": 170,
+    "mode_values_tested": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "native_restore_replay_cases": 1,
+    "wrong_target_zero_IO_cases": 1,
+    "new_UI_tests_run": 0,
+    "frontend_changed": false,
+    "non_test_dev_build": "passed",
+    "runtime_dependencies_added": 0,
+    "OEM_code_executed": false,
+    "physical_HID_access": false,
+    "OS_input_injected": false,
+    "javascript_bundle_bytes": 760510,
+    "javascript_bundle_delta_from_base_bytes": 0,
+    "javascript_bundle_sha256": "06e5e85aaeaaecf603ad878dc30e2f0a879530ab48b1942ba0ae405ada3176d9",
+    "dev_EXE_sha256": "86ab5c090153512b263a3131373596da6e038861b46737a70ef00a4d8a65195c"
+  },
+  "invariants_tested": [
+    "Single exact product wrapper and complete known native fields required; no partial DPI-only result",
+    "Explicit referenced-name body resolution rejects missing or ambiguous bodies and never substitutes a target same-name macro",
+    "170 aliases and four modes enter production balanced-event and raw native macro codec",
+    "Independent literal vectors cover type13/type16 value order, other-type reversal, hex slot000a=10, separate rate indexes, signed rotation and XY tables",
+    "Inactive stored source Y is retained in the plan while target inactive Y values are preserved",
+    "Unknown fields/actions, invalid key states, incomplete tables, missing left button and contradictory DPI capability markers reject",
+    "Recursive duplicate JSON keys, trailing content, bad encoding and oversized input reject",
+    "Other-board macro references, unassigned user macros and device reserved bytes remain protected in compiled desired state",
+    "Exact raw macro body can reuse an occupied protected slot without upload; only current-board-exclusive referenced slots may be reclaimed",
+    "Insufficient space, stale target board/tables, bad records and mismatched brand/model do not compile",
+    "Authored known template replays existing production restore on one isolated free-macro fixture, verifies native chunks/settings/readback and prewrite backup, another mock target has no I/O",
+    "Live-target mismatch rejects the isolated replay before HID or backup"
+  ],
+  "limits": [
+    "Data conversion and planning are internal development code, not an enabled complete user-facing M HUB importer",
+    "Full Profile persistence, summary invariants, import/editor UI, local original macro library discovery and dedicated differential commit are pending",
+    "Existing restore replay has no preexisting macros; it must not be generalized to reupload all protected slots in a full importer",
+    "No additional physical device identity, playback, firmware or complete-model certification",
+    "Native22/23/24 bindings and unconverted fields still reject; recording preferences/global macro library migration are outside this increment",
+    "USB/model identity/catalog discrepancy and live wireless re-pairing remain unresolved",
+    "Installed application, GitHub release and updater feed remain unchanged"
+  ],
+  "source_sha256": {
+    "src-tauri/src/main.rs": "dfeb9092b59e198268749838eb3abb66f1b862f6b526229a86d5057865ef892a",
+    "src-tauri/src/mchose_config.rs": "eefe8d242354492266a407d661f7a45a979c8a8ce15e82b5cc00a8e2f7d5b55e",
+    "src-tauri/src/mhub_full.rs": "98d4d6b15bcdf20356aa3e29343bd363447af22b288c9a493f91bf838b079f41",
+    "src-tauri/src/mhub_full_tests.rs": "c054244f360bc4a688ed36dc6c33bb5f2f35611e56d9459f29f4844ee8c23510",
+    "src-tauri/src/mhub_full_wire_tests.rs": "157fb378e0a271859ff8add617c78dfe08d861ac2aa3108d1b16a853e19be61e",
+    "src-tauri/src/mhub-key-usages.json": "9573425874fb02ab61dfa524bbbff2ce869135c46e4497c53da575c3804e02e9",
+    "src-tauri/tests/fixtures/mhub-full-template.json": "8ed0d8bcab0bf77c97e77b5a013e03f243b525c0d29200a61267704c5622c4d2",
+    "src-tauri/tests/fixtures/mhub-macro-library.json": "54629af0041d30edf8350da58cf2aae7dce6ee0bafd0559cd81df59186e9d7a7",
+    "docs/development/mhub-full-template-official-facts.json": "82c8d525ce580df5eb4e8c7c2c8ae88ca7aec567c0e43922ae6a0cfac49a2ede"
+  }
+}

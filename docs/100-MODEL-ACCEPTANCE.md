@@ -91,3 +91,6 @@ DeathAdder V3 Pro 后续增量已接通两连接的传感器校准和独立 XY �
 
 
 迈从后续完成[自动省电能力门槛核对](MCHOSE-CAPABILITY-BOUNDARIES.md)：原厂名单、名称归一化及五处调用的静态 AST 证据表明本构建仅向 K5 Pro / Ultra 开放，当前 A7 不适用。移除 A7 完整读取对未开放命令的依赖；v3 完整备份明确无此能力，v2 默认诊断值可迁移，未知值在任何通信前拒绝。普通休眠仍可使用，没有启用 K5 型号或新增完整型号计数。[验证记录](development/2026-10-27-mchose-capability-validation.json)。
+
+
+M HUB 后续新增[原厂扁平方案转换器与共享宏槽规划](MHUB-FULL-CONVERSION.md)：解析全部已核对的方案字段、显式宏正文、四种模式及按键字节序，保留目标未知位与其他板载组的宏引用。十八项原生测试含独立向量、重复键拒绝及已有生产恢复路径的隔离模拟回放。配置中心持久化、完整 UI 和专用差异写入事务尚待接通，未新增可用入口、型号身份或完整验收计数。[验证记录](development/2026-10-27-mhub-full-converter-validation.json)。

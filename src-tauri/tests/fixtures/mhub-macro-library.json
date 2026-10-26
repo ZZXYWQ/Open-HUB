@@ -1,0 +1,59 @@
+[
+  {
+    "name": "Ctrl A test",
+    "type": 2,
+    "delay": 50,
+    "info": {
+      "keyList": [
+        {
+          "type": "key",
+          "val": "ControlLeft",
+          "press": "down",
+          "hover": false
+        },
+        {
+          "type": "key",
+          "val": "a",
+          "press": "down",
+          "hover": false
+        },
+        {
+          "type": "time",
+          "val": 37,
+          "press": null,
+          "hover": false
+        },
+        {
+          "type": "key",
+          "val": "a",
+          "press": "up",
+          "hover": false
+        },
+        {
+          "type": "key",
+          "val": "ControlLeft",
+          "press": "up",
+          "hover": false
+        },
+        {
+          "type": "mouse",
+          "val": "mouseLeft",
+          "press": "down",
+          "hover": false
+        },
+        {
+          "type": "mouse",
+          "val": "mouseLeft",
+          "press": "up",
+          "hover": false
+        },
+        {
+          "type": "mousescroll",
+          "val": "mouseScrollDown",
+          "press": null,
+          "hover": false
+        }
+      ]
+    }
+  }
+]

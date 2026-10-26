@@ -61,14 +61,14 @@ pub struct HardwareState {
     pub raw_y: Vec<u8>,
     pub raw_buttons: Vec<u8>,
 }
-#[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct MacroEvent {
     pub kind: String,
     pub code: u8,
     pub down: bool,
     pub delay_ms: u16,
 }
-#[derive(Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct MouseMacro {
     pub slot: u8,
     pub name: String,
@@ -84,7 +84,7 @@ pub struct Snapshot {
     pub macros: Vec<MouseMacro>,
 }
 
-fn validate_snapshot(s: &Snapshot) -> Result<()> {
+pub(crate) fn validate_snapshot(s: &Snapshot) -> Result<()> {
     if ![SNAPSHOT_FORMAT, LEGACY_SNAPSHOT_FORMAT].contains(&s.format.as_str()) || s.model != "3837:4026" {
         return Err(bad("备份型号或版本不匹配"));
     }
@@ -218,7 +218,7 @@ pub fn parse_buttons(raw: &[u8]) -> Result<Vec<Vec<u8>>> {
     }
     Ok(out)
 }
-fn validate_binding(b: &[u8]) -> Result<()> {
+pub(crate) fn validate_binding(b: &[u8]) -> Result<()> {
     let valid = match b.first().copied() {
         Some(0) => b.len() == 3 && b[2] == 0 && [1, 2, 4, 8, 16].contains(&b[1]),
         Some(5) => b.len() == 3 && b[2] == 0 && b[1] <= 1,
