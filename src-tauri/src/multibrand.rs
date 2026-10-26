@@ -26,6 +26,9 @@ mod tuning_models;
 #[path="steelseries_models.rs"]
 mod steelseries_models;
 #[cfg(test)]
+#[path="dav3pro_models.rs"]
+mod dav3pro_models;
+#[cfg(test)]
 #[path="x11_models.rs"]
 mod x11_models;
 #[cfg(test)]
@@ -69,7 +72,7 @@ pub fn choose_profile_device(ids:&[String],selected:Option<&str>)->Result<String
 pub fn supported(v: u16, p: u16) -> bool {
     crate::steelseries::supported(v,p) || crate::x11::supported(v,p) || gearwise_razer::basilisk::supported(v,p) || crate::legacy::supported(v,p) || crate::atk::supported(v,p) || crate::hyperx::supported(v,p) || matches!(
         (v, p),
-        (0x1532, 0x0084) | (0x1532, 0x00b4) | (0x1532, 0x007a | 0x007b | 0x00a5 | 0x00a6 | 0x00c0 | 0x00c1) | (0x1b1c, 0x1b2e) | (0x1038, 0x1720)
+        (0x1532, 0x0084) | (0x1532, 0x00b4) | (0x1532,0x00b6|0x00b7) | (0x1532, 0x007a | 0x007b | 0x00a5 | 0x00a6 | 0x00c0 | 0x00c1) | (0x1b1c, 0x1b2e) | (0x1038, 0x1720)
     )
 }
 fn view(d: &mut dyn gearwise_core::Device) -> Result<View, String> {
@@ -355,6 +358,7 @@ impl gearwise_core::HidBackend for ExactBackend {
 pub fn validate(p: &Plan) -> Result<(), String> {
     if crate::x11::supported(p.vendor,p.product){return crate::x11::validate_plan(p);}
     if p.settings.iter().any(|s|matches!(s,Setting::Lighting{state:gearwise_core::model::ZoneState{effect:gearwise_core::model::LightingEffect::Gradient{..},..},..}))&&!matches!((p.vendor,p.product),(0x1038,0x1720|0x1722|0x1832|0x1724)){return Err("此具体型号尚未实现原生自定义渐变".into());}
+    if p.vendor==0x1532&&matches!(p.product,0x00b6|0x00b7)&&(!p.macros.is_empty()||p.source.is_some()){return Err("DeathAdder V3 Pro 的按键与宏仍未核实，当前只开放已核对的 DPI、回报率和省电设置".into());}
     let _compiled=compile(p)?;
     if !supported(p.vendor, p.product) {
         return Err("尚未实现该具体型号".into());
@@ -377,7 +381,7 @@ pub fn validate(p: &Plan) -> Result<(), String> {
             return Err("同一项设置不能重复".into());
         }
         if matches!(s,Setting::LiftOff(_)|Setting::AngleSnapping(_)){if crate::steelseries::supported(p.vendor,p.product){crate::steelseries::validate_setting(p.product,s)?;continue;}if (p.vendor,p.product)!=(0x1b1c,0x1b2e){return Err("此型号的原生抬升高度/直线修正尚未接通".into());}if matches!(s,Setting::LiftOff(v)if *v>=5){return Err("M65 PRO 抬升高度需要在五个原生档位内选择".into());}continue;}
-        if let Setting::Tuning(tuning)=s{crate::atk::validate_tuning(p.vendor,p.product,tuning).map_err(|e|e.to_string())?;continue;}
+        if let Setting::Tuning(tuning)=s{if p.vendor==0x1532&&matches!(p.product,0x00b6|0x00b7){gearwise_razer::validate_power_patch(p.product,tuning).map_err(|e|e.to_string())?;}else{crate::atk::validate_tuning(p.vendor,p.product,tuning).map_err(|e|e.to_string())?;}continue;}
         if crate::atk::is_pulsar(p.vendor,p.product){match s{Setting::Dpi(d)=>crate::atk::validate_dpi(d,p.product).map_err(|e|e.to_string())?,Setting::ReportRate(r)if crate::atk::model(p.vendor,p.product).unwrap().rates.contains(r)=>{},Setting::Lighting{zone:0,state}if state.brightness==100&&matches!(state.effect,gearwise_core::model::LightingEffect::Off|gearwise_core::model::LightingEffect::Static{..})=>{},Setting::Button{id,action}=>validate_pulsar_button(*id,action)?,_=>return Err("此 Pulsar 型号未实现该设置".into())}continue;}
 
         if crate::steelseries::supported(p.vendor,p.product){crate::steelseries::validate_setting(p.product,s)?;continue;}
@@ -581,6 +585,7 @@ fn simulated(
         (v,p) if crate::hyperx::supported(v,p)=>crate::hyperx::simulated(product).map_err(|e|e.to_string()),
         (v,p) if crate::x11::supported(v,p)=>crate::x11::simulated(product).map_err(|e|e.to_string()),
         (v,p) if gearwise_razer::basilisk::supported(v,p)=>gearwise_razer::simulated_basilisk(p).map_err(|e|e.to_string()),
+        (0x1532,0x00b6|0x00b7)=>gearwise_razer::simulated_dav3pro(product).map_err(|e|e.to_string()),
         (0x1532, 0x0084) => Ok(gearwise_razer::simulated_deathadder_v2()),
         (0x1532, 0x007a|0x007b|0x00a5|0x00a6|0x00c0|0x00c1) => gearwise_razer::simulated_viper(product).map_err(|e|e.to_string()),
         (0x1532, 0x00b4) => Ok(crate::naga::simulated()),
@@ -590,7 +595,7 @@ fn simulated(
     }
 }
 pub fn templates() -> Result<Vec<View>, String> {
-    crate::legacy::models().iter().map(|m|(m.vendor,m.product)).chain(crate::atk::models().iter().map(|m|(m.vendor,m.product))).chain(crate::steelseries::PRODUCTS.into_iter().filter(|p|*p!=0x1720).map(|p|(0x1038,p))).chain([(0x1d57,0xfa55),(0x1d57,0xfa60),(0x03f0,0x048e),(0x03f0,0x028e),(0x1532, 0x0084), (0x1532, 0x00b4), (0x1b1c, 0x1b2e), (0x1038, 0x1720),(0x1532,0x007a),(0x1532,0x007b),(0x1532,0x00a5),(0x1532,0x00a6),(0x1532,0x00c0),(0x1532,0x00c1),(0x1532,0x00aa),(0x1532,0x00ab)].into_iter())
+    crate::legacy::models().iter().map(|m|(m.vendor,m.product)).chain(crate::atk::models().iter().map(|m|(m.vendor,m.product))).chain(crate::steelseries::PRODUCTS.into_iter().filter(|p|*p!=0x1720).map(|p|(0x1038,p))).chain([(0x1d57,0xfa55),(0x1d57,0xfa60),(0x03f0,0x048e),(0x03f0,0x028e),(0x1532, 0x0084), (0x1532, 0x00b4), (0x1b1c, 0x1b2e), (0x1038, 0x1720),(0x1532,0x007a),(0x1532,0x007b),(0x1532,0x00a5),(0x1532,0x00a6),(0x1532,0x00c0),(0x1532,0x00c1),(0x1532,0x00aa),(0x1532,0x00ab),(0x1532,0x00b6),(0x1532,0x00b7)].into_iter())
         .map(|(v, p)| {
             let (mut d, _) = simulated(v, p)?;
             let mut out = view(d.as_mut())?;
@@ -606,7 +611,7 @@ pub fn template_plan(v:&View)->Result<Plan,String>{
   settings.extend(v.capabilities.buttons.iter().filter(|b|b.remappable&&b.id!=1).map(|b|Setting::Button{id:b.id,action:v.state.buttons.get(&b.id).cloned().unwrap_or_else(||b.default_action.clone())}));
   settings.extend(v.capabilities.lighting.iter().filter_map(|z|v.state.lighting.get(&z.id).map(|state|Setting::Lighting{zone:z.id,state:state.clone()})));
   if let Some(level)=v.state.lift_off{settings.push(Setting::LiftOff(level));}settings
- }else if crate::x11::supported(v.descriptor.vendor_id,v.descriptor.product_id){vec![Setting::VendorProfile{schema:crate::x11::SCHEMA.into(),data:v.state.vendor_profile.clone().ok_or("离线模板缺少完整配置")?}]}else{vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500)]};
+ }else if v.descriptor.vendor_id==0x1532&&matches!(v.descriptor.product_id,0x00b6|0x00b7){vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500),Setting::Tuning(gearwise_core::tuning::MouseTuning{device_sleep_seconds:Some(60),low_power_percent:Some(5),..Default::default()})]}else if crate::x11::supported(v.descriptor.vendor_id,v.descriptor.product_id){vec![Setting::VendorProfile{schema:crate::x11::SCHEMA.into(),data:v.state.vendor_profile.clone().ok_or("离线模板缺少完整配置")?}]}else{vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500)]};
  let plan=Plan{vendor:v.descriptor.vendor_id,product:v.descriptor.product_id,settings,macros:vec![],source:None};validate(&plan)?;Ok(plan)
 }
 pub fn simulate(plan: &Plan) -> Result<serde_json::Value, String> {

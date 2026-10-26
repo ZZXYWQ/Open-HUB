@@ -873,5 +873,25 @@
         "src": "/devices/piper/steelseries-rival600.svg"
       }
     ]
+  },
+  {
+    "id": "razer-deathadder-v3-pro",
+    "label": "Razer DeathAdder V3 Pro",
+    "vendor": 5426,
+    "products": [
+      182,
+      183
+    ],
+    "names": [
+      "Razer DeathAdder V3 Pro",
+      "Razer DeathAdder V3 Pro (Wired)",
+      "Razer DeathAdder V3 Pro (Wireless)"
+    ],
+    "images": [
+      {
+        "label": "黑色",
+        "src": "/devices/razer-deathadder-v3-pro.png"
+      }
+    ]
   }
 ]

@@ -39,6 +39,7 @@ pub(super) fn capabilities(m: &Model) -> Option<TuningCaps> {
             0x1115 | 0x10c9 | 0xf58f | 0xf58c => vec![1000, 2000],
             _ => vec![],
         },
+        ..Default::default()
     })
 }
 pub(super) fn validate(m: &Model, p: &MouseTuning) -> Result<()> {
@@ -219,6 +220,7 @@ mod tests {
             sensor_sleep_enabled: Some(false),
             sensor_sleep_seconds: Some(300),
             lift_off_microns: c.lift_off_microns.last().copied(),
+            ..Default::default()
         }
     }
     fn writes(log: &Arc<Mutex<Vec<MockRecord>>>) -> Vec<Vec<u8>> {
@@ -286,6 +288,8 @@ mod tests {
         let (mut d, l) = memory_device(0x1115).unwrap();
         for p in [
             MouseTuning::default(),
+            MouseTuning{device_sleep_seconds:Some(60),..Default::default()},
+            MouseTuning{low_power_percent:Some(50),..Default::default()},
             MouseTuning {
                 debounce_ms: Some(3),
                 ..Default::default()

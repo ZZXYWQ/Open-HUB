@@ -20,6 +20,11 @@ pub struct MouseTuning {
     pub sensor_sleep_seconds: Option<u16>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lift_off_microns: Option<u16>,
+    /// Whole-device wireless idle timeout, distinct from sensor-only sleep.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub device_sleep_seconds: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub low_power_percent: Option<u8>,
 }
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -32,6 +37,10 @@ pub struct TuningCaps {
     pub sensor_sleep_enabled: bool,
     pub sensor_sleep_seconds: Vec<u16>,
     pub lift_off_microns: Vec<u16>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub device_sleep_seconds: Vec<u16>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub low_power_percent: Vec<u8>,
 }
 impl MouseTuning {
     pub fn is_empty(&self) -> bool {
@@ -53,6 +62,8 @@ impl MouseTuning {
             || self
                 .sensor_sleep_seconds
                 .is_some_and(|v| !c.sensor_sleep_seconds.contains(&v))
+            || self.device_sleep_seconds.is_some_and(|v|!c.device_sleep_seconds.contains(&v))
+            || self.low_power_percent.is_some_and(|v|!c.low_power_percent.contains(&v))
             || self.motion_sync.is_some() && !c.motion_sync
             || self.angle_snapping.is_some() && !c.angle_snapping
             || self.ripple_control.is_some() && !c.ripple_control
@@ -66,7 +77,7 @@ impl MouseTuning {
     }
     /// Refresh selected fields without expanding a previously saved patch.
     pub fn refresh_selected(&mut self,live:&Self){
-        macro_rules! fields{($($k:ident),*)=>{$(if self.$k.is_some()&&live.$k.is_some(){self.$k=live.$k;})*}}fields!(debounce_ms,motion_sync,angle_snapping,ripple_control,led_idle_seconds,sensor_sleep_enabled,sensor_sleep_seconds,lift_off_microns);
+        macro_rules! fields{($($k:ident),*)=>{$(if self.$k.is_some()&&live.$k.is_some(){self.$k=live.$k;})*}}fields!(debounce_ms,motion_sync,angle_snapping,ripple_control,led_idle_seconds,sensor_sleep_enabled,sensor_sleep_seconds,lift_off_microns,device_sleep_seconds,low_power_percent);
     }
     pub fn merge(&self, old: &mut Self) {
         macro_rules! fields{($($k:ident),*)=>{$(if self.$k.is_some(){old.$k=self.$k;})*}}
@@ -78,7 +89,9 @@ impl MouseTuning {
             led_idle_seconds,
             sensor_sleep_enabled,
             sensor_sleep_seconds,
-            lift_off_microns
+            lift_off_microns,
+            device_sleep_seconds,
+            low_power_percent
         );
     }
 }

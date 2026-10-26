@@ -15,7 +15,7 @@
 
 </div>
 
-正在开发 [100 款鼠标完整适配目标](docs/100-MODEL-ACCEPTANCE.md)。开发中的[罗技原生板载按键](docs/LOGITECH-ONBOARD-BINDINGS.md)、性能控制与 X11 原生方案见 [进度及缺口](docs/development/2026-10-26-performance-x11.md)；尚未达到完整验收，不会据此生成中间安装包，当前下载仍为上方 0.3.7 实验版。 新增开发中的 [Sensei Ten 原生控制与 GG 导入](docs/SENSEI-TEN.md)，包括五档 CPI、八键和双区灯效；模拟验证与实物缺口分开记录。 [Rival 600 的七键、八灯区和抬升配置](docs/RIVAL600.md) 也在该开发分支，未生成新安装包。
+正在开发 [100 款鼠标完整适配目标](docs/100-MODEL-ACCEPTANCE.md)。开发中的[罗技原生板载按键](docs/LOGITECH-ONBOARD-BINDINGS.md)、性能控制与 X11 原生方案见 [进度及缺口](docs/development/2026-10-26-performance-x11.md)；尚未达到完整验收，不会据此生成中间安装包，当前下载仍为上方 0.3.7 实验版。 新增开发中的 [Sensei Ten 原生控制与 GG 导入](docs/SENSEI-TEN.md)，包括五档 CPI、八键和双区灯效；模拟验证与实物缺口分开记录。 [Rival 600 的七键、八灯区和抬升配置](docs/RIVAL600.md) 也在该开发分支，未生成新安装包。 [DeathAdder V3 Pro 的 DPI、回报率及原生省电](docs/RAZER-DAV3PRO-RESEARCH.md) 也已通过公开报文回放与对应 UI 测试，按键、宏和完整功能仍未完成。
 
 > [!WARNING]
 > **这仅是一个实验性版本，不是稳定版。** 多数新增鼠标只有生产驱动与模拟设备测试，没有对应实机验证，不能认定整个品牌兼容。连接方式、USB ID、固件和功能边界均会影响支持情况。应用前请先保留原配置，只对明确列出的型号进行测试。

@@ -21,6 +21,7 @@ mod keymap;
 mod link;
 pub mod models;
 mod report;
+mod power;
 #[cfg(any(test, feature = "simulation"))]
 mod simulation;
 #[cfg(any(test, feature = "simulation"))]
@@ -200,3 +201,11 @@ pub fn simulated_deathadder_v2()->(Box<dyn Device>,std::sync::Arc<std::sync::Mut
 
 #[cfg(test)]
 mod captured_dav3pro;
+
+/// Pure exact-model power preflight, before any HID access.
+pub fn validate_power_patch(pid:u16,patch:&gearwise_core::tuning::MouseTuning)->Result<()>{power::validate(pid,patch)}
+
+#[cfg(any(test,feature="simulation"))]
+mod dav3pro_sim;
+#[cfg(any(test,feature="simulation"))]
+pub use dav3pro_sim::mouse as simulated_dav3pro;

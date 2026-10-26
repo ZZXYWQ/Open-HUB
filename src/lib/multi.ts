@@ -1,8 +1,8 @@
 import {isSteelseries} from './steelseries';
 import {compxModel} from './compx';
 import {isX11,X11_SCHEMA,type X11Profile} from './x11';
-export interface MouseTuning {debounce_ms?:number;motion_sync?:boolean;angle_snapping?:boolean;ripple_control?:boolean;led_idle_seconds?:number;sensor_sleep_enabled?:boolean;sensor_sleep_seconds?:number;lift_off_microns?:number}
-export interface TuningCaps {debounce_ms:number[];motion_sync:boolean;angle_snapping:boolean;ripple_control:boolean;led_idle_seconds:number[];sensor_sleep_enabled:boolean;sensor_sleep_seconds:number[];lift_off_microns:number[]}
+export interface MouseTuning {debounce_ms?:number;motion_sync?:boolean;angle_snapping?:boolean;ripple_control?:boolean;led_idle_seconds?:number;sensor_sleep_enabled?:boolean;sensor_sleep_seconds?:number;lift_off_microns?:number;device_sleep_seconds?:number;low_power_percent?:number}
+export interface TuningCaps {debounce_ms:number[];motion_sync:boolean;angle_snapping:boolean;ripple_control:boolean;led_idle_seconds:number[];sensor_sleep_enabled:boolean;sensor_sleep_seconds:number[];lift_off_microns:number[];device_sleep_seconds?:number[];low_power_percent?:number[]}
 export interface MultiDpi {stages:Array<{x:number;y:number}>;active:number}
 export type MultiAction='Default'|'Disabled'|{Mouse:'Left'|'Right'|'Middle'|'Back'|'Forward'|'WheelLeft'|'WheelRight'}|{Key:{usage:number;mods:number}}|{Dpi:'Cycle'|'Up'|'Down'|{Shift:number}}|{Macro:string}|{Media:number};
 export interface MultiColor {r:number;g:number;b:number}

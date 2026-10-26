@@ -1,0 +1,21 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "DeathAdder V3 Pro exact native idle and low-power transaction, model-specific partial bridge and UI",
+  "default_application_tests": 538,
+  "explicit_cross_tests": 36,
+  "vendor_unit_tests": 312,
+  "vendor_doc_tests": 1,
+  "headless_UI_suites": 46,
+  "development_exe_memory_transports": 38,
+  "development_exe_sha256": "d522f79e563b91cc5a70d1baaa6aa3badc7a26757c9d09a3c0cfe6c62050f524",
+  "public_hardware_capture_roundtrips": 24,
+  "power_roundtrips": 12,
+  "fault_paths": "constructed memory simulations; conditional original-byte restore, foreign-state retention, no uncertain setter/restore retry",
+  "frontend_JS_gzip_kB": 226.37,
+  "artwork_added_bytes": 36407,
+  "new_runtime_dependencies": 0,
+  "this_project_physical_hardware_tested": false,
+  "new_fully_accepted_models": 0,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}

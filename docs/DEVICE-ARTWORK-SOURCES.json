@@ -261,5 +261,14 @@
     "sha256": "72fd8b0ee8354d3efdda0ee1c62ea7d640c6cf261b0ec427057c80666b896983",
     "bytes": 22784,
     "license": "GPL-2.0, separate unmodified SVG source"
+  },
+  {
+    "file": "/devices/razer-deathadder-v3-pro.png",
+    "source": "https://assets3.razerzone.com/LZufqyVl2jCUqKmH66_tKX2eRck=/300x300/https%3A%2F%2Fmedias-p1.phoenix.razer.com%2Fsys-master-phoenix-images-container%2Fhc9%2Fh51%2F9449963946014%2Fdeathadder-v3-pro-black-v2-500x500.png",
+    "source_page": "https://www.razer.com/gaming-mice/razer-deathadder-v3-pro",
+    "source_sha256": "c234168f5423cb1278938c0b6c0bbb10126688d7dbab952d568c72ca0b2aa268",
+    "bytes": 36407,
+    "sha256": "c234168f5423cb1278938c0b6c0bbb10126688d7dbab952d568c72ca0b2aa268",
+    "modified": false
   }
 ]

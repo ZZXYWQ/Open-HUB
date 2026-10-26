@@ -391,6 +391,7 @@ impl Device for RazerDevice {
                 s.report_rate = Some(r);
             }
         }
+        if crate::power::supported(self.model.pid){s.tuning=soft(crate::power::read(&mut self.link))?;}
         // Brightness is the only lighting value that can be read back (it
         // changes with the keyboard's hotkeys); effects and colours stay as
         // last applied, and zones never set are left out rather than guessed.
@@ -431,6 +432,7 @@ impl Device for RazerDevice {
             Setting::OnboardProfile(_) => return Err(Error::Unsupported("onboard profiles")),
             Setting::LiftOff(_) => return Err(Error::Unsupported("lift-off distance")),
             Setting::AngleSnapping(_) => return Err(Error::Unsupported("angle snapping")),
+            Setting::Tuning(patch) if crate::power::supported(self.model.pid)=>{if let Err(e)=crate::power::apply(&mut self.link,self.model.pid,patch){self.state.tuning=None;return Err(e);}},
             Setting::VendorProfile{..} | Setting::Tuning(_) => return Err(Error::Unsupported("mouse performance")),
         }
         setting.apply_to(&mut self.state);
@@ -488,6 +490,7 @@ fn capabilities(model: &Model) -> Capabilities {
             separate_xy: true,
         }),
         report_rates: model.polling.rates.to_vec(),
+        tuning:crate::power::supported(model.pid).then(crate::power::caps),
         buttons: if crate::basilisk::supported(VID_RAZER,model.pid){crate::basilisk::BUTTONS.into_iter().map(|(id,name)|ButtonCaps{id,name:name.into(),remappable:id!=1,default_action:crate::basilisk::decode(id,&crate::basilisk::default_block(id).unwrap()).unwrap(),hotspot:None}).collect()}else if matches!(model.pid,0x00c0|0x00c1) {
             [(1,"左键"),(2,"右键"),(4,"后退"),(5,"前进"),(9,"滚轮向上"),(10,"滚轮向下"),(0x60,"底部 DPI 键")].into_iter().map(|(id,name)|ButtonCaps{id,name:name.into(),remappable:id!=1,default_action:viper_decode(id as u8,&viper_default(id as u8).unwrap()).unwrap(),hotspot:None}).collect()
         } else {Vec::new()},

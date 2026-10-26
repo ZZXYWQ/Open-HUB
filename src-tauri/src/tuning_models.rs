@@ -8,6 +8,8 @@ fn tuning_native_dtos_export_without_inventing_other_vendor_capabilities() {
         .into_iter()
         .filter(|v| v.capabilities.tuning.is_some())
         .collect::<Vec<_>>();
+    assert_eq!(views.len(), 11);
+    let views = views.into_iter().filter(|v| matches!(v.descriptor.vendor_id, 0x373b | 0x3554)).collect::<Vec<_>>();
     assert_eq!(views.len(), 9);
     assert!(views
         .iter()

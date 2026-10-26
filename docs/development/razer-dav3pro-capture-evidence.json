@@ -22,16 +22,18 @@
     "1532:00b6 wired",
     "1532:00b7 stock receiver"
   ],
-  "independent_roundtrips": 12,
+  "independent_roundtrips": 24,
   "scope": [
     "current DPI 800/3200/1600",
-    "legacy polling 125/500/1000"
+    "legacy polling 125/500/1000",
+    "whole-device idle 60/900/300 seconds",
+    "low battery 5/50/30 percent"
   ],
   "upstream_capture_physical_hardware": true,
   "this_project_physical_hardware": false,
   "button_mapping_capture": false,
   "serial_payloads_distributed": false,
-  "application_model_bridge_enabled": false,
+  "application_model_bridge_enabled": "partial: current DPI/rate/native power only",
   "new_fully_accepted_models": 0,
   "current_DPI_read_selector": 1,
   "other_model_getters_changed": false,
@@ -41,6 +43,12 @@
     "00b6",
     "00b7"
   ],
-  "new_vendor_regressions": 4,
-  "vendor_total_unit_tests": 307
+  "new_vendor_regressions": 9,
+  "vendor_total_unit_tests": 312,
+  "application_default_tests": 538,
+  "explicit_cross_tests": 36,
+  "headless_UI_suites": 46,
+  "new_runtime_dependencies": 0,
+  "power_rollback": "read originals before first write; readback once; conditional exact-byte restore only while owned target remains; no uncertain setter or restore retry",
+  "new_full_compatibility_claim": false
 }

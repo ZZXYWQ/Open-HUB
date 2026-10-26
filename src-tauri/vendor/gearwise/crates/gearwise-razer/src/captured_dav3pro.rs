@@ -169,3 +169,58 @@ fn malformed_stage_success_does_not_enable_current_fallback_or_change_other_mode
         assert_eq!(d.capabilities().dpi.as_ref().unwrap().max_stages, 5);
     }
 }
+
+#[test]
+fn twelve_public_power_transactions_replay_fresh_before_write_and_exact_readback_without_other_field_changes(
+) {
+    let mut count = 0;
+    for line in include_str!("testdata/deathadder-v3-pro-captured-power.tsv")
+        .lines()
+        .filter(|s| !s.starts_with('#') && !s.is_empty())
+    {
+        let f = line.split('|').collect::<Vec<_>>();
+        assert_eq!(f.len(), 9);
+        let pid = u16::from_str_radix(f[0], 16).unwrap();
+        let model = models::find(pid).unwrap();
+        let value = f[2].parse::<u16>().unwrap();
+        let patch = if f[1] == "sleep" {
+            gearwise_core::tuning::MouseTuning {
+                device_sleep_seconds: Some(value),
+                ..Default::default()
+            }
+        } else {
+            gearwise_core::tuning::MouseTuning {
+                low_power_percent: Some(value as u8),
+                ..Default::default()
+            }
+        };
+        let sequence = Arc::new(Mutex::new(VecDeque::from([
+            (bytes(f[3]), bytes(f[4])),
+            (bytes(f[5]), bytes(f[6])),
+            (bytes(f[7]), bytes(f[8])),
+        ])));
+        let q = sequence.clone();
+        let io = MockTransport::new(move |op| {
+            let MockOp::SetFeature(data) = op else {
+                panic!()
+            };
+            let (expected, reply) = q
+                .lock()
+                .unwrap()
+                .pop_front()
+                .expect("unexpected retry or other-field request");
+            assert_eq!(data, expected);
+            MockReply::feature(reply)
+        });
+        let mut link = link::Link::new(
+            Box::new(io),
+            model.transaction_id,
+            Timing::new(Duration::ZERO, Duration::ZERO, 1),
+        );
+        link.strict_model_replies();
+        crate::power::apply(&mut link, pid, &patch).unwrap();
+        assert!(sequence.lock().unwrap().is_empty());
+        count += 1;
+    }
+    assert_eq!(count, 12);
+}
