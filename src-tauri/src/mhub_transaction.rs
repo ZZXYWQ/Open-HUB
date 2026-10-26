@@ -12,7 +12,7 @@ use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 
 type Keys = [Vec<Vec<u8>>; 3];
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub struct Applied {
     #[serde(flatten)]
     pub state: HardwareState,

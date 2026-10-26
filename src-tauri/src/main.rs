@@ -378,6 +378,8 @@ struct Activation {
     reason: &'static str,
     device_id: String,
     errors: Vec<String>,
+    #[serde(skip_serializing_if="Option::is_none")]
+    mchose: Option<profiles::MchoseReceipt>,
 }
 
 /// Owns fallback identities only for currently connected endpoints. Stable unit
@@ -430,8 +432,8 @@ fn activate_target_copy_context(app: &AppHandle, id: &str, reason: &'static str,
     let peers = connected_profile_targets(app)?;
     let state = app.state::<ProfilesState>();
     let mut store = lock_store(&state)?;
-    let profile_routing::Prepared { target, profile, mut updated } = profile_routing::prepare(&store,&peers,id,device_id,as_copy,reason=="manual" || reason=="tray")?;
-    let errors = match target.route {
+    let profile_routing::Prepared { target, profile, updated } = profile_routing::prepare(&store,&peers,id,device_id,as_copy,reason=="manual" || reason=="tray")?;
+    let mut application = match target.route {
         profile_routing::Route::Native => {
             let devices = app.state::<AppState>();
             let guard = manager(&devices)?;
@@ -447,20 +449,18 @@ fn activate_target_copy_context(app: &AppHandle, id: &str, reason: &'static str,
                 Ok(profiles::apply_to_device(&profile,d,t))
             }).map_err(|e| e.to_string())?
         }
-        profile_routing::Route::Multi => match app.state::<multibrand::Service>().apply_profile(target.id.strip_prefix("multi:").unwrap_or(&target.id), profile.multi.as_ref().ok_or("missing model plan")?, &app.state::<macro_runtime::Runtime>(),&target.observed_key) { Ok(_) => vec![], Err(e) => vec![e] },
+        profile_routing::Route::Multi => profiles::Application::from_errors(match app.state::<multibrand::Service>().apply_profile(target.id.strip_prefix("multi:").unwrap_or(&target.id), profile.multi.as_ref().ok_or("missing model plan")?, &app.state::<macro_runtime::Runtime>(),&target.observed_key) { Ok(_) => vec![], Err(e) => vec![e] }),
         profile_routing::Route::Sino => {
             let service = app.state::<sinowealth::Service>();
             let result = if let Some(plan) = &profile.sino { service.activate_profile(&target.id,plan.clone(),Some(&target.observed_key)).map(|_| ()) } else { service.apply_generic_profile(&target.id,&profile,Some(&target.observed_key)).map(|_| ()) };
-            match result { Ok(_) => vec![], Err(e) => vec![e] }
+            profiles::Application::from_errors(match result { Ok(_) => vec![], Err(e) => vec![e] })
         }
     };
-    if errors.is_empty() {
-        updated.select_for(&target,&profile.id)?;
-        updated.save(&state.path).map_err(|e| format!("鼠标已应用，但独立配置保存失败：{e}"))?;
-        *store = updated;
+    if profiles::record_application(&mut store,updated,&state.path,&target,&profile.id,&mut application) {
         if let Ok(mut applied) = app.state::<AppliedDevices>().0.lock() { applied.insert((target.id.clone(),target.key.clone())); }
     }
-    let activation = Activation { id: profile.id, name: profile.name, reason, device_id: target.id, errors };
+    let profiles::Application {errors,mchose}=application;
+    let activation = Activation { id: profile.id, name: profile.name, reason, device_id: target.id, errors, mchose };
     drop(store);
     tray::refresh(app);
     let _ = app.emit("profile-activated",activation.clone());

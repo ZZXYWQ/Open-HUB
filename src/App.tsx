@@ -1,3 +1,4 @@
+import {ProfileApplicationResult} from '@/components/profile-application-result';
 import {activeDeviceProfile,brandName} from "@/lib/brands";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
@@ -27,6 +28,7 @@ export default function App() {
   const [devices, setDevices] = useState<DeviceSummary[]>([]);
   const [states, setStates] = useState<Record<string, DeviceState>>({});
   const [profiles, setProfiles] = useState<ProfilesView | null>(null);
+  const [activationResult,setActivationResult] = useState<Activation|null>(null);
   const [section, setSection] = useState<Section>("devices");
   const [openId, setOpenId] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -113,8 +115,9 @@ export default function App() {
 
   const reportActivation = useCallback(
     async (a: Activation) => {
+      setActivationResult(a);
       if (a.errors.length) toast.warning(`${a.name}: ${a.errors[0]}`);
-      else toast.success(a.reason === "manual" ? `${a.name} applied` : `Switched to ${a.name}`);
+      else toast.success(a.mchose?`${a.name} 已读回核对`:a.reason === "manual" ? `${a.name} applied` : `Switched to ${a.name}`);
       setProfiles(await api.profiles());
       await refreshAllStates();
     },
@@ -301,6 +304,7 @@ export default function App() {
         onModeChange={setMode}
         updates={{ update, onUpdateFound: setUpdate, progress: updateProgress, installing, onInstall: ()=>{if(update)void installUpdate(update.version)}, onDownload:()=>{if(update)void downloadUpdate(update.version)} }}
       />
+      <ProfileApplicationResult activation={activationResult} devices={devices} onDismiss={()=>setActivationResult(null)}/>
       {section === "lighting" ? <LightingPanel/> : device && activeProfile ? (
         <DevicePage
           key={device.id}

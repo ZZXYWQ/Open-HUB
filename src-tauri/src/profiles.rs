@@ -185,32 +185,65 @@ impl ProfileStore {
 
 }
 
+/// A completed transaction receipt, bound to the device connection that was
+/// actually checked. This is a historical readback result, not a live view.
+#[derive(Clone, Serialize)]
+pub struct MchoseReceipt {
+    pub target: crate::mchose_target::Target,
+    pub device_name: String,
+    #[serde(flatten)]
+    pub applied: crate::mhub_transaction::Applied,
+}
+#[derive(Default)]
+pub struct Application {
+    pub errors: Vec<String>,
+    pub mchose: Option<MchoseReceipt>,
+}
+impl Application {
+    pub fn from_errors(errors: Vec<String>) -> Self { Self { errors, mchose: None } }
+}
+/// Persist an applied device's private selection without discarding the hardware
+/// receipt when storage fails. The caller holds the profile store lock.
+pub(crate) fn record_application(
+    store: &mut ProfileStore,
+    mut updated: ProfileStore,
+    path: &Path,
+    target: &crate::profile_routing::Endpoint,
+    profile_id: &str,
+    application: &mut Application,
+) -> bool {
+    if !application.errors.is_empty() { return false; }
+    match updated.select_for(target,profile_id).and_then(|_| updated.save(path).map_err(|e|e.to_string())) {
+        Ok(())=>{*store=updated;true}
+        Err(e)=>{application.errors.push(format!("鼠标已应用，但独立配置保存失败：{e}"));false}
+    }
+}
 /// Production per-device full-profile route. Profile ownership is selected by
 /// profile_routing under the store/manager locks before this helper is called.
-pub(crate) fn apply_mchose_profile(profile:&Profile,device:&Device,t:&crate::mchose::Transport)->Vec<String> {
-    let result=(||->crate::hidpp::Result<()> {
+pub(crate) fn apply_mchose_profile(profile:&Profile,device:&Device,t:&crate::mchose::Transport)->Application {
+    let result=(||->crate::hidpp::Result<MchoseReceipt> {
         crate::profile_transfer::validate(profile).map_err(crate::hidpp::Error::Other)?;
         let plan=profile.mchose.as_ref().ok_or_else(||crate::hidpp::Error::Other("缺少完整迈从方案".into()))?;
         if !profile.targets(device.vendor_id,&device.model_ids) {return Err(crate::hidpp::Error::Other("完整迈从方案与目标型号不匹配".into()));}
         let target=crate::mchose_target::read_context(device,&device.connection_key)?;
-        crate::mhub_transaction::apply(device,t,&target,plan.board,plan)?;
-        Ok(())
+        let applied=crate::mhub_transaction::apply(device,t,&target,plan.board,plan)?;
+        Ok(MchoseReceipt {target,device_name:device.name.clone(),applied})
     })();
-    match result {Ok(())=>vec![],Err(e)=>vec![format!("{}: {e}",device.name)]}
+    match result {Ok(receipt)=>Application {errors:vec![],mchose:Some(receipt)},Err(e)=>Application::from_errors(vec![format!("{}: {e}",device.name)])}
 }
 
 /// Applies a profile's active DPI level and report rate to one device.
 /// Values are snapped to what the device supports. Returns per-setting errors.
-pub fn apply_to_device(profile: &Profile, device: &Device, t: &Transport) -> Vec<String> {
+pub fn apply_to_device(profile: &Profile, device: &Device, t: &Transport) -> Application {
     let mut errors = Vec::new();
     if profile.mchose.is_some() {
         return match t.mchose() {
             Some(native)=>apply_mchose_profile(profile,device,native),
-            None=>vec!["完整迈从方案不能应用到其他品牌或传输".into()],
+            None=>Application::from_errors(vec!["完整迈从方案不能应用到其他品牌或传输".into()]),
         };
     }
     if profile.multi.is_some() || profile.sino.is_some() || !profile.targets(device.vendor_id, &device.model_ids) {
-        return errors;
+        return Application::from_errors(errors);
     }
     if let (Some(native), Some(board)) = (t.mchose(), profile.mchose_board) {
         let result = (|| -> crate::hidpp::Result<()> {
@@ -225,7 +258,7 @@ pub fn apply_to_device(profile: &Profile, device: &Device, t: &Transport) -> Vec
         if let Err(e) = result {
             errors.push(format!("{}: {e}", device.name));
         }
-        return errors;
+        return Application::from_errors(errors);
     }
     if let Some(level) = profile.active() {
         match device.dpi(t) {
@@ -262,7 +295,7 @@ pub fn apply_to_device(profile: &Profile, device: &Device, t: &Transport) -> Vec
             Err(e) => errors.push(format!("{}: report rate: {e}", device.name)),
         }
     }
-    errors
+    Application::from_errors(errors)
 }
 
 // ---------- G HUB import ----------

@@ -1,0 +1,75 @@
+{
+  "date_local": "2026-10-27",
+  "base_commit": "539ace60b6ec71229177e420546fa6e63f88ad05",
+  "scope": "MCHOSE full-plan verified transaction receipt through native activation and built UI; no new model acceptance",
+  "accepted_complete_models": 0,
+  "release_version": "0.3.7",
+  "installer_built_published_or_installed": false,
+  "validation": {
+    "default_native_passed": 734,
+    "default_native_failed": 0,
+    "default_native_ignored": 58,
+    "new_default_tests": 3,
+    "new_explicit_ui_bridge": 1,
+    "native_generated_ui_receipts": 5,
+    "built_ui_checks": [
+      "built UI activates full profile through native converter/target/transaction/store receipt bridge",
+      "DPI and six buttons reflect verified state",
+      "USB and wireless rates remain separate",
+      "logical macros display allocated physical slots",
+      "original backup path survives IPC",
+      "unchanged plan reports no write or new backup",
+      "partial write has error and backup but no success receipt",
+      "store failure retains hardware receipt and original independent selection",
+      "tray event is rendered for correct mouse without issuing apply",
+      "changed connection marks receipt historical",
+      "small viewport result stays within window",
+      "dismiss works",
+      "Logitech without receipt makes no MCHOSE verification claim",
+      "no browser exceptions"
+    ],
+    "existing_full_profile_ui_and_native_replay": "passed",
+    "existing_logitech_per_mouse_ui_and_native_replay": "passed",
+    "typescript": "passed",
+    "vite": "passed",
+    "development_build": "passed",
+    "physical_HID_access": false,
+    "OEM_execution": false,
+    "OS_input_injection": false,
+    "new_dependencies": 0,
+    "new_images": 0,
+    "javascript_bytes": 795585
+  },
+  "implementation": [
+    "Preserve device target, exact verified state, macro slot allocation, uploaded macro slots and original backup in full-profile activation result",
+    "Partial write failure emits error with backup and no verified receipt",
+    "Profile-store persistence failure keeps receipt and original store state and is sent as activation error",
+    "Optional receipt omitted for other native brands and legacy plans",
+    "Built UI displays a historical result and marks it historical after device connection changes",
+    "Opening and dismissing result do not invoke HID or replay configuration"
+  ],
+  "limits": [
+    "Five receipt bridge calls use isolated authored stateful memory transports, not five models or physical verification",
+    "Actual Tauri IPC host and OS tray were not launched; native serialization and production UI invoke/event flow exercised through bridge",
+    "Readback compares configuration data, not physical key playback, RF identity, or optical lighting behavior",
+    "Small viewport check covers the new result panel, not the entire app responsive layout",
+    "Existing source identity FF and newer model PID discrepancy remain unresolved",
+    "Installer and installed application remain 0.3.7"
+  ],
+  "source_sha256": {
+    "src-tauri/src/main.rs": "11316d15d1ad47046e0522682f4a9959a316ba56adeee3ee31f6821d15ccfb6e",
+    "src-tauri/src/profiles.rs": "7249be2920ee343ca56ac58a3a9992ad9b8f541fadd287fff927d50f976d6d05",
+    "src-tauri/src/mhub_transaction.rs": "422723c8ea39a0026cc8b00ba11e830e859e39d762cd7c5592d2e98d1ef96665",
+    "src-tauri/src/mhub_full_wire_tests.rs": "eebe1d508f63cccfd22a727d9ee1c11e9a476a1a01c487694fe6a59f789b0337",
+    "src/App.tsx": "b0c433dab72a38c327814a831b2fe08be598fe8065343e78e99502294fc6b899",
+    "src/lib/api.ts": "d5a3c328c5659925d05bc01d0834cbb652b535207b27326809c8d0524bbd2b8b",
+    "src/components/profile-application-result.tsx": "03255ce1649b411584163f6d1433e6fa2c636a8739591ca53f1da6f4dfa0d2d0",
+    "scripts/test-profile-application-receipt-ui.cjs": "e4293442797ee751167bea0969a85ce09dd33e5f79a6f67d5c947d201b4671f6"
+  },
+  "private_evidence_sha256": {
+    "profile-application-receipt-ui\\calls.json": "0a9f4ced26c619f1a40aef39458356ca6907931bbd6b977e21a57b226e723df3",
+    "profile-application-receipt-ui\\report.json": "f1ea67cd5a6195689aa559c9cbbf0106dd780c43c7102da9df92366982a9918b",
+    "2026-10-27-profile-receipt-full.log": "aaedb7038531879035bf495ebe9fd0c2e16c66dfc59839e8d89b4ab297f39464",
+    "2026-10-27-profile-receipt-build.log": "ad67ec45a08e2f69eabcb028c5036bc6ed51efccd10cac3f9fb11dc0c5015032"
+  }
+}

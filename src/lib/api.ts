@@ -118,12 +118,20 @@ export interface ProfilesView {
   device_profiles?: Record<string,{active_id:string|null;default_id:string|null;copies:Record<string,string>}>;
 }
 
+export interface MchoseProfileReceipt extends MchoseHardware {
+  device_name: string;
+  slot_map: Record<string,number>;
+  uploaded_macros: number[];
+  backup: string|null;
+}
+
 export interface Activation {
   id: string;
   name: string;
   reason: "manual" | "auto" | "tray" | "reconnect";
   device_id?: string;
   errors: string[];
+  mchose?: MchoseProfileReceipt;
 }
 
 export interface ImportResult {

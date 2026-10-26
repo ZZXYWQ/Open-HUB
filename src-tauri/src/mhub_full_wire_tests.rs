@@ -577,14 +577,14 @@ fn production_profile_route_applies_full_payload_and_rejects_bad_summary_before_
     let device = crate::mchose_target::simulated_device("mchose-A");
     let mut profile = to_profile(plan()).unwrap();
     profile.levels[0].x = 2000;
-    assert!(!crate::profiles::apply_mchose_profile(&profile, &device, &rig.t).is_empty());
+    assert!(!crate::profiles::apply_mchose_profile(&profile, &device, &rig.t).errors.is_empty());
     assert!(rig.mouse.lock().unwrap().requests.is_empty());
     profile = to_profile(plan()).unwrap();
     let mut other = crate::mchose_target::simulated_device("other-brand");
     other.vendor_id = 0x046d;
-    assert!(!crate::profiles::apply_mchose_profile(&profile, &other, &rig.t).is_empty());
+    assert!(!crate::profiles::apply_mchose_profile(&profile, &other, &rig.t).errors.is_empty());
     assert!(rig.mouse.lock().unwrap().requests.is_empty());
-    assert!(crate::profiles::apply_mchose_profile(&profile, &device, &rig.t).is_empty());
+    assert!(crate::profiles::apply_mchose_profile(&profile, &device, &rig.t).errors.is_empty());
     let actual = rig.t.hardware_state().unwrap();
     assert_eq!(actual.dpi_x, profile.mchose.as_ref().unwrap().dpi_x);
     assert_eq!(actual.buttons[4], [0x21, 0, 0]);
@@ -703,7 +703,7 @@ fn actual_full_profile_ui_requests_replay_connection_guard_routing_store_and_tra
         }
         check.unwrap();
         assert!(
-            crate::profiles::apply_mchose_profile(&prepared.profile, &device, &rig.t).is_empty()
+            crate::profiles::apply_mchose_profile(&prepared.profile, &device, &rig.t).errors.is_empty()
         );
         assert_eq!(other.mouse.lock().unwrap().requests.len(), other_before);
         let mut updated = prepared.updated;
@@ -737,25 +737,25 @@ fn actual_import_editor_saved_profiles_apply_via_production_transaction() {
     let mut store=crate::profiles::ProfileStore::default();crate::profile_transfer::merge(&mut store,vec![profile.clone()]).unwrap();
     let a=Rig::new();let b=Rig::new();
     let device=crate::mchose_target::simulated_device("mchose-editor-A");
-    assert!(crate::profiles::apply_mchose_profile(profile,&device,&a.t).is_empty());
+    assert!(crate::profiles::apply_mchose_profile(profile,&device,&a.t).errors.is_empty());
     assert!(b.mouse.lock().unwrap().requests.is_empty());
     let actual=a.t.hardware_state().unwrap();assert_eq!(actual.dpi_x,p.dpi_x);assert_eq!(actual.dpi_y,p.dpi_y.clone().unwrap());assert_eq!(actual.sensor,p.sensor);
     for logical in [0,10] {let target=actual.buttons[if logical==0 {3}else{4}][1];let m=p.macros.iter().find(|m|m.slot==logical).unwrap();assert_eq!(a.mouse.lock().unwrap().macros[&target],m.raw);}
-    let setters=set_records(&a.mouse.lock().unwrap()).len();assert!(crate::profiles::apply_mchose_profile(profile,&device,&a.t).is_empty());assert_eq!(set_records(&a.mouse.lock().unwrap()).len(),setters);
+    let setters=set_records(&a.mouse.lock().unwrap()).len();assert!(crate::profiles::apply_mchose_profile(profile,&device,&a.t).errors.is_empty());assert_eq!(set_records(&a.mouse.lock().unwrap()).len(),setters);
 }
 #[test]
 #[ignore = "requires actual local-library UI saved profile capture"]
 fn actual_local_library_ui_profiles_keep_selected_macro_body_and_protected_prior_slot() {
     let bytes=std::fs::read(std::env::var("OPEN_HUB_MHUB_LOCAL_UI_SAVED").unwrap()).unwrap();let profiles:Vec<crate::profiles::Profile>=serde_json::from_slice(&bytes).unwrap();assert_eq!(profiles.len(),2);
     let a=Rig::new();let b=Rig::new();let device=crate::mchose_target::simulated_device("local-library-A");let mut previous=None;
-    for (index,p)in profiles.iter().enumerate(){crate::profile_transfer::validate(p).unwrap();let plan=p.mchose.as_ref().unwrap();assert_eq!(plan.macros.len(),1);let record=&plan.macros[0];assert_eq!(record.events.iter().find(|e|e.kind=="delay").unwrap().delay_ms,if index==0{99}else{37});assert!(crate::profiles::apply_mchose_profile(p,&device,&a.t).is_empty());let state=a.t.hardware_state().unwrap();let physical=state.buttons[4][1];assert_eq!(a.mouse.lock().unwrap().macros[&physical],record.raw);if let Some((slot,raw))=&previous{assert_ne!(*slot,physical);assert_eq!(&a.mouse.lock().unwrap().macros[slot],raw);}previous=Some((physical,record.raw.clone()));}
+    for (index,p)in profiles.iter().enumerate(){crate::profile_transfer::validate(p).unwrap();let plan=p.mchose.as_ref().unwrap();assert_eq!(plan.macros.len(),1);let record=&plan.macros[0];assert_eq!(record.events.iter().find(|e|e.kind=="delay").unwrap().delay_ms,if index==0{99}else{37});assert!(crate::profiles::apply_mchose_profile(p,&device,&a.t).errors.is_empty());let state=a.t.hardware_state().unwrap();let physical=state.buttons[4][1];assert_eq!(a.mouse.lock().unwrap().macros[&physical],record.raw);if let Some((slot,raw))=&previous{assert_ne!(*slot,physical);assert_eq!(&a.mouse.lock().unwrap().macros[slot],raw);}previous=Some((physical,record.raw.clone()));}
     assert!(b.mouse.lock().unwrap().requests.is_empty());
 }
 #[test]
 fn all_169_oem_actions_replay_full_profile_route_with_exact_native_button_bytes() {
     let fixture:Value=serde_json::from_str(include_str!("../tests/fixtures/mchose-v3-selectable-actions.json")).unwrap();let actions=fixture["actions"].as_array().unwrap();assert_eq!(actions.len(),169);
     let a=Rig::new();let b=Rig::new();let device=crate::mchose_target::simulated_device("oem-catalog-A");let initial_other=a.mouse.lock().unwrap().other_keys.clone();
-    for (index,item)in actions.iter().enumerate(){let hex=item["hex"].as_str().unwrap();let expected:Vec<u8>=serde_json::from_value(item["bytes"].clone()).unwrap();let mut doc=source();doc[PRODUCT]["rightKeyType"]=json!(&hex[2..4]);doc[PRODUCT]["rightKeyVal"]=json!(&hex[4..]);let p=to_profile(parse(&doc,&library()).unwrap()).unwrap();let previous=a.mouse.lock().unwrap().requests.len();assert!(crate::profiles::apply_mchose_profile(&p,&device,&a.t).is_empty(),"{hex}");let state=a.t.hardware_state().unwrap();assert_eq!(state.buttons[1],expected);let m=a.mouse.lock().unwrap();assert_eq!(m.other_keys,initial_other);if index>0 {let setters=m.requests[previous..].iter().filter(|(c,_)|[0x0101,0x0102,0x0103,0x0109,0x090b,0x0910].contains(c)).collect::<Vec<_>>();assert_eq!(setters.len(),1,"{hex}");assert_eq!(*setters[0],(0x0101,[vec![0,1,11],expected].concat()));}}
+    for (index,item)in actions.iter().enumerate(){let hex=item["hex"].as_str().unwrap();let expected:Vec<u8>=serde_json::from_value(item["bytes"].clone()).unwrap();let mut doc=source();doc[PRODUCT]["rightKeyType"]=json!(&hex[2..4]);doc[PRODUCT]["rightKeyVal"]=json!(&hex[4..]);let p=to_profile(parse(&doc,&library()).unwrap()).unwrap();let previous=a.mouse.lock().unwrap().requests.len();assert!(crate::profiles::apply_mchose_profile(&p,&device,&a.t).errors.is_empty(),"{hex}");let state=a.t.hardware_state().unwrap();assert_eq!(state.buttons[1],expected);let m=a.mouse.lock().unwrap();assert_eq!(m.other_keys,initial_other);if index>0 {let setters=m.requests[previous..].iter().filter(|(c,_)|[0x0101,0x0102,0x0103,0x0109,0x090b,0x0910].contains(c)).collect::<Vec<_>>();assert_eq!(setters.len(),1,"{hex}");assert_eq!(*setters[0],(0x0101,[vec![0,1,11],expected].concat()));}}
     let m=a.mouse.lock().unwrap();let expected_chunks=plan().macros[0].raw.len().div_ceil(19);assert_eq!(m.requests.iter().filter(|(c,_)|*c==0x090b).count(),expected_chunks);assert!(b.mouse.lock().unwrap().requests.is_empty());
 }
 #[test]
@@ -764,7 +764,7 @@ fn actual_oem_controls_editor_profiles_replay_standalone_modifiers_consumer_and_
     let bytes=std::fs::read(std::env::var("OPEN_HUB_MCHOSE_OEM_EDITOR_UI_SAVED").unwrap()).unwrap();let profiles:Vec<crate::profiles::Profile>=serde_json::from_slice(&bytes).unwrap();
     let expected=[vec![0x16,1,4],vec![0x11,4,0]].into_iter().chain((224..=231).map(|usage|vec![0x11,usage,0])).chain([vec![0x14,183,0],vec![0x14,111,0],vec![0x14,112,0],vec![0x13,1,4],vec![0x12,1,0]]).collect::<Vec<_>>();assert_eq!(profiles.len(),expected.len());
     let a=Rig::new();let b=Rig::new();let device=crate::mchose_target::simulated_device("oem-editor-A");
-    for (profile,binding)in profiles.iter().zip(expected){crate::profile_transfer::validate(profile).unwrap();let mut reference=plan();reference.buttons[1]=binding.clone();assert_eq!(profile.mchose,Some(reference));assert!(crate::profiles::apply_mchose_profile(profile,&device,&a.t).is_empty());assert_eq!(a.t.hardware_state().unwrap().buttons[1],binding);assert!(b.mouse.lock().unwrap().requests.is_empty());}
+    for (profile,binding)in profiles.iter().zip(expected){crate::profile_transfer::validate(profile).unwrap();let mut reference=plan();reference.buttons[1]=binding.clone();assert_eq!(profile.mchose,Some(reference));assert!(crate::profiles::apply_mchose_profile(profile,&device,&a.t).errors.is_empty());assert_eq!(a.t.hardware_state().unwrap().buttons[1],binding);assert!(b.mouse.lock().unwrap().requests.is_empty());}
 }
 
 #[test]
@@ -961,4 +961,88 @@ fn actual_legacy_and_generic_profile_ui_requests_replay_native_connection_prefli
         }
     }
     assert_eq!((accepted, rejected), (8, 2));
+}
+
+
+#[test]
+fn full_profile_receipt_preserves_verified_state_macro_allocation_and_original_backup() {
+    let a=Rig::new();let b=Rig::new();
+    let device=crate::mchose_target::simulated_device("receipt-A");
+    let profile=to_profile(plan()).unwrap();
+    let result=crate::profiles::apply_mchose_profile(&profile,&device,&a.t);
+    assert!(result.errors.is_empty());
+    let receipt=result.mchose.unwrap();
+    assert_eq!(receipt.target.connection_key,device.connection_key);
+    assert_eq!(receipt.target.device_key,device.profile_key);
+    assert_eq!(receipt.device_name,device.name);
+    assert!(receipt.applied.state==a.t.hardware_state().unwrap());
+    assert_eq!(receipt.applied.slot_map.get(&10),Some(&0));
+    assert_eq!(receipt.applied.uploaded_macros,vec![0]);
+    let backup:Snapshot=serde_json::from_slice(&std::fs::read(receipt.applied.backup.unwrap()).unwrap()).unwrap();
+    assert!(backup.state==Mouse::new().state);
+    assert!(backup.macros.is_empty());
+    let previous=set_records(&a.mouse.lock().unwrap()).len();
+    let unchanged=crate::profiles::apply_mchose_profile(&profile,&device,&a.t);
+    assert!(unchanged.errors.is_empty());let unchanged=unchanged.mchose.unwrap();
+    assert!(unchanged.applied.backup.is_none());
+    assert!(unchanged.applied.uploaded_macros.is_empty());
+    assert_eq!(unchanged.applied.slot_map.get(&10),Some(&0));
+    assert_eq!(previous,set_records(&a.mouse.lock().unwrap()).len());
+    assert!(b.mouse.lock().unwrap().requests.is_empty());
+}
+#[test]
+fn partial_profile_failure_never_emits_a_verified_receipt_or_loses_backup_error() {
+    let a=Rig::new();a.mouse.lock().unwrap().fault=Some(Fault::IgnoreBinding);
+    let device=crate::mchose_target::simulated_device("receipt-A");
+    let profile=to_profile(plan()).unwrap();
+    let result=crate::profiles::apply_mchose_profile(&profile,&device,&a.t);
+    assert!(result.mchose.is_none());assert_eq!(result.errors.len(),1);
+    assert!(result.errors[0].contains("可能已有部分设置生效"));
+    assert!(result.errors[0].contains("原始备份"));
+    let files=std::fs::read_dir(&a.directory).unwrap().collect::<Vec<_>>();assert_eq!(files.len(),1);
+    assert!(result.errors[0].contains(&files[0].as_ref().unwrap().path().display().to_string()));
+    assert!(!set_records(&a.mouse.lock().unwrap()).is_empty());
+}
+
+fn receipt_activation(scenario:&str,profile:crate::profiles::Profile,device_id:&str,expected_connection:&str)->crate::Activation {
+    let rig=Rig::new();let other=Rig::new();
+    let device=crate::mchose_target::simulated_device(device_id);
+    crate::mchose_target::check_profile_connection(&device,Some(expected_connection)).unwrap();
+    let endpoint=crate::profile_routing::Endpoint {id:device.id.clone(),name:device.name.clone(),key:device.profile_key.clone(),connection_key:Some(device.connection_key.clone()),observed_key:device.profile_key.clone(),vendor:device.vendor_id,models:device.model_ids.clone(),firmware:device.firmware_name.clone(),route:crate::profile_routing::Route::Native};
+    let mut store=crate::profiles::ProfileStore::default();store.upsert(profile.clone());
+    let prepared=crate::profile_routing::prepare(&store,&[endpoint],&profile.id,Some(device_id),false,true).unwrap();
+    if scenario=="unchanged" {assert!(crate::profiles::apply_mchose_profile(&prepared.profile,&device,&rig.t).errors.is_empty());}
+    if scenario=="failed" {rig.mouse.lock().unwrap().fault=Some(Fault::IgnoreBinding);}
+    let before=serde_json::to_value(&store).unwrap();
+    let mut application=crate::profiles::apply_mchose_profile(&prepared.profile,&device,&rig.t);
+    let directory=rig.directory.with_extension("profile-record");std::fs::create_dir(&directory).unwrap();
+    let path=if scenario=="save_failed" {let f=directory.join("parent-file");std::fs::write(&f,b"authored conflict").unwrap();f.join("profiles.json")} else {directory.join("profiles.json")};
+    let committed=crate::profiles::record_application(&mut store,prepared.updated,&path,&prepared.target,&prepared.profile.id,&mut application);
+    if matches!(scenario,"failed"|"save_failed") {assert!(!committed);assert_eq!(before,serde_json::to_value(&store).unwrap());}else{assert!(committed);assert_eq!(store.device_profiles[&device.profile_key].active_id.as_deref(),Some(prepared.profile.id.as_str()));}
+    if scenario=="save_failed" {assert!(application.mchose.is_some());assert!(application.errors[0].contains("独立配置保存失败"));}
+    assert!(other.mouse.lock().unwrap().requests.is_empty());
+    // Native request and backup files stay inside this test's unique directory.
+    for f in std::fs::read_dir(&directory).unwrap().flatten(){std::fs::remove_file(f.path()).unwrap();}std::fs::remove_dir(&directory).unwrap();
+    crate::Activation {id:prepared.profile.id,name:prepared.profile.name,reason:"manual",device_id:device.id,errors:application.errors,mchose:application.mchose}
+}
+#[test]
+fn record_save_failure_keeps_hardware_receipt_and_original_store_selection() {
+    let profile=to_profile(plan()).unwrap();
+    let result=receipt_activation("save_failed",profile,"receipt-A","connection:receipt-A:1");
+    let serialized=serde_json::to_value(result).unwrap();
+    assert!(serialized["errors"][0].as_str().unwrap().contains("独立配置保存失败"));
+    assert!(serialized["mchose"]["backup"].is_string());
+    assert_eq!(serialized["mchose"]["target"]["connection_key"],"connection:receipt-A:1");
+    assert!(serialized["mchose"].get("state").is_none());
+    assert!(serialized["mchose"]["dpi_x"].is_array());
+    let legacy=crate::Activation {id:"desktop".into(),name:"Desktop".into(),reason:"manual",device_id:"logitech-A".into(),errors:vec![],mchose:None};
+    assert!(serde_json::to_value(legacy).unwrap().get("mchose").is_none());
+}
+#[test]
+#[ignore="requires explicit built UI receipt bridge request and output paths"]
+fn mhub_receipt_ui_bridge() {
+    let value:Value=serde_json::from_slice(&std::fs::read(std::env::var("OPEN_HUB_MHUB_RECEIPT_REQUEST").unwrap()).unwrap()).unwrap();
+    let profile:crate::profiles::Profile=serde_json::from_value(value["profile"].clone()).unwrap();
+    let activation=receipt_activation(value["scenario"].as_str().unwrap(),profile,value["args"]["deviceId"].as_str().unwrap(),value["args"]["expectedConnection"].as_str().unwrap());
+    std::fs::write(std::env::var("OPEN_HUB_MHUB_RECEIPT_RESPONSE").unwrap(),serde_json::to_vec_pretty(&activation).unwrap()).unwrap();
 }
