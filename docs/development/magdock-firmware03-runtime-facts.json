@@ -1,0 +1,111 @@
+{
+  "format": "open-hub-magdock-firmware03-runtime-facts/1",
+  "date_local": "2026-10-27",
+  "family": "3837:1012 MCHOSE MagDock",
+  "firmware_display": "0.3",
+  "physical_scope": "one attached dock; HIDAPI request and response level, not USB bus or optical capture",
+  "host_transition_observations": [
+    {
+      "requested_mode": 5,
+      "requested_sync": true,
+      "previous_base_mode": 0,
+      "observed_base_mode": 0,
+      "observed_sync": true
+    },
+    {
+      "requested_mode": 5,
+      "requested_sync": true,
+      "previous_base_mode": 1,
+      "observed_base_mode": 1,
+      "observed_sync": true
+    },
+    {
+      "requested_mode": 5,
+      "requested_sync": true,
+      "previous_base_mode": 2,
+      "observed_base_mode": 2,
+      "observed_sync": true
+    },
+    {
+      "requested_mode": 5,
+      "requested_sync": true,
+      "previous_base_mode": 3,
+      "observed_base_mode": 3,
+      "observed_sync": true
+    },
+    {
+      "requested_mode": 5,
+      "requested_sync": true,
+      "previous_base_mode": 4,
+      "observed_base_mode": 4,
+      "observed_sync": true
+    }
+  ],
+  "wire_modes_verified": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "setting_readback_observations": 17,
+  "known_stream_frames_completed": 3,
+  "stream_pixel_readback": false,
+  "opaque_byte9": {
+    "source_reader_label": "sleepSwitch",
+    "observed_blue_values": [
+      0,
+      160
+    ],
+    "observed_byte9_matches_blue_for_these_samples": true,
+    "firmware_semantics_confirmed": false,
+    "no_effect_on_sleep_proved": false
+  },
+  "protected_payload_offsets_during_characterization": [
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28
+  ],
+  "complete_declared_payload_restored": true,
+  "real_audio": {
+    "frames_sent": 58,
+    "running_at_status_read": true,
+    "level_at_status_read": 3.0517578125e-05,
+    "error": null,
+    "full_payload_restored": true,
+    "large_nonzero_signal_response_verified": false
+  },
+  "queue": {
+    "backend": "hidapi2.6.7 windows-native",
+    "source_file": "src/windows_native/mod.rs",
+    "source_sha256": "1b6579e5c9349abc0665129c3bcb6776aef1f225884b86f0d439b60b5f0b80ce",
+    "configured_input_buffers": 64,
+    "old_drain_limit": 32,
+    "new_max_stale_reports": 128,
+    "extra_empty_probe": true,
+    "infinite_flood_still_rejected": true
+  },
+  "limits": [
+    "One observed product/firmware only; other firmware does not inherit base-mode exception",
+    "Byte9 remains opaque; observed correlation is not general firmware semantics",
+    "Real audio status was near silence; strong rhythm and optical LED behavior not certified",
+    "No mouse DPI/buttons/macros, firmware/DFU/pairing or factory reset commands were tested here"
+  ]
+}

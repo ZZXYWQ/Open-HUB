@@ -979,11 +979,23 @@ fn main() {
 
     if std::env::args().any(|a|a=="--lighting-probe"){let result=(||->Result<serde_json::Value,String>{let rgb=rgb::Client::connect()?.devices;let screen=screen::sample()?;let meter=audio_meter::Meter::open()?;Ok(serde_json::json!({"rgb":rgb,"screen":screen,"audio_peak":meter.peak()?}))})();match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;}
 
+    if args.iter().any(|a|a=="--magdock-characterize-light") {
+        match magdock::Controller::default().characterize_light(){Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;
+    }
+    if let Some(i)=args.iter().position(|a|a=="--magdock-restore-backup") {
+        let result=(||->Result<serde_json::Value,String>{
+            let path=std::path::Path::new(args.get(i+1).ok_or("缺少底座备份路径")?);
+            let c=magdock::Controller::default();let engine=effects::Engine::default();let current=c.view()?;
+            let preview=magdock_backup::preview(&c,&engine,path,&current.connection_key)?;
+            let restored=magdock_backup::restore(&c,&engine,path,&preview.selection)?;
+            Ok(serde_json::json!({"preview":preview,"restored":restored}))
+        })();match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;
+    }
     if std::env::args().any(|a|a=="--magdock-readonly-report") {
         match magdock::readonly_report(){Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;
     }
     if std::env::args().any(|a|a=="--magdock-probe"||a=="--magdock-self-test"||a=="--magdock-music-test") {
-        let c=magdock::Controller::default();let result=if std::env::args().any(|a|a=="--magdock-self-test"){c.self_test()}else if std::env::args().any(|a|a=="--magdock-music-test"){( c.view()).and_then(|v|{c.music(v.light,2.0,&v.connection_key)?;std::thread::sleep(std::time::Duration::from_secs(3));let during=c.view()?;c.stop()?;Ok(serde_json::json!({"during":during,"after":c.view()?}))})}else{c.view().and_then(|v|serde_json::to_value(v).map_err(|e|e.to_string()))};match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;
+        let c=magdock::Controller::default();let result=if std::env::args().any(|a|a=="--magdock-self-test"){c.self_test()}else if std::env::args().any(|a|a=="--magdock-music-test"){c.music_test()}else{c.view().and_then(|v|serde_json::to_value(v).map_err(|e|e.to_string()))};match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;
     }
     if std::env::args().any(|a|a=="--mchose-hardware-probe"||a=="--mchose-hardware-self-test") {
         let test=std::env::args().any(|a|a=="--mchose-hardware-self-test");

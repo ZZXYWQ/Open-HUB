@@ -1,0 +1,86 @@
+{
+  "date_local": "2026-10-27",
+  "base_commit": "103d539",
+  "scope": "Observed MagDock firmware0.3 mode/host/queue behavior, same-connection restore and actual playback-endpoint meter communication",
+  "release_version": "0.3.7",
+  "accepted_complete_models": 0,
+  "installer_built_published_or_installed": false,
+  "physical_validation": {
+    "firmware_display": "0.3",
+    "wire_mode_setting_cases": 6,
+    "base_modes_entered_host_and_resumed": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "setting_response_vectors": 17,
+    "explicit_RGB_frames_completed": 3,
+    "real_audio_final_frames": 58,
+    "real_audio_final_level": 3.0517578125e-05,
+    "final_running_during_test": true,
+    "final_audio_errors": null,
+    "final_known_state_restored": true,
+    "full_30_byte_payload_restored": true,
+    "byte9_semantics_confirmed": false,
+    "pixel_framebuffer_readback": false,
+    "optical_LED_behavior_certified": false,
+    "strong_audio_signal_verified": false,
+    "screen_or_PC_RGB_tested": false,
+    "firmware_DFU_pairing_reset_commands_sent": false,
+    "mouse_DPI_buttons_macros_accessed": false,
+    "OEM_processes_stopped": false,
+    "exploratory_failures_explicitly_recovered": [
+      "opaque byte9 changed",
+      "mode5 retained old base mode",
+      "old32-report drain limit"
+    ]
+  },
+  "validation": {
+    "default_native_passed": 725,
+    "default_native_failed": 0,
+    "default_native_ignored": 57,
+    "new_default_tests": 10,
+    "native_actual_8_connection_UI_requests": "passed",
+    "native_actual_6_backup_UI_requests": "passed",
+    "non_test_development_build": "passed",
+    "frontend_unchanged": true,
+    "runtime_dependencies_added": 0,
+    "new_product_images": 0,
+    "OEM_code_executed": false,
+    "OS_input_injected": false,
+    "dev_EXE_sha256": "2b195d975fc9c9a364b94a8465edf6f8cb50e113aca2b5d839eff344a96e0ca4"
+  },
+  "limits": [
+    "Only one observed MagDock product/firmware; no broader brand/model acceptance",
+    "Byte9 correlation for blue0/160 samples is not proof of independent sleep or no side effects",
+    "Near-silent audio communication is not optical or strong music-response certification",
+    "RGB stream acknowledges transport only, no pixel framebuffer readback",
+    "Firmware0.3 wire5 normalization retains selected base only; other revisions keep strict readback",
+    "Additional host prefetch must match verified before image before SET",
+    "The full all-base physical trace preceded final added pre-image guard; its raw data is covered by golden regression and final binary audio/recovery was rerun"
+  ],
+  "source_sha256": {
+    "src-tauri/src/magdock.rs": "0b79345073e6d562b634488a138c709727653a8cc619f4b47d476a723502dd64",
+    "src-tauri/src/magdock_protocol_tests.rs": "55728c28b56bb04f73a54b96d5d115d2f59aec7c9ce7e673a5de2be783ca460a",
+    "src-tauri/src/main.rs": "264a1f945b2dd892b3f516260e4f989f12c47742b259e387357993eb0951bcd2",
+    "src-tauri/tests/fixtures/magdock-firmware03-physical-settings.json": "3227d757b45f53d377a92faf6c6439d69a69ad2986a5491f79a6be0d1d9ca8fa",
+    "docs/development/magdock-reader-consumer-facts.json": "820e160dd27fdd91f24c9adc8c05450ca798150e2b64cb77d75e4acb8ee6d9f4",
+    "docs/development/magdock-firmware03-runtime-facts.json": "3e5c56e72742d7b394ce33eeb946ff1e7eea8930575d4f096b41cfeab7e58287"
+  },
+  "evidence_sha256": {
+    "..\\outputs\\100-model-development\\2026-10-27-magdock-physical-final-native.log": "827f7e0fd17e7b4b994c714df49973ac5aaf9b332587b42055d04fd4b0449016",
+    "..\\outputs\\100-model-development\\2026-10-27-magdock-physical-final-build.log": "afc7fcc5df804c95ca54d25763b9bc7c2ca1992023702f10d427ffc154200a1f",
+    "..\\outputs\\100-model-development\\2026-10-27-magdock-physical-all-base-modes.json": "49840de8fe8b931c10c0e1842e3a69ff0822a291def4d0228458aed1469e8ddb",
+    "..\\outputs\\100-model-development\\2026-10-27-magdock-final-audio.json": "0baa21bf4e8e85fc0bea26411c21b62bd7914e8237b3f87bd9e0777126f82e84",
+    "..\\outputs\\100-model-development\\2026-10-27-magdock-final-pre-audio.json": "dd257b02e0a153a88c7af0b4076ea559dfacb69caec4ba670c6928005ec78510",
+    "..\\outputs\\100-model-development\\2026-10-27-magdock-final-post-audio.json": "dd257b02e0a153a88c7af0b4076ea559dfacb69caec4ba670c6928005ec78510",
+    "..\\outputs\\100-model-development\\2026-10-27-magdock-physical-roundtrip.stderr.log": "331f736e9598491722923d68ff1639ef1bb44c5f7f5d57e4b541c55569d7c024",
+    "..\\outputs\\100-model-development\\2026-10-27-magdock-explicit-recovery.json": "7e752b63677601482e2c758de68fe49bf1210326664a2b37c145cb590db8905a",
+    "..\\outputs\\100-model-development\\2026-10-27-magdock-physical-characterization.stderr.log": "862548e5c8d59b428f91e3885e79503f8657ab71475cb543c0809d7f1d23f90c",
+    "..\\outputs\\100-model-development\\2026-10-27-magdock-characterization-recovery.json": "e432b33dcf087b4b233bfbf4e8f155232c3d671b29d5deba61e245850397472e",
+    "..\\outputs\\100-model-development\\2026-10-27-magdock-physical-audio.stderr.log": "ebb1f095cb57d45213132028f7c1aeaf931533599dc0a2fad70f538f8c6788cb",
+    "..\\outputs\\100-model-development\\2026-10-27-magdock-audio-explicit-recovery.json": "b1eff2c5e8b1a50520f6bd61ba551ee65ec7e9b528cbc59fd14352447d0491b8"
+  }
+}

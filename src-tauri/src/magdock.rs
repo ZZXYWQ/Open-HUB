@@ -7,6 +7,9 @@ use std::sync::{
 };
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 type R<T> = Result<T, String>;
+// windows-native HIDAPI2.6.7 configures64 input buffers; allow that queue plus
+// a pending read and an empty probe, while keeping a finite flood bound.
+const MAX_STALE_REPORTS: usize = 128;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Light {
@@ -157,7 +160,7 @@ impl Session {
             backup_dir: None,
         })
     }
-    fn backup(&self, light: &Light) -> R<()> {
+    fn backup(&self, light: &Light) -> R<std::path::PathBuf> {
         #[cfg(test)]
         if let Some(dir) = &self.backup_dir {
             return backup_to(dir, light);
@@ -179,7 +182,7 @@ impl Session {
     fn read_with_report(&self) -> R<(Light, String, Vec<u8>)> {
         let mut b = [0u8; 65];
         let mut drained = false;
-        for _ in 0..32 {
+        for _ in 0..=MAX_STALE_REPORTS {
             if self.io.read_timeout(&mut b, 0)? == 0 {
                 drained = true;
                 break;
@@ -202,14 +205,41 @@ impl Session {
         Err("底座读取超时，请关闭 M HUB 后重试".into())
     }
     fn apply(&self, l: &Light) -> R<(Light, String)> {
+        let (light, firmware, _) = self.apply_with_report(l)?;
+        Ok((light, firmware))
+    }
+    fn apply_verified(&self, l: &Light, before: &Light) -> R<(Light, String)> {
+        let (light, firmware, _) = self.apply_with_report_from(l, Some(before))?;
+        Ok((light, firmware))
+    }
+    fn apply_with_report(&self, l: &Light) -> R<(Light, String, Vec<u8>)> {
+        self.apply_with_report_from(l, None)
+    }
+    fn apply_with_report_from(
+        &self,
+        l: &Light,
+        before: Option<&Light>,
+    ) -> R<(Light, String, Vec<u8>)> {
         l.validate()?;
+        let mut expected = l.clone();
+        // Observed MagDock firmware0.3 keeps its base mode when wire mode5
+        // enables host synchronization. Other revisions retain exact matching.
+        if l.mode == 5 && l.sync {
+            let (current, firmware) = self.read()?;
+            if before.is_some_and(|expected| expected != &current) {
+                return Err("底座状态在同步写入前已改变，停止写入".into());
+            }
+            if firmware == "0.3" {
+                expected.mode = current.mode;
+            }
+        }
         self.send(39, &l.args())?;
         self.io.settle(Duration::from_millis(60));
-        let (got, fw) = self.read()?;
-        if &got != l {
+        let (got, fw, raw) = self.read_with_report()?;
+        if got != expected {
             return Err(format!("底座设置核对失败：{got:?}"));
         }
-        Ok((got, fw))
+        Ok((got, fw, raw))
     }
 }
 #[derive(Default)]
@@ -218,6 +248,7 @@ struct Inner {
     running: AtomicBool,
     music_connection: Mutex<Option<String>>,
     level: AtomicU32,
+    music_frames: AtomicU32,
     error: Mutex<Option<String>>,
 }
 impl Inner {
@@ -254,12 +285,12 @@ pub struct Controller {
     inner: Arc<Inner>,
     worker: Arc<Mutex<Option<Worker>>>,
 }
-fn backup(l: &Light) -> R<()> {
+fn backup(l: &Light) -> R<std::path::PathBuf> {
     let base = std::env::var_os("LOCALAPPDATA").ok_or("LOCALAPPDATA 未设置")?;
     let dir = std::path::PathBuf::from(base).join("Open HUB/backups");
     backup_to(&dir, l)
 }
-fn backup_to(dir: &std::path::Path, light: &Light) -> R<()> {
+fn backup_to(dir: &std::path::Path, light: &Light) -> R<std::path::PathBuf> {
     use std::io::Write;
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     let tick = SystemTime::now()
@@ -267,13 +298,15 @@ fn backup_to(dir: &std::path::Path, light: &Light) -> R<()> {
         .map_err(|e| e.to_string())?
         .as_nanos();
     let bytes = serde_json::to_vec_pretty(light).map_err(|e| e.to_string())?;
+    let path = dir.join(format!("magdock-{tick}.json"));
     let mut file = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
-        .open(dir.join(format!("magdock-{tick}.json")))
+        .open(&path)
         .map_err(|e| e.to_string())?;
     file.write_all(&bytes).map_err(|e| e.to_string())?;
-    file.sync_all().map_err(|e| e.to_string())
+    file.sync_all().map_err(|e| e.to_string())?;
+    Ok(path)
 }
 
 impl Controller {
@@ -361,7 +394,7 @@ impl Controller {
             if s.read()?.0 != before {
                 return Err("底座状态在备份期间已改变，请重新读取".into());
             }
-            s.apply(&l)
+            s.apply_verified(&l, &before)
                 .map_err(|e| format!("{e}；可能部分生效，已保留写入前备份；未自动覆盖设备状态"))
         })?;
         Ok(self.make_view(expected.into(), light, firmware))
@@ -398,6 +431,7 @@ impl Controller {
         self.check_connection(expected)?;
         self.stop()?;
         let mut worker = self.worker.lock().map_err(|_| "音乐线程锁定失败")?;
+        self.inner.music_frames.store(0, Ordering::SeqCst);
         let (connection, before) = self.inner.access_bound(expected, |s| {
             let before = s.read()?.0;
             s.backup(&before)?;
@@ -416,14 +450,16 @@ impl Controller {
         let signal = stop.clone();
         let (tx, rx) = std::sync::mpsc::sync_channel(1);
         let handle = std::thread::spawn(move || {
+            let mut applied = None;
             let result = (|| -> R<()> {
                 let meter = open()?;
-                inner.access_bound(&connection, |s| {
+                let (observed, _) = inner.access_bound(&connection, |s| {
                     if s.read()?.0 != before {
                         return Err("底座状态在律动启动前已改变，请重新读取".into());
                     }
-                    s.apply(&l)
+                    s.apply_verified(&l, &before)
                 })?;
+                applied = Some(observed);
                 inner.running.store(true, Ordering::SeqCst);
                 if let Ok(mut e) = inner.error.lock() {
                     *e = None
@@ -436,6 +472,7 @@ impl Controller {
                     inner.level.store(envelope.to_bits(), Ordering::SeqCst);
                     let colors = music_colors(envelope, l.color, l.brightness);
                     inner.access_bound(&connection, |s| s.send(41, &colors))?;
+                    inner.music_frames.fetch_add(1, Ordering::SeqCst);
                     std::thread::sleep(Duration::from_millis(50));
                 }
                 Ok(())
@@ -446,7 +483,12 @@ impl Controller {
                     *error = Some(e.clone())
                 }
             }
-            let restored = restore_light(&inner, &connection, &l, &before);
+            let restored = restore_light(
+                &inner,
+                &connection,
+                applied.as_ref().unwrap_or(&before),
+                &before,
+            );
             if let Err(e) = restored {
                 if let Ok(mut error) = inner.error.lock() {
                     *error = Some(format!("停止律动后恢复灯效失败：{e}"))
@@ -482,7 +524,8 @@ impl Controller {
             applied.enabled = true;
             applied.mode = 5;
             applied.sync = true;
-            s.apply(&applied)
+            let (applied, _) = s
+                .apply(&applied)
                 .map_err(|e| format!("{e}；已保留底座备份，未自动覆盖恢复"))?;
             Ok(StreamLease {
                 connection: s.connection.clone(),
@@ -504,35 +547,177 @@ impl Controller {
             &lease.before,
         )
     }
-    pub fn self_test(&self) -> R<serde_json::Value> {
-        self.stop()?;
-        self.inner.access(|s| {
-            let before = s.read()?.0;
-            s.backup(&before)?;
-            let mut checks = Vec::new();
-            for mode in 0..=5 {
-                let mut light = before.clone();
-                light.enabled = true;
-                light.mode = mode;
-                light.sync = mode == 5;
-                light.color = [32, 180, 160];
-                light.brightness = mode % 5;
-                light.speed = mode % 5;
-                light.direction = mode % 2;
-                s.apply(&light)?;
-                checks.push(format!("mode {mode}: write/read verified"));
-            }
-            let mut off = before.clone();
-            off.enabled = false;
-            s.apply(&off)?;
-            checks.push("switch off: verified".into());
-            if s.read()?.0 != off {
-                return Err("底座状态已被其他程序改变，不覆盖恢复".into());
-            }
-            let restored = s.apply(&before)?.0 == before;
-            Ok(serde_json::json!({"checks":checks,"before":before,"restored":restored}))
-        })
+    /// Always join/restore after the diagnostic, including failed status reads.
+    pub fn music_test(&self) -> R<serde_json::Value> {
+        self.music_test_with(Duration::from_secs(3), crate::audio_meter::Meter::open)
     }
+    fn music_test_with<M: PeakMeter + 'static>(
+        &self,
+        duration: Duration,
+        open: impl FnOnce() -> R<M> + Send + 'static,
+    ) -> R<serde_json::Value> {
+        let before = self.view()?;
+        let backup = self
+            .inner
+            .access_bound(&before.connection_key, |s| s.backup(&before.light))?;
+        let mut report =
+            serde_json::json!({"before":before,"backup":backup.to_string_lossy(),"restored":false});
+        let result = (|| -> R<View> {
+            self.music_with_meter(before.light.clone(), 2.0, &before.connection_key, open)?;
+            let first_frame_deadline = Instant::now() + Duration::from_secs(1);
+            while self.inner.music_frames.load(Ordering::SeqCst) == 0
+                && self.inner.running.load(Ordering::SeqCst)
+                && Instant::now() < first_frame_deadline
+            {
+                std::thread::sleep(Duration::from_millis(2));
+            }
+            if self.inner.music_frames.load(Ordering::SeqCst) == 0 {
+                return Err("音乐测试未发送颜色帧".into());
+            }
+            std::thread::sleep(duration);
+            let during = self.view_selected(&before.connection_key)?;
+            if !during.music_running || during.music_error.is_some() {
+                return Err(during
+                    .music_error
+                    .unwrap_or("音乐线程在测试期间退出".into()));
+            }
+            Ok(during)
+        })();
+        let cleanup = self.stop();
+        let after = self.view_selected(&before.connection_key);
+        report["frames_sent"] = self.inner.music_frames.load(Ordering::SeqCst).into();
+        let mut errors = vec![];
+        match result {
+            Ok(v) => report["during"] = serde_json::to_value(v).unwrap(),
+            Err(e) => errors.push(e),
+        }
+        if let Err(e) = cleanup {
+            errors.push(e);
+        }
+        match after {
+            Ok(v) => {
+                if v.light == before.light {
+                    report["restored"] = true.into();
+                } else {
+                    errors.push("音频测试后底座设置未恢复".into());
+                }
+                report["after"] = serde_json::to_value(v).unwrap();
+            }
+            Err(e) => errors.push(e),
+        }
+        if errors.is_empty() {
+            Ok(report)
+        } else {
+            report["errors"] = serde_json::to_value(errors).unwrap();
+            Err(serde_json::to_string_pretty(&report).unwrap())
+        }
+    }
+    pub fn self_test(&self) -> R<serde_json::Value> {
+        self.light_diagnostic(false)
+    }
+    /// Experimental characterization records byte9 instead of certifying it as
+    /// an independent sleep flag. All final declared bytes must still restore.
+    pub fn characterize_light(&self) -> R<serde_json::Value> {
+        self.light_diagnostic(true)
+    }
+    fn light_diagnostic(&self, opaque_byte9: bool) -> R<serde_json::Value> {
+        self.stop()?;
+        let mut report = serde_json::json!({"format":"open-hub-magdock-native-roundtrip/1","steps":[],"restored":false,"pixel_framebuffer_readback":false,"opaque_byte9_characterization":opaque_byte9,"opaque_byte9_semantics_confirmed":false});
+        let result = self.inner.access(|s| {
+            let (before, firmware, original_raw) = s.read_with_report()?;
+            let backup = s.backup(&before)?;
+            report["connection_key"] = s.connection.clone().into();
+            report["backup"] = backup.to_string_lossy().into_owned().into();
+            report["before"] = serde_json::to_value(&before).unwrap();
+            report["firmware"] = firmware.clone().into();
+            report["before_response"] = serde_json::to_value(&original_raw).unwrap();
+            let protected = protected_light_response(&original_raw, opaque_byte9)?;
+            let mut expected = before.clone();
+            for mode in 0..=5 {
+                require_diagnostic_state(s, &expected, &firmware, &protected, opaque_byte9)?;
+                let mut desired = before.clone();
+                desired.enabled = true; desired.mode = mode; desired.sync = mode == 5;
+                desired.color = [32,180,160]; desired.brightness = mode % 5;
+                desired.speed = mode % 5; desired.direction = mode % 2;
+                let (observed, fw, raw) = s.apply_with_report_from(&desired,Some(&expected))?;
+                report["steps"].as_array_mut().unwrap().push(serde_json::json!({"kind":"mode","mode":mode,"requested":desired,"observed":observed,"response":raw}));
+                if fw != firmware || protected_light_response(&raw, opaque_byte9)? != protected {
+                    return Err("底座受保护字段在测试中改变，停止写入".into());
+                }
+                expected = observed;
+                if opaque_byte9 && firmware=="0.3" && mode<5 {
+                    let base=expected.clone(); let mut host=base.clone(); host.mode=5;host.sync=true;
+                    let (entered,fw,raw)=s.apply_with_report_from(&host,Some(&base))?;
+                    report["steps"].as_array_mut().unwrap().push(serde_json::json!({"kind":"host_transition","base_mode":mode,"requested":host,"observed":entered,"response":raw}));
+                    if entered.mode!=mode||fw!=firmware||protected_light_response(&raw,opaque_byte9)?!=protected{return Err("底座音乐同步未保留当前基础模式".into());}
+                    require_diagnostic_state(s,&entered,&firmware,&protected,opaque_byte9)?;
+                    let (resumed,fw,raw)=s.apply_with_report(&base)?;
+                    report["steps"].as_array_mut().unwrap().push(serde_json::json!({"kind":"base_resume","base_mode":mode,"requested":base,"observed":resumed,"response":raw}));
+                    if fw!=firmware||protected_light_response(&raw,opaque_byte9)?!=protected{return Err("底座退出音乐同步后受保护字段改变".into());}
+                    expected=resumed;
+                }
+                s.io.settle(Duration::from_millis(250));
+            }
+            for color in [[40u8,0,0],[0,40,0],[0,0,40]] {
+                require_diagnostic_state(s, &expected, &firmware, &protected, opaque_byte9)?;
+                let payload:Vec<u8> = color.repeat(12); s.send(41, &payload)?;
+                report["steps"].as_array_mut().unwrap().push(serde_json::json!({"kind":"stream","command":41,"pixels":vec![color;12],"transport_write_complete":true,"pixel_readback":false}));
+                s.io.settle(Duration::from_millis(150));
+            }
+            require_diagnostic_state(s, &expected, &firmware, &protected, opaque_byte9)?;
+            let mut off = before.clone(); off.enabled = false;
+            let (observed, fw, raw) = s.apply_with_report(&off)?;
+            report["steps"].as_array_mut().unwrap().push(serde_json::json!({"kind":"off","requested":off,"observed":observed,"response":raw}));
+            if fw != firmware || protected_light_response(&raw, opaque_byte9)? != protected {
+                return Err("底座受保护字段在关闭测试中改变".into());
+            }
+            require_diagnostic_state(s, &observed, &firmware, &protected, opaque_byte9)?;
+            let (after, fw, raw) = s.apply_with_report_from(&before,Some(&observed))?;
+            report["after"] = serde_json::to_value(&after).unwrap();
+            report["after_response"] = serde_json::to_value(&raw).unwrap();
+            if fw != firmware || protected_light_response(&raw, opaque_byte9)? != protected {
+                return Err("底座恢复后受保护字段不同".into());
+            }
+            let strip = |r:Vec<u8>| if r.first()==Some(&0) {r[1..].to_vec()} else {r};
+            let original = strip(original_raw); let current = strip(raw);
+            if current[6..36] != original[6..36] {return Err("恢复后完整30字节设置载荷不同".into());}
+            report["full_declared_payload_restored"] = true.into();
+            report["restored"] = true.into(); report["protected_fields_preserved"] = true.into();
+            Ok(())
+        });
+        if let Err(error) = result {
+            report["error"] = error.into();
+            return Err(serde_json::to_string_pretty(&report).unwrap());
+        }
+        Ok(report)
+    }
+}
+fn protected_light_response(raw: &[u8], opaque_byte9: bool) -> R<Vec<u8>> {
+    let r = if raw.first() == Some(&0) {
+        &raw[1..]
+    } else {
+        raw
+    };
+    if parse_reply(raw)?.is_none() {
+        return Err("无效的底座读取响应".into());
+    }
+    Ok(r[6 + if opaque_byte9 { 10 } else { 9 }..6 + 29].to_vec())
+}
+fn require_diagnostic_state(
+    s: &Session,
+    expected: &Light,
+    firmware: &str,
+    protected: &[u8],
+    opaque_byte9: bool,
+) -> R<()> {
+    let (current, fw, raw) = s.read_with_report()?;
+    if &current != expected
+        || fw != firmware
+        || protected_light_response(&raw, opaque_byte9)? != protected
+    {
+        return Err("底座状态在测试步骤之间改变，停止写入".into());
+    }
+    Ok(())
 }
 fn restore_light(inner: &Inner, connection: &str, expected: &Light, before: &Light) -> R<()> {
     inner.access_bound(connection, |s| {
@@ -543,7 +728,7 @@ fn restore_light(inner: &Inner, connection: &str, expected: &Light, before: &Lig
         if &current != expected {
             return Err("底座灯效已被其他程序改变，不覆盖恢复".into());
         }
-        s.apply(before)?;
+        s.apply_verified(before, &current)?;
         Ok(())
     })
 }

@@ -29,3 +29,5 @@ Windows PnP 检测到一个 `3837:1012 MCHOSE MagDock`、usage page FF00 / usage
 默认715项通过、57项默认忽略；新fixture导出和请求回放显式运行通过。TypeScript、Vite与非测试开发构建通过；未新增运行依赖、图片、CSS或安装包。[验证记录](development/2026-10-27-magdock-backup-validation.json)。
 
 仍需验证实体设置/颜色/恢复、音乐/屏幕/PC RGB的实际效果，多底座选择及逐底座UI、设备/鼠标身份与100个完整鼠标型号。此处只恢复已知底座灯效，不是固件、睡眠参数、鼠标DPI/按键/宏或宿主机同步引擎的完整快照。
+
+后续已执行[0.3固件实体设置/音频通信及恢复核对](MAGDOCK-FIRMWARE03.md)，修复基础模式保留和输入队列问题；byte9含义及光学显示仍未解决。上文保留原增量的只读/模拟边界。

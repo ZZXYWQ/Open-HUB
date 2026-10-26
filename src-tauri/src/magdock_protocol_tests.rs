@@ -27,6 +27,8 @@ struct Wire {
     replies: VecDeque<Vec<u8>>,
     writes: Vec<Vec<u8>>,
     short_write: bool,
+    observed_byte9_from_blue: bool,
+    observed_host_mode_retains_base: bool,
     ignore_set: bool,
     disconnect: bool,
     flood: bool,
@@ -54,8 +56,15 @@ impl DockIo for Memory {
             39 => {
                 assert_eq!(bytes[6], 10);
                 if !w.ignore_set {
+                    let base_mode = w.body[1];
                     w.body[..9].copy_from_slice(&bytes[7..16]);
+                    if w.observed_host_mode_retains_base && bytes[8] == 5 && bytes[12] == 1 {
+                        w.body[1] = base_mode;
+                    }
                     w.body[29] = bytes[16];
+                    if w.observed_byte9_from_blue {
+                        w.body[9] = bytes[15];
+                    }
                 }
             }
             41 => assert_eq!(bytes[6], 36),
@@ -218,7 +227,10 @@ fn six_source_modes_set_and_read_back_with_exact_ten_field_order() {
         assert_eq!(w.body[10], 45);
         assert_eq!(w.body[12..14], [9, 2]);
     }
-    assert_eq!(commands(&wire), [39, 7].repeat(6));
+    assert_eq!(
+        commands(&wire),
+        [[39, 7].repeat(5), vec![7, 39, 7]].concat()
+    );
 }
 #[test]
 fn twelve_rgb_pixels_stream_in_order_on_the_original_connection() {
@@ -312,7 +324,7 @@ fn stale_report_drain_is_bounded_before_a_get_is_sent() {
     wire.lock().unwrap().flood = true;
     assert!(session.read().is_err());
     let w = wire.lock().unwrap();
-    assert_eq!(w.reads, 32);
+    assert_eq!(w.reads, MAX_STALE_REPORTS + 1);
     assert!(w.writes.is_empty());
 }
 
@@ -342,12 +354,12 @@ fn production_stream_begin_backs_up_before_set_and_normal_restore_uses_its_lease
     assert_eq!(files.len(), 1);
     let saved: Light = serde_json::from_slice(&std::fs::read(&files[0]).unwrap()).unwrap();
     assert_eq!(saved, before());
-    assert_eq!(commands(&wire), [7, 7, 39, 7]);
+    assert_eq!(commands(&wire), [7, 7, 7, 39, 7]);
     controller
         .stream_frame(&lease, &[[10, 20, 30]; 12])
         .unwrap();
     controller.stream_restore(&lease).unwrap();
-    assert_eq!(commands(&wire), [7, 7, 39, 7, 41, 7, 39, 7]);
+    assert_eq!(commands(&wire), [7, 7, 7, 39, 7, 41, 7, 39, 7]);
     assert_eq!(wire.lock().unwrap().body, REPLY[6..]);
     std::fs::remove_dir_all(dir).unwrap();
 }
@@ -992,4 +1004,254 @@ fn actual_backup_ui_requests_replay_native_export_preview_and_restore() {
     assert_eq!((exports, previews, restores), (1, 4, 1));
     assert_eq!(commands(&wire).iter().filter(|c| **c == 39).count(), 1);
     std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn native_roundtrip_diagnostic_records_modes_streams_protected_fields_and_restores() {
+    let (controller, wire) = controller("dock-A:1");
+    let dir = backup_directory(&controller);
+    let report = controller.self_test().unwrap();
+    assert_eq!(report["restored"], true);
+    assert_eq!(report["protected_fields_preserved"], true);
+    assert_eq!(report["steps"].as_array().unwrap().len(), 10);
+    assert_eq!(
+        report["steps"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|v| v["kind"] == "mode")
+            .count(),
+        6
+    );
+    assert_eq!(
+        report["steps"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|v| v["kind"] == "stream")
+            .count(),
+        3
+    );
+    assert_eq!(report["pixel_framebuffer_readback"], false);
+    let saved: Light =
+        serde_json::from_slice(&std::fs::read(report["backup"].as_str().unwrap()).unwrap())
+            .unwrap();
+    assert_eq!(saved, before());
+    assert_eq!(wire.lock().unwrap().body, REPLY[6..]);
+    assert!(!commands(&wire).contains(&42));
+    std::fs::remove_dir_all(dir).unwrap();
+}
+#[test]
+fn unconfirmed_roundtrip_stops_after_first_set_and_reports_recoverable_before_image() {
+    let (controller, wire) = controller("dock-A:1");
+    let dir = backup_directory(&controller);
+    wire.lock().unwrap().ignore_set = true;
+    let error = controller.self_test().unwrap_err();
+    let report: serde_json::Value = serde_json::from_str(&error).unwrap();
+    assert_eq!(report["restored"], false);
+    assert!(report["error"].as_str().unwrap().contains("核对失败"));
+    assert_eq!(commands(&wire).iter().filter(|v| **v == 39).count(), 1);
+    assert!(!commands(&wire).contains(&41));
+    assert!(std::path::Path::new(report["backup"].as_str().unwrap()).exists());
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn observed_byte9_change_blocks_strict_diagnostic_but_characterization_records_and_fully_restores()
+{
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../tests/fixtures/magdock-observed-readonly.json"
+    ))
+    .unwrap();
+    let raw: Vec<u8> = serde_json::from_value(fixture["response_bytes"].clone()).unwrap();
+    for characterize in [false, true] {
+        let (controller, wire) = controller("dock-A:1");
+        let dir = backup_directory(&controller);
+        {
+            let mut w = wire.lock().unwrap();
+            w.body = raw[6..36].to_vec();
+            w.observed_byte9_from_blue = true;
+            w.observed_host_mode_retains_base = true;
+        }
+        if characterize {
+            let report = controller.characterize_light().unwrap();
+            assert_eq!(report["full_declared_payload_restored"], true);
+            assert_eq!(report["opaque_byte9_semantics_confirmed"], false);
+            assert_eq!(wire.lock().unwrap().body, raw[6..36]);
+            assert_eq!(report["steps"][0]["response"][15], 160);
+        } else {
+            assert!(controller.self_test().is_err());
+            assert_eq!(commands(&wire).iter().filter(|v| **v == 39).count(), 1);
+        }
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+}
+
+#[test]
+fn observed_firmware03_host_sync_uses_read_base_mode_for_stream_and_music_restore() {
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../tests/fixtures/magdock-observed-readonly.json"
+    ))
+    .unwrap();
+    let raw: Vec<u8> = serde_json::from_value(fixture["response_bytes"].clone()).unwrap();
+    let original: Light = serde_json::from_value(fixture["light"].clone()).unwrap();
+    let (controller, wire) = controller("dock-A:1");
+    let dir = backup_directory(&controller);
+    {
+        let mut w = wire.lock().unwrap();
+        w.body = raw[6..36].to_vec();
+        w.observed_host_mode_retains_base = true;
+        w.observed_byte9_from_blue = true;
+    }
+    let lease = controller.stream_begin("dock-A:1").unwrap();
+    assert_eq!(lease.applied.mode, 4);
+    assert!(lease.applied.sync);
+    controller
+        .stream_frame(&lease, &[[20, 30, 40]; 12])
+        .unwrap();
+    controller.stream_restore(&lease).unwrap();
+    assert_eq!(wire.lock().unwrap().body, raw[6..36]);
+    let music = controller
+        .music_with_meter(original, 2.0, "dock-A:1", || Ok(ConstantMeter))
+        .unwrap();
+    assert_eq!(music.light.mode, 4);
+    assert!(music.light.sync);
+    let stopped = controller.stop_selected("dock-A:1").unwrap();
+    assert!(stopped.music_error.is_none());
+    assert_eq!(wire.lock().unwrap().body, raw[6..36]);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn full_64_report_input_queue_and_boundary_empty_probe_do_not_break_fresh_get() {
+    for count in [32, 64, 65, MAX_STALE_REPORTS] {
+        let (session, wire) = session("dock-A:1");
+        wire.lock()
+            .unwrap()
+            .replies
+            .extend((0..count).map(|_| vec![170, 41, 2, 0, 0, 0]));
+        assert_eq!(session.read().unwrap().0, before());
+        assert_eq!(commands(&wire), [7]);
+    }
+}
+#[test]
+fn firmware03_mode_exception_is_not_inherited_by_an_unobserved_revision() {
+    let (session, wire) = session("dock-A:1");
+    {
+        let mut w = wire.lock().unwrap();
+        w.body[12] = 4;
+        w.body[13] = 0;
+        w.observed_host_mode_retains_base = true;
+    }
+    let mut desired = before();
+    desired.mode = 5;
+    desired.sync = true;
+    assert!(session.apply(&desired).is_err());
+}
+#[test]
+fn music_diagnostic_with_simulated_meter_stops_and_preserves_before_image() {
+    let (controller, wire) = controller("dock-A:1");
+    let dir = backup_directory(&controller);
+    let report = controller
+        .music_test_with(Duration::from_millis(10), || Ok(ConstantMeter))
+        .unwrap();
+    assert_eq!(report["restored"], true);
+    assert!(report["frames_sent"].as_u64().unwrap() > 0);
+    assert_eq!(wire.lock().unwrap().body, REPLY[6..]);
+    assert!(!controller.inner.running.load(Ordering::SeqCst));
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+struct OnePeakThenFailure(std::cell::Cell<u8>);
+impl PeakMeter for OnePeakThenFailure {
+    fn peak(&self) -> R<f32> {
+        let call = self.0.get();
+        self.0.set(call + 1);
+        if call == 0 {
+            Ok(1.0)
+        } else {
+            Err("authored audio endpoint lost".into())
+        }
+    }
+}
+#[test]
+fn diagnostic_does_not_pass_if_music_worker_dies_early_even_when_restore_succeeds() {
+    let (controller, wire) = controller("dock-A:1");
+    let dir = backup_directory(&controller);
+    let error = controller
+        .music_test_with(Duration::from_millis(100), || {
+            Ok(OnePeakThenFailure(std::cell::Cell::new(0)))
+        })
+        .unwrap_err();
+    let report: serde_json::Value = serde_json::from_str(&error).unwrap();
+    assert_eq!(report["restored"], true);
+    assert!(report["errors"]
+        .to_string()
+        .contains("authored audio endpoint lost"));
+    assert_eq!(wire.lock().unwrap().body, REPLY[6..]);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+#[test]
+fn all_captured_physical_mode_and_host_transitions_decode_to_observed_state() {
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../tests/fixtures/magdock-firmware03-physical-settings.json"
+    ))
+    .unwrap();
+    assert_eq!(fixture["firmware"], "0.3");
+    assert_eq!(fixture["full_declared_payload_restored"], true);
+    assert_eq!(fixture["opaque_byte9_semantics_confirmed"], false);
+    let mut base = 4;
+    let mut reads = 0;
+    let mut transitions = vec![];
+    for step in fixture["steps"].as_array().unwrap() {
+        if step["kind"] == "stream" {
+            assert_eq!(step["pixel_readback"], false);
+            continue;
+        }
+        let raw: Vec<u8> = serde_json::from_value(step["response"].clone()).unwrap();
+        let (actual, fw) = parse_reply(&raw).unwrap().unwrap();
+        let mut expected: Light = serde_json::from_value(step["requested"].clone()).unwrap();
+        if expected.mode == 5 && expected.sync {
+            expected.mode = base;
+        } else {
+            base = expected.mode;
+        }
+        assert_eq!(fw, "0.3");
+        assert_eq!(actual, expected);
+        assert_eq!(serde_json::to_value(&actual).unwrap(), step["observed"]);
+        assert_eq!(raw[6 + 9], actual.color[2]);
+        reads += 1;
+        if step["kind"] == "host_transition" {
+            transitions.push(actual.mode);
+        }
+    }
+    assert_eq!(reads, 17);
+    assert_eq!(transitions, vec![0, 1, 2, 3, 4]);
+    assert_eq!(
+        fixture["before_response"].as_array().unwrap()[6..36],
+        fixture["after_response"].as_array().unwrap()[6..36]
+    );
+}
+
+#[test]
+fn host_mode_prefetch_cannot_adopt_an_external_base_mode_change_as_its_own() {
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../tests/fixtures/magdock-observed-readonly.json"
+    ))
+    .unwrap();
+    let raw: Vec<u8> = serde_json::from_value(fixture["response_bytes"].clone()).unwrap();
+    let selected: Light = serde_json::from_value(fixture["light"].clone()).unwrap();
+    let (session, wire) = session("dock-A:1");
+    {
+        let mut w = wire.lock().unwrap();
+        w.body = raw[6..36].to_vec();
+        w.body[1] = 3;
+        w.observed_host_mode_retains_base = true;
+    }
+    let mut target = selected.clone();
+    target.mode = 5;
+    target.sync = true;
+    assert!(session.apply_verified(&target, &selected).is_err());
+    assert_eq!(commands(&wire), [7]);
+    assert_eq!(wire.lock().unwrap().body[1], 3);
 }
