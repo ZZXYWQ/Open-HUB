@@ -8,6 +8,7 @@ enum Fault {
     LostAck,
     ShortRead,
     ThirdValue,
+    ForeignWaveform,
     OwnerChanged,
     CapsChanged,
     RestoreFails,
@@ -165,12 +166,15 @@ impl FeatureRequest for Memory {
                     if s.fault == Fault::ThirdValue {
                         s.current[usize::from(p[0])][2] ^= 0x80;
                     }
+                    if s.fault == Fault::ForeignWaveform {
+                        s.current[usize::from(p[0])][6] = 0xa6;
+                    }
                     if s.fault == Fault::OwnerChanged {
                         s.profile = 2;
                     }
                     if matches!(
                         s.fault,
-                        Fault::LostAck | Fault::RestoreFails | Fault::CapsChanged
+                        Fault::LostAck | Fault::RestoreFails | Fault::CapsChanged | Fault::ForeignWaveform
                     ) {
                         return Err(Error::Timeout);
                     }
@@ -665,4 +669,204 @@ fn browser_breathing_and_cycle_use_production_native_transactions() {
 
 #[test]fn stale_lighting_preview_cannot_follow_the_same_unit_to_a_new_connection(){
  let m=mem();let d=device();let before=read(&d,&m).unwrap();let c=change(&m);let mut reconnected=d.clone();reconnected.connection_key="connection:reconnected".into();m.0.lock().unwrap().calls.clear();assert!(apply(&reconnected,&m,&c).unwrap_err().to_string().contains("generation changed"));assert!(m.0.lock().unwrap().calls.is_empty());let fresh=read(&reconnected,&m).unwrap();assert_eq!(fresh.device_key,before.device_key);assert_ne!(fresh.connection_key,before.connection_key);
+}
+
+fn lighting_writes(m: &Memory) -> Vec<Vec<u8>> {
+    m.0.lock().unwrap().calls.iter()
+        .filter(|(feature, function, _)| *feature == 0x24 && *function == 3)
+        .map(|(_, _, packet)| packet.clone()).collect()
+}
+fn opaque_waveform_memory() -> Memory {
+    let m = mem();
+    m.0.lock().unwrap().current[1] = [4, 14, 25, 36, 0x13, 0x88, 0xa5, 53, 0xc1, 0xc2, 0xc3];
+    m
+}
+fn explicit_waveform(m: &Memory, waveform: u8, brightness_percent: u8) -> Change {
+    let mut c = change(m);
+    c.effect = Effect::BreathingWaveform {
+        color: [171, 205, 239], brightness_percent, waveform,
+    };
+    c
+}
+
+#[test]
+fn native_waveform_forms_zero_through_six_use_complete_discovered_slot_packets() {
+    for waveform in 0..=6 {
+        let m = mem();
+        let other = m.0.lock().unwrap().current[0];
+        let c = explicit_waveform(&m, waveform, 37);
+        let result = apply(&device(), &m, &c).unwrap();
+        let expected = vec![1, 4, 171, 205, 239, 0x13, 0x88, waveform, 37, 0, 0, 0, 0];
+        assert_eq!(lighting_writes(&m), [expected.clone()], "form {waveform}");
+        assert_eq!(result.view.zones[1].current, Some(expected[1..12].try_into().unwrap()));
+        let state = m.0.lock().unwrap();
+        assert_eq!(state.current[0], other);
+        assert_eq!((state.mode, state.profile, state.writes), (1, 1, 1));
+    }
+}
+
+#[test]
+fn explicit_waveforms_keep_current_native_timing_reserved_tail_and_noop_behavior() {
+    for waveform in 0..=6 {
+        let m = opaque_waveform_memory();
+        {
+            let mut state = m.0.lock().unwrap();
+            state.current[1][4..6].copy_from_slice(&[0x12, 0x34]);
+            state.period = 7; // The advertised timing must not replace current timing.
+        }
+        let other = m.0.lock().unwrap().current[0];
+        let mut c = explicit_waveform(&m, waveform, 100);
+        let result = apply(&device(), &m, &c).unwrap();
+        let expected = vec![1, 4, 171, 205, 239, 0x12, 0x34, waveform, 0, 0xc1, 0xc2, 0xc3, 0];
+        assert_eq!(lighting_writes(&m), [expected.clone()]);
+        assert_eq!(result.view.zones[1].current, Some(expected[1..12].try_into().unwrap()));
+        c.expected = result.view.zones[1].current.unwrap();
+        assert!(apply(&device(), &m, &c).unwrap().unchanged);
+        assert_eq!(lighting_writes(&m), [expected]);
+        let state = m.0.lock().unwrap();
+        assert_eq!(state.current[0], other);
+        assert_eq!((state.mode, state.profile, state.writes), (1, 1, 1));
+    }
+}
+
+#[test]
+fn legacy_breathing_json_and_unknown_waveform_are_preserved_by_color_brightness_edits() {
+    let legacy = serde_json::json!({"Breathing":{"color":[171,205,239],"brightness_percent":31}});
+    let effect: Effect = serde_json::from_value(legacy.clone()).unwrap();
+    assert_eq!(serde_json::to_value(&effect).unwrap(), legacy);
+    let m = opaque_waveform_memory();
+    let mut c = change(&m);
+    c.effect = effect;
+    let result = apply(&device(), &m, &c).unwrap();
+    let expected = vec![1, 4, 171, 205, 239, 0x13, 0x88, 0xa5, 31, 0xc1, 0xc2, 0xc3, 0];
+    assert_eq!(lighting_writes(&m), [expected.clone()]);
+    assert_eq!(result.view.zones[1].current, Some(expected[1..12].try_into().unwrap()));
+    let explicit = serde_json::json!({"BreathingWaveform":{"color":[171,205,239],"brightness_percent":31,"waveform":6}});
+    let decoded: Effect = serde_json::from_value(explicit.clone()).unwrap();
+    assert_eq!(serde_json::to_value(decoded).unwrap(), explicit);
+    assert!(serde_json::from_value::<Effect>(serde_json::json!({
+        "Breathing":{"color":[1,2,3],"brightness_percent":31,"waveform":1}
+    })).is_err());
+}
+
+#[test]
+fn unknown_explicit_waveform_or_invalid_intensity_never_sends_a_set() {
+    for (waveform, brightness) in [(7, 31), (0xa5, 31), (255, 31), (2, 0), (2, 101)] {
+        let m = opaque_waveform_memory();
+        let old = m.0.lock().unwrap().current.clone();
+        assert!(apply(&device(), &m, &explicit_waveform(&m, waveform, brightness)).is_err());
+        assert!(lighting_writes(&m).is_empty());
+        let state = m.0.lock().unwrap();
+        assert_eq!(state.current, old);
+        assert_eq!(state.writes, 0);
+        assert!(!state.calls.iter().any(|(feature, _, _)| *feature == 0x12));
+    }
+    for waveform in [serde_json::json!(-1), serde_json::json!(256), serde_json::json!("sine")] {
+        assert!(serde_json::from_value::<Effect>(serde_json::json!({
+            "BreathingWaveform":{"color":[1,2,3],"brightness_percent":31,"waveform":waveform}
+        })).is_err());
+    }
+    let m = mem();
+    m.0.lock().unwrap().effects.retain(|effect| *effect != 10);
+    assert!(apply(&device(), &m, &explicit_waveform(&m, 2, 31)).is_err());
+    assert!(lighting_writes(&m).is_empty());
+}
+
+#[test]
+fn lost_waveform_ack_restores_the_exact_unknown_original_without_replaying_target() {
+    for waveform in 0..=6 {
+        let m = opaque_waveform_memory();
+        let old = m.0.lock().unwrap().current.clone();
+        m.0.lock().unwrap().fault = Fault::LostAck;
+        let error = apply(&device(), &m, &explicit_waveform(&m, waveform, 31)).unwrap_err().to_string();
+        assert!(error.contains("restored/verified"), "form {waveform}: {error}");
+        assert_eq!(lighting_writes(&m), [
+            vec![1, 4, 171, 205, 239, 0x13, 0x88, waveform, 31, 0xc1, 0xc2, 0xc3, 0],
+            vec![1, 4, 14, 25, 36, 0x13, 0x88, 0xa5, 53, 0xc1, 0xc2, 0xc3, 0],
+        ]);
+        let state = m.0.lock().unwrap();
+        assert_eq!(state.current, old);
+        assert_eq!((state.mode, state.profile, state.writes), (1, 1, 2));
+    }
+}
+
+#[test]
+fn foreign_waveform_or_changed_profile_is_preserved_after_uncertain_waveform_apply() {
+    for fault in [Fault::ForeignWaveform, Fault::OwnerChanged] {
+        for waveform in 0..=6 {
+            let m = opaque_waveform_memory();
+            let other = m.0.lock().unwrap().current[0];
+            m.0.lock().unwrap().fault = fault;
+            let error = apply(&device(), &m, &explicit_waveform(&m, waveform, 31)).unwrap_err().to_string();
+            assert!(error.contains("state uncertain"), "{fault:?}, form {waveform}: {error}");
+            assert_eq!(lighting_writes(&m), [
+                vec![1, 4, 171, 205, 239, 0x13, 0x88, waveform, 31, 0xc1, 0xc2, 0xc3, 0],
+            ]);
+            let state = m.0.lock().unwrap();
+            let kept_form = if fault == Fault::ForeignWaveform { 0xa6 } else { waveform };
+            assert_eq!(state.current[1], [4, 171, 205, 239, 0x13, 0x88, kept_form, 31, 0xc1, 0xc2, 0xc3]);
+            assert_eq!(state.current[0], other);
+            assert_eq!(state.writes, 1);
+            assert_eq!(state.profile, if fault == Fault::OwnerChanged { 2 } else { 1 });
+        }
+    }
+}
+
+#[test]
+fn native_logitech_waveform_fixture_export() {
+    let d = device();
+    let m = opaque_waveform_memory();
+    let view = read(&d, &m).unwrap();
+    let mut legacy = change(&m);
+    legacy.effect = Effect::Breathing { color: [171, 205, 239], brightness_percent: 31 };
+    let legacy_view = apply(&d, &m, &legacy).unwrap().view;
+    let mut waveform_views = Vec::new();
+    for waveform in 0..=6 {
+        waveform_views.push(apply(&d, &m, &explicit_waveform(&m, waveform, 31)).unwrap().view);
+    }
+    assert_eq!(legacy_view.zones[1].current.unwrap()[6], 0xa5);
+    for (waveform, waveform_view) in waveform_views.iter().enumerate() {
+        assert_eq!(waveform_view.zones[1].current.unwrap(), [4, 171, 205, 239, 0x13, 0x88, waveform as u8, 31, 0xc1, 0xc2, 0xc3]);
+        assert_eq!(waveform_view.zones[0].current, view.zones[0].current);
+    }
+    if let Some(path) = std::env::var_os("OPEN_HUB_LOGITECH_WAVEFORM_FIXTURE") {
+        std::fs::write(path, serde_json::to_vec_pretty(&serde_json::json!({
+            "view":view,"legacy_view":legacy_view,"waveform_views":waveform_views,
+        })).unwrap()).unwrap();
+    }
+}
+
+#[test]
+#[ignore = "requires current native Logitech waveform browser changes"]
+fn browser_logitech_waveforms_execute_production_native_transactions() {
+    let path = std::env::var_os("OPEN_HUB_LOGITECH_WAVEFORM_UI_CHANGES").unwrap();
+    let values: serde_json::Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+    let changes = values.as_array().unwrap();
+    assert_eq!(changes.len(), 8);
+    let m = opaque_waveform_memory();
+    let d = device();
+    let other = m.0.lock().unwrap().current[0];
+    for (index, value) in changes.iter().enumerate() {
+        let c: Change = serde_json::from_value(value["change"].clone()).unwrap();
+        let expected_effect = if index == 0 {
+            Effect::Breathing { color: [171, 205, 239], brightness_percent: 31 }
+        } else {
+            Effect::BreathingWaveform { color: [171, 205, 239], brightness_percent: 31, waveform: (index - 1) as u8 }
+        };
+        assert_eq!(c.expected_device, d.profile_key);
+        assert_eq!(c.expected_connection, d.connection_key);
+        assert_eq!(c.zone, 1);
+        assert_eq!(c.effect, expected_effect);
+        let result = apply(&d, &m, &c).unwrap();
+        assert!(!result.unchanged);
+        let form = if index == 0 { 0xa5 } else { (index - 1) as u8 };
+        let packet = vec![1, 4, 171, 205, 239, 0x13, 0x88, form, 31, 0xc1, 0xc2, 0xc3, 0];
+        assert_eq!(lighting_writes(&m).last(), Some(&packet));
+        assert_eq!(result.view.zones[1].current, Some(packet[1..12].try_into().unwrap()));
+        assert_eq!(result.view.zones[0].current, Some(other));
+    }
+    let state = m.0.lock().unwrap();
+    assert_eq!(state.current[0], other);
+    assert_eq!(state.current[1], [4, 171, 205, 239, 0x13, 0x88, 6, 31, 0xc1, 0xc2, 0xc3]);
+    assert_eq!((state.mode, state.profile, state.writes), (1, 1, 8));
 }

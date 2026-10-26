@@ -39,6 +39,12 @@ pub enum Effect {
         color: [u8; 3],
         brightness_percent: u8,
     },
+    /// An explicit waveform edit; legacy Breathing retains opaque form bytes.
+    BreathingWaveform {
+        color: [u8; 3],
+        brightness_percent: u8,
+        waveform: u8,
+    },
     Cycle {
         brightness_percent: u8,
     },
@@ -48,7 +54,7 @@ impl Effect {
         match self {
             Self::Off => 0,
             Self::Fixed { .. } => 1,
-            Self::Breathing { .. } => 10,
+            Self::Breathing { .. } | Self::BreathingWaveform { .. } => 10,
             Self::Cycle { .. } => 3,
         }
     }
@@ -218,6 +224,18 @@ fn compile(view: &View, change: &Change) -> Result<[u8; 13]> {
             out[2..5].copy_from_slice(color);
             out[5..7].copy_from_slice(&period.to_be_bytes());
             // Waveform and reserved bytes survive edits to an existing breath.
+            out[8] = intensity(*brightness_percent)?;
+        }
+        Effect::BreathingWaveform { color, brightness_percent, waveform } => {
+            // HID++ effect 0x0A: RGB[0..3], period[3..5], form[5],
+            // intensity[6]. Form 0 is firmware default; 1..6 are defined by
+            // the pinned primary protocol source. No 8071 ownership change.
+            if *waveform > 6 { return Err(fail("unsupported breathing waveform")); }
+            let period = native_rhythm(zone, slot)?;
+            preserve_same_effect(zone, slot, &mut out);
+            out[2..5].copy_from_slice(color);
+            out[5..7].copy_from_slice(&period.to_be_bytes());
+            out[7] = *waveform;
             out[8] = intensity(*brightness_percent)?;
         }
         Effect::Cycle { brightness_percent } => {
