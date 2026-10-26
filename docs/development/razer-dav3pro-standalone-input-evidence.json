@@ -1,0 +1,83 @@
+{
+  "inspected_on": "2026-10-26",
+  "status": "Bounded static research; B6/B7 standalone macro input remains unproven and disabled",
+  "scope": {
+    "same_retained_product182_application_only": true,
+    "new_OEM_downloads": false,
+    "OEM_code_executed_or_loaded": false,
+    "physical_hardware_observed": false,
+    "production_enablement_changed": false
+  },
+  "retained_driver": {
+    "archive": "research-next-brands/razer-official-182-module-unpacked/$PLUGINSDIR/PID00b6Drv_v0.1.1.0.exe",
+    "archive_sha256": "b565b0ec4c1c83096c954fd227f6f17c34747d858735dbcfd4299ba893a81e1a",
+    "member": "Drivers/x64/RzDev_00b6.sys",
+    "member_bytes": 63200,
+    "member_sha256": "cd01cb4fd7706a225c5a0f5cd0e0ca95e25e9fdfec12d85e31ec95246c04d34b",
+    "inspection": "7-Zip streamed the retained member into memory; own PE and HID short-item parsers inspected bytes without loading a driver or writing extracted binaries",
+    "PE": "One x64 PE, preferred image base 0x140000000; .rdata file offset 0x8000 maps to RVA 0x9000",
+    "imports": ["ntoskrnl.exe", "WppRecorder.sys", "WDFLDR.SYS"],
+    "interesting_strings": ["RzDevCreateVirtualHidDevice", "CRzDevice::IoInternalDeviceControl"],
+    "embedded_HID_candidates": [
+      {
+        "kind": "Keyboard",
+        "file_offset": "0x8388",
+        "RVA": "0x9388",
+        "preferred_VA": "0x140009388",
+        "report_descriptor_bytes": 63,
+        "report_ID_item": "absent",
+        "input_bits": 64,
+        "key_array": "Six 8-bit array entries on usage page 7, usage minimum 0 and maximum 0x65; modifier range 0xE0..0xE7",
+        "limit": "The array maximum is below F13 usage 0x68; this candidate does not establish F13-F24 delivery"
+      },
+      {
+        "kind": "Mouse",
+        "file_offset": "0x83D8",
+        "RVA": "0x93D8",
+        "report_descriptor_bytes": 58,
+        "report_ID": 3,
+        "input_bits_excluding_ID": 32,
+        "fields": "Five button bits, three padding bits, and 8-bit X/Y/wheel"
+      },
+      {
+        "kind": "Consumer and System Control",
+        "file_offset": "0x8428",
+        "RVA": "0x9428",
+        "report_descriptor_bytes": 54,
+        "collections": "25-byte Consumer collection with report ID 1 and 16 input bits; 29-byte System Control collection with report ID 2 and 8 input bits"
+      }
+    ],
+    "candidate_boundary": "Adjacent HID headers declare report lengths 63/58/54. Array callers were not traced, so these remain embedded descriptor candidates. The virtual-HID string is a next-step locator, not proof of how the arrays are used. None supplies the missing physical report-4/report-5 layout."
+  },
+  "retained_named_keys": {
+    "members": ["Devices/LitaT1/Bin/kbddef.dat", "Devices/LitaT1_24G/Bin/kbddef.dat"],
+    "relative_to": "research-next-brands/razer-official-182-module-unpacked/$APPDATA/Razer/Synapse3/Service/Staging",
+    "identical_sha256": "44bde1e2c3e9021608f7e706dd08c815c68896b7143920b471c6e9b1b546b1de",
+    "bytes_each": 60382,
+    "UTF16_label_offsets": {"F13": 19688, "F24": 21602},
+    "limit": "Named key data and the logical DefaultMappings.xml/Mappings.xml assignments do not establish a physical HID descriptor, event bytes or standalone delivery"
+  },
+  "public_primary_observations": [
+    {
+      "url": "https://github.com/openrazer/openrazer/issues/1889",
+      "author": "BLooD-DoG",
+      "date": "2022-08-20",
+      "fact": "First-person lsusb output identifies B6 and B7. Interface report-descriptor lengths are MI00=94, MI01=159 for B6 and 314 for B7, and MI02=61. Actual report-descriptor bytes are explicitly unavailable. Both displayed USB serial strings are twelve zeros.",
+      "limit": "Topology lengths do not reveal report items, press/release bytes or a unique unit serial. B6/B7 interface-1 layouts must not be assumed equal."
+    },
+    {
+      "url": "https://insider.razer.com/razer-support-45/mouse-is-not-able-to-input-f13-f24-when-using-hyperpolling-wireless-dongle-with-synapse-off-46932?sort=mostLiked",
+      "author": "yaHHHHH",
+      "date": "2023-05-25",
+      "fact": "First-person report says F13 assignment works with Synapse closed over wire and the bundled dongle, but fails through HyperPolling; the author reports firmware 1.01.01.",
+      "limit": "This is a user observation on the vendor forum, not a vendor guarantee or packet capture. It does not show exact PIDs, release edges, RawInput handles, physical identity, or operation with OEM filter drivers absent."
+    }
+  ],
+  "bounded_next_independent_proof": [
+    "Trace static references to the three embedded descriptor blocks and the RzDevCreateVirtualHidDevice locator. Establish whether internal HID dispatch serves these arrays only for virtual devices, before using any item as evidence about firmware.",
+    "Trace the actual USB input-completion path separately from virtual injection and the already-proven 0x88883018 driver notification decoder. Require an exact report-4/report-5 parser and a native Fn3/4 action-to-event relation; a GUID host-engine call alone is insufficient.",
+    "For a narrower Fn2 reserved-key bridge, obtain an independent exact-B6 descriptor and press/release capture under a documented OEM-filter-free configuration. Retain control/keyboard physical association and two-unit ambiguity evidence; existing key labels and a successful feature SET cannot substitute for input delivery.",
+    "Keep B7 separately blocked until a source can be tied to the paired mouse rather than the shared receiver; neither its container nor its larger MI01 descriptor establishes that identity."
+  ],
+  "conclusion": "The retained application provides a concrete, bounded kernel-driver static target, but the inspected evidence does not yet prove standalone Fn3/4 events or authorize a B6/B7 macro bridge."
+}
