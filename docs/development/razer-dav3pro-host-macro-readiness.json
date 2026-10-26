@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-26",
+  "reviewed_code_checkpoint": "b0ecf20",
+  "status": "research_only_not_enabled",
+  "vendor": "1532",
+  "wired_product": "00B6",
+  "shared_receiver_product": "00B7",
+  "enabled": false,
+  "existing_basis": [
+    "exact DA native keyboard scalar supports F13–F24 reconstructed record format",
+    "shared router can retain nonzero u16 logical IDs including secondary controls",
+    "existing Basilisk bridge supports Once/Toggle through per-source key triggers"
+  ],
+  "blockers": [
+    {
+      "kind": "input_identity",
+      "code": [
+        "src-tauri/src/input_identity.rs Razer serial branch",
+        "src-tauri/src/macro_runtime.rs prepare_target",
+        "src-tauri/src/multibrand.rs apply/arm/restore live proof checks"
+      ],
+      "fact": "Razer serial verification does not return a retained live proof; a B6 input source lifetime and control-to-keyboard correlation must be established and rechecked through arm/removal/restoration."
+    },
+    {
+      "kind": "capture_gap",
+      "code": [
+        "docs/development/razer-dav3pro-capture-evidence.json"
+      ],
+      "fact": "Current public B6/B7 captures establish control/feature records; no B6 keyboard RawInput delivery, keyboard serial/container correlation or Fn2 press/release fixture is available."
+    },
+    {
+      "kind": "reserved_trigger_collisions",
+      "fact": "Pure compile checks submitted settings only; fresh complete normal and secondary mappings, modifiers and unknown keyboard-producing actions must be considered before reserving F13–F24."
+    },
+    {
+      "kind": "hypershift_pair_ownership",
+      "code": [
+        "src-tauri/src/multibrand.rs restore_one",
+        "gearwise-razer dav3pro_buttons::apply"
+      ],
+      "fact": "The host journal stores one bound input. Restoring an original normal Hypershift action would modify its secondary record, so a first bridge scope must refuse original HS actuators and self-secondary bindings before SET; broader support needs a paired journal and ownership checks."
+    },
+    {
+      "kind": "capacity_and_primary",
+      "fact": "Current trigger allocator has12 simultaneous F13–F24 bindings, primary is blanket protected, and WhileHeld remains unverified. These are explicit gaps, not full16-record macro support."
+    },
+    {
+      "kind": "shared_receiver",
+      "fact": "B7 supports multipairing and stays blocked; entire receiver container cannot be assumed mouse-only."
+    }
+  ],
+  "required_simulation": [
+    "two B6 units with distinct matching serial/input paths; missing/duplicate/mismatched identities rejected",
+    "path removal/reuse between prepare/apply/arm and recovery",
+    "both-layer fresh F-key collision and unknown action refusal before I/O",
+    "12-binding boundary and13th rejection before writes",
+    "Once repeat suppression, Toggle second press, held-trigger quiesce and unplug cancellation",
+    "restart journal restore preserves foreign normal/secondary records",
+    "HS side-effect refusal or paired journal ownership",
+    "conditional-primary macro entry/restoration retains an ordinary left click"
+  ],
+  "no_new_downloads": true,
+  "no_vendor_code_executed": true,
+  "no_hardware_claim": true,
+  "full_accepted_distinct_models_added": 0
+}
