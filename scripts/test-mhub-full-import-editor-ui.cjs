@@ -1,17 +1,12 @@
 // Built React uses the actual Rust file reader/editor compiler through a test-only bridge.
-const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),assert=require('assert'),{spawnSync}=require('child_process');
+const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),assert=require('assert');
 const out=path.resolve('../outputs/100-model-development/mhub-full-import-editor-ui');fs.mkdirSync(out,{recursive:true});
 const template=path.resolve('src-tauri/tests/fixtures/mhub-full-template.json'),library=path.resolve('src-tauri/tests/fixtures/mhub-macro-library.json');
 const bad=JSON.parse(fs.readFileSync(template,'utf8'));Object.values(bad)[0].unexplainedSetting=1;const badFile=path.join(out,'authored-unknown-source.json');fs.writeFileSync(badFile,JSON.stringify(bad));
 const base=fs.readFileSync(path.join(__dirname,'test-synapse-import-ui.cjs'),'utf8'),marker='await page.addInitScript(()=>{',start=base.indexOf(marker)+marker.length,end=base.indexOf('\n});await ',start);assert(end>start);
-(async()=>{const browser=await chromium.launch({headless:true});const nativeCalls=[];try{
+(async()=>{const browser=await chromium.launch({headless:true});let nativeCalls;try{
  const page=await browser.newPage({viewport:{width:1440,height:1100}}),errors=[];page.on('pageerror',e=>errors.push(String(e)));
- await page.exposeFunction('__nativeMhubPrepare',request=>{
-  const n=nativeCalls.length,requestPath=path.join(out,`request-${n}.json`),responsePath=path.join(out,`response-${n}.json`);fs.writeFileSync(requestPath,JSON.stringify(request));
-  const run=spawnSync('cargo',['test','--manifest-path','src-tauri/Cargo.toml','--locked','mhub_editor_ui_bridge','--','--ignored'],{windowsHide:true,encoding:'utf8',timeout:60000,env:{...process.env,OPEN_HUB_MHUB_EDITOR_UI_REQUEST:requestPath,OPEN_HUB_MHUB_EDITOR_UI_RESPONSE:responsePath}});
-  fs.writeFileSync(path.join(out,`native-${n}.log`),(run.stdout??'')+(run.stderr??''));if(run.error)throw run.error;if(run.status!==0)throw Error('Rust bridge failed: '+(run.stdout+run.stderr).slice(-2500));assert((run.stdout??'').includes('1 passed; 0 failed'));
-  const response=JSON.parse(fs.readFileSync(responsePath,'utf8'));nativeCalls.push({request,response});return response;
- });
+ nativeCalls=await require('./mhub-native-ui-bridge.cjs')(page,out);
  await page.addInitScript({content:`(()=>{${base.slice(start,end)}})()`});
  await page.addInitScript(({template,library,badFile})=>{
   window.__mhubSaved=[];window.__mhubBadFile=false;

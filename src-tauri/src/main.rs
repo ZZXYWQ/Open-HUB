@@ -49,6 +49,8 @@ mod profiles;
 mod profile_routing;
 mod mhub_import;
 mod mhub_full;
+mod leveldb_readonly;
+mod mhub_local;
 mod mhub_transaction;
 mod settings;
 mod tray;
@@ -811,6 +813,8 @@ fn import_ghub_profiles(app: AppHandle, state: State<ProfilesState>) -> Result<I
 }
 
 #[tauri::command(async)]
+fn prepare_mhub_local_import(path:String,origin:Option<String>)->Result<mhub_local::Prepared,String>{mhub_local::prepare(std::path::Path::new(&path),origin.as_deref())}
+#[tauri::command(async)]
 fn prepare_mhub_import(path:String,macro_library_path:Option<String>)->Result<Profile,String>{mhub_full::prepare_file(std::path::Path::new(&path),macro_library_path.as_deref().map(std::path::Path::new))}
 #[tauri::command(async)]
 fn prepare_mchose_profile(profile:Profile)->Result<Profile,String>{mhub_full::prepare_profile(profile)}
@@ -1153,7 +1157,7 @@ fn main() {
             import_ghub_profiles,
             import_mhub_profiles,
             sino_read,sino_apply,sino_models,sino_simulate,multi_read,multi_battery,multi_apply,multi_templates,multi_simulate,multi_macro_simulate,multi_input_sources,multi_save_hardware,multi_macro_status,multi_stop_macros,multi_stop_device_macros,multi_recovery_list,multi_recovery_observe,multi_recovery_restore,multi_reconnect_list,multi_reconnect_candidates,multi_reconnect_resume,multi_reconnect_retry,multi_reconnect_discard,preview_synapse_import,prepare_synapse_import,prepare_icue_import,prepare_gg_import,
-            prepare_mhub_import,prepare_mchose_profile,preview_profile_import,commit_profile_import,export_profile_pack,
+            prepare_mhub_local_import,prepare_mhub_import,prepare_mchose_profile,preview_profile_import,commit_profile_import,export_profile_pack,
             onboard_snapshot,
             save_onboard_backup,
             write_onboard_slot,

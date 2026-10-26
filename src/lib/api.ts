@@ -292,6 +292,7 @@ export const api = {
   deleteProfile: (id: string) => invoke<ProfilesView>("delete_profile", { id }),
   setAutoSwitch: (enabled: boolean) => invoke<ProfilesView>("set_auto_switch", { enabled }),
   activateProfile: (id: string, deviceId?:string, asCopy=false,expectedConnection?:string) => invoke<Activation>("activate_profile", { id,...(deviceId?{deviceId}:{}),...(asCopy?{asCopy:true}:{}),...(expectedConnection?{expectedConnection}:{}) }),
+  prepareMhubLocalImport:(path:string,origin:string|null)=>invoke<{profile:Profile;origin:string;library_sha256:string}>("prepare_mhub_local_import",{path,origin}),
   prepareMhubImport:(path:string,macroLibraryPath:string|null)=>invoke<Profile>("prepare_mhub_import",{path,macroLibraryPath}),
   prepareMchoseProfile:(profile:Profile)=>invoke<Profile>("prepare_mchose_profile",{profile}),
   importGhub: () => invoke<ImportResult>("import_ghub_profiles"),

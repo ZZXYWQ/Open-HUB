@@ -273,9 +273,13 @@ fn mhub_editor_ui_bridge() {
     struct EditArgs {profile:Profile}
     let bytes=std::fs::read(std::env::var("OPEN_HUB_MHUB_EDITOR_UI_REQUEST").unwrap()).unwrap();assert!(bytes.len()<2*1024*1024);
     let request:Value=serde_json::from_slice(&bytes).unwrap();
-    let result=match request["cmd"].as_str().unwrap() {
-        "prepare_mhub_import"=>{let args:ImportArgs=serde_json::from_value(request["args"].clone()).unwrap();prepare_file(std::path::Path::new(&args.path),args.macro_library_path.as_deref().map(std::path::Path::new))},
-        "prepare_mchose_profile"=>{let args:EditArgs=serde_json::from_value(request["args"].clone()).unwrap();prepare_profile(args.profile)},
+    #[derive(serde::Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct LocalArgs {path:String,origin:Option<String>}
+    let result:Result<Value>=match request["cmd"].as_str().unwrap() {
+        "prepare_mhub_import"=>{let args:ImportArgs=serde_json::from_value(request["args"].clone()).unwrap();prepare_file(std::path::Path::new(&args.path),args.macro_library_path.as_deref().map(std::path::Path::new)).map(|p|serde_json::to_value(p).unwrap())},
+        "prepare_mchose_profile"=>{let args:EditArgs=serde_json::from_value(request["args"].clone()).unwrap();prepare_profile(args.profile).map(|p|serde_json::to_value(p).unwrap())},
+        "prepare_mhub_local_import"=>{let args:LocalArgs=serde_json::from_value(request["args"].clone()).unwrap();crate::mhub_local::prepare_in(std::path::Path::new(&std::env::var("OPEN_HUB_MHUB_LOCAL_UI_DATABASE").unwrap()),std::path::Path::new(&args.path),args.origin.as_deref()).map(|p|serde_json::to_value(p).unwrap())},
         _=>panic!("bridge only permits pure preparation functions"),
     };
     let response=match result {Ok(profile)=>json!({"ok":profile}),Err(error)=>json!({"error":error})};

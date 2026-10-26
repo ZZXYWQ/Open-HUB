@@ -1,0 +1,131 @@
+{
+  "date_local": "2026-10-27",
+  "recorded_at": "2026-10-27T05:15:16.265673+08:00",
+  "base_commit": "83cdb7c",
+  "release_version": "0.3.7",
+  "accepted_complete_models": 0,
+  "installer_built_published_or_installed": false,
+  "scope": "Only M HUB own Local Storage exact macroListM7 current-record extraction, selected-origin full source conversion, and UI; no new mouse model or lighting capability",
+  "validation": {
+    "default_application_tests_passed": 685,
+    "default_application_tests_failed": 0,
+    "default_ignored_tests": 51,
+    "new_default_tests": 9,
+    "new_ignored_tests": 4,
+    "new_local_library_UI_groups_passed": 10,
+    "actual_Rust_local_library_UI_preparation_calls": 5,
+    "actual_Rust_UI_expected_error_responses": 2,
+    "actual_UI_saved_complete_profiles_native_replayed": 2,
+    "native_replayed_UI_bodies_delay_ms": [
+      99,
+      37
+    ],
+    "prior_physical_macro_slot_content_preserved": true,
+    "second_memory_mouse_IO_count": 0,
+    "independent_real_Chromium_engine_snapshots": [
+      "initial WAL",
+      "live SST + newer updated WAL",
+      "live SST + delete WAL"
+    ],
+    "SST_index_Snappy_compression_verified_in_browser_fixture_and_installed_MHUB": true,
+    "actual_engine_decompression_budget_rejection": "passed",
+    "installed_MHUB_probe": {
+      "error": null,
+      "schema_supported": true,
+      "target_key_states": [
+        {
+          "origin": "mchose-renderer://app",
+          "present_variants": 0,
+          "tombstones": 0
+        },
+        {
+          "origin": "file://",
+          "present_variants": 0,
+          "tombstones": 0
+        },
+        {
+          "origin": "https://www.mchose.com.cn",
+          "present_variants": 0,
+          "tombstones": 0
+        }
+      ]
+    },
+    "installed_MHUB_all_files_byte_hashes_identical_before_after": true,
+    "OEM_code_executed": false,
+    "OEM_database_copied_to_disk": false,
+    "unrelated_LocalStorage_values_returned_or_persisted": false,
+    "physical_HID_access": false,
+    "OS_input_injected": false,
+    "existing_full_import_editor_UI_groups": 15,
+    "existing_full_activation_UI_groups": 10,
+    "existing_brand_import_UI_groups": 20,
+    "existing_native_profile_ownership_UI": "passed",
+    "existing_full_editor_and_activation_native_replays": "passed",
+    "typescript": "passed",
+    "vite": "passed",
+    "non_test_dev_build": "passed",
+    "headless_UI_screenshot_reviewed": true,
+    "runtime_dependencies_added": 0,
+    "javascript_bundle_bytes": 785472,
+    "javascript_bundle_delta_from_base_bytes": 1418,
+    "javascript_bundle_sha256": "9ca09cee58abf32a14ff6f2d97496ffd431a479df3cd41d2d24222f68fa46e67",
+    "css_bundle_bytes": 105770,
+    "css_bundle_unchanged": true,
+    "dev_EXE_sha256": "01e8e4d381f91e7a737f27edd21adf63ce2fd72c61a454279b4892028d1c3622"
+  },
+  "limits_enforced": {
+    "file_MiB": 32,
+    "snapshot_file_total_MiB": 64,
+    "snapshot_decoded_table_blocks_MiB": 128,
+    "logical_block_MiB": 20,
+    "decoded_macro_JSON_MiB": 8,
+    "live_tables": 512,
+    "live_logs": 512,
+    "records_per_container": 200000
+  },
+  "invariants_tested": [
+    "Pinned OEM inert source identifies macroListM7 Local Storage array; no OEM executable, JS or bytecode runs",
+    "Exact M HUB own folder and allowed-origin/user-key bytes; schema1 only, no generic browser folders, no substring-key recovery",
+    "Current manifest live-file set and eligible recovery logs select greatest sequence put/delete; formerly-live deleted table/orphan contents and stale high-sequence logs excluded",
+    "CRC32C/Snappy independent vectors plus actual compressed table indexes; log fragment/torn tail, malformed restart/prefix/size/varint, noncanonical numeric log alias, wrong comparator and invalid CURRENT paths reject",
+    "Tombstones and incomplete current records never fall back to older macro contents; equal-sequence different values reject",
+    "Latin1/UTF16 Chinese/supplementary characters preserved; malformed encodings/surrogates and dual key encodings reject",
+    "Unique origin automatic choice, explicit allowed origin, no-record/deleted/multiple-origin/unsupported-schema cases enforced",
+    "Browser writes independent real WAL/SST snapshots with foreign same-name key and unrelated sentinel; only requested records returned byte-for-byte",
+    "Built React local import calls real Rust reader/plan converter; origin and library SHA receipt retained, deletion/error clears save actions, explicit file mode clears local source",
+    "Two same-name different full macro bodies from local WAL and explicit file enter production full transaction; new physical slot and prior raw content retained, second isolated mouse untouched",
+    "Installed M HUB compressed database schema parsed without any file content change; target macro key absent in allowed scopes, no claim of actual user macro capture or playback"
+  ],
+  "limits": [
+    "Current disk state only; unsaved OEM memory edits are not read and a stable double-read is not a live-process transaction",
+    "Name-only original template cannot establish that current selected library body matches its historical export-time body; full events can be reviewed before save",
+    "Only pinned schema1, bytewise comparator, uncompressed/raw Snappy tables, known storage origins and resource bounds; unknown formats require explicit macro file",
+    "No real user macro payload existed at the probed exact keys; full original UI/file-dialog dispatch and actual hardware playback are not certified by synthetic fixture tests",
+    "Local source origin and library SHA are software provenance, not persistent physical or RF unit identity",
+    "Unknown native22/23/24 actions, catalog/model identity discrepancy, complete apply receipt, OEM lighting/firmware and per-model acceptance remain pending",
+    "No new models counted; installed application, release tag/updater feed and installer remain version0.3.7"
+  ],
+  "source_sha256": {
+    "src-tauri/src/leveldb_readonly.rs": "2bce82a368d93abffd13d094d4060a1e7ff6d9d901f62afe54d5b33356c5544b",
+    "src-tauri/src/leveldb_readonly_tests.rs": "f08319649c52595ca06567734961d96f492b4816238c39faf624b5daf7f87312",
+    "src-tauri/src/mhub_local.rs": "d9d1882a07ccc48c07f6e4fd1d38b654b49fbf3951e67db8fd3d80813deeace5",
+    "src-tauri/src/mhub_local_tests.rs": "7a209d5dcd47f65f0e26643b555936557a8086c82ffb6c31d65968720e607c19",
+    "src-tauri/src/main.rs": "04618cd8ae451455199f6fef8d8ee4f7201fadfbb87d13a8074dd185814f2ae1",
+    "src-tauri/src/mhub_full.rs": "180522332dbb6e7e9782b920a92c1cda6bcf27ca67f723af820c89af41e16e25",
+    "src-tauri/src/mhub_full_profile_tests.rs": "9595595f73d4eb7b7f410796cdbeaad9175223477357bd7b424087a128f6cd21",
+    "src-tauri/src/mhub_full_wire_tests.rs": "66a7943ee5cf3ac0f08c544a9e5fc4ebbc0a1dca40b8304be501094b7ef080ee",
+    "src/components/mhub-profile-import.tsx": "20ab4e627604346abe27ed7d7bb932422aec8c425a946a8daa0b439083a399e8",
+    "src/lib/api.ts": "52b01da25ed07d608b7e89ce1fc8ceb15ff6560ff5fbc0c712265fef560e5b46",
+    "scripts/create-mhub-local-engine-fixtures.cjs": "9a732f9105ef6615dc68c35c39ccb8d37d2f3a0d34deaf644740031a73d19690",
+    "scripts/mhub-native-ui-bridge.cjs": "135db12b4c237ac3baf913e4da0571bc7ab888e32cf16189cc3c94e90b9f0b6e",
+    "scripts/test-mhub-local-library-ui.cjs": "68fd0dfa0a2b246fb89a2c43f878c27bf2f25ddd58182bde45bf371187e5e755",
+    "scripts/test-mhub-full-import-editor-ui.cjs": "44ff2858335e852332856857e57bcc137e6add1c6c671ce329050ee6a2e37d8d",
+    "docs/development/mhub-local-storage-official-facts.json": "fd6b7e822f895acfb4b04115f3ebfb3dc220c01d8f2ed555201fe20c1e9bdc58"
+  },
+  "capture_sha256": {
+    "..\\outputs\\100-model-development\\mhub-local-library-ui\\report.json": "a1f9643435ceb0190786eff25c153f61e5a962462c53e844a42916977adc9ba6",
+    "..\\outputs\\100-model-development\\mhub-local-library-ui\\saved-profiles.json": "c228a4d06e135f0a51d1d1114334d37ae6eb5b827747873eaa1f2300d8f0b71e",
+    "..\\outputs\\100-model-development\\mhub-local-library-ui\\native-preparation-calls.json": "880adf6d21788b6164840c18c06b1d2af9a52b532f97993b60728dc58c3a3b2c",
+    "..\\outputs\\100-model-development\\mhub-local-engine-fixtures\\report.json": "ae932ef2f1a8ecc843e169518974dd987debaf251e341e6f56739e33eb2fe619"
+  }
+}

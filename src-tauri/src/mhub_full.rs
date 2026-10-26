@@ -79,7 +79,7 @@ pub fn prepare_profile(mut profile:crate::profiles::Profile)->Result<crate::prof
     crate::profile_transfer::validate(&profile)?;
     Ok(profile)
 }
-fn read_explicit_file(path:&std::path::Path)->Result<Vec<u8>> {
+pub(crate) fn read_explicit_file(path:&std::path::Path)->Result<Vec<u8>> {
     use std::io::Read;
     const MAX:u64=8*1024*1024;
     let file=std::fs::File::open(path).map_err(|e|format!("无法读取所选配置文件：{e}"))?;

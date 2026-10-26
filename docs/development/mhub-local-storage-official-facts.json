@@ -1,0 +1,99 @@
+{
+  "date_local": "2026-10-27",
+  "status": "read-only M HUB local macro extraction implemented, no new model certification",
+  "OEM_renderer": {
+    "url": "https://www.mchose.com.cn/assets/purify.es-BufdR6vO.js",
+    "sha256": "c3e91c2828283cbcb8edb24474b45d64b2526bcbed0a2740919a0deef7ad61bc",
+    "bytes": 7763164,
+    "inspection": "inert text from authenticated installed public static cache, no OEM execution",
+    "spans": [
+      {
+        "needle": "Wk=\"macroListM7\"",
+        "utf16_start": 1497100,
+        "utf8_start": 1503523
+      },
+      {
+        "needle": "function hD(",
+        "utf16_start": 1497169,
+        "utf8_start": 1503592
+      },
+      {
+        "needle": "JSON.parse(localStorage.getItem(\"macroListM7\"))",
+        "utf16_start": 1463071,
+        "utf8_start": 1469458
+      },
+      {
+        "needle": "localStorage.getItem(Wk)",
+        "utf16_start": 1498383,
+        "utf8_start": 1504806
+      },
+      {
+        "needle": "localStorage.setItem(Wk,",
+        "utf16_start": 1500455,
+        "utf8_start": 1506878
+      }
+    ]
+  },
+  "scope": {
+    "profile_relative": "MCHOSEHUB/Local Storage/leveldb",
+    "exact_key": "macroListM7",
+    "schema_key": "VERSION",
+    "candidate_storage_origins": [
+      "mchose-renderer://app",
+      "file://",
+      "https://www.mchose.com.cn"
+    ],
+    "origin_boundary": "only these exact storage keys inside M HUB own profile; never a generic browser profile or substring scan",
+    "origin_evidence": "pinned front-end localStorage usage and known custom/file protocol profile directory metadata; candidate origins are not mouse identity claims"
+  },
+  "primary_format_sources": [
+    {
+      "url": "https://github.com/google/leveldb/blob/main/doc/log_format.md",
+      "facts": "32 KiB blocks, masked CRC32C, FULL/FIRST/MIDDLE/LAST fragments"
+    },
+    {
+      "url": "https://github.com/google/leveldb/blob/main/doc/table_format.md",
+      "facts": "SST footer, block handles, index and data blocks"
+    },
+    {
+      "url": "https://github.com/google/leveldb/blob/main/db/version_edit.cc",
+      "facts": "manifest comparator/log/live file edits"
+    },
+    {
+      "url": "https://github.com/google/leveldb/blob/main/db/write_batch.cc",
+      "facts": "batch sequence/count, put/delete records"
+    },
+    {
+      "url": "https://github.com/google/snappy/blob/main/format_description.txt",
+      "facts": "literal/copy1/copy2/copy4 bounded raw Snappy decoding"
+    },
+    {
+      "url": "https://github.com/chromium/chromium/blob/131.0.6778.0/components/services/storage/dom_storage/local_storage_impl.cc",
+      "facts": "schema1, exact serialized origin separator and user key"
+    },
+    {
+      "url": "https://github.com/chromium/chromium/blob/131.0.6778.0/third_party/blink/renderer/modules/storage/cached_storage_area.cc",
+      "facts": "UTF16 marker0 and Latin1 marker1"
+    }
+  ],
+  "local_probe": {
+    "schema_supported": true,
+    "target_macro_keys_present": false,
+    "all_files_byte_identical_before_after": true,
+    "no_account_or_unrelated_values_returned": true,
+    "SST_index_compression_observed": 1
+  },
+  "engine_fixtures": {
+    "created_by": "isolated headless installed Chromium/Edge with only routed authored empty pages",
+    "fixtures": "initial WAL, updated live SST+newer WAL, deleted WAL over prior SST",
+    "SST_index_compression_observed": 1,
+    "real_user_OEM_profile_modified": false,
+    "OEM_code_executed": false
+  },
+  "limits": [
+    "local disk snapshot only, not unsaved OEM memory state",
+    "origin ambiguity/tombstones/unknown schemas/incomplete records reject",
+    "reference-name matching remains strict and ambiguous names reject",
+    "no mouse or lighting capability is added by reading this library"
+  ]
+}

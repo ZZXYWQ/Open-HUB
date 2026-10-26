@@ -743,3 +743,11 @@ fn actual_import_editor_saved_profiles_apply_via_production_transaction() {
     for logical in [0,10] {let target=actual.buttons[if logical==0 {3}else{4}][1];let m=p.macros.iter().find(|m|m.slot==logical).unwrap();assert_eq!(a.mouse.lock().unwrap().macros[&target],m.raw);}
     let setters=set_records(&a.mouse.lock().unwrap()).len();assert!(crate::profiles::apply_mchose_profile(profile,&device,&a.t).is_empty());assert_eq!(set_records(&a.mouse.lock().unwrap()).len(),setters);
 }
+#[test]
+#[ignore = "requires actual local-library UI saved profile capture"]
+fn actual_local_library_ui_profiles_keep_selected_macro_body_and_protected_prior_slot() {
+    let bytes=std::fs::read(std::env::var("OPEN_HUB_MHUB_LOCAL_UI_SAVED").unwrap()).unwrap();let profiles:Vec<crate::profiles::Profile>=serde_json::from_slice(&bytes).unwrap();assert_eq!(profiles.len(),2);
+    let a=Rig::new();let b=Rig::new();let device=crate::mchose_target::simulated_device("local-library-A");let mut previous=None;
+    for (index,p)in profiles.iter().enumerate(){crate::profile_transfer::validate(p).unwrap();let plan=p.mchose.as_ref().unwrap();assert_eq!(plan.macros.len(),1);let record=&plan.macros[0];assert_eq!(record.events.iter().find(|e|e.kind=="delay").unwrap().delay_ms,if index==0{99}else{37});assert!(crate::profiles::apply_mchose_profile(p,&device,&a.t).is_empty());let state=a.t.hardware_state().unwrap();let physical=state.buttons[4][1];assert_eq!(a.mouse.lock().unwrap().macros[&physical],record.raw);if let Some((slot,raw))=&previous{assert_ne!(*slot,physical);assert_eq!(&a.mouse.lock().unwrap().macros[slot],raw);}previous=Some((physical,record.raw.clone()));}
+    assert!(b.mouse.lock().unwrap().requests.is_empty());
+}
