@@ -1,0 +1,22 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "retain last normal-layer native left click when original primary input was reassigned, including recovery",
+  "application_default_tests": 539,
+  "explicit_UI_and_configuration_cross_tests": 36,
+  "vendor_unit_tests": 327,
+  "vendor_doc_tests": 1,
+  "new_driver_tests": 2,
+  "frontend": "unchanged from38c5bd2;46headless suites passed there",
+  "development_EXE_memory_transports": 38,
+  "development_EXE_sha256": "48706a92a84b347cd54c2e41e13251cf2112905d8b05316d6483e508a1b4f11b",
+  "tests": [
+    "normal last-left removal refuses before setter",
+    "secondary click cannot substitute for normal click",
+    "moving normal click to another input permits previous binding replacement",
+    "uncertain creation of sole normal left click cannot be rolled back to an inaccessible mouse"
+  ],
+  "new_fully_accepted_models": 0,
+  "physical_hardware_tested": false,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}

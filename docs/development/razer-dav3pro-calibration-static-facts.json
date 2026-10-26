@@ -1,0 +1,66 @@
+{
+  "status": "research only; no calibration UI or native writes enabled",
+  "source": "official product182 component already downloaded; static PE/CLI and x86 native inspection only",
+  "RzCtl_00B6_sha256": "caffd8cf48986e3559aca551d9069a36563b77c01e3061373d8b5a4ee223c217",
+  "RSy3_SurfaceCalBaseM_sha256": "c7c21bbaed93524d7a80e99b29e114ff93e03211124d1c74ca1e0800019bebe7",
+  "RSy3_SurfaceCalPixSmart_sha256": "f8b5c97407cd021ef2f549e0469c98093bd967513fd2d21e64c6d878bdd92fcb",
+  "factory_XML": {
+    "standard_tracking": 2,
+    "standard_range": [
+      1,
+      3
+    ],
+    "pro_lift": 13,
+    "pro_landing": 12,
+    "pro_range": [
+      1,
+      26
+    ]
+  },
+  "native_record_facts": {
+    "LiftMode": {
+      "get": "0B/8B",
+      "get_function": "0x1002D5B0",
+      "set": "0B/0B",
+      "set_function": "0x10030E70",
+      "size": 4,
+      "fields": "two selectors followed by two raw values; selectors not yet traced to per-model inputs"
+    },
+    "LiftSetting": {
+      "get": "0B/8C",
+      "get_function": "0x1002D600",
+      "set": "0B/0C",
+      "set_function": "0x10030EC0",
+      "size": "two selectors plus caller-specified data up to16 bytes"
+    },
+    "additional_record": {
+      "get": "0B/8D",
+      "get_function": "0x1002D860",
+      "set": "0B/0D",
+      "set_function": "0x10031040",
+      "size": "two selectors plus caller-specified data up to16 bytes"
+    },
+    "dispatch": "same strict GET read-bit and SET ack1/override0 native dispatch; no target execution"
+  },
+  "verified_static_chain": {
+    "proximity_vtable": "0x10063CB4",
+    "property1020011": "getter10045D90->vslotE4->10046080->controller vslot214; setter10045D88->vslotDC->10046480->controller vslot210",
+    "controller_vtable": "0x10061E38",
+    "controller_vslot210": "0x10030E70",
+    "controller_vslot214": "0x1002D5B0",
+    "controller_vslot218": "0x10030EC0",
+    "controller_vslot21c": "0x1002D600",
+    "legacy_SmartTracking": "SurfaceBase1002AEA0 maps only three fixed entries; do not substitute for the26-level factory Pro schema"
+  },
+  "remaining": [
+    "exact per-model selector values",
+    "26-level standard/pro bridge and raw layout",
+    "readback representation and unknown fields preservation",
+    "UI and stored profile semantics",
+    "native independent vectors and failure/recovery tests"
+  ],
+  "physical_tested": false,
+  "OEM_code_executed": false,
+  "OEM_component_distributed": false,
+  "new_fully_accepted_models": 0
+}

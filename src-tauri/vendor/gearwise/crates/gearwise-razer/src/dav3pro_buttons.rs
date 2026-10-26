@@ -167,6 +167,26 @@ pub fn read(link: &mut Link) -> Result<BTreeMap<u16, ButtonAction>> {
     }
     Ok(out)
 }
+// Synapse can leave the primary physical input reassigned before Open HUB opens.
+// Protecting physical input1 alone therefore cannot protect the last left click.
+fn keep_normal_left(link: &mut Link, id: u16, from: &[u8; 10], to: &[u8; 10]) -> Result<()> {
+    const LEFT: [u8; 7] = [1, 1, 1, 0, 0, 0, 0];
+    if from[2] != 0 || from[3..] != LEFT || to[3..] == LEFT {
+        return Ok(());
+    }
+    for (other, _) in BUTTONS {
+        if other != id {
+            if let Ok(raw) = get(link, other) {
+                if raw[3..] == LEFT {
+                    return Ok(());
+                }
+            }
+        }
+    }
+    Err(Error::invalid(
+        "retain at least one verified normal-layer left click before replacing this binding",
+    ))
+}
 pub fn apply(link: &mut Link, id: u16, action: &ButtonAction) -> Result<()> {
     let block = encode(id, action)?;
     mode(link)?;
@@ -181,6 +201,7 @@ pub fn apply(link: &mut Link, id: u16, action: &ButtonAction) -> Result<()> {
     if want == before {
         return Ok(());
     }
+    keep_normal_left(link, id, &before, &want)?;
     mode(link)?;
     let result = link
         .exec(Report::new(2, 0x0c, 10, &want))
@@ -203,6 +224,7 @@ pub fn apply(link: &mut Link, id: u16, action: &ButtonAction) -> Result<()> {
             if actual != want {
                 return Err(Error::protocol("foreign DeathAdder binding retained"));
             }
+            keep_normal_left(link, id, &actual, &before)?;
             mode(link)?;
             link.exec(Report::new(2, 0x0c, 10, &before))?;
             if get(link, id)? != before {
@@ -650,6 +672,74 @@ mod tests {
                     assert_eq!(s.blocks[&other], default_block(other).unwrap());
                 }
             }
+        }
+    }
+    #[test]
+    fn last_normal_left_click_is_preserved_even_when_primary_was_reassigned_before_open() {
+        for pid in [0xb6, 0xb7] {
+            let (mut d, s) = rig(pid, Fault::None);
+            {
+                let mut s = s.lock().unwrap();
+                s.blocks.insert(1, [2, 2, 0, 4, 0, 0, 0]);
+                s.blocks.insert(2, [1, 1, 1, 0, 0, 0, 0]);
+            }
+            let before = s.lock().unwrap().blocks.clone();
+            assert!(
+                d.apply(&Setting::Button {
+                    id: 2,
+                    action: ButtonAction::Disabled
+                })
+                .is_err()
+            );
+            assert_eq!(s.lock().unwrap().blocks, before);
+            assert!(s.lock().unwrap().writes.is_empty());
+            // A shifted click cannot replace the always-accessible normal click.
+            d.apply(&Setting::Button {
+                id: 259,
+                action: ButtonAction::Mouse(MouseButton::Left),
+            })
+            .unwrap();
+            assert!(
+                d.apply(&Setting::Button {
+                    id: 2,
+                    action: ButtonAction::Disabled
+                })
+                .is_err()
+            );
+            // Move the normal primary-click function to another actual input first.
+            d.apply(&Setting::Button {
+                id: 3,
+                action: ButtonAction::Mouse(MouseButton::Left),
+            })
+            .unwrap();
+            d.apply(&Setting::Button {
+                id: 2,
+                action: ButtonAction::Disabled,
+            })
+            .unwrap();
+            let now = d.read_state().unwrap();
+            assert_eq!(
+                now.buttons.get(&3),
+                Some(&ButtonAction::Mouse(MouseButton::Left))
+            );
+            assert_eq!(now.buttons.get(&2), Some(&ButtonAction::Disabled));
+        }
+    }
+    #[test]
+    fn recovery_never_removes_the_last_normal_click_that_the_attempt_just_created() {
+        for pid in [0xb6, 0xb7] {
+            let (mut d, s) = rig(pid, Fault::SetterFailure);
+            s.lock().unwrap().blocks.insert(1, [2, 2, 0, 4, 0, 0, 0]);
+            assert!(
+                d.apply(&Setting::Button {
+                    id: 2,
+                    action: ButtonAction::Mouse(MouseButton::Left)
+                })
+                .is_err()
+            );
+            let s = s.lock().unwrap();
+            assert_eq!(s.writes.len(), 1);
+            assert_eq!(s.blocks[&2], [1, 1, 1, 0, 0, 0, 0]);
         }
     }
 }
