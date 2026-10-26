@@ -44,15 +44,17 @@ fn complete(plan: &Plan) -> Result<(), String> {
             }
         })
         .collect::<Vec<_>>();
+    let lift=plan.settings.iter().filter(|s|matches!(s,Setting::LiftOff(_))).count();
     if !crate::steelseries::complete_table(plan.product, &buttons)
         || dpi.len() != 1
         || !matches!(dpi[0],Setting::Dpi(d)if crate::steelseries::fixed_dpi_stages(plan.product).is_none_or(|n|d.stages.len()==n))
         || rates != 1
         || zones.len() != usize::from(crate::steelseries::zone_count(plan.product).unwrap())
         || !(0..crate::steelseries::zone_count(plan.product).unwrap()).all(|zone|zones.contains(&zone))
-        || plan.settings.len() != buttons.len() + 2 + zones.len()
+        || lift != usize::from(plan.product==0x1724)
+        || plan.settings.len() != buttons.len() + 2 + zones.len() + lift
     {
-        return Err("板载保存需要先应用此型号的完整 DPI、回报率、全部已知按键和所有灯区".into());
+        return Err(if plan.product==0x1724{"Rival600 板载保存需要先应用完整 DPI、回报率、全部已知按键、八个灯区和抬升距离级别"}else{"板载保存需要先应用此型号的完整 DPI、回报率、全部已知按键和所有灯区"}.into());
     }
     Ok(())
 }
@@ -259,6 +261,7 @@ mod tests {
                     },
                 });
             }
+            if pid==0x1724 {plan.settings.push(Setting::LiftOff(4));}
             if pid==0x1832 {
                 plan.settings.retain(|s|!matches!(s,Setting::Dpi(_)));
                 plan.settings.push(Setting::Dpi(DpiState{stages:[50,800,1200,2400,18000].into_iter().map(DpiStage::uniform).collect(),active:4}));
@@ -580,7 +583,7 @@ mod tests {
                 .unwrap();
         let requests: Vec<BrowserRequest> = serde_json::from_slice(&bytes).unwrap();
         let fixtures: serde_json::Value = serde_json::from_slice(
-            &std::fs::read(std::env::var_os("OPEN_HUB_STEELSERIES_SAVE_FIXTURE").unwrap()).unwrap(),
+            &std::fs::read(std::env::var_os("OPEN_HUB_STEELSERIES_UI_SAVE_ORIGINS").unwrap()).unwrap(),
         )
         .unwrap();
         assert_eq!(requests.len(), 5);

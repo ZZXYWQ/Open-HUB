@@ -376,7 +376,7 @@ pub fn validate(p: &Plan) -> Result<(), String> {
         if !seen.insert(k) {
             return Err("同一项设置不能重复".into());
         }
-        if matches!(s,Setting::LiftOff(_)|Setting::AngleSnapping(_)){if (p.vendor,p.product)!=(0x1b1c,0x1b2e){return Err("此型号的原生抬升高度/直线修正尚未接通".into());}if matches!(s,Setting::LiftOff(v)if *v>=5){return Err("M65 PRO 抬升高度需要在五个原生档位内选择".into());}continue;}
+        if matches!(s,Setting::LiftOff(_)|Setting::AngleSnapping(_)){if crate::steelseries::supported(p.vendor,p.product){crate::steelseries::validate_setting(p.product,s)?;continue;}if (p.vendor,p.product)!=(0x1b1c,0x1b2e){return Err("此型号的原生抬升高度/直线修正尚未接通".into());}if matches!(s,Setting::LiftOff(v)if *v>=5){return Err("M65 PRO 抬升高度需要在五个原生档位内选择".into());}continue;}
         if let Setting::Tuning(tuning)=s{crate::atk::validate_tuning(p.vendor,p.product,tuning).map_err(|e|e.to_string())?;continue;}
         if crate::atk::is_pulsar(p.vendor,p.product){match s{Setting::Dpi(d)=>crate::atk::validate_dpi(d,p.product).map_err(|e|e.to_string())?,Setting::ReportRate(r)if crate::atk::model(p.vendor,p.product).unwrap().rates.contains(r)=>{},Setting::Lighting{zone:0,state}if state.brightness==100&&matches!(state.effect,gearwise_core::model::LightingEffect::Off|gearwise_core::model::LightingEffect::Static{..})=>{},Setting::Button{id,action}=>validate_pulsar_button(*id,action)?,_=>return Err("此 Pulsar 型号未实现该设置".into())}continue;}
 
@@ -601,7 +601,12 @@ pub fn templates() -> Result<Vec<View>, String> {
         .collect()
 }
 pub fn template_plan(v:&View)->Result<Plan,String>{
- let settings=if crate::x11::supported(v.descriptor.vendor_id,v.descriptor.product_id){vec![Setting::VendorProfile{schema:crate::x11::SCHEMA.into(),data:v.state.vendor_profile.clone().ok_or("离线模板缺少完整配置")?}]}else{vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500)]};
+ let settings=if crate::steelseries::supported(v.descriptor.vendor_id,v.descriptor.product_id){
+  let mut settings=vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500)];
+  settings.extend(v.capabilities.buttons.iter().filter(|b|b.remappable&&b.id!=1).map(|b|Setting::Button{id:b.id,action:v.state.buttons.get(&b.id).cloned().unwrap_or_else(||b.default_action.clone())}));
+  settings.extend(v.capabilities.lighting.iter().filter_map(|z|v.state.lighting.get(&z.id).map(|state|Setting::Lighting{zone:z.id,state:state.clone()})));
+  if let Some(level)=v.state.lift_off{settings.push(Setting::LiftOff(level));}settings
+ }else if crate::x11::supported(v.descriptor.vendor_id,v.descriptor.product_id){vec![Setting::VendorProfile{schema:crate::x11::SCHEMA.into(),data:v.state.vendor_profile.clone().ok_or("离线模板缺少完整配置")?}]}else{vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500)]};
  let plan=Plan{vendor:v.descriptor.vendor_id,product:v.descriptor.product_id,settings,macros:vec![],source:None};validate(&plan)?;Ok(plan)
 }
 pub fn simulate(plan: &Plan) -> Result<serde_json::Value, String> {

@@ -8,8 +8,8 @@
 //! lighting protocol is not documented well enough to implement from here.
 //!
 //! These mice take short vendor commands as output (sometimes feature)
-//! reports on one HID interface, and cannot report their settings back. The
-//! device therefore keeps the values it last applied, starting from the
+//! reports on one HID interface. Complete configuration reads are not yet
+//! implemented here; the device keeps the values it last applied, starting from the
 //! factory defaults rivalcfg documents, and serves those from `read_state`.
 //! Settings changed with other software or the mouse's own buttons are not
 //! noticed.
@@ -28,6 +28,7 @@ mod device;
 mod dpi;
 mod light;
 mod link;
+mod proximity;
 pub mod models;
 #[cfg(any(test, feature = "simulation"))]
 mod testutil;
@@ -198,6 +199,7 @@ pub fn validate_setting(pid:u16,setting:&gearwise_core::Setting)->Result<()>{
  let spec=models::find(pid).ok_or(Error::Unsupported("unknown SteelSeries model"))?.spec;
  match setting{
   Setting::Dpi(want)=>{let(applied,_)=dpi::plan(&spec.dpi,want)?;if applied!=*want{return Err(Error::invalid("DPI must exactly match a native sensor step"));}},
+  Setting::LiftOff(index) if pid==0x1724=>{proximity::packet(*index)?;},
   Setting::ReportRate(hz)=>{if !spec.rate.codes.iter().any(|(r,_)|r==hz){return Err(Error::invalid("native SteelSeries report rate"));}},
   Setting::Lighting{zone,state}=>{let(applied,_)=light::plan(spec.light.as_ref().ok_or(Error::Unsupported("lighting"))?,*zone,state)?;if applied!=*state{return Err(Error::invalid("lighting period must match a native firmware rhythm"));}},
   Setting::Button{id,action}=>{buttons::plan(spec.buttons.as_ref().ok_or(Error::Unsupported("button table"))?,&std::collections::BTreeMap::new(),*id,action)?;},

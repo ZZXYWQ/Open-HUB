@@ -1,0 +1,21 @@
+{
+  "status": "unreleased-development-checkpoint",
+  "change": "GG Rival600 exact native eight-zone and proximity import, native eight lift levels and full known SteelSeries executable simulations",
+  "default_application_tests": 535,
+  "explicit_cross_tests": 35,
+  "vendor_unit_tests": 303,
+  "vendor_doc_tests": 1,
+  "headless_UI_suites": 45,
+  "development_exe_memory_transports": 36,
+  "development_exe_sha256": "f58eb8f3785a75720f1a96894171cdad304f3592e867ea270e90cbac446f9b05",
+  "reviewed_SteelSeries_exe_templates": "complete known buttons/zones/lift plus DPI/rate; memory only",
+  "frontend_JS_gzip_kB": 225.99,
+  "original_SQL_or_vendor_Lisp_executed": false,
+  "source_OpenPGP_integrity_verified": true,
+  "source_or_decoder_runtime_distributed": false,
+  "physical_hardware_tested": false,
+  "new_fully_accepted_models": 0,
+  "new_runtime_dependencies": false,
+  "installer_built": false,
+  "installed_release_unchanged": "0.3.7"
+}

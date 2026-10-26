@@ -1,0 +1,118 @@
+{
+  "source": "locally extracted official SteelSeries GG122 data, never executed",
+  "vendor_descriptor": {
+    "encrypted_file": "engine/deviceSpecifications/rival-600.edevice",
+    "encrypted_sha256": "06564d462a0751d38e029e110539a79325874139596cfed33a979b75f5334622",
+    "plaintext_sha256": "0b1c2c7474fedeaa07a17eac35a248a421493781db70d47c2c54034e3f0511ed",
+    "OpenPGP_MDC_verified": true,
+    "vendor_Lisp_distributed": false,
+    "vendor_executable_run": false,
+    "decoder_runtime_shipped": false,
+    "key_written_or_distributed": false
+  },
+  "engine_executable_sha256": "c1b8e182e62c8bb6667a3c678394c4d6363a532409f3de5a8fd7a31fdf0c0ec1",
+  "proximity": {
+    "report_id": 0,
+    "command": [
+      150,
+      0
+    ],
+    "fields": [
+      "enable:u8(0|1)",
+      "low:u8",
+      "high:u8"
+    ],
+    "GG122_output_report_size": 33,
+    "UI_factory": 83485,
+    "high_levels": [
+      120,
+      115,
+      110,
+      105,
+      100,
+      95,
+      90,
+      85
+    ],
+    "low": "high - 4",
+    "UI_levels": "1\u20138, no millimeter conversion claimed",
+    "factory_level": 5,
+    "implemented_enable": 1
+  },
+  "lighting": {
+    "zone_order": [
+      "wheel",
+      "logo",
+      "left top",
+      "right top",
+      "left middle",
+      "right middle",
+      "left bottom",
+      "right bottom"
+    ],
+    "inline_coordinates": [
+      [
+        0,
+        30
+      ],
+      [
+        0,
+        80
+      ],
+      [
+        10,
+        75
+      ],
+      [
+        -10,
+        75
+      ],
+      [
+        20,
+        50
+      ],
+      [
+        -20,
+        50
+      ],
+      [
+        30,
+        25
+      ],
+      [
+        -30,
+        25
+      ]
+    ],
+    "inline_effect_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "nonspatial_conversion_only": true,
+    "native_gradient_reference": "rival600-independent-gradient-vectors.json",
+    "source_position_history_not_migrated": true
+  },
+  "kernel_features": {
+    "accel": "MOUSEACCELDECEL, not HID",
+    "decel": "MOUSEACCELDECEL, not HID",
+    "angle_snapping": "MOUSESMOOTHING, not HID",
+    "conversion": "only default zero accepted; nondefault whole candidate blocked"
+  },
+  "GG122_active_level_read_command": [
+    22,
+    0
+  ],
+  "active_level_query_enabled": false,
+  "third_party_comparison": {
+    "repository": "OpenMouse-Project/mouse-protocol",
+    "commit": "ba20ec3c5b4d6eca934f5771a4e88271b547df2a",
+    "note": "Research comparison only; GG121 active-level query differs from locally verified GG122. No codec source copied, imported or run."
+  },
+  "physical_hardware_tested": false
+}

@@ -1,8 +1,8 @@
 //! A configurable SteelSeries mouse.
 //!
-//! These mice cannot report their settings, so the device keeps the last
-//! values it applied (starting from the factory defaults) and serves them
-//! back from `read_state`.
+//! This driver does not yet read complete configuration. It keeps the last
+//! values applied (starting from model defaults) for `read_state`. Some models
+//! expose individual queries which require separate transport validation.
 
 use std::time::{Duration, Instant};
 
@@ -46,6 +46,8 @@ impl SteelSeriesDevice {
         );
         static NEXT_CONNECTION:std::sync::atomic::AtomicU64=std::sync::atomic::AtomicU64::new(0);
         let connection_key=format!("steel-open:{:x}:{}",std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d|d.as_nanos()).unwrap_or(0),NEXT_CONNECTION.fetch_add(1,std::sync::atomic::Ordering::Relaxed));
+        let mut caps=capabilities(spec);let mut state=factory_state(spec);
+        if model.pid==0x1724 {caps.lift_off=crate::proximity::labels();state.lift_off=Some(4);}
         Self {
             control_path:iface.path.clone(),connection_key,
             desc: DeviceDescriptor {
@@ -63,8 +65,8 @@ impl SteelSeriesDevice {
                 serial: iface.serial.clone(),
                 simulated: false,
             },
-            caps: capabilities(spec),
-            state: factory_state(spec),
+            caps,
+            state,
             spec,
             link,
             battery_asked: None,
@@ -118,6 +120,7 @@ impl SteelSeriesDevice {
             }
             Setting::PerKey(_) => Err(Error::Unsupported("per-key lighting")),
             Setting::OnboardProfile(_) => Err(Error::Unsupported("onboard profiles")),
+            Setting::LiftOff(index) if self.desc.product_id==0x1724 => Ok((setting.clone(),vec![crate::proximity::packet(*index)?])),
             Setting::LiftOff(_) => Err(Error::Unsupported("lift-off distance")),
             Setting::AngleSnapping(_) => Err(Error::Unsupported("angle snapping")),
             Setting::GameMode(_) => Err(Error::Unsupported("game mode")),

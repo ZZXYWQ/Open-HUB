@@ -12,6 +12,8 @@ use std::{collections::{BTreeMap,HashSet},path::Path};
 mod lighting;
 #[path="gg_sensei_ten.rs"]
 mod sensei_ten;
+#[path="gg_rival600.rs"]
+mod rival600;
 
 const LIMIT:usize=1024*1024;
 fn number(v:&Value)->Result<u32,String>{v.as_u64().and_then(|v|v.try_into().ok()).ok_or("GG 字段不是有效的非负整数".into())}
@@ -38,7 +40,7 @@ fn read(conn:&Connection)->Result<Prepared,String>{
   if !ids.insert(id.clone()){return Err("GG 配置标识重复".into());}
   let mut c=Candidate{model:format!("{model} · {name}"),profile:None,issues:vec![],notes:vec!["按原始事件转换 DPI、按钮和软件宏。灯效按已核对字段转换，未实现行为会拦截并说明；尚未实机验证。".into(),"导入与保存只处理文件；应用软件动作前请在编辑器选择此鼠标的输入来源。".into()]};
   let p=(||{
-   let pid=match(product,model.as_str()){(0x10381710,"rival_300")=>0x1710,(0x10381720,"rival_310")=>0x1720,(0x10381722,"sensei_310")=>0x1722,(0x10381832,"sensei_ten")=>0x1832,_=>return Err("此配置不是已核对的 Rival 300 / Rival 310 / Sensei 310 / Sensei Ten，不能借用其他型号的物理布局".into())};
+   let pid=match(product,model.as_str()){(0x10381710,"rival_300")=>0x1710,(0x10381720,"rival_310")=>0x1720,(0x10381722,"sensei_310")=>0x1722,(0x10381832,"sensei_ten")=>0x1832,(0x10381724,"rival_600")=>0x1724,_=>return Err("此配置不是已核对的 Rival 300 / Rival 310 / Sensei 310 / Sensei Ten / Rival 600，不能借用其他型号的物理布局".into())};
    if id.is_empty()||id.len()>80||name.is_empty()||name.len()>256{return Err("GG 配置名称或标识无效".into());}
    let source=json(&text)?;let(plan,levels,active,rate)=convert(conn,&id,pid,&source,&mut c.notes)?;
    let app_path=associated_program(conn,&id)?;
@@ -54,8 +56,10 @@ fn associated_program(conn:&Connection,id:&str)->Result<Option<String>,String>{
  let(same,path)=&rows[0];if !same{return Err("GG 应用关联与配置所属设备不一致".into());}let path=path.as_ref().filter(|p|!p.trim().is_empty()&&p.len()<=4096&&!p.chars().any(char::is_control)).ok_or("GG 应用路径缺失或无效，不能静默丢失自动切换条件")?;Ok(Some(path.clone()))
 }
 fn convert(conn:&Connection,id:&str,pid:u16,s:&Value,notes:&mut Vec<String>)->Result<(Plan,Vec<Level>,usize,u16),String>{
- let physical_buttons=match pid{0x1710|0x1720=>6,0x1722|0x1832=>8,_=>return Err("此 GG 型号没有已核对的按键布局".into())};
- let allowed=["batch_resolution","resolution_1","resolution_2","raw_cpi","resolution_level","polling_rate","exact_accel","exact_aim","free_move","button_mappings","wheel_mappings","logo_lighting","wheel_lighting","logo_element","wheel_element","logo_color","wheel_color","logo_pulsation","wheel_pulsation","rival_logo_color_sequence","rival_wheel_color_sequence"];
+ let physical_buttons=match pid{0x1710|0x1720=>6,0x1722|0x1832=>8,0x1724=>7,_=>return Err("此 GG 型号没有已核对的按键布局".into())};
+ let standard=["batch_resolution","resolution_1","resolution_2","raw_cpi","resolution_level","polling_rate","exact_accel","exact_aim","free_move","button_mappings","wheel_mappings","logo_lighting","wheel_lighting","logo_element","wheel_element","logo_color","wheel_color","logo_pulsation","wheel_pulsation","rival_logo_color_sequence","rival_wheel_color_sequence"];
+ let allowed=if pid==0x1724{rival600::FIELDS}else{&standard[..]};
+ let proximity=if pid==0x1724{Some(rival600::proximity(s)?)}else{None};
  for key in s.as_object().ok_or("GG 配置不是对象")?.keys(){if !allowed.contains(&key.as_str()){return Err(format!("GG 设置 {key} 尚未转换，不能保存为完整的鼠标参数方案"));}}
  let legacy=pid==0x1710;
  for key in if legacy{&["logo_lighting","wheel_lighting","logo_element","wheel_element"][..]}else{&["logo_color","wheel_color","logo_pulsation","wheel_pulsation","rival_logo_color_sequence","rival_wheel_color_sequence"][..]}{if s.get(key).is_some(){return Err("GG 灯效布局与当前精确型号不一致".into());}}
@@ -98,8 +102,8 @@ fn convert(conn:&Connection,id:&str,pid:u16,s:&Value,notes:&mut Vec<String>)->Re
  if buttons.get(&1)!=Some(&ButtonAction::Mouse(MouseButton::Left)){return Err("GG 原始配置修改了主左键，当前导入保留主左键点击".into());}buttons.remove(&1);
  // A custom binding replaces a direct held chord; omit its now-unused body.
  macros.retain(|m|buttons.values().any(|a|a==&ButtonAction::Macro(m.id.clone())));
- let lights=lighting::parse(pid,s)?;if lights.is_some(){notes.push(if legacy{"GG 原始灯效两灯区已转换为固定固件模式；主机颜色序列不冒充板载效果，实物尚未验证。"}else{"GG 原始灯效两灯区已转换；周期按 GG 界面计算，实物尚未验证。原厂未激活的调色历史不导入。"}.into());}else{notes.push("来源未包含灯效记录，仅导入已记录的 DPI、按键与宏。".into());}
- let levels=stages.iter().map(|s|Level{x:s.x,y:Some(s.y)}).collect();let mut settings=vec![Setting::Dpi(DpiState{stages,active:active as u8}),Setting::ReportRate(rate)];settings.extend(buttons.into_iter().map(|(id,action)|Setting::Button{id,action}));if let Some(lights)=lights{settings.extend(lights);}let plan=Plan{vendor:0x1038,product:pid,settings,macros,source:None};crate::multibrand::validate(&plan)?;Ok((plan,levels,active,rate))
+ let lights=lighting::parse(pid,s)?;if lights.is_some(){notes.push(if pid==0x1724{"GG 原始八灯区和抬升距离级别已转换；周期按 GG 界面计算，实物尚未验证。原厂驱动层加减速/直线修正只接受默认值。"}else if legacy{"GG 原始灯效两灯区已转换为固定固件模式；主机颜色序列不冒充板载效果，实物尚未验证。"}else{"GG 原始灯效两灯区已转换；周期按 GG 界面计算，实物尚未验证。原厂未激活的调色历史不导入。"}.into());}else{notes.push("来源未包含灯效记录，仅导入已记录的 DPI、按键与宏。".into());}
+ let levels=stages.iter().map(|s|Level{x:s.x,y:Some(s.y)}).collect();let mut settings=vec![Setting::Dpi(DpiState{stages,active:active as u8}),Setting::ReportRate(rate)];settings.extend(buttons.into_iter().map(|(id,action)|Setting::Button{id,action}));if let Some(lights)=lights{settings.extend(lights);}if let Some(index)=proximity{settings.push(Setting::LiftOff(index));}let plan=Plan{vendor:0x1038,product:pid,settings,macros,source:None};crate::multibrand::validate(&plan)?;Ok((plan,levels,active,rate))
 }
 fn codes(v:&Value)->Result<Vec<u8>,String>{let list=v.get("key_codes").and_then(Value::as_array).ok_or("缺少 GG 四字节键码")?;if list.len()!=4{return Err("GG 键码长度不是已验证的四字节布局".into());}list.iter().map(|v|number(v)?.try_into().map_err(|_|"GG HID 键码超出范围".into())).collect()}
 fn zero_codes(v:&Value)->Result<bool,String>{Ok(codes(v)?.iter().all(|v|*v==0))}

@@ -185,6 +185,14 @@ fn legacy(settings:&Value)->Result<Option<Vec<Setting>>,String>{
 }
 pub(super) fn parse(pid: u16, settings: &Value) -> Result<Option<Vec<Setting>>, String> {
     if pid==0x1710{return legacy(settings);}
+    if pid==0x1724 {
+        let keys=["wheel_lighting","logo_lighting","z2_lighting","z3_lighting","z4_lighting","z5_lighting","z6_lighting","z7_lighting"];
+        if keys.iter().all(|k|settings.get(*k).is_none()){return Ok(None);}
+        let mut out=Vec::new();for (id,key) in keys.iter().enumerate(){let value=settings.get(*key).ok_or("Rival600 八灯区记录不完整，不能补造默认灯光")?;let coords=[(0,30),(0,80),(10,75),(-10,75),(20,50),(-20,50),(30,25),(-30,25)];
+        let mut value=value.clone();let pos=value.get("element_pos").ok_or("GG Rival600 缺少灯区几何标识")?;fields(pos,&["x","y"])?;let(x,y)=coords[id];if pos.get("x").and_then(Value::as_i64)!=Some(x)||pos.get("y").and_then(Value::as_i64)!=Some(y)||field(&value,"effect_index")?!=id as u32{return Err("GG Rival600 灯区几何或索引与精确型号不一致".into());}
+        let object=value.as_object_mut().ok_or("GG 灯效不是对象")?;object.remove("element_pos");object.remove("effect_index");let state=zone(&value).map_err(|e|format!("{key}：{e}"))?;let s=Setting::Lighting{zone:id as u8,state};crate::steelseries::validate_setting(pid,&s)?;out.push(s);}return Ok(Some(out));
+    }
+
     if ![0x1720, 0x1722, 0x1832].contains(&pid) {
         return Err("此 GG 灯效没有已核对的精确型号".into());
     }
