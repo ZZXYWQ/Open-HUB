@@ -78,5 +78,43 @@
   "OEM_code_executed": false,
   "OEM_component_distributed": false,
   "physical_tested": false,
-  "new_fully_accepted_models": 0
+  "new_fully_accepted_models": 0,
+  "normal_buttons": {
+    "official_UI_module": 1368,
+    "firmware_ID_dictionary_module": 7319,
+    "physical_firmware_ids": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      9,
+      10,
+      96
+    ],
+    "source_control_count": 8,
+    "editable_nonprimary_count": 7,
+    "get": "02/8C; ten bytes; profile1, exact input, normal layer0, full seven-byte action",
+    "set": "02/0C; same ten-byte record; observed native caller passes ack1, transactionOverride0",
+    "transaction": "1F; third dispatch parameter enables9F but actual assignment setter passes0",
+    "native_DLL_getter": "0x1002A510",
+    "native_DLL_setter": "0x1002E2D0",
+    "known_actions": [
+      "Default",
+      "Disabled",
+      "Mouse common five",
+      "Keyboard usage4..A4 with all eight modifier bits",
+      "Media B5/B6/B7/CD/E2/E9/EA",
+      "DPI up/down/cycle and uniform clutch100..30000 on non-wheel"
+    ],
+    "preserved": [
+      "left click",
+      "unknown original records",
+      "Hypershift",
+      "software macro input ownership"
+    ],
+    "wheel_sensitivity": "not in official per-control functionList; disabled in encode and UI",
+    "readback_policy": "fresh device mode and full record; single setter; exact separate readback; restore only this-attempt-owned value; no uncertain setter retries",
+    "test_vectors": "reconstructed from static primary sources and known scalar codecs, not physical capture"
+  }
 }

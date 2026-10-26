@@ -25,6 +25,10 @@ fn mouse_mode(pid: u16, staged: bool) -> Result<(Box<dyn Device>, Arc<Mutex<Vec<
         stages: [400, 800, 1600, 3200, 6400].map(DpiStage::uniform).to_vec(),
         active: 2,
     };
+    let mut buttons = crate::dav3pro_buttons::BUTTONS
+        .into_iter()
+        .map(|(id, _)| (id, crate::dav3pro_buttons::default_block(id).unwrap()))
+        .collect::<std::collections::BTreeMap<_, _>>();
     let mut rate = 1;
     let mut sleep = 300u16;
     let mut low = 77u8;
@@ -82,6 +86,23 @@ fn mouse_mode(pid: u16, staged: bool) -> Result<(Box<dyn Device>, Arc<Mutex<Vec<
                     x: u16::from_be_bytes([req.args[1], req.args[2]]),
                     y: u16::from_be_bytes([req.args[3], req.args[4]]),
                 };
+            }
+            (0, 0x84) => r.args[..2].copy_from_slice(&[0, 0]),
+            (2, 0x8c) if req.args[0] == 1 && req.args[2] == 0 => {
+                if let Some(block) = buttons.get(&u16::from(req.args[1])) {
+                    r.args[..3].copy_from_slice(&req.args[..3]);
+                    r.args[3..10].copy_from_slice(block);
+                } else {
+                    r.status = 5;
+                }
+            }
+            (2, 0x0c) if req.args[0] == 1 && req.args[2] == 0 => {
+                if let Some(block) = buttons.get_mut(&u16::from(req.args[1])) {
+                    block.copy_from_slice(&req.args[3..10]);
+                    r.args[..10].copy_from_slice(&req.args[..10]);
+                } else {
+                    r.status = 5;
+                }
             }
             (0, 0x85) => r.args[0] = rate,
             (0, 5) => rate = req.args[0],

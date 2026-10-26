@@ -23,6 +23,7 @@ pub mod models;
 mod report;
 mod power;
 mod dav3pro_dpi;
+pub mod dav3pro_buttons;
 #[cfg(any(test, feature = "simulation"))]
 mod simulation;
 #[cfg(any(test, feature = "simulation"))]

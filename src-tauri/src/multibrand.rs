@@ -358,7 +358,7 @@ impl gearwise_core::HidBackend for ExactBackend {
 pub fn validate(p: &Plan) -> Result<(), String> {
     if crate::x11::supported(p.vendor,p.product){return crate::x11::validate_plan(p);}
     if p.settings.iter().any(|s|matches!(s,Setting::Lighting{state:gearwise_core::model::ZoneState{effect:gearwise_core::model::LightingEffect::Gradient{..},..},..}))&&!matches!((p.vendor,p.product),(0x1038,0x1720|0x1722|0x1832|0x1724)){return Err("此具体型号尚未实现原生自定义渐变".into());}
-    if p.vendor==0x1532&&matches!(p.product,0x00b6|0x00b7)&&(!p.macros.is_empty()||p.source.is_some()){return Err("DeathAdder V3 Pro 的按键与宏仍未核实，当前只开放已核对的 DPI、回报率和省电设置".into());}
+    if p.vendor==0x1532&&matches!(p.product,0x00b6|0x00b7)&&(!p.macros.is_empty()||p.source.is_some()){return Err("DeathAdder V3 Pro 的软件宏与输入来源仍未核实，当前只开放已核对的原生设置".into());}
     let _compiled=compile(p)?;
     if !supported(p.vendor, p.product) {
         return Err("尚未实现该具体型号".into());
@@ -432,6 +432,7 @@ pub fn validate(p: &Plan) -> Result<(), String> {
                 if p.vendor==0x1532&&!gearwise_razer::models::find(p.product).is_some_and(|model|model.zones.iter().any(|z|u16::from(z.led)==u16::from(*zone)&&z.effects.contains(&state.effect.kind()))){return Err("此雷蛇型号不支持该灯区或光效".into());}
             }
             Setting::Button { id, action } => {
+                if p.vendor==0x1532&&matches!(p.product,0x00b6|0x00b7){gearwise_razer::dav3pro_buttons::encode(*id,action).map_err(|e|e.to_string())?;continue;}
                 if gearwise_razer::basilisk::supported(p.vendor,p.product){if matches!(action,ButtonAction::Macro(_)){if *id==1||gearwise_razer::basilisk::default_block(*id).is_none(){return Err("未知或受保护的巴塞利斯蛇按键".into());}}else{gearwise_razer::basilisk::encode(*id,action).map_err(|e|e.to_string())?;}continue;}
                 if p.vendor==0x1532&&matches!(p.product,0x00c0|0x00c1){validate_viper_button(*id,action)?;continue;}
                 if p.vendor==0x1532&&p.product==0x00b4{if !crate::naga::known_button(*id){return Err("未知 Naga 按键".into());}match action{ButtonAction::Default|ButtonAction::Mouse(_)|ButtonAction::Macro(_)=>{},ButtonAction::Key{usage,..} if (4..=0xa4).contains(usage)=>{},_=>return Err("Naga 不支持此板载动作".into())}if *id==1{return Err("保留左键原始点击".into());}continue;}
@@ -611,7 +612,7 @@ pub fn template_plan(v:&View)->Result<Plan,String>{
   settings.extend(v.capabilities.buttons.iter().filter(|b|b.remappable&&b.id!=1).map(|b|Setting::Button{id:b.id,action:v.state.buttons.get(&b.id).cloned().unwrap_or_else(||b.default_action.clone())}));
   settings.extend(v.capabilities.lighting.iter().filter_map(|z|v.state.lighting.get(&z.id).map(|state|Setting::Lighting{zone:z.id,state:state.clone()})));
   if let Some(level)=v.state.lift_off{settings.push(Setting::LiftOff(level));}settings
- }else if v.descriptor.vendor_id==0x1532&&matches!(v.descriptor.product_id,0x00b6|0x00b7){vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500),Setting::Tuning(gearwise_core::tuning::MouseTuning{device_sleep_seconds:Some(60),low_power_percent:Some(5),..Default::default()})]}else if crate::x11::supported(v.descriptor.vendor_id,v.descriptor.product_id){vec![Setting::VendorProfile{schema:crate::x11::SCHEMA.into(),data:v.state.vendor_profile.clone().ok_or("离线模板缺少完整配置")?}]}else{vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500)]};
+ }else if v.descriptor.vendor_id==0x1532&&matches!(v.descriptor.product_id,0x00b6|0x00b7){let mut settings=vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500),Setting::Tuning(gearwise_core::tuning::MouseTuning{device_sleep_seconds:Some(60),low_power_percent:Some(5),..Default::default()})];settings.extend(v.capabilities.buttons.iter().filter(|b|b.remappable&&b.id!=1).filter_map(|b|v.state.buttons.get(&b.id).map(|action|Setting::Button{id:b.id,action:action.clone()})));settings}else if crate::x11::supported(v.descriptor.vendor_id,v.descriptor.product_id){vec![Setting::VendorProfile{schema:crate::x11::SCHEMA.into(),data:v.state.vendor_profile.clone().ok_or("离线模板缺少完整配置")?}]}else{vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500)]};
  let plan=Plan{vendor:v.descriptor.vendor_id,product:v.descriptor.product_id,settings,macros:vec![],source:None};validate(&plan)?;Ok(plan)
 }
 pub fn simulate(plan: &Plan) -> Result<serde_json::Value, String> {

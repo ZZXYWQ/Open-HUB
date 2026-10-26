@@ -9,7 +9,7 @@ export function boardModels(brand:BoardImportBrand){return [...compxModels,...hy
 export function boardBrand(brand:BoardImportBrand){return brand in legacyNames?legacyNames[brand as LegacyBrand]:brand==='hyperx'?'HyperX':compxBrand(brand);}
 export function nativeBoardMacros(v:number,p:number){return legacyModel(v,p)?.macros||nativeCompx(v,p)||isHyperX(v,p);}
 
-export function nativeMediaKeys(v:number,p:number){const m=compxModel(v,p);return isSteelseries(v,p)||!!m?.native_macros&&m.native_buttons;}
+export function nativeMediaKeys(v:number,p:number){const m=compxModel(v,p);return v===0x1532&&[0x00b6,0x00b7].includes(p)||isSteelseries(v,p)||!!m?.native_macros&&m.native_buttons;}
 export const NATIVE_MEDIA_KEYS=[[0xb5,'下一曲'],[0xb6,'上一曲'],[0xb7,'停止播放'],[0xcd,'播放 / 暂停'],[0xe2,'静音'],[0xe9,'音量 +'],[0xea,'音量 −']] as const;
 
 export function buttonMediaKeys(v:number,p:number){return NATIVE_MEDIA_KEYS.filter(([usage])=>!isSteelseries(v,p)||usage!==0xb7);}

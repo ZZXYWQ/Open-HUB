@@ -41,7 +41,9 @@ fn dav3pro_two_transport_views_report_actual_known_fields_without_rgb_or_fake_bu
         let c = v.capabilities.dpi.as_ref().unwrap();
         assert_eq!((c.min, c.max, c.max_stages), (100, 30000, 1));
         assert_eq!(v.state.dpi.as_ref().unwrap().stages[0].x, 1600);
-        assert!(v.capabilities.lighting.is_empty() && v.capabilities.buttons.is_empty());
+        assert!(v.capabilities.lighting.is_empty());
+        assert_eq!(v.capabilities.buttons.len(),8);
+        assert_eq!(v.capabilities.buttons.iter().filter(|b|b.remappable).count(),7);
         assert_eq!(v.capabilities.report_rates, [125, 500, 1000]);
         let c = v.capabilities.tuning.as_ref().unwrap();
         assert_eq!(c.device_sleep_seconds.len(), 15);
@@ -114,7 +116,7 @@ fn dav3pro_unverified_button_macro_rgb_wrong_power_or_excessive_stage_count_are_
             }),
             Setting::ReportRate(2000),
             Setting::Button {
-                id: 2,
+                id: 6,
                 action: ButtonAction::Key {
                     usage: 4,
                     mods: Modifiers(0),
@@ -187,7 +189,7 @@ fn browser_dav3pro_known_plans_roundtrip_store_and_native_power_readback() {
         assert_eq!(
             plan.settings
                 .iter()
-                .filter(|s| matches!(s, Setting::Button { .. } | Setting::Lighting { .. }))
+                .filter(|s| matches!(s, Setting::Lighting { .. }))
                 .count(),
             0
         );
@@ -222,6 +224,8 @@ fn browser_dav3pro_known_plans_roundtrip_store_and_native_power_readback() {
         assert_eq!(state.dpi.as_ref(),Some(desired));
         if desired.stages.len()>1{assert_eq!(desired.stages.len(),5);assert_eq!(desired.active,4);assert_eq!(desired.stages[4].x,30000);}
         assert_eq!(state.report_rate, Some(500));
+        let actions=plan.settings.iter().filter_map(|s|if let Setting::Button{id,action}=s{Some((*id,action))}else{None}).collect::<Vec<_>>();assert_eq!(actions.len(),7);
+        for(id,wanted)in actions{assert_ne!(id,1);assert_eq!(state.buttons.get(&id),Some(wanted));}
         assert_eq!(simulate(plan).unwrap()["hardware_tested"], false);
     }
 }

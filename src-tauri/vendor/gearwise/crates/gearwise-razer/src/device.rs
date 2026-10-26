@@ -179,6 +179,7 @@ impl RazerDevice {
     }
 
     fn set_button(&mut self, id:u16, action:&ButtonAction) -> Result<()> {
+        if crate::power::supported(self.model.pid){let result=crate::dav3pro_buttons::apply(&mut self.link,id,action);if result.is_err(){self.state.buttons.remove(&id);}return result;}
         if self.board.is_some(){return self.set_basilisk_button(id,action);}
         if !matches!(self.model.pid,0x00c0|0x00c1) || !matches!(id,2|4|5|9|10|0x60) {
             return Err(Error::Unsupported("exact Viper V3 Pro remappable control"));
@@ -421,6 +422,10 @@ impl Device for RazerDevice {
             }
         }
 
+        if crate::power::supported(self.model.pid){
+            s.buttons=soft(crate::dav3pro_buttons::read(&mut self.link))?.unwrap_or_default();
+            for cap in &mut self.caps.buttons{cap.remappable=cap.id!=1&&s.buttons.contains_key(&cap.id);}
+        }
         if self.caps.dpi.is_some() {
             if crate::power::supported(self.model.pid) { s.dpi = soft(self.read_dpi())?; }
             else if let Some(d) = soft(self.read_dpi())? { s.dpi = Some(d); }
@@ -530,7 +535,7 @@ fn capabilities(model: &Model) -> Capabilities {
         }),
         report_rates: model.polling.rates.to_vec(),
         tuning:crate::power::supported(model.pid).then(crate::power::caps),
-        buttons: if crate::basilisk::supported(VID_RAZER,model.pid){crate::basilisk::BUTTONS.into_iter().map(|(id,name)|ButtonCaps{id,name:name.into(),remappable:id!=1,default_action:crate::basilisk::decode(id,&crate::basilisk::default_block(id).unwrap()).unwrap(),hotspot:None}).collect()}else if matches!(model.pid,0x00c0|0x00c1) {
+        buttons: if crate::power::supported(model.pid){crate::dav3pro_buttons::BUTTONS.into_iter().map(|(id,name)|ButtonCaps{id,name:name.into(),remappable:false,default_action:crate::dav3pro_buttons::decode(id,&crate::dav3pro_buttons::default_block(id).unwrap()).unwrap(),hotspot:None}).collect()}else if crate::basilisk::supported(VID_RAZER,model.pid){crate::basilisk::BUTTONS.into_iter().map(|(id,name)|ButtonCaps{id,name:name.into(),remappable:id!=1,default_action:crate::basilisk::decode(id,&crate::basilisk::default_block(id).unwrap()).unwrap(),hotspot:None}).collect()}else if matches!(model.pid,0x00c0|0x00c1) {
             [(1,"左键"),(2,"右键"),(4,"后退"),(5,"前进"),(9,"滚轮向上"),(10,"滚轮向下"),(0x60,"底部 DPI 键")].into_iter().map(|(id,name)|ButtonCaps{id,name:name.into(),remappable:id!=1,default_action:viper_decode(id as u8,&viper_default(id as u8).unwrap()).unwrap(),hotspot:None}).collect()
         } else {Vec::new()},
         lighting: model
