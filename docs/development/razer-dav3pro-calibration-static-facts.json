@@ -24,7 +24,7 @@
       "set": "0B/0B",
       "set_function": "0x10030E70",
       "size": 4,
-      "fields": "two selectors followed by two raw values; selectors not yet traced to per-model inputs"
+      "fields": "selectors0,4 followed by two raw values; exact selectors traced in this same B6 component"
     },
     "LiftSetting": {
       "get": "0B/8C",
@@ -53,14 +53,74 @@
     "legacy_SmartTracking": "SurfaceBase1002AEA0 maps only three fixed entries; do not substitute for the26-level factory Pro schema"
   },
   "remaining": [
-    "exact per-model selector values",
-    "26-level standard/pro bridge and raw layout",
-    "readback representation and unknown fields preservation",
-    "UI and stored profile semantics",
-    "native independent vectors and failure/recovery tests"
+    "3950 high-level saved state to native apply chain",
+    "exact mode and index conversion matched to this model rather than only other products",
+    "effective native GET/readback vs storage-only values",
+    "unknown native fields preservation and recovery",
+    "native independent vectors and corresponding persisted UI"
   ],
   "physical_tested": false,
   "OEM_code_executed": false,
   "OEM_component_distributed": false,
-  "new_fully_accepted_models": 0
+  "new_fully_accepted_models": 0,
+  "selector_proof": {
+    "factory": "RzCtl_00B6 0x10028D90 constructs CProximitySensor through0x10045D00 with arguments4,0",
+    "fields": "constructor stores input4 at object+40 and input0 at object+41; report wrappers pass+41 then+40",
+    "wire_selectors": [
+      0,
+      4
+    ]
+  },
+  "primary_3950_configurator": {
+    "file": "Configurator.182_0.dll",
+    "sha256": "ee5540e087ae7b0ebf73fa4e370f8a1cb98c9992f6e5667ec32ded4b2731a1ed",
+    "class": "Configurator.Features.SensorCal_SmartFeature3950",
+    "state_method_rva": 50320,
+    "lift_setting_method_rva": 50392,
+    "configuration_method_rva": 50480,
+    "transport": "GenericDeviceFeature ParamType5, ParamName Sensor_GenericJson",
+    "JSON_fields": {
+      "state": [
+        "Param=ProximitySensor_State",
+        "State"
+      ],
+      "lift": [
+        "Param=ProximitySensor_LiftSetting",
+        "LiftMode",
+        "LiftHeight"
+      ],
+      "config": [
+        "Param=ProximitySensor_Configuration",
+        "Data=[two arguments]"
+      ]
+    },
+    "important": "Get/Set delegate resolvers, DeviceSet is no-op success; legacy SetAdjustmentMode/SetStandardAdjustment/SetProAdjustment methods explicitly throw NotImplementedException, not the3950 native implementation"
+  },
+  "official_UI_constraints": {
+    "frontend": "same c5f739f700e7e1613a7ef27fb862f2b49a727f90dcdb9f6d3d130d8a2a1eccf7",
+    "lift_min": 2,
+    "lift_max": 26,
+    "landing_min": 1,
+    "landing_max": 25,
+    "constraint": "landing strictly lower than lift; each slider adjusts the other when crossed",
+    "units": "source slider levels, not millimetres inferred from integers"
+  },
+  "linked_primary_UI_and_storage": {
+    "Orca5_UI_VM_sha256": "c78d6f890048cccaded3161e9b6411af41bd3e233bb9024748d621313a07ecd6",
+    "Orca5_UI_model_sha256": "a26be71efef0f9abd90d40c512e4622a723e16e95b0a6d1181bf52095694566a",
+    "V2_controller_sha256": "2e5da10c53a07e26580024197c16717fa31094fb00d808cdb838351e6827489c",
+    "V2_storage_sha256": "a7c1bc8cdd842935a998dcf8269f6c94c56976f79f9cdf79c5a04175f930b740",
+    "storage_read": "ReadSensorCalibration gets serialized data through storage server; not a hardware getter",
+    "storage_write": "SetAdjustment/Standard/Pro update cached typed configuration and serialized calibration file",
+    "state": "hardware application path and effective readback still require independent trace"
+  },
+  "secondary_comparison": {
+    "repository": "han1548772930/razer_ui",
+    "commit": "2c8c69e39861994d1b35f5286c6f74f5f3c747a7",
+    "file": "crates/razer-device/src/mouse/mouse_tracking.rs",
+    "sha256": "4b7cbfd88e5ae3f94ffe515899b15f76efa6b972a3ffb1d43c899891dbdc01b2",
+    "licensed_code_copied": false,
+    "limitation": "explicit capability list170/204/226/45066 excludes182; no effective lift getter claimed; cannot use as exact-model acceptance proof",
+    "candidate_facts_for_independent_check": "0B03 sensor state;0B0B symmetric mode1/index distance-1 or asymmetric mode4/index0;0B05 cutoff slots lift-1/landing-1; confirmed same selectors0,4 independently from B6 primary constructor"
+  }
 }
