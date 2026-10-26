@@ -1,0 +1,51 @@
+{
+  "date_local": "2026-10-27",
+  "scope": "A7 V3 macro mode labels and an empirical identity-unavailable response",
+  "sources": {
+    "mode_picker_and_encoder": {
+      "url": "https://www.mchose.com.cn/assets/purify.es-BufdR6vO.js",
+      "sha256": "c3e91c2828283cbcb8edb24474b45d64b2526bcbed0a2740919a0deef7ad61bc",
+      "bytes": 7763164,
+      "mode_picker_utf8_start": 4455758,
+      "macro_encoder_utf8_start": 4194361,
+      "identity_decoder_utf8_start": 4214058
+    },
+    "localized_labels": {
+      "url": "https://www.mchose.com.cn/assets/theme-IdBKOUK0.js",
+      "sha256": "1f275aa7094af0217f75abba750f594fb3721a449028dfccae1a2a09b7fd44a3",
+      "bytes": 2324810,
+      "method": "Authenticated public static cache body parsed as Babel AST; literal fields inside mouseMacro objects; no target execution",
+      "zh_object_utf16_start": 1188940,
+      "en_object_utf16_start": 1245678,
+      "mode2_zh": {"key": "cycleRepetition", "label": "执行一次", "utf8_start": 1200608},
+      "mode2_en": {"key": "cycleRepetition", "label": "Execute once", "utf8_start": 1287296}
+    }
+  },
+  "mode_mapping": [
+    {"value": 0, "key": "heldDown", "meaning": "repeat while held, stop on release"},
+    {"value": 1, "key": "sameDown", "meaning": "repeat until the same control is pressed again"},
+    {"value": 3, "key": "otherDown", "meaning": "repeat until another control is pressed"},
+    {"value": 2, "key": "cycleRepetition", "meaning": "execute once according to the OEM localized label"}
+  ],
+  "mode_boundary": "These establish the OEM-defined labels and native header values, not physical timing/playback equivalence. No general repeat-count field was found or enabled. New Open HUB macros default to2; read/imported macros retain their values.",
+  "empirical_identity_response": {
+    "captured_utc": "2026-10-26T18:01:05.610Z",
+    "exact_interface": "VID3837 PID1014 usage-pageFF01 usage1 product MCHOSE A7 V3 Ultra+",
+    "command": "0900 GET identity",
+    "report_length": 64,
+    "prefix": [77, 1, 1, 1, 0, 9, 0, 0, 255],
+    "remaining_bytes": "55 zero bytes",
+    "computed_normal_xor": 246,
+    "checksum_byte": 0,
+    "normal_identity_payload": false,
+    "interpretation": "No normal model identity was returned. The underlying reason is unproved; do not equate FF with a particular sleep, pairing or firmware state.",
+    "implementation": "The exact shape produces an error only for the matching identity request. It is never returned as successful data and never weakens settings/write checksum rules.",
+    "native_live_probe": "The dedicated current Transport probe reproduced the FF error; no settings, macro or firmware writes were sent. It opens only the exact MCHOSE interface and bypasses generic other-brand scans."
+  },
+  "remaining_known_gaps": [
+    "Physical macro playback and complete original firmware mode behavior are unverified",
+    "Adaptive power is currently read-only; native010A/010B source encoders were located for subsequent implementation",
+    "Identity capacity fields do not by themselves prove additional selectable boards",
+    "No additional product/model identity or full compatibility count was enabled"
+  ]
+}

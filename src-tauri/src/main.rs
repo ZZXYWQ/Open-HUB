@@ -945,12 +945,13 @@ fn main() {
     if std::env::args().any(|a|a=="--mchose-hardware-probe"||a=="--mchose-hardware-self-test") {
         let test=std::env::args().any(|a|a=="--mchose-hardware-self-test");
         let result=(||->Result<serde_json::Value,String>{
-            let mut m=Manager::new(events::sink()).map_err(|e|e.to_string())?;m.scan().map_err(|e|e.to_string())?;
-            let d=m.devices().iter().find(|d|d.vendor_id==mchose::VID).ok_or("No MCHOSE mouse found")?;
-            m.with_device(&d.id,|_,t|{
-                let t=t.mchose().ok_or_else(||hidpp::Error::Other("Wrong backend".into()))?;
-                if test{t.hardware_self_test()}else{serde_json::to_value(t.full_snapshot()?).map_err(|e|hidpp::Error::Other(e.to_string()))}
-            }).map_err(|e|e.to_string())
+            // This dedicated probe must not scan other brands or enable their
+            // receiver notifications. Refuse ambiguous targets before opening I/O.
+            let api=hidapi::HidApi::new().map_err(|e|e.to_string())?;
+            let candidates=api.device_list().filter(|d|mchose::known_interface(d.vendor_id(),d.product_id(),d.usage_page(),d.usage(),d.product_string())).take(2).collect::<Vec<_>>();
+            if candidates.len()!=1{return Err("MCHOSE probe requires one exact known receiver".into())}
+            let t=mchose::Transport::open(&api,candidates[0].path(),events::sink()).map_err(|e|e.to_string())?;
+            if test{t.hardware_self_test().map_err(|e|e.to_string())}else{serde_json::to_value(t.full_snapshot().map_err(|e|e.to_string())?).map_err(|e|e.to_string())}
         })();
         match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;
     }

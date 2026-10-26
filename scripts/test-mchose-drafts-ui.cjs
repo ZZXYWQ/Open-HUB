@@ -127,7 +127,7 @@ const out=path.resolve('../outputs/100-model-development/mchose-drafts-ui');fs.m
  checks.push('deferred macro saves confirm submitted parsed events without reformatting text; failures and newer local edits retain their drafts');
  await hold('delete_macro');await tab('删除空闲宏槽');await pending();await allowLaterEdit();await macroSlot(0);assert.equal(await macroName().inputValue(),'Draft macro 0');await release();
  assert.equal(await macroName().inputValue(),'Draft macro 0');assert.equal(await macroText().inputValue(),unfinished);
- await macroSlot(1);assert.equal(await macroText().inputValue(),'[]');assert.equal(await macroName().inputValue(),'新宏 2');assert.equal(await page.getByRole('combobox',{name:'宏循环方式',exact:true}).inputValue(),'0');
+ await macroSlot(1);assert.equal(await macroText().inputValue(),'[]');assert.equal(await macroName().inputValue(),'新宏 2');assert.equal(await page.getByRole('combobox',{name:'宏循环方式',exact:true}).inputValue(),'2');
  checks.push('deferred macro deletion clears only its captured slot and cannot publish old data onto another selected slot');
 
  await page.evaluate(()=>window.__mchoseDraftFixture.state['mchose-A'].macros[1]={slot:1,name:'Fresh native macro 1',mode:1,events:[]});

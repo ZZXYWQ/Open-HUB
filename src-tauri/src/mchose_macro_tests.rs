@@ -428,7 +428,7 @@ fn actual_ui_macro_save_export_import_replays_through_production_codec() {
     let bytes = std::fs::read(path).unwrap();
     assert!(bytes.len() < 1024 * 1024);
     let capture: Capture = serde_json::from_slice(&bytes).unwrap();
-    assert_eq!(capture.actions.len(), 6);
+    assert_eq!(capture.actions.len(), 10);
     assert_eq!(capture.exports.len(), 2);
     let mut original = opaque();
     original.slot = 0;
@@ -441,6 +441,7 @@ fn actual_ui_macro_save_export_import_replays_through_production_codec() {
     let state_before = a.mouse.lock().unwrap().state.clone();
     let mut successes = 0;
     let mut failures = 0;
+    let mut selected_modes = vec![];
     for request in capture.actions {
         assert_eq!(request.id, "mchose-A");
         assert_eq!(request.board, 0);
@@ -466,9 +467,16 @@ fn actual_ui_macro_save_export_import_replays_through_production_codec() {
             successes += 1;
             assert!(result.is_ok());
             let expected = request.expected_raw.unwrap();
-            assert_eq!(record.unwrap().raw, expected);
+            let record = record.unwrap();
+            if slot == 3 {
+                selected_modes.push(record.mode);
+            }
+            assert_eq!(record.raw, expected);
             assert_eq!(a.transport.read_macro(slot).unwrap().unwrap().raw, expected);
             assert_eq!(a.mouse.lock().unwrap().macros[&0], original.raw);
+            let mut expected_slots = before;
+            expected_slots.insert(slot, expected);
+            assert_eq!(a.mouse.lock().unwrap().macros, expected_slots);
         } else {
             failures += 1;
             assert!(result.is_err());
@@ -480,7 +488,8 @@ fn actual_ui_macro_save_export_import_replays_through_production_codec() {
         assert_eq!(b.mouse.lock().unwrap().macros, b_before);
         assert!(b.mouse.lock().unwrap().writes.is_empty());
     }
-    assert_eq!((successes, failures), (5, 1));
+    assert_eq!((successes, failures), (9, 1));
+    assert_eq!(selected_modes, [2, 0, 1, 3]);
     for (i, file) in capture.exports.into_iter().enumerate() {
         let path = a.root.join(format!("export-{i}.json"));
         let p = file.args;

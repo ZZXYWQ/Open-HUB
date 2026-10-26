@@ -115,11 +115,7 @@ impl Manager {
             self.api
                 .device_list()
                 .filter(|d| {
-                    d.vendor_id() == crate::mchose::VID
-                        && d.product_id() == crate::mchose::RECEIVER_PID
-                        && d.usage_page() == crate::mchose::USAGE_PAGE
-                        && d.usage() == 1
-                        && d.product_string() == Some("MCHOSE A7 V3 Ultra+")
+                    crate::mchose::known_interface(d.vendor_id(),d.product_id(),d.usage_page(),d.usage(),d.product_string())
                 })
                 .map(|d| Collection {
                     mchose: true,

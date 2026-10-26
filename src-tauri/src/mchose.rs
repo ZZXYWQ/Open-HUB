@@ -13,6 +13,19 @@ pub const VID: u16 = 0x3837;
 pub const RECEIVER_PID: u16 = 0x1014;
 pub const MODEL_PID: u16 = 0x4026;
 pub const USAGE_PAGE: u16 = 0xFF01;
+pub fn known_interface(
+    vendor: u16,
+    product: u16,
+    page: u16,
+    usage: u16,
+    name: Option<&str>,
+) -> bool {
+    vendor == VID
+        && product == RECEIVER_PID
+        && page == USAGE_PAGE
+        && usage == 1
+        && name == Some("MCHOSE A7 V3 Ultra+")
+}
 const REPORT: u8 = 0x4D;
 const TIMEOUT: Duration = Duration::from_millis(2000);
 const RATES: &[(u8, u32)] = &[
@@ -64,6 +77,35 @@ fn decode(b: &[u8]) -> Result<(u16, Vec<u8>)> {
     Ok((u16::from_le_bytes([b[4], b[5]]), b[8..8 + n].to_vec()))
 }
 
+/// The exact captured identity rejection is never a successful payload. Its
+/// omitted checksum must not relax integrity checks for settings or writes.
+fn response(b: &[u8]) -> Result<(u16, Result<Vec<u8>>)> {
+    if b.len() == 64
+        && b[..9] == [0x4d, 1, 1, 1, 0, 9, 0, 0, 0xff]
+        && b[9..].iter().all(|v| *v == 0)
+    {
+        return Ok((
+            0x0900,
+            Err(invalid(
+                "迈从接收器未返回鼠标身份（状态 0xFF）；请检查连接并尝试唤醒鼠标，当前不能写入",
+            )),
+        ));
+    }
+    decode(b).map(|(command, data)| (command, Ok(data)))
+}
+
+fn complete_reply(shared: &Shared, command: u16, reply: Result<Vec<u8>>) -> bool {
+    if let Ok(mut pending) = shared.pending.lock() {
+        if pending.command == Some(command) {
+            pending.command = None;
+            pending.reply = Some(reply);
+            shared.ready.notify_all();
+            return true;
+        }
+    }
+    false
+}
+
 #[derive(Default)]
 struct Pending {
     command: Option<u16>,
@@ -107,7 +149,7 @@ impl Transport {
                     match reader.read_timeout(&mut buf, 500) {
                         Ok(0) => {}
                         Ok(n) => {
-                            if let Ok((command, data)) = decode(&buf[..n]) {
+                            if let Ok((command, reply)) = response(&buf[..n]) {
                                 if command == 0x0600 {
                                     events(Event::DeviceChanged {
                                         path: path.clone(),
@@ -115,13 +157,7 @@ impl Transport {
                                     });
                                     continue;
                                 }
-                                if let Ok(mut p) = state.pending.lock() {
-                                    if p.command == Some(command) {
-                                        p.command = None;
-                                        p.reply = Some(Ok(data));
-                                        state.ready.notify_all();
-                                    }
-                                }
+                                complete_reply(&state, command, reply);
                             }
                         }
                         Err(_) => {
@@ -165,7 +201,7 @@ impl Transport {
             // replacing only physical HID I/O with a stateful native device.
             let (command, args) = decode(&packet)?;
             let response = request(command, &args)?;
-            return decode(&frame(command, &response)?).map(|(_, body)| body);
+            return self::response(&frame(command, &response)?).and_then(|(_, body)| body);
         }
         std::thread::sleep(Duration::from_millis(40));
         {
@@ -445,6 +481,10 @@ mod board_tests;
 #[cfg(test)]
 #[path = "mchose_keybinding_tests.rs"]
 mod keybinding_tests;
+
+#[cfg(test)]
+#[path = "mchose_response_tests.rs"]
+mod response_tests;
 
 #[cfg(test)]
 mod tests {

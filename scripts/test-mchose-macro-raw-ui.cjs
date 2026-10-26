@@ -60,6 +60,16 @@ const hardware=JSON.parse(fs.readFileSync('src-tauri/tests/fixtures/mchose.json'
  assert.equal(await macroName().inputValue(),'A');await click('保存到宏槽');
  capture=await page.evaluate(()=>window.__rawMacro.capture);assert.equal(capture.actions.at(-1).action.slot,2);assert.deepEqual(capture.actions.at(-1).action.raw,original.raw);
  checks.push('file import into another selected slot retains exact source bytes and replaces only the selected slot');
+ const modes=page.getByRole('combobox',{name:'宏循环方式',exact:true});
+ assert.deepEqual(await modes.locator('option').allTextContents(),['执行一次','按住时重复','循环至再次按下','循环至其他按键按下']);
+ await select(3);assert.equal(await modes.inputValue(),'2');
+ checks.push('official localized mode2 renders as execute once and a new empty slot defaults to it');
+ await macroName().fill('Mode choices');await macroText().fill(JSON.stringify([{kind:'key',code:4,down:true,delay_ms:0},{kind:'key',code:4,down:false,delay_ms:0}]));
+ for(const mode of [2,0,1,3]){
+  await modes.selectOption(String(mode));assert((await page.getByLabel('宏模式说明').textContent()).length>0);await click('保存到宏槽');
+  capture=await page.evaluate(()=>window.__rawMacro.capture);assert.equal(capture.actions.at(-1).action.mode,mode);assert.equal(capture.actions.at(-1).expected_raw[4],mode);
+ }
+ checks.push('all four displayed playback modes submit and retain their independent native header value');
  await select(1);await macroName().fill('Edited');await page.getByRole('combobox',{name:'宏循环方式',exact:true}).selectOption('3');
  const edited=JSON.parse(await macroText().inputValue());edited[1].delay_ms=81;const formatting=JSON.stringify(edited);await macroText().fill(formatting);await click('保存到宏槽');
  assert.equal(await macroText().inputValue(),formatting);assert((await page.getByLabel('宏槽保存状态').textContent()).includes('已核对：Edited'));
@@ -71,7 +81,7 @@ const hardware=JSON.parse(fs.readFileSync('src-tauri/tests/fixtures/mchose.json'
  await page.evaluate(()=>window.__rawMacro.hold=true);await button('保存到宏槽').click();await page.waitForFunction(()=>!!window.__rawMacro.pending);
  await button('Back to devices').click();await button('Open A7 V3 Ultra+ B').click();await page.getByRole('spinbutton',{name:'档 1 X DPI',exact:true}).waitFor();await click('宏');
  await page.evaluate(async()=>{const f=window.__rawMacro.pending;window.__rawMacro.pending=null;f();await Promise.resolve();await new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done)));});
- assert.equal(await macroText().inputValue(),'[]');assert.notEqual(await macroName().inputValue(),'Edited again');
+ assert.equal(await macroText().inputValue(),'[]');assert.notEqual(await macroName().inputValue(),'Edited again');assert.equal(await modes.inputValue(),'2');
  checks.push('a late saved-macro receipt from mouse A cannot populate mouse B');
  assert.deepEqual(errors,[]);capture=await page.evaluate(()=>window.__rawMacro.capture);fs.writeFileSync(path.join(out,'capture.json'),JSON.stringify(capture,null,2));
  fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({passed:true,mock_IPC:true,physical_HID:false,OS_input:false,actions:capture.actions.length,exports:capture.exports.length,checks},null,2));

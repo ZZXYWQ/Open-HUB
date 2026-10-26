@@ -1,0 +1,71 @@
+{
+  "date_local": "2026-10-27",
+  "base_commit": "8bef734",
+  "release_version": "0.3.7",
+  "installer_built_published_or_installed": false,
+  "accepted_complete_models": 0,
+  "scope": "OEM macro mode2 once label/default and exact identity rejection routing",
+  "facts": "mchose-mode-state-official-facts.json",
+  "validation": {
+    "default_application_tests_passed": 627,
+    "default_application_tests_failed": 0,
+    "default_ignored_tests": 42,
+    "new_native_response_and_interface_tests_passed": 4,
+    "actual_UI_macro_native_replay_tests_passed": 1,
+    "actual_UI_apply_requests_replayed": 10,
+    "successful_apply_requests": 9,
+    "rejected_apply_requests": 1,
+    "actual_UI_file_export_requests_replayed": 2,
+    "native_mode_sequence_from_actual_UI": [
+      2,
+      0,
+      1,
+      3
+    ],
+    "macro_raw_and_modes_UI_groups_passed": 7,
+    "draft_UI_groups_passed": 10,
+    "target_lifetime_UI_groups_passed": 10,
+    "keyboard_UI_groups_passed": 7,
+    "typescript": "passed",
+    "vite": "passed",
+    "non_test_dev_build": "passed",
+    "physical_metadata_interfaces_seen": 6,
+    "physical_settings_interface_candidates": 1,
+    "physical_identity_GET_rejection_observed": true,
+    "physical_settings_macro_or_firmware_writes": false,
+    "OEM_code_executed": false,
+    "OS_input_injected": false,
+    "runtime_dependencies_added": 0,
+    "javascript_bundle_bytes": 759756,
+    "javascript_bundle_delta_from_base_bytes": 354,
+    "javascript_bundle_sha256": "23c68d4ec6d48dc91abed41179c0a906d01bf1f81880889be4f84fb23fd89631",
+    "dev_EXE_sha256": "c711419dc74a5b9905c09235674875b2cbf1c4f819336024fb460ed6f1646a52"
+  },
+  "invariants_tested": [
+    "Only the exact captured FF identity shape completes as an error; decode still rejects it as normal payload",
+    "Rejected identity cannot authorize any settings write or backup",
+    "Other commands, corrupted replies and wrong pending commands retain prior integrity/routing rules",
+    "Another transport's pending request remains unchanged",
+    "The captured six-interface inventory selects only the exact settings collection",
+    "All four localized UI modes reach production encoding with exact native header values",
+    "New slots default to execute once while read/imported mode values and byte baselines remain intact",
+    "Dedicated MCHOSE diagnostic no longer uses generic manager scans or other-brand receiver notification paths"
+  ],
+  "limits": [
+    "The reason for physical FF is unknown; user wake/connection confirmation remains optional and pending",
+    "Mode playback is simulated/source-verified and not physically certified",
+    "Full model acceptance, adaptive power and remaining original capabilities are still incomplete",
+    "Installed application, GitHub release and updater feed remain unchanged"
+  ],
+  "source_sha256": {
+    "src-tauri/src/mchose.rs": "b3214df02176bd91a7ba2fd8e233a25ab88151c79d7ff8a8bad4cb6ddef592eb",
+    "src-tauri/src/manager.rs": "1225c5ca471512633b5e441b2446a75d3978dc2bbc3905e2d01c1850a08d31f2",
+    "src-tauri/src/main.rs": "acfe856fc83aa0ea77512d4fdbd35869b7799ec69d1db080524ac02b3c475028",
+    "src-tauri/src/mchose_response_tests.rs": "6caef8dac80f159f63bdeca3b2dd79577388ec735e3b0af3e0a504229ae96a23",
+    "src-tauri/src/mchose_macro_tests.rs": "12ce31c60386deb8da6b9c5e68b0692dfac969d7a880c7514373062b99e5f69f",
+    "src/components/mchose-panel.tsx": "20a97b7d88309a60767810b634763b90195334f62056a0d2c3aca81b286fb193",
+    "src/lib/mchose-macros.ts": "1b6be62513390dbccfd472644933e99128d69f50292ed33fcea338250bdc36b8",
+    "scripts/test-mchose-macro-raw-ui.cjs": "ff9f8f960d0eaeaa0c02ab2c2b3922bd3bb87aa9fb151607e0079ecbf0eb2c69",
+    "scripts/test-mchose-drafts-ui.cjs": "86ff0c0ed040f6c013d7da907005eeb7b4bccf71b448db98e5f5a5133b2234b5"
+  }
+}

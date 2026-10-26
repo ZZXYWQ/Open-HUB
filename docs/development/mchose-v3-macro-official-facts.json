@@ -163,7 +163,7 @@
       "description_key": "mouseMacro.cycleRepetitionText"
     }
   ],
-  "mode2_limit": "Localized label/description strings are not in this retained bundle. No numeric repeat count is sent by the V3 writer; this does not prove mode2 means a single run or N runs. Keep original-mode2 wording and do not invent count controls.",
+  "mode2_limit": "The separately authenticated Chinese/English theme mouseMacro objects define value2 as execute once; see mchose-mode-state-official-facts.json. No general repeat count or physical playback equivalence is proved.",
   "event": {
     "length": 4,
     "first_word": "Bytes0..1 are little-endian val only for source type time. The source writer emits0,0 for key/mouse/mousescroll.",
@@ -326,7 +326,7 @@
     "unchanged": "When requested name/mode/events still match the decoded baseline, preserve and write/export exact baseline bytes, including opaque header words, non-time words and terminal flags.",
     "canonical": "For a new or canonically edited macro, retain the independently implemented OEM canonical encoder and balanced-key checks. Reject non-delay delay_ms!=0 instead of silently discarding it.",
     "opaque_edits": "If a baseline contains unmodelled header/event words or flags and user changes its interpreted values, retain the source and explicitly refuse lossy editing. Do not invent semantics or normalize the opaque bytes.",
-    "UI": "Retain four source mode values0/1/3/2 with mode2 qualified as original mode2. No repeat-count field or new inline-delay control.",
+    "UI": "Four source mode values0/1/3/2 retained; mode2 labeled execute once from the separate language AST evidence. New macros default to2. No repeat-count or inline-delay control.",
     "validation": "Six native default tests, five new UI groups and eight actual UI save/export requests replayed through production codec and native transport; no physical playback."
   }
 }
