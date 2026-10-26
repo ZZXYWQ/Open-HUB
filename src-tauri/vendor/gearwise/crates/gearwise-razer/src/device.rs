@@ -57,7 +57,7 @@ impl RazerDevice {
     /// answer, which must not stop it from being listed.
     pub fn open(model: &'static Model, mut link: Link, iface: &HidInterfaceInfo) -> Result<Self> {
         let basilisk=crate::basilisk::supported(VID_RAZER,model.pid);
-        if basilisk{link.strict_basilisk();}
+        if basilisk||matches!(model.pid,0x00b6|0x00b7){link.strict_model_replies();}
         let wireless = model.connection == Connection::Wireless;
         let serial = identity(link.exec(commands::serial()), wireless)?
             .and_then(|r| commands::parse_serial(&r));
@@ -160,7 +160,7 @@ impl RazerDevice {
 
     fn write_dpi(&mut self, d: &DpiState) -> Result<()> {
         self.check_board(true)?;
-        if self.model.dpi.is_some_and(|s| s.stages) {
+        if self.model.dpi.is_some_and(|s| s.stages)&&!(matches!(self.model.pid,0x00b6|0x00b7)&&self.caps.dpi.as_ref().is_some_and(|c|c.max_stages==1)) {
             self.link.exec(commands::set_dpi_stages(d))?;
         } else {
             // Devices without a stage table hold one resolution; validation
@@ -304,17 +304,22 @@ impl RazerDevice {
     // ----- reads ---------------------------------------------------------------
 
     fn read_dpi(&mut self) -> Result<DpiState> {
-        if self.model.dpi.is_some_and(|s| s.stages) {
-            let r = self.link.exec(commands::get_dpi_stages())?;
-            commands::parse_dpi_stages(&r)
-                .ok_or_else(|| Error::protocol("device reported an empty DPI stage table"))
-        } else {
-            let r = self.link.exec(commands::get_dpi())?;
-            Ok(DpiState {
-                stages: vec![commands::parse_dpi(&r)],
-                active: 0,
-            })
+        let dav3=matches!(self.model.pid,0x00b6|0x00b7);
+        let staged=self.model.dpi.is_some_and(|s|s.stages)&&!(dav3&&self.caps.dpi.as_ref().is_some_and(|c|c.max_stages==1));
+        if staged {
+            match self.link.exec(commands::get_dpi_stages()) {
+                Ok(r)=>{let dpi=commands::parse_dpi_stages(&r).ok_or_else(||Error::protocol("device reported an empty DPI stage table"))?;if dav3{self.validate_dpi(&dpi)?;}return Ok(dpi);},
+                // Only an explicit firmware refusal authorizes this exact-model
+                // fallback. Corrupt/time-out stage responses do not become a
+                // guessed single-stage capability or cause another write.
+                Err(Error::Unsupported(_)) if dav3=>{if let Some(c)=self.caps.dpi.as_mut(){c.max_stages=1;}},
+                Err(e)=>return Err(e),
+            }
         }
+        let r=self.link.exec(if dav3{commands::get_dpi_variable()}else{commands::get_dpi()})?;
+        let dpi=DpiState{stages:vec![commands::parse_dpi(&r)],active:0};
+        if dav3 {if r.data_size!=7||r.args[0]!=1||r.args[5..7]!=[0,0]{return Err(Error::protocol("DeathAdder V3 Pro current DPI reply shape"));}self.validate_dpi(&dpi)?;}
+        Ok(dpi)
     }
 
     fn read_rate(&mut self) -> Result<u16> {

@@ -1,0 +1,46 @@
+{
+  "repository": "OpenMouse-Project/mouse-protocol",
+  "commit": "ba20ec3c5b4d6eca934f5771a4e88271b547df2a",
+  "sources": [
+    {
+      "path": "captures/razer-deathadder-v3-pro/wired-write-roundtrip-2026-09-15.hex",
+      "sha256": "996014784eacb079d4cf2acb2b8d2e308a41e52e9ef250457e83a970e4a44c8d",
+      "bytes": 138223
+    },
+    {
+      "path": "captures/razer-deathadder-v3-pro/write-roundtrip-2026-09-15.hex",
+      "sha256": "f6fbb44550c7697f5e93380fdf3bfd8f28fd8da2a7abc70dc3db236e0320062f",
+      "bytes": 138318
+    }
+  ],
+  "official_guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/DEATHADDERV3PRO-00000182-en.pdf",
+  "official_max_DPI": 30000,
+  "official_programmable_buttons": 5,
+  "official_onboard_profiles": 1,
+  "official_RGB": false,
+  "models": [
+    "1532:00b6 wired",
+    "1532:00b7 stock receiver"
+  ],
+  "independent_roundtrips": 12,
+  "scope": [
+    "current DPI 800/3200/1600",
+    "legacy polling 125/500/1000"
+  ],
+  "upstream_capture_physical_hardware": true,
+  "this_project_physical_hardware": false,
+  "button_mapping_capture": false,
+  "serial_payloads_distributed": false,
+  "application_model_bridge_enabled": false,
+  "new_fully_accepted_models": 0,
+  "current_DPI_read_selector": 1,
+  "other_model_getters_changed": false,
+  "stage_refusal_fallback": "exact B6/B7 only after firmware unsupported; limits to one current stage; malformed responses never authorize fallback",
+  "fallback_negative_scenarios": "constructed simulation, not upstream hardware capture",
+  "strict_model_replies_enabled": [
+    "00b6",
+    "00b7"
+  ],
+  "new_vendor_regressions": 4,
+  "vendor_total_unit_tests": 307
+}

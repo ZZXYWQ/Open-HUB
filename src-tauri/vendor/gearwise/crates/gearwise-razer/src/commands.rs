@@ -171,6 +171,12 @@ pub fn set_dpi(s: DpiStage) -> Report {
 pub fn get_dpi() -> Report {
     Report::new(0x04, 0x85, 0x07, &[NOSTORE])
 }
+/// Exact DeathAdder V3 Pro captures select stored/current sensor state with 1.
+/// Other model getters retain their original selector until separately reviewed.
+pub fn get_dpi_variable() -> Report {
+    Report::new(0x04, 0x85, 0x07, &[VARSTORE])
+}
+
 
 fn be(hi: u8, lo: u8) -> u16 {
     u16::from_be_bytes([hi, lo])

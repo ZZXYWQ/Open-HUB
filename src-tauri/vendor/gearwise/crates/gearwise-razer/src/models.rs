@@ -329,14 +329,14 @@ pub static MODELS: &[Model] = &[
         name: "Razer DeathAdder V3 Pro (Wired)",
         battery: true,
         settle: Settle::Medium,
-        dpi: staged(35_000),
+        dpi: staged(30_000),
         ..MOUSE
     },
     Model {
         pid: 0x00b7,
         name: "Razer DeathAdder V3 Pro (Wireless)",
         settle: Settle::Medium,
-        dpi: staged(35_000),
+        dpi: staged(30_000),
         ..MOUSE_WIRELESS
     },
     // ---- Viper ----

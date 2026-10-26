@@ -197,3 +197,6 @@ pub fn simulated_deathadder_v2()->(Box<dyn Device>,std::sync::Arc<std::sync::Mut
  let iface=HidInterfaceInfo{path:"simulation:razer".into(),vendor_id:0x1532,product_id:0x0084,..Default::default()};
  (Box::new(RazerDevice::open(model,link,&iface).unwrap()),log)
 }
+
+#[cfg(test)]
+mod captured_dav3pro;

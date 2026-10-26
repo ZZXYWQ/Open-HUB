@@ -86,7 +86,7 @@ impl Link {
         self.exec_with_id(req, self.transaction_id)
     }
 
-    pub(crate) fn strict_basilisk(&mut self){self.strict=true;}
+    pub(crate) fn strict_model_replies(&mut self){self.strict=true;}
     // One send, bounded polling: never re-send a persistent write for stale data.
     fn exec_strict(&mut self,mut req:Report)->Result<Report>{
         req.transaction_id=self.transaction_id;
@@ -101,11 +101,11 @@ impl Link {
             match resp.status(){
                 Status::New|Status::Busy=>continue,
                 Status::Success=>{if req.class==2&&matches!(req.command,0x8c|0x0c)&&resp.args[..3]!=req.args[..3]{continue;}return Ok(resp);},
-                Status::NotSupported=>return Err(Error::Unsupported("Basilisk firmware rejected command")),
+                Status::NotSupported=>return Err(Error::Unsupported("Razer firmware rejected command")),
                 Status::Timeout=>return Err(Error::Timeout),
-                _=>return Err(Error::protocol("Basilisk command rejected")),
+                _=>return Err(Error::protocol("Razer command rejected")),
             }
-        }Err(Error::protocol("Basilisk reply missing, corrupt or stale; command not resent"))
+        }Err(Error::protocol("Razer reply missing, corrupt or stale; command not resent"))
     }
 
     /// The exact Viper V3 Pro button command uses a different transaction id.
@@ -283,6 +283,6 @@ mod tests {
  struct Queued{queue:VecDeque<Vec<u8>>,sent:Arc<AtomicUsize>}
  impl HidTransport for Queued{fn write(&mut self,_:&[u8])->Result<usize>{unreachable!()}fn read_timeout(&mut self,_:&mut[u8],_:i32)->Result<usize>{unreachable!()}fn send_feature_report(&mut self,_:&[u8])->Result<()>{self.sent.fetch_add(1,Ordering::SeqCst);Ok(())}fn get_feature_report(&mut self,b:&mut[u8])->Result<usize>{let p=if self.queue.len()>1{self.queue.pop_front().unwrap()}else{self.queue.front().unwrap().clone()};b[..p.len()].copy_from_slice(&p);Ok(p.len())}}
  fn reply()->Report{let mut r=Report::new(2,0x8c,10,&[1,4,0,1,1,4]);r.transaction_id=31;r.status=2;r}
- #[test]fn foreign_transaction_crc_class_and_hypershift_frames_are_polled_without_resending(){let valid=reply().to_wire().to_vec();let mut a=valid.clone();a[2]=30;let mut b=valid.clone();b[89]^=1;let mut c=reply();c.class=15;let mut d=reply();d.args[2]=1;let count=Arc::new(AtomicUsize::new(0));let mut l=Link::new(Box::new(Queued{queue:VecDeque::from([a,b,c.to_wire().to_vec(),d.to_wire().to_vec(),valid]),sent:count.clone()}),31,Timing::new(Duration::ZERO,Duration::ZERO,1));l.strict_basilisk();let result=l.exec(Report::new(2,0x8c,10,&[1,4,0])).unwrap();assert_eq!(result.args[..3],[1,4,0]);assert_eq!(count.load(Ordering::SeqCst),1);}
- #[test]fn stale_persistent_write_reply_is_not_retried(){let mut r=reply();r.command=12;r.args[1]=5;let count=Arc::new(AtomicUsize::new(0));let mut l=Link::new(Box::new(Queued{queue:VecDeque::from([r.to_wire().to_vec()]),sent:count.clone()}),31,Timing::new(Duration::ZERO,Duration::ZERO,1));l.strict_basilisk();assert!(l.exec(Report::new(2,12,10,&[1,4,0])).is_err());assert_eq!(count.load(Ordering::SeqCst),1);}
+ #[test]fn foreign_transaction_crc_class_and_hypershift_frames_are_polled_without_resending(){let valid=reply().to_wire().to_vec();let mut a=valid.clone();a[2]=30;let mut b=valid.clone();b[89]^=1;let mut c=reply();c.class=15;let mut d=reply();d.args[2]=1;let count=Arc::new(AtomicUsize::new(0));let mut l=Link::new(Box::new(Queued{queue:VecDeque::from([a,b,c.to_wire().to_vec(),d.to_wire().to_vec(),valid]),sent:count.clone()}),31,Timing::new(Duration::ZERO,Duration::ZERO,1));l.strict_model_replies();let result=l.exec(Report::new(2,0x8c,10,&[1,4,0])).unwrap();assert_eq!(result.args[..3],[1,4,0]);assert_eq!(count.load(Ordering::SeqCst),1);}
+ #[test]fn stale_persistent_write_reply_is_not_retried(){let mut r=reply();r.command=12;r.args[1]=5;let count=Arc::new(AtomicUsize::new(0));let mut l=Link::new(Box::new(Queued{queue:VecDeque::from([r.to_wire().to_vec()]),sent:count.clone()}),31,Timing::new(Duration::ZERO,Duration::ZERO,1));l.strict_model_replies();assert!(l.exec(Report::new(2,12,10,&[1,4,0])).is_err());assert_eq!(count.load(Ordering::SeqCst),1);}
 }
