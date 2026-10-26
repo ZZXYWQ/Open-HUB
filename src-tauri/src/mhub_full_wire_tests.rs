@@ -751,3 +751,18 @@ fn actual_local_library_ui_profiles_keep_selected_macro_body_and_protected_prior
     for (index,p)in profiles.iter().enumerate(){crate::profile_transfer::validate(p).unwrap();let plan=p.mchose.as_ref().unwrap();assert_eq!(plan.macros.len(),1);let record=&plan.macros[0];assert_eq!(record.events.iter().find(|e|e.kind=="delay").unwrap().delay_ms,if index==0{99}else{37});assert!(crate::profiles::apply_mchose_profile(p,&device,&a.t).is_empty());let state=a.t.hardware_state().unwrap();let physical=state.buttons[4][1];assert_eq!(a.mouse.lock().unwrap().macros[&physical],record.raw);if let Some((slot,raw))=&previous{assert_ne!(*slot,physical);assert_eq!(&a.mouse.lock().unwrap().macros[slot],raw);}previous=Some((physical,record.raw.clone()));}
     assert!(b.mouse.lock().unwrap().requests.is_empty());
 }
+#[test]
+fn all_169_oem_actions_replay_full_profile_route_with_exact_native_button_bytes() {
+    let fixture:Value=serde_json::from_str(include_str!("../tests/fixtures/mchose-v3-selectable-actions.json")).unwrap();let actions=fixture["actions"].as_array().unwrap();assert_eq!(actions.len(),169);
+    let a=Rig::new();let b=Rig::new();let device=crate::mchose_target::simulated_device("oem-catalog-A");let initial_other=a.mouse.lock().unwrap().other_keys.clone();
+    for (index,item)in actions.iter().enumerate(){let hex=item["hex"].as_str().unwrap();let expected:Vec<u8>=serde_json::from_value(item["bytes"].clone()).unwrap();let mut doc=source();doc[PRODUCT]["rightKeyType"]=json!(&hex[2..4]);doc[PRODUCT]["rightKeyVal"]=json!(&hex[4..]);let p=to_profile(parse(&doc,&library()).unwrap()).unwrap();let previous=a.mouse.lock().unwrap().requests.len();assert!(crate::profiles::apply_mchose_profile(&p,&device,&a.t).is_empty(),"{hex}");let state=a.t.hardware_state().unwrap();assert_eq!(state.buttons[1],expected);let m=a.mouse.lock().unwrap();assert_eq!(m.other_keys,initial_other);if index>0 {let setters=m.requests[previous..].iter().filter(|(c,_)|[0x0101,0x0102,0x0103,0x0109,0x090b,0x0910].contains(c)).collect::<Vec<_>>();assert_eq!(setters.len(),1,"{hex}");assert_eq!(*setters[0],(0x0101,[vec![0,1,11],expected].concat()));}}
+    let m=a.mouse.lock().unwrap();let expected_chunks=plan().macros[0].raw.len().div_ceil(19);assert_eq!(m.requests.iter().filter(|(c,_)|*c==0x090b).count(),expected_chunks);assert!(b.mouse.lock().unwrap().requests.is_empty());
+}
+#[test]
+#[ignore="requires actual full editor OEM-controls UI capture"]
+fn actual_oem_controls_editor_profiles_replay_standalone_modifiers_consumer_and_modifier_only() {
+    let bytes=std::fs::read(std::env::var("OPEN_HUB_MCHOSE_OEM_EDITOR_UI_SAVED").unwrap()).unwrap();let profiles:Vec<crate::profiles::Profile>=serde_json::from_slice(&bytes).unwrap();
+    let expected=[vec![0x16,1,4],vec![0x11,4,0]].into_iter().chain((224..=231).map(|usage|vec![0x11,usage,0])).chain([vec![0x14,183,0],vec![0x14,111,0],vec![0x14,112,0],vec![0x13,1,4],vec![0x12,1,0]]).collect::<Vec<_>>();assert_eq!(profiles.len(),expected.len());
+    let a=Rig::new();let b=Rig::new();let device=crate::mchose_target::simulated_device("oem-editor-A");
+    for (profile,binding)in profiles.iter().zip(expected){crate::profile_transfer::validate(profile).unwrap();let mut reference=plan();reference.buttons[1]=binding.clone();assert_eq!(profile.mchose,Some(reference));assert!(crate::profiles::apply_mchose_profile(profile,&device,&a.t).is_empty());assert_eq!(a.t.hardware_state().unwrap().buttons[1],binding);assert!(b.mouse.lock().unwrap().requests.is_empty());}
+}

@@ -310,13 +310,14 @@ fn actual_ui_key_actions_replay_through_two_isolated_native_transports() {
     let data = std::fs::read(path).unwrap();
     assert!(data.len() < 1024 * 1024);
     let requests: Vec<Request> = serde_json::from_slice(&data).unwrap();
-    assert_eq!(requests.len(), 108);
+    assert_eq!(requests.len(), 120);
     let a = Rig::new(0);
     let b = Rig::new(0);
     let mut plain = std::collections::BTreeSet::new();
     let mut chord_masks = std::collections::BTreeSet::new();
     let mut modifier_masks = std::collections::BTreeSet::new();
     let mut special = std::collections::BTreeSet::new();
+    let mut consumer = std::collections::BTreeSet::new();
     let mut a_count = 0;
     let mut b_count = 0;
     for request in requests {
@@ -341,6 +342,7 @@ fn actual_ui_key_actions_replay_through_two_isolated_native_transports() {
                     0x13 => {
                         chord_masks.insert(binding[1]);
                     }
+                    0x14 => {consumer.insert(binding.clone());}
                     0x16 => {
                         special.insert(binding.clone());
                     }
@@ -371,7 +373,7 @@ fn actual_ui_key_actions_replay_through_two_isolated_native_transports() {
         assert!(other.boards == other_before);
         assert_eq!(other.writes, other_writes);
     }
-    let known_main_keys = (4..=49).chain(51..=99).chain([101]).collect();
+    let known_main_keys = (4..=49).chain(51..=99).chain([101]).chain(224..=231).collect();
     assert_eq!(plain, known_main_keys);
     assert_eq!(chord_masks, [1, 3, 15].into_iter().collect());
     assert_eq!(modifier_masks, [1, 9, 15].into_iter().collect());
@@ -379,7 +381,8 @@ fn actual_ui_key_actions_replay_through_two_isolated_native_transports() {
         special,
         [vec![0x16, 1, 6], vec![0x16, 1, 25]].into_iter().collect()
     );
-    assert_eq!((a_count, b_count), (107, 1));
+    assert_eq!(consumer,[vec![0x14,183,0],vec![0x14,111,0],vec![0x14,112,0]].into_iter().collect());
+    assert_eq!((a_count, b_count), (119, 1));
     assert_eq!(a.backups().len(), a_count);
     assert_eq!(b.backups().len(), b_count);
 }

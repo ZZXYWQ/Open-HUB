@@ -28,19 +28,23 @@ export const MCHOSE_MAIN_KEYS=MCHOSE_KEYS.filter(key=>key.usage<224);
 export const MCHOSE_COMBINATION_MODIFIERS=[{bit:1,label:'Ctrl（通用）'},{bit:2,label:'Shift（通用）'},{bit:4,label:'Alt（通用）'},{bit:8,label:'Win（通用）'}] as const;
 const byCode=new Map(MCHOSE_KEYS.map(key=>[key.code,key.usage]));
 const mainByUsage=new Map(MCHOSE_MAIN_KEYS.map(key=>[key.usage,key]));
+const bindingByUsage=new Map(MCHOSE_KEYS.map(key=>[key.usage,key]));
 export function mchoseKeyUsage(code:string):number|null{return byCode.get(code)??null;}
-// The combination picker has four generic modifiers. Macro E0..E7 usages do
-// not establish eight-bit left/right combination masks or plain assignments.
+// OEM VJ explicitly maps standalone Left/Right Ctrl/Shift/Alt/Windows to
+// type11 E0..E7. Chords still use four generic modifier bits and main keys.
 export function mchoseKeyboardBinding(usage:number,modifiers:number):number[]|null{
  if(!Number.isInteger(modifiers)||modifiers<0||modifiers>15)return null;
  if(usage===0)return modifiers?[0x12,modifiers,0]:null;
- if(!mainByUsage.has(usage))return null;
+ if(!bindingByUsage.has(usage)||modifiers&&!mainByUsage.has(usage))return null;
  return modifiers?[0x13,modifiers,usage]:[0x11,usage,0];
 }
 export function mchoseKeyboardLabel(binding:readonly number[]):string|null{
  if(binding.length!==3)return null;
  const [kind,a,b]=binding;
- if(kind===0x11&&b===0)return mainByUsage.get(a)?.label??null;
+ // Older Open HUB exposed this preset; label existing records without offering
+ // the unproven encoding for new assignments or silently migrating user data.
+ if(kind===0x16&&a===1&&b===4)return "旧版全选编码（保留）";
+ if(kind===0x11&&b===0)return bindingByUsage.get(a)?.label??null;
  if((kind!==0x12&&kind!==0x13)||a<1||a>15||!Number.isInteger(a))return null;
  if(kind===0x12&&b!==0||kind===0x13&&!mainByUsage.has(b))return null;
  const modifiers=MCHOSE_COMBINATION_MODIFIERS.filter(item=>a&item.bit).map(item=>item.label);

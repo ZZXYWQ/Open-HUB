@@ -422,3 +422,11 @@ fn larger_global_macro_library_and_compact_device_metadata_keep_exact_board_scop
 
 #[path="mhub_full_profile_tests.rs"]
 mod profiles;
+#[test]
+fn all_pinned_oem_literal_picker_actions_convert_from_complete_source_fields() {
+    let fixture:Value=serde_json::from_str(include_str!("../tests/fixtures/mchose-v3-selectable-actions.json")).unwrap();
+    assert_eq!(fixture["source_sha256"],"c3e91c2828283cbcb8edb24474b45d64b2526bcbed0a2740919a0deef7ad61bc");
+    let actions=fixture["actions"].as_array().unwrap();assert_eq!(actions.len(),169);
+    let original=plan();
+    for item in actions {let hex=item["hex"].as_str().unwrap();let expected:Vec<u8>=serde_json::from_value(item["bytes"].clone()).unwrap();let mut doc=source();doc[PRODUCT]["rightKeyType"]=json!(&hex[2..4]);doc[PRODUCT]["rightKeyVal"]=json!(&hex[4..]);let converted=parse(&doc,&library()).unwrap();assert_eq!(converted.buttons[1],expected,"{hex}");let mut reference=original.clone();reference.buttons[1]=expected;assert_eq!(converted,reference,"{hex} changed unrelated source fields");crate::profile_transfer::validate(&to_profile(converted).unwrap()).unwrap();}
+}

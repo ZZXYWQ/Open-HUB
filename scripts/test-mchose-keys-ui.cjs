@@ -39,11 +39,15 @@ const out=path.resolve('../outputs/100-model-development/mchose-keys-ui');fs.mkd
  await open('A');await tab('录入键盘键 / 组合键');
  const expectedUsages=Array.from({length:96},(_,i)=>i+4).filter(value=>value!==50).concat(101);
  const choices=await key().locator('option').evaluateAll(options=>options.map(option=>({value:Number(option.value),label:option.textContent})));
- assert.deepEqual(choices.filter(choice=>choice.value!==0).map(choice=>choice.value).sort((a,b)=>a-b),expectedUsages);assert.equal(new Set(choices.map(choice=>choice.value)).size,97);
+ assert.deepEqual(choices.filter(choice=>choice.value!==0).map(choice=>choice.value).sort((a,b)=>a-b),expectedUsages.concat([224,225,226,227,228,229,230,231]));assert.equal(new Set(choices.map(choice=>choice.value)).size,105);
  assert(!choices.some(choice=>/^F(?:1[3-9]|2[0-4])$/.test(choice.label)));
  assert.equal(choices.find(choice=>choice.value===40).label,'Enter');assert.equal(choices.find(choice=>choice.value===88).label,'数字键盘 Enter');assert.equal(choices.find(choice=>choice.value===101).label,'菜单键');
  for(const usage of expectedUsages){await key().selectOption(String(usage));await apply([0x11,usage,0]);}
  checks.push('all 96 proven nonmodifier choices render once and each submits exact plain-key11 IPC');
+ await mask(3);
+ for(const usage of [224,225,226,227,228,229,230,231]){await key().selectOption(String(usage));for(const [name]of modifiers){const box=page.getByRole('checkbox',{name,exact:true});assert(await box.isDisabled());assert(!(await box.isChecked()));}await apply([0x11,usage,0]);}
+ checks.push('all eight OEM standalone left/right modifiers clear chord masks and submit distinct type11 E0..E7');
+
  for(const [usage,mods]of [[6,1],[41,3],[88,15]]){await key().selectOption(String(usage));await mask(mods);await apply([0x13,mods,usage]);}
  checks.push('general Ctrl/C, multimore modifier and numpad combinations submit type13 with low-four-bit mask');
  await key().selectOption('0');await mask(0);assert(await page.getByRole('button',{name:'应用到后侧键',exact:true}).isDisabled());
@@ -58,6 +62,9 @@ const out=path.resolve('../outputs/100-model-development/mchose-keys-ui');fs.mkd
  checks.push('DOM capture visibly uses generic modifiers, distinguishes numpad Enter and navigation, and does not invent F13');
  for(const [label,usage]of [['复制',6],['粘贴',25]]){const value=await page.getByRole('combobox',{name:'选择按键动作',exact:true}).locator('option').filter({hasText:new RegExp('^'+label)}).getAttribute('value');await page.getByRole('combobox',{name:'选择按键动作',exact:true}).selectOption(value);await apply([0x16,1,usage]);}
  checks.push('named Copy and Paste presets retain their original type16 encoding');
+ for(const [label,expected]of [['停止播放',[0x14,183,0]],['屏幕亮度 +',[0x14,111,0]],['屏幕亮度 −',[0x14,112,0]],['全选',[0x13,1,4]]]){const select=page.getByRole('combobox',{name:'选择按键动作',exact:true}),option=select.locator('option').filter({hasText:label});assert.equal(await option.count(),1);await select.selectOption(await option.getAttribute('value'));await apply(expected);}
+ checks.push('Stop and brightness presets use source consumer codes, Select All uses OEM type13 rather than invented type16');
+
  // Leave an unapplied generic chord in A's component before navigating away.
  await tab('录入键盘键 / 组合键');await key().selectOption('89');await mask(3);await page.getByRole('group',{name:'自定义键盘组合',exact:true}).screenshot({path:path.join(out,'general-chord-builder.png')});
  await tab('宏');await tab('录制键盘宏');
@@ -71,7 +78,7 @@ const out=path.resolve('../outputs/100-model-development/mchose-keys-ui');fs.mkd
  checks.push('macro recording retains all eight distinct E0..E7 usages and balanced navigation/numpad events');
  await page.getByRole('button',{name:'Back to devices',exact:true}).click();await open('B');assert.equal(await page.getByRole('group',{name:'自定义键盘组合'}).count(),0);await tab('录入键盘键 / 组合键');assert.equal(await key().inputValue(),'4');for(const [name]of modifiers)assert(!(await page.getByRole('checkbox',{name,exact:true}).isChecked()));await key().selectOption('88');await apply([0x11,88,0]);assert.equal((await requests()).at(-1).id,'mchose-B');await tab('宏');assert.equal(await page.getByRole('textbox',{name:'宏事件编辑器',exact:true}).inputValue(),'[]');
  checks.push('unapplied keyboard and recorded macro drafts never move to another physical target');
- const actions=await requests();assert(actions.slice(0,-1).every(action=>action.id==='mchose-A'));assert.equal(actions.length,108);assert.deepEqual(errors,[]);
+ const actions=await requests();assert(actions.slice(0,-1).every(action=>action.id==='mchose-A'));assert.equal(actions.length,120);assert.deepEqual(errors,[]);
  fs.writeFileSync(path.join(out,'actions.json'),JSON.stringify(actions,null,2));
- fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({passed:true,mock_IPC:true,hardware_tested:false,OS_input_injected:false,keyboard_unique_usages:104,nonmodifier_choices:96,request_count:actions.length,actions_schema:'Array<{id:string,expectedProfile:number,action:{kind:"button",index:number,binding:number[]}}>',checks},null,2));await page.screenshot({path:path.join(out,'keyboard-and-target-isolation.png')});console.log(`${checks.length} MCHOSE keyboard UI groups passed; ${actions.length} actual IPC actions exported; no physical I/O`);
+ fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({passed:true,mock_IPC:true,hardware_tested:false,OS_input_injected:false,keyboard_unique_usages:104,nonmodifier_choices:96,standalone_modifier_choices:8,request_count:actions.length,actions_schema:'Array<{id:string,target:{device_key:string,connection_key:string},expectedProfile:number,action:{kind:"button",index:number,binding:number[]}}>',checks},null,2));await page.screenshot({path:path.join(out,'keyboard-and-target-isolation.png')});console.log(`${checks.length} MCHOSE keyboard UI groups passed; ${actions.length} actual IPC actions exported; no physical I/O`);
 }finally{await browser.close();}})().catch(error=>{console.error(error);process.exitCode=1;});

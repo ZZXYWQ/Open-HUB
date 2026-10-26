@@ -1,0 +1,188 @@
+{
+  "date_local": "2026-10-27",
+  "source": {
+    "url": "https://www.mchose.com.cn/assets/purify.es-BufdR6vO.js",
+    "sha256": "c3e91c2828283cbcb8edb24474b45d64b2526bcbed0a2740919a0deef7ad61bc",
+    "bytes": 7763164,
+    "method": "Babel AST literal tables + inert text, no OEM execution"
+  },
+  "tables": {
+    "Kbt": {
+      "utf16_start": 4202837,
+      "utf8_start": 4211486,
+      "property_count": 36
+    },
+    "n1e": {
+      "utf16_start": 4202668,
+      "utf8_start": 4211317,
+      "property_count": 4
+    },
+    "Pbt": {
+      "utf16_start": 4202489,
+      "utf8_start": 4211108,
+      "property_count": 9
+    },
+    "Obt": {
+      "utf16_start": 4201449,
+      "utf8_start": 4209882,
+      "property_count": 45
+    },
+    "zbt": {
+      "utf16_start": 4201294,
+      "utf8_start": 4209727,
+      "property_count": 0
+    },
+    "_bt": {
+      "utf16_start": 4200998,
+      "utf8_start": 4209400,
+      "property_count": 11
+    },
+    "Xbt": {
+      "utf16_start": 4199598,
+      "utf8_start": 4207761,
+      "property_count": 59
+    },
+    "VJ": {
+      "utf16_start": 4196686,
+      "utf8_start": 4204849,
+      "property_count": 142
+    },
+    "Dbt": {
+      "utf16_start": 4194690,
+      "utf8_start": 4202628,
+      "property_count": 63
+    }
+  },
+  "unique_actions": 169,
+  "standalone_modifier_hex": [
+    "0x1100e0",
+    "0x1100e1",
+    "0x1100e2",
+    "0x1100e3",
+    "0x1100e4",
+    "0x1100e5",
+    "0x1100e6",
+    "0x1100e7"
+  ],
+  "consumer_actions": [
+    {
+      "hex": "0x14006f",
+      "bytes": [
+        20,
+        111,
+        0
+      ]
+    },
+    {
+      "hex": "0x140070",
+      "bytes": [
+        20,
+        112,
+        0
+      ]
+    },
+    {
+      "hex": "0x1400b5",
+      "bytes": [
+        20,
+        181,
+        0
+      ]
+    },
+    {
+      "hex": "0x1400b6",
+      "bytes": [
+        20,
+        182,
+        0
+      ]
+    },
+    {
+      "hex": "0x1400b7",
+      "bytes": [
+        20,
+        183,
+        0
+      ]
+    },
+    {
+      "hex": "0x1400cd",
+      "bytes": [
+        20,
+        205,
+        0
+      ]
+    },
+    {
+      "hex": "0x1400e2",
+      "bytes": [
+        20,
+        226,
+        0
+      ]
+    },
+    {
+      "hex": "0x1400e9",
+      "bytes": [
+        20,
+        233,
+        0
+      ]
+    },
+    {
+      "hex": "0x1400ea",
+      "bytes": [
+        20,
+        234,
+        0
+      ]
+    }
+  ],
+  "select_all": {
+    "source": "VJ",
+    "hex": "0x130104",
+    "bytes": [
+      19,
+      1,
+      4
+    ]
+  },
+  "unexplained_extended_records": {
+    "types": [
+      "22",
+      "23",
+      "24"
+    ],
+    "observed": "Only generic record-length decoder/encoder branches; no literal write values in this pinned nine-table picker set",
+    "scope": "Continue rejecting stored unknown records; this does not prove firmware lacks support"
+  },
+  "lighting": {
+    "source": "same pinned static asset",
+    "dock_identity": "3837:1012 MCHOSE MagDock",
+    "get_command": 7,
+    "set_command": 39,
+    "stream_command": 41,
+    "modes": {
+      "static": 0,
+      "breath": 1,
+      "shiningBrightly": 2,
+      "loop": 3,
+      "goFlow": 4,
+      "music": 5
+    },
+    "limits": "Original global RGB path is the separate dock, not evidence of writable mouse-body RGB; no lighting capability is enabled by this action change",
+    "utf16_spans": {
+      "identity": 1255486,
+      "get": 1255688,
+      "set": 1256321,
+      "mode_map": 4339243
+    },
+    "music_visibility": "Original list entry uses isHide:!_i(); predicate behavior and physical playback are not certified by this increment"
+  },
+  "fixture": "../../src-tauri/tests/fixtures/mchose-v3-selectable-actions.json",
+  "fixture_sha256": "f3338a1086d7e8ed842b35eb92ae245fd0334accfc6631b89a0de9208880c8b0",
+  "limits": [
+    "No physical input/brightness behavior or new model certification",
+    "Known selectable-action table coverage is not complete OEM application acceptance"
+  ]
+}

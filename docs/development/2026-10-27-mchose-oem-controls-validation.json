@@ -1,0 +1,118 @@
+{
+  "date_local": "2026-10-27",
+  "recorded_at": "2026-10-27T05:46:52.493837+08:00",
+  "base_commit": "31be585",
+  "release_version": "0.3.7",
+  "accepted_complete_models": 0,
+  "installer_built_published_or_installed": false,
+  "scope": "Pinned V3 picker literal action coverage and matching live/full-plan UI; not new models or full OEM parity",
+  "validation": {
+    "default_application_tests_passed": 687,
+    "default_application_tests_failed": 0,
+    "default_ignored_tests": 52,
+    "new_default_native_tests": 2,
+    "new_ignored_UI_replay_tests": 1,
+    "OEM_literal_actions": 169,
+    "OEM_picker_tables": 9,
+    "source_actions_expressible_by_actual_UI_helpers_or_presets": 169,
+    "every_non_macro_new_preset_is_source_backed": true,
+    "all_source_actions_converted_and_replayed_native_full_profile": 169,
+    "existing_macro_not_reuploaded_for_button_changes": true,
+    "live_keyboard_UI_groups": 9,
+    "live_IPC_requests_native_replayed": 120,
+    "live_requests_per_mouse": {
+      "A": 119,
+      "B": 1
+    },
+    "standalone_modifiers": [
+      224,
+      225,
+      226,
+      227,
+      228,
+      229,
+      230,
+      231
+    ],
+    "consumer_controls_added": {
+      "stop": 183,
+      "brightness_up": 111,
+      "brightness_down": 112
+    },
+    "new_select_all_binding": [
+      19,
+      1,
+      4
+    ],
+    "legacy_select_all_binding_preserved": [
+      22,
+      1,
+      4
+    ],
+    "complete_editor_native_preparation_calls": 15,
+    "complete_editor_saved_profiles_native_replayed": 15,
+    "editor_cases": {
+      "legacy_unchanged": 1,
+      "direct_A_from_non_keyboard": 1,
+      "standalone_modifiers": 8,
+      "consumer_controls": 3,
+      "corrected_select_all": 1,
+      "modifier_only": 1
+    },
+    "editor_unrelated_full_Plan_fields_and_raw_macros_preserved": true,
+    "modifier_only_reopen_and_active_section_state": "passed",
+    "existing_complete_import_editor_UI_groups": 15,
+    "existing_connection_lifetime_UI_cases": 22,
+    "existing_Logitech_and_per_mouse_profile_routing_UI": "passed",
+    "existing_full_import_saved_plan_native_replay": "passed",
+    "typescript": "passed",
+    "vite": "passed",
+    "non_test_dev_build": "passed",
+    "runtime_dependencies_added": 0,
+    "new_product_images": 0,
+    "source_fixture_in_runtime": false,
+    "OEM_code_executed": false,
+    "OEM_user_config_read_or_modified": false,
+    "physical_HID_access": false,
+    "OS_input_injected": false,
+    "headless_screenshot_reviewed": true,
+    "javascript_bundle_bytes": 785846,
+    "javascript_bundle_delta_from_base_bytes": 374,
+    "javascript_bundle_sha256": "052859091f84e7a532a6f3c292ab4b77f6920b20ca9129387156cf3cbc873125",
+    "css_bundle_bytes": 105770,
+    "css_bundle_sha256": "9ad84aa7c17a1e32262b84ae2206e71d6a9250335a97daa912b9356bd7e72416",
+    "css_bundle_unchanged": true,
+    "dev_EXE_sha256": "01e8e4d381f91e7a737f27edd21adf63ce2fd72c61a454279b4892028d1c3622"
+  },
+  "limits": [
+    "169 counts literal actions, not mouse models, all firmware or actual physical key behavior",
+    "Standalone VJ type11 E0..E7 is explicit; combinations still use four generic modifier bits, no invented side-specific chord mask",
+    "OS/display response to consumer brightness and physical keyboard/macro playback not tested",
+    "Old type16 Select All is labelled and retained, not offered as new preset or certified as original firmware behavior",
+    "Unknown long22/23/24 records remain rejected; absence from this picker does not prove lack of firmware support",
+    "MagDock independent RGB command/mode map only reviewed statically, including conditional music visibility; no lighting implementation or acceptance added",
+    "RF identity/catalog discrepancy, full apply receipt, old board-reference/generic MCHOSE manual context audit and model-wide UI/function acceptance remain pending",
+    "Installed app, release/updater feed and installer remain0.3.7"
+  ],
+  "source_sha256": {
+    "src/lib/mchose-keys.ts": "b4e33c7659754c666a1ec80f49dad76280061207a4b80a2cc4bcccb6a00a7d7e",
+    "src/lib/mchose-options.ts": "8de8b3d3251f284647ca8c15a3e80788bf7dbd903e0433e96dd9c88846fcfa80",
+    "src/components/mchose-panel.tsx": "6c48056701d3b29b613b8ad97a29dbd29d9c027b306349977d899148e153f4ce",
+    "src/components/mchose-profile-editor.tsx": "7c15f778ba60e2064e0249e00d82b11d741d8849cf61d653ca154d9035977c56",
+    "src-tauri/src/mchose_keybinding_tests.rs": "0ced3700c3e3f0aaf0937f6b3201df747178a809c493686d6e0800727ee1a323",
+    "src-tauri/src/mhub_full_tests.rs": "5def0d52d811fe64c531f71bc0e94cbb5b75b1dbb252fd9bfa4d3884d7f5a1a0",
+    "src-tauri/src/mhub_full_wire_tests.rs": "5ad61c96452fce0ef22848427a160920253f776c1df7634c50e1f85db5f60a12",
+    "src-tauri/tests/fixtures/mchose-v3-selectable-actions.json": "f3338a1086d7e8ed842b35eb92ae245fd0334accfc6631b89a0de9208880c8b0",
+    "scripts/test-mchose-keys-ui.cjs": "9b71deaa5d10e89959912a2f63c0f44842e9bae701b49b4b529a6096bd773921",
+    "scripts/test-mchose-oem-action-coverage.cjs": "79cfb3e662905898fb09448cb5ec410942b89a680c679a4ba088bf5c80a1f007",
+    "scripts/test-mchose-oem-editor-ui.cjs": "24d8a2ce713492322adaed6ea58b90e8ac07c1d3b0964a4f4f2489e1db22cf97",
+    "docs/development/mchose-v3-selectable-actions-official-facts.json": "d4b239198741ae8341600b7cc2a3c54c23d6f18a8f807cdb9ceb884b981726ef"
+  },
+  "capture_sha256": {
+    "..\\outputs\\100-model-development\\mchose-keys-ui\\actions.json": "093e3a54e50ab90289f1ea799ccc7b4ebbbc4fcfe7d3f2c2c8fc084c4ed30b1c",
+    "..\\outputs\\100-model-development\\mchose-keys-ui\\report.json": "9434badfb7a5f0424ab96e553939f124623f57eb00b855357def4a11b4f10d14",
+    "..\\outputs\\100-model-development\\mchose-oem-editor-ui\\saved-profiles.json": "691531074fb6760ac0fde53390617ae9eca919c04ca0208dd63df70e340f89f9",
+    "..\\outputs\\100-model-development\\mchose-oem-editor-ui\\native-preparation-calls.json": "21de2b5cd658afdd3052f55fe4818f61372a9b3c603e9ee6d5cfff96887c236b",
+    "..\\outputs\\100-model-development\\mchose-oem-editor-ui\\report.json": "5113952dd32a4739c39d597217fcc627180b8f071866e91eca883a96afb40796"
+  }
+}
