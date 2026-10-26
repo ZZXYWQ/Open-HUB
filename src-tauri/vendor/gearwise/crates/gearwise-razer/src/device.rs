@@ -535,7 +535,7 @@ fn capabilities(model: &Model) -> Capabilities {
         }),
         report_rates: model.polling.rates.to_vec(),
         tuning:crate::power::supported(model.pid).then(crate::power::caps),
-        buttons: if crate::power::supported(model.pid){crate::dav3pro_buttons::BUTTONS.into_iter().map(|(id,name)|ButtonCaps{id,name:name.into(),remappable:false,default_action:crate::dav3pro_buttons::decode(id,&crate::dav3pro_buttons::default_block(id).unwrap()).unwrap(),hotspot:None}).collect()}else if crate::basilisk::supported(VID_RAZER,model.pid){crate::basilisk::BUTTONS.into_iter().map(|(id,name)|ButtonCaps{id,name:name.into(),remappable:id!=1,default_action:crate::basilisk::decode(id,&crate::basilisk::default_block(id).unwrap()).unwrap(),hotspot:None}).collect()}else if matches!(model.pid,0x00c0|0x00c1) {
+        buttons: if crate::power::supported(model.pid){crate::dav3pro_buttons::controls().into_iter().map(|(id,name)|ButtonCaps{id,name:name.into(),remappable:false,default_action:crate::dav3pro_buttons::decode(id,&crate::dav3pro_buttons::default_block(id).unwrap()).unwrap(),hotspot:None}).collect()}else if crate::basilisk::supported(VID_RAZER,model.pid){crate::basilisk::BUTTONS.into_iter().map(|(id,name)|ButtonCaps{id,name:name.into(),remappable:id!=1,default_action:crate::basilisk::decode(id,&crate::basilisk::default_block(id).unwrap()).unwrap(),hotspot:None}).collect()}else if matches!(model.pid,0x00c0|0x00c1) {
             [(1,"左键"),(2,"右键"),(4,"后退"),(5,"前进"),(9,"滚轮向上"),(10,"滚轮向下"),(0x60,"底部 DPI 键")].into_iter().map(|(id,name)|ButtonCaps{id,name:name.into(),remappable:id!=1,default_action:viper_decode(id as u8,&viper_default(id as u8).unwrap()).unwrap(),hotspot:None}).collect()
         } else {Vec::new()},
         lighting: model

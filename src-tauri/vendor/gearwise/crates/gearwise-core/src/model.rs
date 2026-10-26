@@ -524,6 +524,8 @@ pub enum ButtonAction {
     Media(u16),
     Dpi(DpiFunction),
     ProfileCycle,
+    /// Hold the device-native secondary mapping layer (only advertised by exact drivers).
+    Hypershift,
     /// Software macro by id; played back by the host while the app runs.
     Macro(String),
 }
@@ -550,6 +552,7 @@ impl ButtonAction {
             ButtonAction::Dpi(DpiFunction::Cycle) => "DPI cycle".into(),
             ButtonAction::Dpi(DpiFunction::Shift(d)) => format!("DPI shift ({d})"),
             ButtonAction::ProfileCycle => "Profile cycle".into(),
+            ButtonAction::Hypershift => "Hold Hypershift".into(),
             ButtonAction::Macro(id) => format!("Macro: {id}"),
         }
     }

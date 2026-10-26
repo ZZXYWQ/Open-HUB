@@ -116,5 +116,40 @@
     "wheel_sensitivity": "not in official per-control functionList; disabled in encode and UI",
     "readback_policy": "fresh device mode and full record; single setter; exact separate readback; restore only this-attempt-owned value; no uncertain setter retries",
     "test_vectors": "reconstructed from static primary sources and known scalar codecs, not physical capture"
+  },
+  "Hypershift": {
+    "selectors": [
+      0,
+      1
+    ],
+    "driver_local_IDs": "normal=physical; secondary=0x100|physical; exact eight-ID whitelist, no arbitrary integer truncation",
+    "normal_switch_inputs": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "momentary_switch_record": [
+      12,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "secondary_left_click": "editable independently while normal left click remains protected",
+    "factory_XML": "DefaultMappings contains matching normal and IsHyperShift=true records; legacy DKM aliases not counted as extra physical controls",
+    "reference": {
+      "repository": "geezmolycos/razerqdhid",
+      "commit": "4363a8836ab970c712fa8f2a9dd530a7e7bc5011",
+      "path": "docs/cmd_button-en.md",
+      "license": "MIT",
+      "download_sha256": "fbb35b84ab7dca465bfe8e848426cb035293eb5925d6f04ebc8dc8743a24380a",
+      "use": "protocol facts only; no code copied or executed",
+      "limitation": "reference mouse is Basilisk; no DeathAdder-specific physical capture for this change"
+    },
+    "transaction": "same selected-record readback and conditional original recovery, layer identity included",
+    "new_full_acceptance": false
   }
 }

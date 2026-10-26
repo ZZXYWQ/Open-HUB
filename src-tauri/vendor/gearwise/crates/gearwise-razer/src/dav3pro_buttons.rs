@@ -1,6 +1,7 @@
-//! Exact B6/B7 normal layer. Eight firmware IDs are in the official 182 UI.
+//! Exact B6/B7 normal/Hypershift layers. Eight firmware IDs are in the official 182 UI.
 //! Official RzCtl_00B6 uses 02/8C and 02/0C with ten-byte assignments.
-//! Hypershift, host macro ownership and unknown original actions stay locked.
+//! Layer selectors follow the official record; momentary switch facts are documented
+//! by razerqdhid 4363a883 (MIT). Host macros and unknown originals stay locked.
 use crate::{basilisk, link::Link, report::Report};
 use gearwise_core::{
     Error, Result,
@@ -18,19 +19,47 @@ pub const BUTTONS: [(u16, &str); 8] = [
     (96, "底部 DPI 键"),
 ];
 pub const MEDIA: [u16; 7] = [0xb5, 0xb6, 0xb7, 0xcd, 0xe2, 0xe9, 0xea];
-pub fn default_block(id: u16) -> Option<[u8; 7]> {
+/// Stable driver-local ID: normal=physical; secondary=0x100|physical.
+/// Never truncate an arbitrary integer into an on-wire input or layer.
+pub fn wire(id: u16) -> Option<(u8, u8)> {
+    if id > 0x1ff {
+        return None;
+    }
+    let layer = (id >> 8) as u8;
+    let physical = id as u8;
     BUTTONS
         .iter()
-        .any(|b| b.0 == id)
-        .then(|| basilisk::default_block(id))
-        .flatten()
+        .any(|b| b.0 == u16::from(physical))
+        .then_some((physical, layer))
+}
+pub fn controls() -> Vec<(u16, String)> {
+    [0, 0x100]
+        .into_iter()
+        .flat_map(|layer| {
+            BUTTONS.into_iter().map(move |(id, name)| {
+                (
+                    layer | id,
+                    if layer == 0 {
+                        name.into()
+                    } else {
+                        format!("Hypershift · {name}")
+                    },
+                )
+            })
+        })
+        .collect()
+}
+pub fn default_block(id: u16) -> Option<[u8; 7]> {
+    let (physical, _) = wire(id)?;
+    basilisk::default_block(u16::from(physical))
 }
 pub fn encode(id: u16, action: &ButtonAction) -> Result<[u8; 7]> {
-    if id == 1 || default_block(id).is_none() {
+    if id == 1 || wire(id).is_none() {
         return Err(Error::Unsupported(
             "DeathAdder protected/unknown physical input",
         ));
     }
+    let (physical, layer) = wire(id).unwrap();
     if matches!(
         action,
         ButtonAction::Mouse(MouseButton::WheelLeft | MouseButton::WheelRight)
@@ -39,12 +68,16 @@ pub fn encode(id: u16, action: &ButtonAction) -> Result<[u8; 7]> {
             "DeathAdder horizontal scroll output not enabled",
         ));
     }
-    if matches!(id, 9 | 10) && matches!(action, ButtonAction::Dpi(_)) {
+    if matches!(physical, 9 | 10) && matches!(action, ButtonAction::Dpi(_)) {
         return Err(Error::Unsupported(
             "DeathAdder wheel assignment does not offer sensitivity actions",
         ));
     }
     match action {
+        ButtonAction::Default => Ok(default_block(id).unwrap()),
+        ButtonAction::Hypershift if layer == 0 && matches!(physical, 2..=5) => {
+            Ok([12, 1, 1, 0, 0, 0, 0])
+        }
         ButtonAction::Media(usage) if MEDIA.contains(usage) => {
             let [hi, lo] = usage.to_be_bytes();
             Ok([10, 2, hi, lo, 0, 0, 0])
@@ -55,35 +88,47 @@ pub fn encode(id: u16, action: &ButtonAction) -> Result<[u8; 7]> {
             let [hi, lo] = v.to_be_bytes();
             Ok([6, 5, 5, hi, lo, hi, lo])
         }
-        _ => basilisk::encode(id, action),
+        _ => basilisk::encode(
+            if physical == 1 {
+                2
+            } else {
+                u16::from(physical)
+            },
+            action,
+        ),
     }
 }
 pub fn decode(id: u16, raw: &[u8]) -> Option<ButtonAction> {
     if raw.len() != 7 || default_block(id).is_none() {
         return None;
     }
+    let (physical, layer) = wire(id)?;
+    if raw == [12, 1, 1, 0, 0, 0, 0] {
+        return (layer == 0 && matches!(physical, 2..=5)).then_some(ButtonAction::Hypershift);
+    }
     if raw[..2] == [10, 2] && raw[4..] == [0, 0, 0] {
         let usage = u16::from_be_bytes([raw[2], raw[3]]);
         return MEDIA.contains(&usage).then_some(ButtonAction::Media(usage));
     }
-    if !matches!(id, 9 | 10) && raw[..2] == [6, 1] && raw[3..] == [0; 4] {
+    if !matches!(physical, 9 | 10) && raw[..2] == [6, 1] && raw[3..] == [0; 4] {
         match raw[2] {
             1 => return Some(ButtonAction::Dpi(DpiFunction::Up)),
             2 => return Some(ButtonAction::Dpi(DpiFunction::Down)),
             _ => {}
         }
     }
-    if !matches!(id, 9 | 10) && raw[..3] == [6, 5, 5] && raw[3..5] == raw[5..7] {
+    if !matches!(physical, 9 | 10) && raw[..3] == [6, 5, 5] && raw[3..5] == raw[5..7] {
         let v = u16::from_be_bytes([raw[3], raw[4]]);
         return (100..=30000)
             .contains(&v)
             .then_some(ButtonAction::Dpi(DpiFunction::Shift(v)));
     }
-    let action = basilisk::decode(id, raw)?;
+    let action = basilisk::decode(u16::from(physical), raw)?;
     if matches!(
         action,
         ButtonAction::Mouse(MouseButton::WheelLeft | MouseButton::WheelRight)
-    ) {
+    ) || (matches!(physical, 9 | 10) && matches!(action, ButtonAction::Dpi(_)))
+    {
         return None;
     }
     Some(action)
@@ -98,8 +143,10 @@ fn mode(link: &mut Link) -> Result<()> {
     Ok(())
 }
 fn get(link: &mut Link, id: u16) -> Result<[u8; 10]> {
-    let r = link.exec(Report::new(2, 0x8c, 10, &[1, id as u8, 0]))?;
-    if r.data_size != 10 || r.args[..3] != [1, id as u8, 0] {
+    let (physical, layer) = wire(id).ok_or(Error::Unsupported("DeathAdder input/layer"))?;
+    let selector = [1, physical, layer];
+    let r = link.exec(Report::new(2, 0x8c, 10, &selector))?;
+    if r.data_size != 10 || r.args[..3] != selector {
         return Err(Error::protocol(
             "DeathAdder assignment profile/input/layer mismatch",
         ));
@@ -111,7 +158,7 @@ fn get(link: &mut Link, id: u16) -> Result<[u8; 10]> {
 pub fn read(link: &mut Link) -> Result<BTreeMap<u16, ButtonAction>> {
     mode(link)?;
     let mut out = BTreeMap::new();
-    for (id, _) in BUTTONS {
+    for (id, _) in controls() {
         if let Ok(raw) = get(link, id) {
             if let Some(action) = decode(id, &raw[3..]) {
                 out.insert(id, action);
@@ -241,7 +288,7 @@ mod tests {
                 }
             }
         }
-        for id in [0, 1, 6, 7, 8, 14, 106, 258] {
+        for id in [0, 1, 6, 7, 8, 14, 106, 512, 65535] {
             assert!(encode(id, &ButtonAction::Disabled).is_err());
         }
         for a in [
@@ -257,7 +304,10 @@ mod tests {
         }
         assert!(encode(9, &ButtonAction::Dpi(DpiFunction::Cycle)).is_err());
         assert!(decode(2, &[2, 2, 1, 4, 1, 0, 0]).is_none());
-        assert!(decode(2, &[12, 1, 1, 0, 0, 0, 0]).is_none());
+        assert_eq!(
+            decode(2, &[12, 1, 1, 0, 0, 0, 0]),
+            Some(ButtonAction::Hypershift)
+        );
         assert!(decode(96, &[6, 5, 5, 1, 144, 3, 32]).is_none());
     }
     #[derive(Clone, Copy, Debug, PartialEq)]
@@ -279,7 +329,7 @@ mod tests {
     }
     fn rig(pid: u16, fault: Fault) -> (RazerDevice, Arc<Mutex<State>>) {
         let state = Arc::new(Mutex::new(State {
-            blocks: BUTTONS
+            blocks: controls()
                 .into_iter()
                 .map(|(id, _)| (id, default_block(id).unwrap()))
                 .collect(),
@@ -301,22 +351,22 @@ mod tests {
                 (0, 0x81) => r.args[..2].copy_from_slice(&[2, 1]),
                 (0, 0x84) => r.args[0] = u8::from(fault == Fault::DriverMode),
                 (2, 0x8c) => {
-                    assert_eq!(&req.args[..3], &[1, req.args[1], 0]);
-                    let id = u16::from(req.args[1]);
+                    assert_eq!(req.args[0], 1);
+                    assert!(req.args[2] <= 1);
+                    let id = u16::from(req.args[1]) | (u16::from(req.args[2]) << 8);
                     let mut s = shared.lock().unwrap();
                     s.gets += 1;
                     r.args[..3].copy_from_slice(&req.args[..3]);
                     r.args[3..10].copy_from_slice(&s.blocks[&id]);
-                    if fault == Fault::UnknownOriginal && id == 2 {
-                        r.args[3] = 12;
-                        r.args[4] = 1;
-                        r.args[5] = 1;
+                    if fault == Fault::UnknownOriginal && matches!(id, 2 | 258) {
+                        r.args[3..10].copy_from_slice(&[3, 3, 0, 1, 1, 0, 0]);
                     }
                     corrupt = fault == Fault::BadReadback && s.gets == 2;
                 }
                 (2, 0x0c) => {
-                    let id = u16::from(req.args[1]);
-                    assert_eq!(req.args[..3], [1, id as u8, 0]);
+                    let id = u16::from(req.args[1]) | (u16::from(req.args[2]) << 8);
+                    assert_eq!(req.args[0], 1);
+                    assert!(req.args[2] <= 1);
                     let mut block = [0; 7];
                     block.copy_from_slice(&req.args[3..10]);
                     let mut s = shared.lock().unwrap();
@@ -326,7 +376,7 @@ mod tests {
                     if s.writes.len() == 1 {
                         match fault {
                             Fault::Busy => r.status = 1,
-                            Fault::OtherLayer => r.args[2] = 1,
+                            Fault::OtherLayer => r.args[2] ^= 1,
                             Fault::SetterFailure | Fault::Foreign | Fault::RestoreFailure => {
                                 r.status = 3
                             }
@@ -364,14 +414,14 @@ mod tests {
         for pid in [0xb6, 0xb7] {
             let (mut d, s) = rig(pid, Fault::None);
             let initial = d.read_state().unwrap().buttons;
-            assert_eq!(initial.len(), 8);
+            assert_eq!(initial.len(), 16);
             assert_eq!(
                 d.capabilities()
                     .buttons
                     .iter()
                     .filter(|b| b.remappable)
                     .count(),
-                7
+                15
             );
             for id in [2, 3, 4, 5, 9, 10, 96] {
                 let action = ButtonAction::Key {
@@ -454,6 +504,7 @@ mod tests {
                 let state = d.read_state().unwrap();
                 if fault == Fault::UnknownOriginal {
                     assert!(!state.buttons.contains_key(&2));
+                    assert!(!state.buttons.contains_key(&258));
                     assert!(
                         !d.capabilities()
                             .buttons
@@ -467,7 +518,7 @@ mod tests {
                 }
             }
             let (mut d, s) = rig(pid, Fault::None);
-            for id in [1, 6, 258] {
+            for id in [1, 6, 512, 65535] {
                 assert!(
                     d.apply(&Setting::Button {
                         id,
@@ -479,6 +530,126 @@ mod tests {
             let s = s.lock().unwrap();
             assert!(s.writes.is_empty());
             assert_eq!(s.gets, 0);
+        }
+    }
+    #[test]
+    fn secondary_layer_ids_and_native_momentary_switch_match_independent_wire_facts() {
+        assert_eq!(controls().len(), 16);
+        for id in 0..=u16::MAX {
+            let expected = [
+                1, 2, 3, 4, 5, 9, 10, 96, 257, 258, 259, 260, 261, 265, 266, 352,
+            ]
+            .contains(&id);
+            assert_eq!(wire(id).is_some(), expected);
+        }
+        for (id, args, crc) in [
+            (257, [1, 1, 1, 1, 1, 2, 0, 0, 0, 0], 0x07),
+            (4, [1, 4, 0, 12, 1, 1, 0, 0, 0, 0], 0x0d),
+        ] {
+            let action = if id == 4 {
+                ButtonAction::Hypershift
+            } else {
+                ButtonAction::Mouse(MouseButton::Right)
+            };
+            let mut full = [0; 91];
+            full[..9].copy_from_slice(&[0, 0, 31, 0, 0, 0, 10, 2, 12]);
+            full[9..19].copy_from_slice(&args);
+            full[89] = crc;
+            let (physical, layer) = wire(id).unwrap();
+            let mut data = [1, physical, layer, 0, 0, 0, 0, 0, 0, 0];
+            data[3..].copy_from_slice(&encode(id, &action).unwrap());
+            let mut r = Report::new(2, 12, 10, &data);
+            r.transaction_id = 31;
+            assert_eq!(r.to_wire(), full);
+            assert_eq!(decode(id, &data[3..]), Some(action));
+        }
+        for id in [1, 9, 10, 96, 257, 258, 259, 260, 261, 265, 266, 352] {
+            assert!(encode(id, &ButtonAction::Hypershift).is_err());
+        }
+        for id in [9, 10, 265, 266] {
+            assert!(encode(id, &ButtonAction::Dpi(DpiFunction::Up)).is_err());
+        }
+        assert!(decode(258, &[12, 1, 1, 0, 0, 0, 0]).is_none());
+        for id in [9, 10, 265, 266] {
+            assert!(decode(id, &[6, 1, 6, 0, 0, 0, 0]).is_none());
+        }
+    }
+    #[test]
+    fn all_secondary_bindings_and_switch_are_independent_from_normal_records() {
+        for pid in [0xb6, 0xb7] {
+            let (mut d, s) = rig(pid, Fault::None);
+            let before = d.read_state().unwrap().buttons;
+            d.apply(&Setting::Button {
+                id: 4,
+                action: ButtonAction::Hypershift,
+            })
+            .unwrap();
+            for (id, _) in controls().into_iter().filter(|b| b.0 >= 256) {
+                let action = ButtonAction::Key {
+                    usage: (id as u8 % 20) + 4,
+                    mods: Modifiers(0x80),
+                };
+                d.apply(&Setting::Button {
+                    id,
+                    action: action.clone(),
+                })
+                .unwrap();
+                let now = d.read_state().unwrap().buttons;
+                assert_eq!(now.get(&id), Some(&action));
+                assert_eq!(now.get(&4), Some(&ButtonAction::Hypershift));
+                for normal in [1, 2, 3, 5, 9, 10, 96] {
+                    assert_eq!(now.get(&normal), before.get(&normal));
+                }
+            }
+            assert_eq!(s.lock().unwrap().writes.len(), 9);
+            for (id, _) in controls().into_iter().filter(|b| b.0 != 1) {
+                d.apply(&Setting::Button {
+                    id,
+                    action: ButtonAction::Default,
+                })
+                .unwrap();
+            }
+            assert_eq!(d.read_state().unwrap().buttons, before);
+        }
+    }
+    #[test]
+    fn failed_secondary_write_restores_only_its_exact_layer_and_retains_foreign_changes() {
+        for pid in [0xb6, 0xb7] {
+            for fault in [
+                Fault::SetterFailure,
+                Fault::Busy,
+                Fault::BadReadback,
+                Fault::Foreign,
+                Fault::RestoreFailure,
+                Fault::OtherLayer,
+            ] {
+                let (mut d, s) = rig(pid, fault);
+                let id = 258;
+                let action = ButtonAction::Key {
+                    usage: 6,
+                    mods: Modifiers(3),
+                };
+                assert!(
+                    d.apply(&Setting::Button {
+                        id,
+                        action: action.clone()
+                    })
+                    .is_err()
+                );
+                let s = s.lock().unwrap();
+                let wanted = encode(id, &action).unwrap();
+                assert_eq!(s.writes.iter().filter(|(_, b)| *b == wanted).count(), 1);
+                if fault == Fault::Foreign {
+                    assert_eq!(s.writes.len(), 1);
+                    assert_eq!(s.blocks[&id], [2, 2, 0, 5, 0, 0, 0]);
+                } else {
+                    assert_eq!(s.writes.len(), 2);
+                    assert_eq!(s.blocks[&id], default_block(id).unwrap());
+                }
+                for (other, _) in controls().into_iter().filter(|b| b.0 != id) {
+                    assert_eq!(s.blocks[&other], default_block(other).unwrap());
+                }
+            }
         }
     }
 }

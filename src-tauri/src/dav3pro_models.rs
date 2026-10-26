@@ -42,8 +42,8 @@ fn dav3pro_two_transport_views_report_actual_known_fields_without_rgb_or_fake_bu
         assert_eq!((c.min, c.max, c.max_stages), (100, 30000, 1));
         assert_eq!(v.state.dpi.as_ref().unwrap().stages[0].x, 1600);
         assert!(v.capabilities.lighting.is_empty());
-        assert_eq!(v.capabilities.buttons.len(),8);
-        assert_eq!(v.capabilities.buttons.iter().filter(|b|b.remappable).count(),7);
+        assert_eq!(v.capabilities.buttons.len(),16);
+        assert_eq!(v.capabilities.buttons.iter().filter(|b|b.remappable).count(),15);
         assert_eq!(v.capabilities.report_rates, [125, 500, 1000]);
         let c = v.capabilities.tuning.as_ref().unwrap();
         assert_eq!(c.device_sleep_seconds.len(), 15);
@@ -224,8 +224,24 @@ fn browser_dav3pro_known_plans_roundtrip_store_and_native_power_readback() {
         assert_eq!(state.dpi.as_ref(),Some(desired));
         if desired.stages.len()>1{assert_eq!(desired.stages.len(),5);assert_eq!(desired.active,4);assert_eq!(desired.stages[4].x,30000);}
         assert_eq!(state.report_rate, Some(500));
-        let actions=plan.settings.iter().filter_map(|s|if let Setting::Button{id,action}=s{Some((*id,action))}else{None}).collect::<Vec<_>>();assert_eq!(actions.len(),7);
+        let actions=plan.settings.iter().filter_map(|s|if let Setting::Button{id,action}=s{Some((*id,action))}else{None}).collect::<Vec<_>>();assert_eq!(actions.len(),15);
         for(id,wanted)in actions{assert_ne!(id,1);assert_eq!(state.buttons.get(&id),Some(wanted));}
         assert_eq!(simulate(plan).unwrap()["hardware_tested"], false);
+    }
+}
+
+#[test]
+fn native_hypershift_is_scoped_to_exact_deathadder_and_never_compiles_to_a_host_trigger(){
+    for v in templates().unwrap(){
+        let mut p=template_plan(&v).unwrap();
+        p.settings.retain(|s|!matches!(s,Setting::Button{id:4,..}));
+        p.settings.push(Setting::Button{id:4,action:ButtonAction::Hypershift});
+        let exact=(p.vendor,p.product)==(0x1532,0xb6)||(p.vendor,p.product)==(0x1532,0xb7);
+        if exact{
+            validate(&p).unwrap();let compiled=compile(&p).unwrap();assert!(compiled.bindings.is_empty());assert!(!compiled.software_input);
+            assert!(compiled.settings.iter().any(|s|matches!(s,Setting::Button{id:4,action:ButtonAction::Hypershift})));
+            assert_eq!(simulate(&p).unwrap()["hardware_tested"],false);
+            for id in [1,9,10,96,258,512,65535]{let mut bad=p.clone();bad.settings.retain(|s|!matches!(s,Setting::Button{..}));bad.settings.push(Setting::Button{id,action:ButtonAction::Hypershift});assert!(validate(&bad).is_err());}
+        }else{assert!(validate(&p).is_err(),"Hypershift leaked to {}",v.descriptor.name);}
     }
 }

@@ -88,6 +88,7 @@ fn encode(spec: &ButtonSpec, action: &ButtonAction) -> Result<Vec<u8>> {
         ButtonAction::Dpi(DpiFunction::Cycle) => Ok(vec![DPI_CYCLE]),
         ButtonAction::Dpi(_) => Err(Error::Unsupported("this DPI function")),
         ButtonAction::ProfileCycle => Err(Error::Unsupported("profile switching")),
+        ButtonAction::Hypershift => Err(Error::Unsupported("Razer secondary layer on SteelSeries")),
         ButtonAction::Macro(_) => Err(Error::Unsupported("macros on the mouse")),
     }
 }
@@ -249,6 +250,10 @@ mod tests {
         let try_action = |a: ButtonAction| plan(&SPEC, &none(), 1, &a);
         assert!(matches!(
             try_action(ButtonAction::Macro("m".into())),
+            Err(Error::Unsupported(_))
+        ));
+        assert!(matches!(
+            try_action(ButtonAction::Hypershift),
             Err(Error::Unsupported(_))
         ));
         assert!(matches!(
