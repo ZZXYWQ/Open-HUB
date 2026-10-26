@@ -1,0 +1,82 @@
+{
+  "status": "static reconstruction; not hardware capture",
+  "official_component": {
+    "url": "https://cdn.razersynapse.com/1728899625Euq9w9FwRazer_182_0_Setup_v3.9.1130.101413.exe",
+    "bytes": 7785712,
+    "sha256": "d5ee1fb1b293e2c8f5a92357494f9c15874970dd89d30d9ff26e4699ecfaaa62"
+  },
+  "official_frontend": {
+    "url": "https://apps.razer.com/synapse/products/182/ui/static/js/main.998a1822.js",
+    "bytes": 5796885,
+    "sha256": "c5f739f700e7e1613a7ef27fb862f2b49a727f90dcdb9f6d3d130d8a2a1eccf7"
+  },
+  "official_wired_middleware": {
+    "file": "RzCtl_00B6.dll",
+    "version": "23.0.0.041210",
+    "bytes": 499000,
+    "sha256": "caffd8cf48986e3559aca551d9069a36563b77c01e3061373d8b5a4ee223c217"
+  },
+  "DPI_sources": {
+    "DPIStages.xml": {
+      "bytes": 893,
+      "sha256": "e6a6a3cce226092f0dc7e46f46a9532c0e2150b6d0cdee06eea1044afc84625b"
+    },
+    "Mappings.xml": {
+      "bytes": 5599,
+      "sha256": "0f32cdfb94f2f5d0156d0d4597cbde1fb25e36d912d605467daed6e51c4f79d8"
+    },
+    "DefaultMappings.xml": {
+      "bytes": 5613,
+      "sha256": "2a16da98370fee72ff083e6e84a064633b036acb7fa03c0d11467b78504595e0"
+    },
+    "SensorCalibrationV2.xml": {
+      "bytes": 543,
+      "sha256": "917138a38202a7f6a605da14b0a31f417d903f11482ee7ab8eaa1ddd6e10ef5b"
+    }
+  },
+  "protocol_facts": {
+    "stage_GET": "04/86; size38; profile1; dispatcher ORs command read bit; fixed 91-byte HID report",
+    "stage_SET": "04/06; fixed size38; profile/active/count; 5 records capacity",
+    "record": "zero-based setter index; big-endian X,Y,Z (Z zero for representable XY)",
+    "active": "one-based on wire",
+    "factory_stages": [
+      400,
+      800,
+      1600,
+      3200,
+      6400
+    ],
+    "factory_active_zero_based": 2,
+    "DLL_static_addresses": {
+      "getter": "0x1002AA70",
+      "setter": "0x1002E600",
+      "GET_dispatcher": "0x1002B2F0",
+      "SET_dispatcher": "0x1002EAF0"
+    }
+  },
+  "parser_policy": [
+    "strict profile, count, active, length and contiguous complete record IDs",
+    "zero/one-based contiguous returned indices accepted as bounded parser policy, not two captured firmware claim",
+    "nonzero Z or unrepresented trailing rows block table interpretation",
+    "corrupt active is never clamped"
+  ],
+  "transaction_policy": [
+    "fresh complete read before write",
+    "independent readback after one setter",
+    "one conditional original restoration only while current value equals this attempt target",
+    "uncertain setter or restore never resent",
+    "old single-current plan cannot replace a fresh multi-stage table",
+    "active switch starts from fresh table rather than cached values"
+  ],
+  "newer_reference_comparison": {
+    "repository": "han1548772930/razer_ui",
+    "commit": "2c8c69e39861994d1b35f5286c6f74f5f3c747a7",
+    "license": null,
+    "use": "comparison of protocol facts only; no code copied",
+    "difference": "new reference uses 80-byte GET; official archived v3 DLL inspected here uses38; no guessed80-byte physical fallback enabled"
+  },
+  "OEM_code_executed": false,
+  "OEM_component_distributed": false,
+  "physical_tested": false,
+  "new_fully_accepted_models": 0
+}

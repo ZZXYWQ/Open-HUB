@@ -1,4 +1,4 @@
-//! Synthetic firmware for exact B6/B7 power and current-DPI integration tests.
+//! Synthetic firmware for exact B6/B7 power and current/staged DPI tests.
 //! Stage-table refusal is constructed, not claimed as captured behavior.
 use super::*;
 use gearwise_core::{
@@ -10,11 +10,21 @@ use std::{
     time::Duration,
 };
 pub fn mouse(pid: u16) -> Result<(Box<dyn Device>, Arc<Mutex<Vec<MockRecord>>>)> {
+    mouse_mode(pid, true)
+}
+pub fn current_mouse(pid: u16) -> Result<(Box<dyn Device>, Arc<Mutex<Vec<MockRecord>>>)> {
+    mouse_mode(pid, false)
+}
+fn mouse_mode(pid: u16, staged: bool) -> Result<(Box<dyn Device>, Arc<Mutex<Vec<MockRecord>>>)> {
     if !crate::power::supported(pid) {
         return Err(Error::Unsupported("DeathAdder V3 Pro simulation model"));
     }
     let model = models::find(pid).unwrap();
     let mut dpi = DpiStage::uniform(1600);
+    let mut table = gearwise_core::model::DpiState {
+        stages: [400, 800, 1600, 3200, 6400].map(DpiStage::uniform).to_vec(),
+        active: 2,
+    };
     let mut rate = 1;
     let mut sleep = 300u16;
     let mut low = 77u8;
@@ -29,7 +39,40 @@ pub fn mouse(pid: u16) -> Result<(Box<dyn Device>, Arc<Mutex<Vec<MockRecord>>>)>
         match (req.class, req.command) {
             (0, 0x82) => r.args[..19].copy_from_slice(b"SIMULATED-DAV3PRO-A"),
             (0, 0x81) => r.args[..2].copy_from_slice(&[2, 1]),
+            (4, 0x86) if staged => {
+                assert_eq!(req.data_size, 38);
+                assert_eq!(req.args[0], 1);
+                r.args[0] = 1;
+                r.args[1] = table.active + 1;
+                r.args[2] = table.stages.len() as u8;
+                for (i, s) in table.stages.iter().enumerate() {
+                    let at = 3 + i * 7;
+                    r.args[at] = i as u8 + 1;
+                    r.args[at + 1..at + 3].copy_from_slice(&s.x.to_be_bytes());
+                    r.args[at + 3..at + 5].copy_from_slice(&s.y.to_be_bytes());
+                }
+            }
             (4, 0x86) => r.status = 5,
+            (4, 6) if staged => {
+                assert_eq!(req.data_size, 38);
+                assert_eq!(req.args[0], 1);
+                let count = usize::from(req.args[2]);
+                assert!((1..=5).contains(&count));
+                let mut rows = vec![];
+                for (i, row) in req.args[3..3 + 7 * count].chunks_exact(7).enumerate() {
+                    assert_eq!(row[0], i as u8);
+                    assert_eq!(&row[5..7], &[0, 0]);
+                    rows.push(DpiStage {
+                        x: u16::from_be_bytes([row[1], row[2]]),
+                        y: u16::from_be_bytes([row[3], row[4]]),
+                    });
+                }
+                table = gearwise_core::model::DpiState {
+                    stages: rows,
+                    active: req.args[1] - 1,
+                };
+                dpi = table.stages[usize::from(table.active)];
+            }
             (4, 0x85) if req.args[0] == 1 => {
                 let (x, y) = (dpi.x.to_be_bytes(), dpi.y.to_be_bytes());
                 r.args[..7].copy_from_slice(&[1, x[0], x[1], y[0], y[1], 0, 0]);

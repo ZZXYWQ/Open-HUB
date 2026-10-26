@@ -22,6 +22,7 @@ mod link;
 pub mod models;
 mod report;
 mod power;
+mod dav3pro_dpi;
 #[cfg(any(test, feature = "simulation"))]
 mod simulation;
 #[cfg(any(test, feature = "simulation"))]
@@ -209,3 +210,5 @@ pub fn validate_power_patch(pid:u16,patch:&gearwise_core::tuning::MouseTuning)->
 mod dav3pro_sim;
 #[cfg(any(test,feature="simulation"))]
 pub use dav3pro_sim::mouse as simulated_dav3pro;
+#[cfg(any(test,feature="simulation"))]
+pub use dav3pro_sim::current_mouse as simulated_dav3pro_current;

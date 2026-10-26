@@ -113,6 +113,8 @@ fn exact_model_explicit_stage_refusal_uses_captured_current_selector_and_does_no
         let fake = testutil::Fake::default()
             .on(4, 0x86, 5, &[])
             .on(4, 0x85, 2, &[1, 6, 0x40, 6, 0x40, 0, 0])
+            .on(4, 0x85, 2, &[1, 6, 0x40, 6, 0x40, 0, 0])
+            .on(4, 0x85, 2, &[1, 3, 0x20, 3, 0x20, 0, 0])
             .on(0, 0x85, 2, &[1]);
         let (io, log) = fake.transport();
         let model = models::find(pid).unwrap();
@@ -144,8 +146,8 @@ fn exact_model_explicit_stage_refusal_uses_captured_current_selector_and_does_no
         }))
         .unwrap();
         let sent = testutil::sent(&log);
-        assert_eq!(sent.len(), 1);
-        assert_eq!(&sent[0][7..16], &[4, 5, 1, 3, 0x20, 3, 0x20, 0, 0]);
+        assert_eq!(sent.iter().filter(|p| p[7..9]==[4,5]).count(), 1);
+        assert_eq!(&sent.iter().find(|p|p[7..9]==[4,5]).unwrap()[7..16], &[4, 5, 1, 3, 0x20, 3, 0x20, 0, 0]);
         log.lock().unwrap().clear();
         d.read_state().unwrap();
         assert!(!testutil::sent(&log).iter().any(|b| b[7..9] == [4, 0x86]));

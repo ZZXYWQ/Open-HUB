@@ -29,8 +29,14 @@ fn plan(pid: u16) -> Plan {
 #[test]
 fn dav3pro_two_transport_views_report_actual_known_fields_without_rgb_or_fake_buttons() {
     let mut out = vec![];
+    let mut staged = vec![];
     for pid in [0x00b6, 0x00b7] {
         let (mut d, _) = gearwise_razer::simulated_dav3pro(pid).unwrap();
+        let mut complete = view(d.as_mut()).unwrap();
+        assert_eq!(complete.state.dpi.as_ref().unwrap().stages.len(),5);
+        assert_eq!(complete.state.dpi.as_ref().unwrap().active,2);
+        complete.descriptor.simulated=true;staged.push(complete);
+        let (mut d, _) = gearwise_razer::simulated_dav3pro_current(pid).unwrap();
         let mut v = view(d.as_mut()).unwrap();
         let c = v.capabilities.dpi.as_ref().unwrap();
         assert_eq!((c.min, c.max, c.max_stages), (100, 30000, 1));
@@ -48,6 +54,9 @@ fn dav3pro_two_transport_views_report_actual_known_fields_without_rgb_or_fake_bu
         assert!(!v.hardware_tested);
         v.descriptor.simulated = true;
         out.push(v);
+    }
+    if let Some(path) = std::env::var_os("OPEN_HUB_DAV3PRO_STAGES_FIXTURE") {
+        std::fs::write(path,serde_json::to_vec_pretty(&staged).unwrap()).unwrap();
     }
     if let Some(path) = std::env::var_os("OPEN_HUB_DAV3PRO_FIXTURE") {
         std::fs::write(path, serde_json::to_vec_pretty(&out).unwrap()).unwrap();
@@ -95,7 +104,7 @@ fn dav3pro_full_known_dpi_rate_and_power_plan_executes_production_codec_and_exac
     }
 }
 #[test]
-fn dav3pro_unverified_button_macro_rgb_wrong_power_or_two_stage_current_fallback_are_not_silently_applied(
+fn dav3pro_unverified_button_macro_rgb_wrong_power_or_excessive_stage_count_are_not_silently_applied(
 ) {
     for pid in [0xb6, 0xb7] {
         for bad in [
@@ -148,7 +157,7 @@ fn dav3pro_unverified_button_macro_rgb_wrong_power_or_two_stage_current_fallback
         assert!(validate(&p).is_err());
         let mut p = plan(pid);
         p.settings[0] = Setting::Dpi(DpiState {
-            stages: vec![DpiStage::uniform(800); 2],
+            stages: vec![DpiStage::uniform(800); 6],
             active: 0,
         });
         assert!(simulate(&p).is_err());
@@ -161,7 +170,7 @@ fn browser_dav3pro_known_plans_roundtrip_store_and_native_power_readback() {
         &std::fs::read(std::env::var_os("OPEN_HUB_DAV3PRO_UI_PROFILES").unwrap()).unwrap(),
     )
     .unwrap();
-    assert_eq!(profiles.len(), 2);
+    assert_eq!(profiles.len(), 4);
     for p in &mut profiles {
         p.id = crate::profiles::new_id();
     }
@@ -197,7 +206,8 @@ fn browser_dav3pro_known_plans_roundtrip_store_and_native_power_readback() {
             (tuning.device_sleep_seconds, tuning.low_power_percent),
             (Some(900), Some(5))
         );
-        let (mut d, _) = gearwise_razer::simulated_dav3pro(plan.product).unwrap();
+        let desired=plan.settings.iter().find_map(|s|if let Setting::Dpi(d)=s{Some(d)}else{None}).unwrap();
+        let (mut d, _) = if desired.stages.len()==1 {gearwise_razer::simulated_dav3pro_current(plan.product).unwrap()}else{gearwise_razer::simulated_dav3pro(plan.product).unwrap()};
         view(d.as_mut()).unwrap();
         for s in &plan.settings {
             d.apply(s).unwrap();
@@ -209,6 +219,8 @@ fn browser_dav3pro_known_plans_roundtrip_store_and_native_power_readback() {
         );
         assert_eq!(state.tuning.as_ref().unwrap().low_power_percent, Some(5));
         assert_eq!(state.dpi.as_ref().unwrap().stages[0].x, 3200);
+        assert_eq!(state.dpi.as_ref(),Some(desired));
+        if desired.stages.len()>1{assert_eq!(desired.stages.len(),5);assert_eq!(desired.active,4);assert_eq!(desired.stages[4].x,30000);}
         assert_eq!(state.report_rate, Some(500));
         assert_eq!(simulate(plan).unwrap()["hardware_tested"], false);
     }

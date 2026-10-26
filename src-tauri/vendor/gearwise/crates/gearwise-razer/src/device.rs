@@ -208,12 +208,52 @@ impl RazerDevice {
 
     fn set_dpi(&mut self, d: &DpiState) -> Result<()> {
         self.validate_dpi(d)?;
+        if crate::power::supported(self.model.pid) {
+            let before = self.read_dpi()?;
+            // A fresh unsupported table may narrow this connection to current DPI.
+            self.validate_dpi(d)?;
+            if before.stages.len()>1 && d.stages.len()==1 {
+                return Err(Error::Unsupported("current-only DPI plan cannot replace a complete DeathAdder stage table"));
+            }
+            return self.write_dav3_dpi_verified(&before, d);
+        }
         self.write_dpi(d)
+    }
+
+    fn write_dav3_dpi_verified(&mut self, before: &DpiState, want: &DpiState) -> Result<()> {
+        if before == want { self.state.dpi = Some(before.clone()); return Ok(()); }
+        let staged = self.caps.dpi.as_ref().is_some_and(|c| c.max_stages > 1);
+        let result = self.write_dpi(want).and_then(|_| self.read_dpi()).and_then(|actual| {
+            if &actual == want { Ok(()) } else { Err(Error::protocol("DeathAdder DPI readback mismatch")) }
+        });
+        if let Err(error) = result {
+            let recovery = (|| {
+                let actual = self.read_dpi()?;
+                if &actual == before { return Ok(()); }
+                if &actual != want || staged != self.caps.dpi.as_ref().is_some_and(|c| c.max_stages > 1) {
+                    return Err(Error::protocol("foreign DPI table or changed read mode retained"));
+                }
+                self.write_dpi(before)?;
+                if &self.read_dpi()? != before { return Err(Error::protocol("DPI original restore mismatch")); }
+                Ok(())
+            })();
+            self.state.dpi = None;
+            return Err(Error::protocol(format!("{error}; original DPI recovery: {recovery:?}; uncertain writes not retried")));
+        }
+        self.state.dpi = Some(want.clone());
+        Ok(())
     }
 
     /// The stage table is written as a whole, so switching the active stage
     /// re-sends the known table with a new active index.
     fn set_active_stage(&mut self, index: u8) -> Result<()> {
+        if crate::power::supported(self.model.pid) {
+            if self.caps.dpi.as_ref().is_none_or(|c| index >= c.max_stages) { return Err(Error::invalid("active DPI stage out of range")); }
+            let before = self.read_dpi()?;
+            if index as usize >= before.stages.len() { return Err(Error::invalid("active DPI stage out of range")); }
+            let mut want = before.clone(); want.active = index;
+            return self.write_dav3_dpi_verified(&before, &want);
+        }
         let mut d = match self.state.dpi.clone() {
             Some(d) => d,
             None => {
@@ -308,7 +348,7 @@ impl RazerDevice {
         let staged=self.model.dpi.is_some_and(|s|s.stages)&&!(dav3&&self.caps.dpi.as_ref().is_some_and(|c|c.max_stages==1));
         if staged {
             match self.link.exec(commands::get_dpi_stages()) {
-                Ok(r)=>{let dpi=commands::parse_dpi_stages(&r).ok_or_else(||Error::protocol("device reported an empty DPI stage table"))?;if dav3{self.validate_dpi(&dpi)?;}return Ok(dpi);},
+                Ok(r)=>{let dpi=if dav3{crate::dav3pro_dpi::parse(&r)?}else{commands::parse_dpi_stages(&r).ok_or_else(||Error::protocol("device reported an empty DPI stage table"))?};if dav3{self.validate_dpi(&dpi)?;}return Ok(dpi);},
                 // Only an explicit firmware refusal authorizes this exact-model
                 // fallback. Corrupt/time-out stage responses do not become a
                 // guessed single-stage capability or cause another write.
@@ -382,9 +422,8 @@ impl Device for RazerDevice {
         }
 
         if self.caps.dpi.is_some() {
-            if let Some(d) = soft(self.read_dpi())? {
-                s.dpi = Some(d);
-            }
+            if crate::power::supported(self.model.pid) { s.dpi = soft(self.read_dpi())?; }
+            else if let Some(d) = soft(self.read_dpi())? { s.dpi = Some(d); }
         }
         if !self.caps.report_rates.is_empty() {
             if let Some(r) = soft(self.read_rate())? {
@@ -583,7 +622,9 @@ mod tests {
     #[test]
     fn every_model_accepts_everything_it_advertises() {
         for m in models::MODELS {
-            let (mut dev, _) = open(m.pid, &Fake::default());
+            let (mut dev, _): (Box<dyn Device>,Log) = if crate::power::supported(m.pid) {
+                crate::dav3pro_sim::mouse(m.pid).unwrap()
+            } else {let(d,log)=open(m.pid,&Fake::default());(Box::new(d),log)};
             let caps = dev.capabilities().clone();
             let ctx = m.name;
             if let Some(d) = &caps.dpi {
@@ -598,7 +639,7 @@ mod tests {
                 .unwrap_or_else(|e| panic!("{ctx}: {e}"));
                 let ends = DpiStage { x: d.max, y: d.min };
                 dev.apply(&Setting::Dpi(DpiState {
-                    stages: vec![ends],
+                    stages: if crate::power::supported(m.pid){vec![ends;2]}else{vec![ends]},
                     active: 0,
                 }))
                 .unwrap_or_else(|e| panic!("{ctx}: {e}"));

@@ -616,7 +616,9 @@ pub fn template_plan(v:&View)->Result<Plan,String>{
 }
 pub fn simulate(plan: &Plan) -> Result<serde_json::Value, String> {
     validate(plan)?;
-    let (mut device, log) = simulated(plan.vendor, plan.product)?;
+    let (mut device, log) = if plan.vendor==0x1532&&matches!(plan.product,0x00b6|0x00b7)&&plan.settings.iter().any(|s|matches!(s,Setting::Dpi(d) if d.stages.len()==1)) {
+        gearwise_razer::simulated_dav3pro_current(plan.product).map_err(|e|e.to_string())?
+    } else { simulated(plan.vendor, plan.product)? };
     let mut compiled=compile(plan)?;
     resolve_defaults(&mut compiled,&view(device.as_mut())?)?;
     let native_plan=Plan{vendor:plan.vendor,product:plan.product,settings:compiled.settings.clone(),macros:vec![],source:None};

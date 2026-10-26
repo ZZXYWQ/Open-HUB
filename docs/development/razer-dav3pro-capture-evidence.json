@@ -44,11 +44,12 @@
     "00b7"
   ],
   "new_vendor_regressions": 9,
-  "vendor_total_unit_tests": 312,
+  "vendor_total_unit_tests": 317,
   "application_default_tests": 538,
   "explicit_cross_tests": 36,
   "headless_UI_suites": 46,
   "new_runtime_dependencies": 0,
   "power_rollback": "read originals before first write; readback once; conditional exact-byte restore only while owned target remains; no uncertain setter or restore retry",
-  "new_full_compatibility_claim": false
+  "new_full_compatibility_claim": false,
+  "stage_table": "official archived v3 DLL static38-byte path; strict parser/verified transaction/current-plan guard; synthetic full five-stage and current-only native UI replay; not new hardware capture"
 }
