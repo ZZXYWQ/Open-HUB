@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-26",
+  "status": "development_only",
+  "scope": "MCHOSE UI async continuations after target navigation",
+  "full_accepted_distinct_models_added": 0,
+  "existing_guard": "App already keys DevicePage by device.id; mounted panel draft is not shared between targets.",
+  "fixed": [
+    "Late old read/write/macro errors or success notices are discarded after unmount",
+    "Leaving a target cancels device export/restore/macro-export continuations that are still waiting for a file-dialog result",
+    "Already submitted writes retain their original target ID; the old UI does not start a post-write read after leaving",
+    "Delayed local macro-file parsing cannot publish onto a later target view",
+    "Stop recording takes one immutable copy of held-key release events before clearing the held set"
+  ],
+  "headless_UI_check_groups_passed": 10,
+  "headless_UI_checks": [
+    "late old hardware success/error isolated from the new target",
+    "closed target cancels mchose_restore after dialog",
+    "closed target cancels mchose_export after dialog",
+    "closed target cancels mchose_macro_file after dialog",
+    "late set_report_rate continuation isolated",
+    "late set_report_rate continuation isolated",
+    "late mchose_apply continuation isolated",
+    "late mchose_macro continuation isolated",
+    "late local macro file failure does not publish on B",
+    "recording balances held keys on stop and target B has a fresh draft"
+  ],
+  "validation_limits": [
+    "IPC and local File promises are simulated in the production built React UI; no HID or OS input output was used",
+    "A write already submitted before navigation is not cancelled; only later UI continuations are cancelled",
+    "No MCHOSE protocol, macro mode, lighting capability or accepted-model count changed"
+  ],
+  "typescript": "passed",
+  "vite": "passed",
+  "new_runtime_dependencies": 0,
+  "source_sha256": {
+    "src/components/mchose-panel.tsx": "7105f9daf6050453a3692b9c4e643342885aecd32b6d9b29bf6104ff12aeb9e7",
+    "scripts/test-mchose-target-lifetime-ui.cjs": "0bdc87d3efd8bae3e3281e03b5267972162d6fa55f23f45e08bb00221e0d2325"
+  },
+  "installer_created": false,
+  "release_version_unchanged": "0.3.7"
+}
