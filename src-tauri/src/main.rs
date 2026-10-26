@@ -246,16 +246,15 @@ fn mchose_hardware(state:State<AppState>,id:String)->Result<mchose_config::Hardw
 #[tauri::command(async)]
 fn mchose_macro(state:State<AppState>,id:String,slot:u8)->Result<Option<mchose_config::MouseMacro>,String>{with_mchose(&state,&id,|t|t.read_macro(slot))}
 #[tauri::command(async)]
-fn mchose_macro_file(path:String,slot:u8,name:String,mode:u8,events:Vec<mchose_config::MacroEvent>)->Result<(),String>{
-    if slot>=18{return Err("宏槽无效".into())}
-    let raw=mchose_config::encode_macro(&name,mode,&events).map_err(|e|e.to_string())?;
-    let record=mchose_config::MouseMacro{slot,name,mode,events,raw};
+fn mchose_macro_file(path:String,slot:u8,name:String,mode:u8,events:Vec<mchose_config::MacroEvent>,raw:Option<Vec<u8>>)->Result<(),String>{
+    let record=mchose_config::macro_record(slot,&name,mode,&events,raw.as_deref()).map_err(|e|e.to_string())?;
     std::fs::write(path,serde_json::to_vec_pretty(&record).map_err(|e|e.to_string())?).map_err(|e|e.to_string())
 }
 #[tauri::command(async)]
-fn mchose_apply(app:AppHandle,state:State<AppState>,id:String,expected_profile:u8,action:mchose_config::Action)->Result<mchose_config::HardwareState,String>{
+fn mchose_apply(app:AppHandle,state:State<AppState>,id:String,expected_profile:u8,action:mchose_config::Action)->Result<mchose_config::ApplyResult,String>{
+    let saved_macro=match &action{mchose_config::Action::Macro{slot,name,mode,events,raw}=>Some(mchose_config::macro_record(*slot,name,*mode,events,raw.as_deref()).map_err(|e|e.to_string())?),_=>None};
     let result=with_mchose(&state,&id,|t|t.apply_hardware_for(expected_profile,action))?;
-    let _=app.emit("device-changed",id);Ok(result)
+    let _=app.emit("device-changed",id);Ok(mchose_config::ApplyResult{state:result,saved_macro})
 }
 #[tauri::command(async)]
 fn mchose_export(state:State<AppState>,id:String,path:String)->Result<(),String>{

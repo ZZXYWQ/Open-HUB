@@ -178,6 +178,8 @@ pub enum Action {
         name: String,
         mode: u8,
         events: Vec<MacroEvent>,
+        #[serde(default)]
+        raw: Option<Vec<u8>>,
     },
     DeleteMacro {
         slot: u8,
@@ -246,6 +248,11 @@ pub fn encode_macro(name: &str, mode: u8, events: &[MacroEvent]) -> Result<Vec<u
     raw[4] = mode;
     raw[8..8 + name.len()].copy_from_slice(name.as_bytes());
     for (i, e) in events.iter().enumerate() {
+        if e.kind != "delay" && e.delay_ms != 0 || e.kind == "delay" && e.code != 0 {
+            return Err(bad(
+                "此事件含未解释的原始字段，不能将其清零；请保留原始宏或使用独立 delay 事件",
+            ));
+        }
         let kind = match e.kind.as_str() {
             "key" => 17,
             "mouse" => 0,
@@ -281,6 +288,48 @@ pub fn encode_macro(name: &str, mode: u8, events: &[MacroEvent]) -> Result<Vec<u
         return Err(bad("宏必须释放所有按下的键"));
     }
     Ok(raw)
+}
+
+/// `raw` is the content baseline of an imported/read macro, not an identity
+/// claim about the target slot. Preserve opaque records exactly when unchanged;
+/// only the independently verified canonical representation may be edited.
+pub fn macro_record(
+    slot: u8,
+    name: &str,
+    mode: u8,
+    events: &[MacroEvent],
+    raw: Option<&[u8]>,
+) -> Result<MouseMacro> {
+    if slot >= 18 {
+        return Err(bad("宏槽无效"));
+    }
+    if events.is_empty() {
+        return Err(bad("空宏不能通过保存删除；请使用删除空闲宏槽并核对引用"));
+    }
+    if let Some(raw) = raw {
+        let original = decode_macro(slot, raw.to_vec())?;
+        if original.name == name && original.mode == mode && original.events == events {
+            return Ok(original);
+        }
+        if encode_macro(&original.name, original.mode, &original.events)
+            .ok()
+            .as_deref()
+            != Some(raw)
+        {
+            return Err(bad(
+                "原始宏包含未解释的字段；可原样保存或导出，暂不能无损修改，请保留原文件",
+            ));
+        }
+    }
+    decode_macro(slot, encode_macro(name, mode, events)?)
+}
+
+#[derive(Serialize)]
+pub struct ApplyResult {
+    #[serde(flatten)]
+    pub state: HardwareState,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub saved_macro: Option<MouseMacro>,
 }
 fn decode_macro(slot: u8, raw: Vec<u8>) -> Result<MouseMacro> {
     if raw.len() < 64 {
@@ -395,6 +444,7 @@ impl Transport {
                         slot,
                         name: "Open HUB test".into(),
                         mode: 0,
+                        raw: None,
                         events: vec![
                             MacroEvent {
                                 kind: "key".into(),
@@ -786,11 +836,12 @@ impl Transport {
                 name,
                 mode,
                 events,
+                raw,
             } => {
                 if *slot >= 18 {
                     return Err(bad("宏槽无效"));
                 }
-                encode_macro(name, *mode, events)?;
+                macro_record(*slot, name, *mode, events, raw.as_deref())?;
             }
             Action::DeleteMacro { slot } => {
                 if *slot >= 18 {
@@ -856,7 +907,11 @@ impl Transport {
                 name,
                 mode,
                 events,
-            } => self.write_macro_raw(slot, &encode_macro(&name, mode, &events)?)?,
+                raw,
+            } => self.write_macro_raw(
+                slot,
+                &macro_record(slot, &name, mode, &events, raw.as_deref())?.raw,
+            )?,
             Action::DeleteMacro { slot } => self.write_macro_raw(slot, &[0u8; 64])?,
         }
         let state = self.hardware_state()?;
@@ -945,6 +1000,10 @@ impl Transport {
         Ok(state)
     }
 }
+
+#[cfg(test)]
+#[path = "mchose_macro_tests.rs"]
+mod macro_tests;
 
 #[cfg(test)]
 mod tests {

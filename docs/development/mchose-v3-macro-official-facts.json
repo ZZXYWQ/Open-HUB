@@ -1,6 +1,6 @@
 {
   "date": "2026-10-27",
-  "status": "static_source_facts; macro codec changes pending",
+  "status": "static source facts; unchanged raw preservation and canonical edits implemented",
   "source": {
     "url": "https://www.mchose.com.cn/assets/purify.es-CxLZ1Htw.js",
     "bytes": 7763164,
@@ -317,16 +317,16 @@
     "OEM_code_executed": false,
     "hardware_tested": false,
     "new_runtime_dependencies": false,
-    "macro_production_changes": false,
+    "macro_production_changes": true,
     "full_model_compatibility_claim": false
   },
-  "pending_codec_design": {
-    "production_edits_made": false,
+  "implemented_bounded_design": {
+    "production_edits_made": true,
     "raw_baseline": "Carry optional original raw macro content through native read, unchanged save, macro-file export/import and write. This is content provenance, not a physical-mouse identity or a repeat-count schema.",
     "unchanged": "When requested name/mode/events still match the decoded baseline, preserve and write/export exact baseline bytes, including opaque header words, non-time words and terminal flags.",
     "canonical": "For a new or canonically edited macro, retain the independently implemented OEM canonical encoder and balanced-key checks. Reject non-delay delay_ms!=0 instead of silently discarding it.",
     "opaque_edits": "If a baseline contains unmodelled header/event words or flags and user changes its interpreted values, retain the source and explicitly refuse lossy editing. Do not invent semantics or normalize the opaque bytes.",
     "UI": "Retain four source mode values0/1/3/2 with mode2 qualified as original mode2. No repeat-count field or new inline-delay control.",
-    "next_validation": "Stateful production request test: read native slot -> unchanged save/export/import -> write/read exact bytes; canonical edit roundtrip and unknown opaque edit refusal. No hardware macro playback or OS input required."
+    "validation": "Six native default tests, five new UI groups and eight actual UI save/export requests replayed through production codec and native transport; no physical playback."
   }
 }

@@ -1,0 +1,66 @@
+{
+  "date_local": "2026-10-27",
+  "base_commit": "7d7385a",
+  "release_version": "0.3.7",
+  "installer_built_published_or_installed": false,
+  "accepted_complete_models": 0,
+  "scope": "MCHOSE native macro content preservation across read, save, file export/import and write",
+  "implemented": [
+    "Optional source raw bytes in macro Action and macro-file export",
+    "Exact unchanged raw preservation including opaque header, non-time words and terminal bits",
+    "Canonical edits with balanced keys and explicit refusal of silently discarded event words",
+    "Empty baseline cannot delete a referenced macro through the save action",
+    "Verified saved_macro receipt retains the next editing/export baseline without replacing newer drafts"
+  ],
+  "validation": {
+    "default_application_tests_passed": 623,
+    "default_application_tests_failed": 0,
+    "new_native_default_tests_passed": 6,
+    "actual_UI_to_native_explicit_test_passed": 1,
+    "actual_UI_apply_requests_replayed": 6,
+    "successful_apply_requests": 5,
+    "rejected_apply_requests_without_SET": 1,
+    "actual_UI_file_export_requests_replayed": 2,
+    "new_macro_raw_UI_groups_passed": 5,
+    "existing_draft_UI_groups_passed": 10,
+    "existing_target_lifetime_UI_groups_passed": 10,
+    "existing_keyboard_UI_groups_passed": 7,
+    "typescript": "passed",
+    "vite": "passed",
+    "non_test_cargo_check": "passed",
+    "physical_HID_accessed": false,
+    "OEM_code_executed": false,
+    "OS_input_injected": false,
+    "runtime_dependencies_added": 0,
+    "javascript_bundle_bytes": 759402,
+    "javascript_bundle_delta_from_base_bytes": 97,
+    "javascript_bundle_sha256": "1191969b24ac8132fadc0f1ff333f6fe007ff275fb40cec3886580f18321528e"
+  },
+  "scenarios": [
+    "Independent 76-byte source vector and canonical edits for all four mode values",
+    "Opaque native read -> unchanged save -> production file export -> import into another slot -> native write/read",
+    "Changed opaque content and unsupported new event words refuse SET and preserve existing files",
+    "All-zero raw cannot bypass referenced-macro deletion validation",
+    "19-byte chunk controls and offsets match the independent wire layout",
+    "Saved receipt preserves flattened hardware DTO compatibility and exact newly written bytes",
+    "Chunk failure and ACK without matching readback return error without retry",
+    "Built UI retains raw baselines, original JSON formatting, failed drafts and physical-target lifetime",
+    "Six actual GUI actions and two file requests pass production Action/record/transport/file replay with another mouse untouched"
+  ],
+  "limits": [
+    "Raw is source content, not a target slot ownership precondition or persistent mouse identity",
+    "Opaque interpreted values cannot yet be edited; unknown event opcodes are not yet decoded",
+    "No repeat-count or non-time timing semantics were invented",
+    "Synthetic commit-at-last-chunk behavior does not prove physical firmware atomicity or rollback",
+    "Hardware playback, complete original mode behavior and full model acceptance remain unverified",
+    "Installed application, release and updater feed remain unchanged"
+  ],
+  "source_sha256": {
+    "src-tauri/src/main.rs": "611123ab402ee78a2eb856984e3f103abdc14d24ca5a80454803b5e50ce354e7",
+    "src-tauri/src/mchose_config.rs": "da96e8d63e2f62ed241c172f6eca0a4e089f72ee952923417c57274576cc19c1",
+    "src-tauri/src/mchose_macro_tests.rs": "d155a1bcaaec57a9ad6208f60e99b6d20d2ba9c4c47ef77c41da953384f3d7c7",
+    "src/components/mchose-panel.tsx": "6388f0d3ead2e7cb01dd5dc74d759c05520d806ce10920c3113210f5b01e4b00",
+    "src/lib/api.ts": "1c7c8786985f7d2186d0b73e2875959e70e702075680afff89eb09d0698e53f8",
+    "scripts/test-mchose-macro-raw-ui.cjs": "42f99deae900357e915ee211e1ea0a1211c72bbbb75ce3dc4779c49eefe37a28"
+  }
+}
