@@ -145,6 +145,7 @@ fn validate_snapshot(s: &Snapshot) -> Result<()> {
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Action {
+    ReportRate { value: u8 },
     Settings {
         sleep: u8,
         never_sleep: bool,
@@ -326,6 +327,7 @@ pub fn macro_record(
 
 #[derive(Serialize)]
 pub struct ApplyResult {
+    pub target: crate::mchose_target::Target,
     #[serde(flatten)]
     pub state: HardwareState,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -769,6 +771,7 @@ impl Transport {
         };
         // Validate before any backup or device write.
         match &action {
+            Action::ReportRate { value } => rate(*value)?,
             Action::Settings {
                 sleep,
                 left_debounce,
@@ -858,6 +861,11 @@ impl Transport {
         self.backup_full_for(p)?;
         self.require_board(p)?;
         match action {
+            Action::ReportRate { value } => {
+                cfg[1] = (cfg[1] & 0x0f) | (value << 4);
+                cfg[2] = (cfg[2] & 0x0f) | (value << 4);
+                self.checked_settings(&cfg)?;
+            }
             Action::Settings {
                 sleep,
                 never_sleep,

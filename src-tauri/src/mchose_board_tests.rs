@@ -369,3 +369,135 @@ fn report_rate_keeps_original_board_settings_and_backups() {
         serde_json::json!(before[0].raw_settings)
     );
 }
+
+#[test]
+fn bound_rate_action_preserves_all_xy_values_low_nibbles_and_other_boards() {
+    for value in [0, 2, 3, 4, 5, 6] {
+        let rig = Rig::new(None);
+        {
+            let mut mouse = rig.mouse.lock().unwrap();
+            mouse.boards[0].raw_settings[1] = (mouse.boards[0].raw_settings[1] & 0xf0) | 0x04;
+            mouse.boards[0].raw_settings[2] = (mouse.boards[0].raw_settings[2] & 0xf0) | 0x05;
+        }
+        let before = rig.mouse.lock().unwrap().boards.clone();
+        let device = crate::mchose_target::simulated_device("mchose-A");
+        let target = crate::mchose_target::read_context(&device, &device.connection_key).unwrap();
+        let state = crate::mchose_target::with_target(&device, &rig.transport, &target, |t| {
+            t.apply_hardware_for(0, Action::ReportRate { value })
+        })
+        .unwrap();
+        let mut expected = before[0].raw_settings.clone();
+        expected[1] = (value << 4) | 0x04;
+        expected[2] = (value << 4) | 0x05;
+        assert_eq!(state.raw_settings, expected);
+        let mouse = rig.mouse.lock().unwrap();
+        assert_eq!(mouse.writes, [(0x0102, expected)]);
+        for board in 0..3 {
+            assert_eq!(mouse.boards[board].dpi_x, before[board].dpi_x);
+            assert_eq!(mouse.boards[board].dpi_y, before[board].dpi_y);
+            assert_eq!(mouse.boards[board].raw_buttons, before[board].raw_buttons);
+            if board != 0 {
+                assert!(mouse.boards[board] == before[board]);
+            }
+        }
+        drop(mouse);
+        let files = std::fs::read_dir(&rig.backup).unwrap().collect::<Vec<_>>();
+        assert_eq!(files.len(), 1);
+        let backup: Snapshot =
+            serde_json::from_slice(&std::fs::read(files[0].as_ref().unwrap().path()).unwrap())
+                .unwrap();
+        assert!(backup.state == before[0]);
+    }
+}
+
+#[test]
+fn bound_rate_action_rejects_stale_or_changed_board_and_invalid_rate_before_set() {
+    for switch in [None, Some(Switch::DuringBackup)] {
+        let rig = Rig::new(switch);
+        if switch.is_none() {
+            rig.mouse.lock().unwrap().active = 1;
+        }
+        let before = rig.mouse.lock().unwrap().boards.clone();
+        assert!(rig
+            .transport
+            .apply_hardware_for(0, Action::ReportRate { value: 4 })
+            .is_err());
+        let mouse = rig.mouse.lock().unwrap();
+        assert!(mouse.writes.is_empty());
+        assert!(mouse.boards == before);
+        assert!(!rig.backup.exists());
+    }
+    let rig = Rig::new(None);
+    assert!(rig
+        .transport
+        .apply_hardware_for(0, Action::ReportRate { value: 1 })
+        .is_err());
+    assert!(rig.mouse.lock().unwrap().writes.is_empty());
+    assert!(!rig.backup.exists());
+}
+
+#[test]
+fn fresh_hardware_context_uses_live_raw_owner_and_does_not_enter_portable_backup() {
+    let rig = Rig::new(None);
+    let mut device = crate::mchose_target::simulated_device("mchose-A");
+    device.profile_key = "session:mchose-A:reconnected".into();
+    device.connection_key = "connection:mchose-A:2".into();
+    let view = crate::mchose_target::read_hardware(&device, &rig.transport, &device.connection_key)
+        .unwrap();
+    assert_eq!(view.target.device_key, device.profile_key);
+    assert_eq!(view.target.connection_key, device.connection_key);
+    assert!(view.state == rig.mouse.lock().unwrap().boards[0]);
+    let json = serde_json::to_value(&view).unwrap();
+    assert!(json.get("state").is_none());
+    assert_eq!(json["target"]["connection_key"], "connection:mchose-A:2");
+    let snapshot = serde_json::to_string(&rig.transport.full_snapshot().unwrap()).unwrap();
+    assert!(!snapshot.contains("connection_key") && !snapshot.contains("device_key"));
+    assert!(!rig.backup.exists());
+}
+
+#[test]
+#[ignore = "requires actual reconnect UI capture via OPEN_HUB_MCHOSE_RECONNECT_UI_CAPTURE"]
+fn actual_same_path_reconnect_ui_rate_requests_replay_before_native_io() {
+    #[derive(serde::Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct Request {
+        id: String,
+        #[serde(rename = "expectedProfile")]
+        board: u8,
+        action: Action,
+        target: crate::mchose_target::Target,
+    }
+    #[derive(serde::Deserialize)]
+    struct Capture {
+        stale: Request,
+        fresh: Request,
+    }
+    let data =
+        std::fs::read(std::env::var("OPEN_HUB_MCHOSE_RECONNECT_UI_CAPTURE").unwrap()).unwrap();
+    assert!(data.len() < 16384);
+    let capture: Capture = serde_json::from_slice(&data).unwrap();
+    let rig = Rig::new(None);
+    let mut device = crate::mchose_target::simulated_device("mchose-A");
+    device.profile_key = "session:mchose-A:reconnected".into();
+    device.connection_key = "connection:mchose-A:2".into();
+    let stale = capture.stale;
+    assert_eq!(stale.id, device.id);
+    assert_eq!(stale.board, 0);
+    assert!(
+        crate::mchose_target::with_target(&device, &rig.transport, &stale.target, |t| t
+            .apply_hardware_for(stale.board, stale.action))
+        .is_err()
+    );
+    assert!(rig.mouse.lock().unwrap().writes.is_empty());
+    assert!(!rig.backup.exists());
+    let fresh = capture.fresh;
+    assert_eq!(fresh.id, stale.id);
+    assert_eq!(fresh.board, 0);
+    let state = crate::mchose_target::with_target(&device, &rig.transport, &fresh.target, |t| {
+        t.apply_hardware_for(fresh.board, fresh.action)
+    })
+    .unwrap();
+    assert_eq!(state.raw_settings[1] >> 4, 4);
+    assert_eq!(state.raw_settings[2] >> 4, 4);
+    assert_eq!(rig.mouse.lock().unwrap().writes.len(), 1);
+}

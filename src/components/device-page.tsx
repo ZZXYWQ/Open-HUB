@@ -56,7 +56,7 @@ export function DevicePage({ device, state, profile, onLevelsChange, onApplyLeve
   const levels = profile.levels;
   if(device.id.startsWith("multi:"))return <MultiPanel key={device.id} id={device.id} onImported={onProfiles}/>;
   if(device.id.startsWith("sino:"))return <SinoPanel key={device.id} id={device.id} onImported={onProfiles}/>;
-  if(device.vendor_id===0x3837)return <div className="mchose-studio min-h-0 flex-1"><MchosePanel id={device.id}/></div>;
+  if(device.vendor_id===0x3837)return <div className="mchose-studio min-h-0 flex-1"><MchosePanel key={`${device.id}:${device.connection_key??"missing"}`} id={device.id} connectionKey={device.connection_key??""}/></div>;
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-[72px_auto_1fr]">
@@ -65,7 +65,7 @@ export function DevicePage({ device, state, profile, onLevelsChange, onApplyLeve
         <RailItem icon={Settings} label="Device settings" active={tab === "settings"} onClick={() => toggle("settings")} />
       </nav>
 
-      {tab==="hardware"&&device.vendor_id===0x3837 ? <MchosePanel id={device.id}/> : state && tab === "dpi" ? (
+      {tab==="hardware"&&device.vendor_id===0x3837 ? <MchosePanel key={`${device.id}:${device.connection_key??"missing"}`} id={device.id} connectionKey={device.connection_key??""}/> : state && tab === "dpi" ? (
         <DpiPanel device={device} state={state} profile={profile} onLevelsChange={onLevelsChange} onApplyLevel={onApplyLevel} onReportRate={onReportRate} onLod={onLod} />
       ) : state && tab === "settings" ? (
         <SettingsPanel device={device} state={state} onModeChange={onModeChange} />

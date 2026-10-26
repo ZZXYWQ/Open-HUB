@@ -13,7 +13,7 @@ const hardware=JSON.parse(fs.readFileSync('src-tauri/tests/fixtures/mchose.json'
   const opaque={slot:0,name:'A',mode:1,events:clone(events),raw:[...canonical.raw]};opaque.raw.splice(2,2,0xa5,0x17);opaque.raw.splice(5,3,0x91,0x82,0x73);opaque.raw[64]=29;opaque.raw[66]|=128;opaque.events[0].delay_ms=29;
   const state={'mchose-A':{0:opaque,1:canonical},'mchose-B':{}},capture={actions:[],exports:[]};
   window.__rawMacro={state,capture,opaque:clone(opaque),hold:false,pending:null};
-  const peers=['A','B'].map(unit=>({id:'mchose-'+unit,profile_key:'session:mchose-'+unit,vendor_id:0x3837,product_id:'1014',model_ids:['4026'],name:'A7 V3 Ultra+ '+unit,product:'A7 V3 Ultra+',kind:'mouse',firmware_name:'fixture',connection:'wireless',protocol:'MCHOSE',features:[]}));
+  const peers=['A','B'].map(unit=>({id:'mchose-'+unit,profile_key:'session:mchose-'+unit,connection_key:'connection:mchose-'+unit+':1',vendor_id:0x3837,product_id:'1014',model_ids:['4026'],name:'A7 V3 Ultra+ '+unit,product:'A7 V3 Ultra+',kind:'mouse',firmware_name:'fixture',connection:'wireless',protocol:'MCHOSE',features:[]}));
   const old=window.__TAURI_INTERNALS__.invoke;
   const record=m=>{
    const original=m.raw;
@@ -24,8 +24,13 @@ const hardware=JSON.parse(fs.readFileSync('src-tauri/tests/fixtures/mchose.json'
    if(!['scan_devices','list_devices','mchose_hardware','mchose_macro','mchose_apply','mchose_macro_file','plugin:dialog|save'].includes(cmd))return old(cmd,args);
    window.__qaCalls.push({cmd,args:clone(args)});
    if(cmd==='scan_devices')return {devices:peers,warnings:[]};if(cmd==='list_devices')return peers;
-   if(cmd==='plugin:dialog|save')return 'authored-macro-export.json';
-   if(cmd==='mchose_hardware')return clone(hardware);
+   if(cmd.startsWith('mchose_')&&cmd!=='mchose_macro_file'){
+     const target={device_key:'session:'+args.id,connection_key:'connection:'+args.id+':1'};
+     if(cmd==='mchose_hardware'){if(args.connectionKey!==target.connection_key)throw Error('wrong discovery connection');}
+     else if(JSON.stringify(args.target)!==JSON.stringify(target))throw Error('wrong live target');
+    }
+    if(cmd==='plugin:dialog|save')return 'authored-macro-export.json';
+   if(cmd==='mchose_hardware')return {...clone(hardware),target:clone(args.connectionKey?{device_key:'session:'+args.id,connection_key:args.connectionKey}:null)};
    if(cmd==='mchose_macro')return clone(state[args.id][args.slot]??null);
    if(cmd==='mchose_macro_file'){const m=record(args);capture.exports.push({args:clone(args),expected_raw:m.raw});return null;}
    if(args.expectedProfile!==0||args.action.kind!=='macro')throw Error('unexpected authored target/action');
@@ -33,7 +38,7 @@ const hardware=JSON.parse(fs.readFileSync('src-tauri/tests/fixtures/mchose.json'
    const receipt=record(args.action);request.expected_success=true;request.expected_raw=clone(receipt.raw);
    // A receipt belongs to its target slot and contains the newly verified bytes.
    delete receipt.kind;state[args.id][receipt.slot]=clone(receipt);
-   const value={...clone(hardware),saved_macro:receipt};
+   const value={...clone(hardware),target:clone(args.target),saved_macro:receipt};
    if(window.__rawMacro.hold){window.__rawMacro.hold=false;return new Promise(resolve=>window.__rawMacro.pending=()=>resolve(value));}
    return value;
   };

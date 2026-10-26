@@ -323,6 +323,7 @@ fn fixture() -> (ProfileStore, Vec<crate::DeviceSummary>) {
             .insert(p.id.clone(), copy.id.clone());
         s.select_for(&e, &copy.id).unwrap();
         devices.push(crate::DeviceSummary {
+            connection_key: None,
             vendor_id: 0x046d,
             id: e.id,
             profile_key: e.key,
@@ -358,6 +359,7 @@ fn fixture() -> (ProfileStore, Vec<crate::DeviceSummary>) {
     s.upsert(mchose);
     for unit in ["A", "B"] {
         devices.push(crate::DeviceSummary {
+            connection_key: None,
             vendor_id: 0x3837,
             id: format!("mchose-{unit}"),
             profile_key: format!("session:mchose-{unit}"),

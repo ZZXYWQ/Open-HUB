@@ -14,6 +14,8 @@ export interface FeatureInfo {
 export interface DeviceSummary {
   /** Local ownership identity; connection-only when no reliable unit id exists. */
   profile_key?: string;
+  /** Current MCHOSE transport generation; never persisted as profile ownership. */
+  connection_key?: string;
   vendor_id: number;
   id: string;
   name: string;
@@ -67,7 +69,9 @@ export interface DeviceState {
   errors: string[];
 }
 
+export interface MchoseTarget {device_key:string;connection_key:string}
 export interface MchoseHardware {
+  target:MchoseTarget;
   raw_settings:number[]; profile:number; names:string[]; dpi_x:number[]; dpi_y:number[]; count:number; active:number; independent:boolean;
   sleep:number; never_sleep:boolean; left_debounce:number; right_debounce:number; sensor:number; rotation:number; lod:number;
   buttons:number[][]; adaptive:number[]; firmware:string; receiver_firmware:string;
@@ -265,12 +269,12 @@ export const api = {
  effectsStop:()=>invoke<EffectStatus>('effects_stop'),
  effectsStatus:()=>invoke<EffectStatus>('effects_status'),
  effectsPreset:(path:string,config:EffectConfig,targetKeys:string[]=[])=>invoke<void>('effects_preset',{path,config,targetKeys}),
-  mchoseHardware:(id:string)=>invoke<MchoseHardware>("mchose_hardware",{id}),
-  mchoseMacro:(id:string,slot:number)=>invoke<MchoseMacro|null>("mchose_macro",{id,slot}),
+  mchoseHardware:(id:string,connectionKey:string)=>invoke<MchoseHardware>("mchose_hardware",{id,connectionKey}),
+  mchoseMacro:(id:string,slot:number,target:MchoseTarget)=>invoke<MchoseMacro|null>("mchose_macro",{id,slot,target}),
   mchoseMacroFile:(path:string,macro:MchoseMacro)=>invoke<void>("mchose_macro_file",{path,...macro,raw:macro.raw??null}),
-  mchoseApply:(id:string,expectedProfile:number,action:Record<string,unknown>)=>invoke<MchoseHardware&{saved_macro?:MchoseMacro}>("mchose_apply",{id,expectedProfile,action}),
-  mchoseExport:(id:string,path:string)=>invoke<void>("mchose_export",{id,path}),
-  mchoseRestore:(id:string,path:string)=>invoke<MchoseHardware>("mchose_restore",{id,path}),
+  mchoseApply:(id:string,expectedProfile:number,action:Record<string,unknown>,target:MchoseTarget)=>invoke<MchoseHardware&{saved_macro?:MchoseMacro}>("mchose_apply",{id,expectedProfile,action,target}),
+  mchoseExport:(id:string,path:string,target:MchoseTarget)=>invoke<void>("mchose_export",{id,path,target}),
+  mchoseRestore:(id:string,path:string,target:MchoseTarget)=>invoke<MchoseHardware>("mchose_restore",{id,path,target}),
   importMhub:(path:string|null=null)=>invoke<ImportResult>("import_mhub_profiles",{path}),
   openMhub:()=>invoke<void>("open_mhub"),
   scan: () => invoke<ScanResult>("scan_devices"),

@@ -1,0 +1,91 @@
+{
+  "date_local": "2026-10-27",
+  "recorded_at": "2026-10-27T03:02:52.160463+08:00",
+  "base_commit": "701a7d0",
+  "release_version": "0.3.7",
+  "accepted_complete_models": 0,
+  "installer_built_published_or_installed": false,
+  "scope": "MCHOSE live IPC and UI bound to raw owner plus current transport generation, including report rate",
+  "validation": {
+    "default_application_tests_passed": 633,
+    "default_application_tests_failed": 0,
+    "default_ignored_tests": 43,
+    "new_default_native_tests_passed": 6,
+    "explicit_actual_UI_native_replay_tests_passed": 3,
+    "actual_UI_key_requests_replayed": 108,
+    "actual_UI_macro_apply_requests_replayed": 10,
+    "actual_UI_macro_file_exports_replayed": 2,
+    "actual_UI_reconnect_rate_requests_replayed": 2,
+    "old_rate_request_rejected_before_HID": true,
+    "fresh_rate_request_native_SETs": 1,
+    "UI_groups_passed": {
+      "target-lifetime": 22,
+      "drafts": 10,
+      "keys": 7,
+      "macro-raw": 7
+    },
+    "UI_groups_total": 46,
+    "existing_native_profile_routing_UI": "passed",
+    "typescript": "passed",
+    "vite": "passed",
+    "non_test_dev_build": "passed",
+    "physical_HID_access": false,
+    "physical_settings_macro_or_firmware_writes": false,
+    "OEM_code_executed": false,
+    "OS_input_injected": false,
+    "runtime_dependencies_added": 0,
+    "javascript_bundle_bytes": 760405,
+    "javascript_bundle_delta_from_base_bytes": 649,
+    "javascript_bundle_sha256": "3cef437c6d3658acf6e182fbc93e6db4e06c253a26edfa161abea0094e6288e9",
+    "dev_EXE_sha256": "369be79baea00e367dcb0e2c8bf4fbba791f96f7c8f7cdc959cdf58ebe3389cf"
+  },
+  "invariants_tested": [
+    "Raw backend owner and live connection verified under the manager lock before target operation, HID or target-associated file I/O",
+    "Stale owner/connection, empty owner/connection, wrong vendor, receiver or model reject without HID, backup or callback execution",
+    "First read requires the discovery connection; resolved profile aliases cannot substitute for raw owner",
+    "Manual generic MCHOSE DPI/rate/onboard IPC cannot bypass live target; other vendors keep prior routing",
+    "Same-path, same-model, same-board and unchanged summary profile key reconnect creates fresh UI state",
+    "Late hardware/macro/write success and failure cannot update the new panel or create old follow-up commands",
+    "Old backup import/export and macro file dialogs cannot proceed after reconnect/unmount",
+    "Layout-stage cleanup prevents deferred dialog continuation after unmount",
+    "Wrong-owner receipt cannot confirm or clear existing section drafts",
+    "Six rate codes retain all XY stages, both low nibbles, buttons and other boards with one native SET and prewrite full backup",
+    "Stale board, backup board switch and invalid rate reject before native SET",
+    "Connection target appears in live flattened DTO but never enters portable full backup or macro content"
+  ],
+  "limits": [
+    "Connection generation is not a hardware serial; receiver re-pairing while USB stays live remains unproved",
+    "No new physical firmware identity, write, playback or lighting certification; earlier identity FF reason remains unknown",
+    "Native multi-command writes are not physically atomic against external firmware state changes",
+    "Adaptive power and remaining OEM capabilities plus 100 complete model acceptance remain unfinished",
+    "Saved profile activation uses its existing fresh routing, not this manual UI target",
+    "Installed application, release and updater feed were not changed"
+  ],
+  "ui_report_sha256": {
+    "target-lifetime": "e19aaba4e5cc7726e34677bb07e97ff816e6ab27f891e60c0fa1a517a324fd7e",
+    "drafts": "5dda4ed842fc4dd2e4446cece24fe50cf4ab33daad729b0201d1394f7e4ca5a9",
+    "keys": "4366edbb17c60ebbdfc9f96bac20caff37a8355795143e0b14552576da696161",
+    "macro-raw": "f22255b62d818509fc3d6eba813176c9da8855426427afa06312548d381a3773"
+  },
+  "actual_ui_capture_sha256": {
+    "keys": "e63699a2c221c43964e0b9830b30087cd5d94113f351f2a3cac45b742fa36ef4",
+    "macro": "0f54ca9a85598fdb7af17c7c819a2c5498a08d3a8cdac348396039057436e777",
+    "reconnect": "bfc596127d102d9421751cfb763c9242665b8dd0c082402dcbb56ee04de2cce2"
+  },
+  "source_sha256": {
+    "src-tauri/src/main.rs": "9e258ab2eb086b2ec2894e7ab8d85f43770a1c3f0903df31490424e78270e9d6",
+    "src-tauri/src/mchose_target.rs": "f3b440866db5659d07e2adb315480e333c474a98f1036ccd54ac7495e5685f2f",
+    "src-tauri/src/mchose_config.rs": "8f0b38800c62f5853704d9353ecce613fd5486e982a980b6cebe64b313a25661",
+    "src-tauri/src/mchose_board_tests.rs": "8484fdcee6f50632084718313fdf1a24d20a1dca6b4f4e65c97cc5ea5540b5ae",
+    "src-tauri/src/mchose_keybinding_tests.rs": "f08e7a6d85a26d6eaf014a607e29a1a587acefca8ce2d04b74062c02f64ccc8a",
+    "src-tauri/src/mchose_macro_tests.rs": "2f71e6f02f3d84a97ca496d7d54cfe71152710816b8230fdd62051e0e947c4df",
+    "src-tauri/src/profile_routing_tests.rs": "96713ce0c789e92ba6e6c75b3f23276015bc1aff13accb1cc0d2b7eef9d63141",
+    "src/components/device-page.tsx": "f156fcd9d58b44c9a683545f04a9ab4a687833dc35019ad291ebbbdf254c6e83",
+    "src/components/mchose-panel.tsx": "86b57d4d0a9fc6457ae7af7d0947324438e9e5b13c38b0a95463174d3961fd79",
+    "src/lib/api.ts": "e71dfd391970b1ec3048e17740b331d2a0d74e7de16c72caec7b678849a050a3",
+    "scripts/test-mchose-target-lifetime-ui.cjs": "47c377268a155ca6da650291689e34e066d4bb1db97b5694de69b7ef5edf52ff",
+    "scripts/test-mchose-drafts-ui.cjs": "b4015c7af62c866e46d52c5672b82fd8f607a952c4bf5d827a6bff5c1ec40861",
+    "scripts/test-mchose-keys-ui.cjs": "0086a81607bb6a2f34613971a7c2e5e9c39d00c55abc1af3fc9953d3a458fcc9",
+    "scripts/test-mchose-macro-raw-ui.cjs": "7b04a8b94ce57ec174498c1673e61d855f1ce88745de2ed553eb1c5b3e40551f"
+  }
+}

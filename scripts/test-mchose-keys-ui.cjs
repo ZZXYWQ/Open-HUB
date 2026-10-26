@@ -8,15 +8,20 @@ const out=path.resolve('../outputs/100-model-development/mchose-keys-ui');fs.mkd
  await page.addInitScript({content:`(()=>{${base.slice(start,end)}})()`});
  await page.addInitScript(()=>{
   const clone=v=>JSON.parse(JSON.stringify(v));
-  const peers=['A','B'].map(unit=>({id:'mchose-'+unit,profile_key:'session:mchose-'+unit,vendor_id:0x3837,product_id:'1014',model_ids:['4026'],name:'A7 V3 Ultra+ '+unit,product:'A7 V3 Ultra+',kind:'mouse',firmware_name:'fixture',connection:'wireless',protocol:'MCHOSE',features:[]}));
-  const states={};for(const unit of ['A','B'])states['mchose-'+unit]={profile:0,names:['Board0','Board1','Board2'],dpi_x:Array(6).fill(unit==='A'?800:1600),dpi_y:Array(6).fill(unit==='A'?800:1600),count:6,active:0,independent:true,sleep:3,never_sleep:false,left_debounce:8,right_debounce:8,sensor:0,rotation:0,lod:2,buttons:[[0,1,0],[0,2,0],[0,4,0],[0,16,0],[0,8,0],[255,255,255]],adaptive:[0,0,0,0],firmware:'17',receiver_firmware:'1',raw_settings:[0,0x30,0x30,3,0,0,0,8,8,...Array(10).fill(0)]};
+  const peers=['A','B'].map(unit=>({id:'mchose-'+unit,profile_key:'session:mchose-'+unit,connection_key:'connection:mchose-'+unit+':1',vendor_id:0x3837,product_id:'1014',model_ids:['4026'],name:'A7 V3 Ultra+ '+unit,product:'A7 V3 Ultra+',kind:'mouse',firmware_name:'fixture',connection:'wireless',protocol:'MCHOSE',features:[]}));
+  const states={};for(const unit of ['A','B'])states['mchose-'+unit]={target:{device_key:'session:mchose-'+unit,connection_key:'connection:mchose-'+unit+':1'},profile:0,names:['Board0','Board1','Board2'],dpi_x:Array(6).fill(unit==='A'?800:1600),dpi_y:Array(6).fill(unit==='A'?800:1600),count:6,active:0,independent:true,sleep:3,never_sleep:false,left_debounce:8,right_debounce:8,sensor:0,rotation:0,lod:2,buttons:[[0,1,0],[0,2,0],[0,4,0],[0,16,0],[0,8,0],[255,255,255]],adaptive:[0,0,0,0],firmware:'17',receiver_firmware:'1',raw_settings:[0,0x30,0x30,3,0,0,0,8,8,...Array(10).fill(0)]};
   window.__mchoseKeysStates=states;
   const old=window.__TAURI_INTERNALS__.invoke;
   window.__TAURI_INTERNALS__.invoke=async(cmd,args={})=>{
    if(!['scan_devices','list_devices','mchose_hardware','mchose_apply','mchose_macro'].includes(cmd))return old(cmd,args);
    window.__qaCalls.push({cmd,args:clone(args)});
    if(cmd==='scan_devices')return {devices:peers,warnings:[]};if(cmd==='list_devices')return peers;
-   if(cmd==='mchose_macro')return null;
+   if(cmd.startsWith('mchose_')&&cmd!=='mchose_macro_file'){
+     const target={device_key:'session:'+args.id,connection_key:'connection:'+args.id+':1'};
+     if(cmd==='mchose_hardware'){if(args.connectionKey!==target.connection_key)throw Error('wrong discovery connection');}
+     else if(JSON.stringify(args.target)!==JSON.stringify(target))throw Error('wrong live target');
+    }
+    if(cmd==='mchose_macro')return null;
    const state=states[args.id];if(!state)throw Error('wrong target');
    if(cmd==='mchose_apply'){if(args.expectedProfile!==state.profile||args.action.kind!=='button'||args.action.index!==4)throw Error('unexpected authored operation');state.buttons[4]=clone(args.action.binding);}
    return clone(state);

@@ -32,6 +32,7 @@ mod hidpp;
 mod manager;
 mod mchose;
 mod mchose_config;
+mod mchose_target;
 mod magdock;
 mod audio_meter;
 mod rgb;
@@ -79,6 +80,8 @@ struct DeviceSummary {
     vendor_id: u16,
     id: String,
     profile_key: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    connection_key: Option<String>,
     name: String,
     product: String,
     product_id: String,
@@ -117,7 +120,7 @@ fn list_devices(app: AppHandle,state: State<AppState>,sino:State<sinowealth::Ser
     let mut out=summaries(guard.as_ref().expect("manager initialised"));out.extend(sino.peers().iter().map(sino_summary));out.extend(multi.peers().iter().map(multi_summary));drop(guard);resolve_profile_keys(&app,&mut out)?;Ok(out)
 }
 
-fn multi_summary(d:&gearwise_core::DeviceDescriptor)->DeviceSummary{DeviceSummary{vendor_id:d.vendor_id,profile_key:profile_routing::serial_key(d.vendor_id,d.product_id,d.serial.as_deref()),id:format!("multi:{}",d.id),name:d.name.clone(),product:d.name.clone(),product_id:format!("{:04X}",d.product_id),kind:"mouse",firmware_name:d.firmware.clone().unwrap_or_default(),model_ids:vec![format!("{:04X}",d.product_id)],connection:format!("{:?}",d.connection),protocol:"Open HUB 型号驱动（未实机验证）".into(),features:vec![]}}
+fn multi_summary(d:&gearwise_core::DeviceDescriptor)->DeviceSummary{DeviceSummary{connection_key:None,vendor_id:d.vendor_id,profile_key:profile_routing::serial_key(d.vendor_id,d.product_id,d.serial.as_deref()),id:format!("multi:{}",d.id),name:d.name.clone(),product:d.name.clone(),product_id:format!("{:04X}",d.product_id),kind:"mouse",firmware_name:d.firmware.clone().unwrap_or_default(),model_ids:vec![format!("{:04X}",d.product_id)],connection:format!("{:?}",d.connection),protocol:"Open HUB 型号驱动（未实机验证）".into(),features:vec![]}}
 #[tauri::command(async)]
 fn multi_read(service:State<multibrand::Service>,runtime:State<macro_runtime::Runtime>,id:String)->Result<multibrand::View,String>{service.read(&id,&runtime)}
 #[tauri::command(async)]
@@ -156,7 +159,7 @@ fn multi_reconnect_resume(service:State<multibrand::Service>,runtime:State<macro
 fn multi_reconnect_retry(service:State<multibrand::Service>,key:String,revision:String,id:String,candidate_revision:String,confirmed:bool)->Result<String,String>{service.reconnect_retry(&key,&revision,&id,&candidate_revision,confirmed)}
 #[tauri::command(async)]
 fn multi_reconnect_discard(service:State<multibrand::Service>,key:String,revision:String)->Result<(),String>{service.reconnect_discard(&key,&revision)}
-fn sino_summary(p:&sinowealth::Peer)->DeviceSummary{DeviceSummary{vendor_id:p.model.vendor,profile_key:profile_routing::serial_key(p.model.vendor,p.model.product,Some(&p.serial)),id:p.id.clone(),name:p.model.name.clone(),product:p.model.name.clone(),product_id:format!("{:04X}",p.model.product),kind:"mouse",firmware_name:p.model.firmware.clone(),model_ids:vec![format!("{:04X}",p.model.product)],connection:"USB 有线".into(),protocol:"SinoWealth wired".into(),features:vec![]}}
+fn sino_summary(p:&sinowealth::Peer)->DeviceSummary{DeviceSummary{connection_key:None,vendor_id:p.model.vendor,profile_key:profile_routing::serial_key(p.model.vendor,p.model.product,Some(&p.serial)),id:p.id.clone(),name:p.model.name.clone(),product:p.model.name.clone(),product_id:format!("{:04X}",p.model.product),kind:"mouse",firmware_name:p.model.firmware.clone(),model_ids:vec![format!("{:04X}",p.model.product)],connection:"USB 有线".into(),protocol:"SinoWealth wired".into(),features:vec![]}}
 #[tauri::command(async)]
 fn sino_read(sino:State<sinowealth::Service>,id:String,profile:Option<u8>)->Result<sinowealth::View,String>{sino.read(&id,profile)}
 #[tauri::command(async)]
@@ -182,6 +185,7 @@ fn summaries(manager: &Manager) -> Vec<DeviceSummary> {
         .map(|d| DeviceSummary {
             vendor_id: d.vendor_id,
             profile_key: d.profile_key.clone(),
+            connection_key: (d.vendor_id == mchose::VID).then(|| d.connection_key.clone()),
             id: d.id.clone(),
             name: d.name.clone(),
             product: d.product.clone(),
@@ -218,7 +222,7 @@ fn set_dpi(state: State<AppState>,sino:State<sinowealth::Service>, id: String, x
 
     let guard = manager(&state)?;
     let manager = guard.as_ref().expect("manager initialised");
-    manager.with_device(&id, |d, t| d.set_dpi(t, x, y, lod)).map_err(|e| e.to_string())
+    manager.with_device(&id, |d, t| { mchose_target::reject_unbound_write(d)?; d.set_dpi(t, x, y, lod) }).map_err(|e| e.to_string())
 }
 
 #[tauri::command(async)]
@@ -227,46 +231,61 @@ fn set_report_rate(state: State<AppState>,sino:State<sinowealth::Service>, id: S
 
     let guard = manager(&state)?;
     let manager = guard.as_ref().expect("manager initialised");
-    manager.with_device(&id, |d, t| d.set_report_rate(t, value)).map_err(|e| e.to_string())
+    manager.with_device(&id, |d, t| { mchose_target::reject_unbound_write(d)?; d.set_report_rate(t, value) }).map_err(|e| e.to_string())
 }
 
 #[tauri::command(async)]
 fn set_onboard_mode(state: State<AppState>, id: String, host: bool) -> Result<(), String> {
     let guard = manager(&state)?;
     let manager = guard.as_ref().expect("manager initialised");
-    manager.with_device(&id, |d, t| d.set_onboard_mode(t, host)).map_err(|e| e.to_string())
+    manager.with_device(&id, |d, t| { mchose_target::reject_unbound_write(d)?; d.set_onboard_mode(t, host) }).map_err(|e| e.to_string())
 }
 
-fn with_mchose<R>(state: &State<AppState>, id:&str, f: impl FnOnce(&mchose::Transport)->hidpp::Result<R>)->Result<R,String>{
+fn with_mchose<R>(state: &State<AppState>, id:&str, target:&mchose_target::Target, f: impl FnOnce(&mchose::Transport)->hidpp::Result<R>)->Result<R,String>{
     let guard=manager(state)?;
-    guard.as_ref().expect("manager initialised").with_device(id,|_,t|f(t.mchose().ok_or_else(||hidpp::Error::Other("This is not a verified MCHOSE device".into()))?)).map_err(|e|e.to_string())
+    guard.as_ref().expect("manager initialised").with_device(id,|d,t|{
+        let transport=t.mchose().ok_or_else(||hidpp::Error::Other("This is not a verified MCHOSE device".into()))?;
+        mchose_target::with_target(d,transport,target,f)
+    }).map_err(|e|e.to_string())
 }
 #[tauri::command(async)]
-fn mchose_hardware(state:State<AppState>,id:String)->Result<mchose_config::HardwareState,String>{with_mchose(&state,&id,|t|t.hardware_state())}
+fn mchose_hardware(state:State<AppState>,id:String,connection_key:String)->Result<mchose_target::View,String>{
+    let guard=manager(&state)?;
+    guard.as_ref().expect("manager initialised").with_device(&id,|d,t|{
+        let transport=t.mchose().ok_or_else(||hidpp::Error::Other("This is not a verified MCHOSE device".into()))?;
+        mchose_target::read_hardware(d,transport,&connection_key)
+    }).map_err(|e|e.to_string())
+}
 #[tauri::command(async)]
-fn mchose_macro(state:State<AppState>,id:String,slot:u8)->Result<Option<mchose_config::MouseMacro>,String>{with_mchose(&state,&id,|t|t.read_macro(slot))}
+fn mchose_macro(state:State<AppState>,id:String,slot:u8,target:mchose_target::Target)->Result<Option<mchose_config::MouseMacro>,String>{with_mchose(&state,&id,&target,|t|t.read_macro(slot))}
 #[tauri::command(async)]
 fn mchose_macro_file(path:String,slot:u8,name:String,mode:u8,events:Vec<mchose_config::MacroEvent>,raw:Option<Vec<u8>>)->Result<(),String>{
     let record=mchose_config::macro_record(slot,&name,mode,&events,raw.as_deref()).map_err(|e|e.to_string())?;
     std::fs::write(path,serde_json::to_vec_pretty(&record).map_err(|e|e.to_string())?).map_err(|e|e.to_string())
 }
 #[tauri::command(async)]
-fn mchose_apply(app:AppHandle,state:State<AppState>,id:String,expected_profile:u8,action:mchose_config::Action)->Result<mchose_config::ApplyResult,String>{
-    let saved_macro=match &action{mchose_config::Action::Macro{slot,name,mode,events,raw}=>Some(mchose_config::macro_record(*slot,name,*mode,events,raw.as_deref()).map_err(|e|e.to_string())?),_=>None};
-    let result=with_mchose(&state,&id,|t|t.apply_hardware_for(expected_profile,action))?;
-    let _=app.emit("device-changed",id);Ok(mchose_config::ApplyResult{state:result,saved_macro})
+fn mchose_apply(app:AppHandle,state:State<AppState>,id:String,expected_profile:u8,action:mchose_config::Action,target:mchose_target::Target)->Result<mchose_config::ApplyResult,String>{
+    let result=with_mchose(&state,&id,&target,|t|{
+        let saved_macro=match &action{mchose_config::Action::Macro{slot,name,mode,events,raw}=>Some(mchose_config::macro_record(*slot,name,*mode,events,raw.as_deref())?),_=>None};
+        Ok(mchose_config::ApplyResult{state:t.apply_hardware_for(expected_profile,action)?,saved_macro,target:target.clone()})
+    })?;
+    let _=app.emit("device-changed",id);Ok(result)
 }
 #[tauri::command(async)]
-fn mchose_export(state:State<AppState>,id:String,path:String)->Result<(),String>{
-    let snapshot=with_mchose(&state,&id,|t|t.full_snapshot())?;
-    std::fs::write(path,serde_json::to_vec_pretty(&snapshot).map_err(|e|e.to_string())?).map_err(|e|e.to_string())
+fn mchose_export(state:State<AppState>,id:String,path:String,target:mchose_target::Target)->Result<(),String>{
+    with_mchose(&state,&id,&target,|t|{
+        let snapshot=t.full_snapshot()?;
+        std::fs::write(path,serde_json::to_vec_pretty(&snapshot).map_err(|e|hidpp::Error::Other(e.to_string()))?).map_err(|e|hidpp::Error::Other(e.to_string()))
+    })
 }
 #[tauri::command(async)]
-fn mchose_restore(app:AppHandle,state:State<AppState>,id:String,path:String)->Result<mchose_config::HardwareState,String>{
-    let meta=std::fs::metadata(&path).map_err(|e|e.to_string())?;
-    if meta.len()>1024*1024{return Err("备份文件过大".into())}
-    let snapshot=serde_json::from_slice(&std::fs::read(path).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;
-    let result=with_mchose(&state,&id,|t|t.restore_snapshot(snapshot))?;
+fn mchose_restore(app:AppHandle,state:State<AppState>,id:String,path:String,target:mchose_target::Target)->Result<mchose_target::View,String>{
+    let result=with_mchose(&state,&id,&target,|t|{
+        let meta=std::fs::metadata(&path).map_err(|e|hidpp::Error::Other(e.to_string()))?;
+        if meta.len()>1024*1024{return Err(hidpp::Error::Other("备份文件过大".into()))}
+        let snapshot=serde_json::from_slice(&std::fs::read(path).map_err(|e|hidpp::Error::Other(e.to_string()))?).map_err(|e|hidpp::Error::Other(e.to_string()))?;
+        Ok(mchose_target::View{state:t.restore_snapshot(snapshot)?,target:target.clone()})
+    })?;
     let _=app.emit("device-changed",id);Ok(result)
 }
 #[tauri::command]

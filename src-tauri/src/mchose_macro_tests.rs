@@ -355,6 +355,7 @@ fn canonical_native_edit_chunks_and_receipt_are_exact() {
     );
     drop(mouse);
     let value = serde_json::to_value(ApplyResult {
+        target: crate::mchose_target::read_context(&crate::mchose_target::simulated_device("mchose-A"), "connection:mchose-A:1").unwrap(),
         state,
         saved_macro: Some(receipt.clone()),
     })
@@ -403,6 +404,7 @@ fn actual_ui_macro_save_export_import_replays_through_production_codec() {
         #[serde(rename = "expectedProfile")]
         board: u8,
         action: Action,
+        target: crate::mchose_target::Target,
         expected_success: bool,
         expected_raw: Option<Vec<u8>>,
     }
@@ -460,9 +462,9 @@ fn actual_ui_macro_save_export_import_replays_through_production_codec() {
         };
         let writes_before = a.mouse.lock().unwrap().writes.len();
         let before = a.mouse.lock().unwrap().macros.clone();
-        let result = a
-            .transport
-            .apply_hardware_for(request.board, request.action);
+        let device = crate::mchose_target::simulated_device("mchose-A");
+        let result = crate::mchose_target::with_target(&device, &a.transport, &request.target,
+            |t| t.apply_hardware_for(request.board, request.action));
         if request.expected_success {
             successes += 1;
             assert!(result.is_ok());

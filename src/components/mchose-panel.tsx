@@ -1,7 +1,7 @@
 import {LightingPanel} from "@/components/lighting-panel";
 import {MchoseIdentity} from "@/components/mchose-art";
 import {MCHOSE_MACRO_MODES,MCHOSE_NEW_MACRO_MODE} from "@/lib/mchose-macros";
-import {useEffect,useRef,useState} from "react";
+import {useLayoutEffect,useRef,useState} from "react";
 import {open,save} from "@tauri-apps/plugin-dialog";
 import {toast} from "sonner";
 import {Button} from "@/components/ui/button";
@@ -44,7 +44,7 @@ type MacroDraft=MacroValue&{confirmed?:MacroValue};
 const confirmedMacro=(macro:MchoseMacro,text:string):MacroDraft=>({macro,text,confirmed:{macro,text}});
 const emptyMacro=(slot:number):MacroDraft=>({macro:{slot,name:slot===0?'新宏':`新宏 ${slot+1}`,mode:MCHOSE_NEW_MACRO_MODE,events:[]},text:'[]'});
 
-export function MchosePanel({id}:{id:string}){
+export function MchosePanel({id,connectionKey}:{id:string;connectionKey:string}){
  const [hardware,setHardware]=useState<MchoseHardware|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState("");
  const [page,setPage]=useState("dpi"),[boardDrafts,setBoardDrafts]=useState<Record<number,BoardDraft>>({});
  const [macroSlot,setMacroSlot]=useState(0),[macroDrafts,setMacroDrafts]=useState<Record<number,MacroDraft>>({});
@@ -66,7 +66,9 @@ export function MchosePanel({id}:{id:string}){
  const chooseKeyboard=(usage:number,modifiers:number)=>{setKeyboardUsage(usage);setKeyboardModifiers(modifiers);setCustomKey(mchoseKeyboardBinding(usage,modifiers));setCaptureHint("");};
 
  const lifetime=useRef({live:true,operation:0});
- const adopt=(v:MchoseHardware)=>setHardware(v);
+ const renderTarget=useRef({id,connectionKey});
+ if(renderTarget.current.id!==id||renderTarget.current.connectionKey!==connectionKey)renderTarget.current={id,connectionKey};
+ const adopt=(v:MchoseHardware)=>{if(!v.target?.device_key||v.target.connection_key!==connectionKey||(hardware&&hardware.target.device_key!==v.target.device_key))throw Error("迈从读取结果的连接不匹配，请重新识别设备");setHardware(v);};
  const clearSection=(board:number,kind:unknown,submitted:BoardDraft|undefined)=>setBoardDrafts(all=>{
   const previous=all[board];if(!previous)return all;
   const next:BoardDraft={...previous,values:{...previous.values}};
@@ -74,23 +76,23 @@ export function MchosePanel({id}:{id:string}){
   for(const key of kind==='dpi'?DPI_DRAFT_KEYS:kind==='settings'?SETTINGS_DRAFT_KEYS:[]){if(previous.values[key]===submitted?.values[key])delete next.values[key];}
   return {...all,[board]:next};
  });
- // DevicePage keys this panel by physical target. Async continuations also
- // retain this mount and operation, including native file-dialog results.
+ // DevicePage keys this panel by transport generation. Layout cleanup cancels
+ // continuations on unmount before paint, including native file-dialog results.
  const run=async<T,>(f:(current:()=>boolean)=>Promise<T>,message?:string)=>{
-  const owner=lifetime.current,operation=++owner.operation;
-  const current=()=>owner.live&&lifetime.current===owner&&owner.operation===operation;
+  const owner=lifetime.current,operation=++owner.operation,target=renderTarget.current;
+  const current=()=>owner.live&&lifetime.current===owner&&owner.operation===operation&&renderTarget.current===target;
   if(!current())return undefined;setBusy(true);setError("");
   try{const r=await f(current);if(current()&&message)toast.success(message);return current()?r:undefined;}
   catch(e){if(current()){setError(String(e));toast.error(String(e));}return undefined;}
   finally{if(current())setBusy(false);}
  };
- const reload=()=>run(async current=>{const value=await api.mchoseHardware(id);if(current())adopt(value);});
- useEffect(()=>{const owner={live:true,operation:0};lifetime.current=owner;void reload();return()=>{owner.live=false;held.current.clear();};},[id]);
+ const reload=()=>run(async current=>{if(!connectionKey)throw Error("请返回设备列表重新识别连接");const value=await api.mchoseHardware(id,connectionKey);if(current())adopt(value);});
+ useLayoutEffect(()=>{const owner={live:true,operation:0};lifetime.current=owner;setHardware(null);setBoardDrafts({});setMacroDrafts({});setMacroSlot(0);setRecording(false);void reload();return()=>{owner.live=false;held.current.clear();};},[id,connectionKey]);
  const apply=(action:Record<string,unknown>)=>hw&&run(async current=>{
   const board=hw.profile,submittedDraft=boardDrafts[board];
   const slot=Number(action.slot),submittedMacro=macroDrafts[slot];
   const savedMacro:MchoseMacro|undefined=action.kind==='macro'?{slot,name:String(action.name),mode:Number(action.mode),events:action.events as MchoseMacroEvent[]}:undefined;
-  const value=await api.mchoseApply(id,board,action);
+  const value=await api.mchoseApply(id,board,action,hw.target);
   if(current()){
    adopt(value);
    if(value.profile===board)clearSection(board,action.kind,submittedDraft);
@@ -105,9 +107,9 @@ export function MchosePanel({id}:{id:string}){
   }
  },"已写入并核对鼠标设置");
  const update=(v:DraftValues)=>{if(hw){const board=hw.profile;setBoardDrafts(all=>({...all,[board]:{...all[board],values:{...all[board]?.values,...v}}}));}};
- const discardBoard=()=>hw&&run(async current=>{const board=hw.profile,submitted=boardDrafts[board],value=await api.mchoseHardware(id);if(current()){setBoardDrafts(all=>{if(all[board]!==submitted)return all;const next={...all};delete next[board];return next;});adopt(value);}});
- const readMacro=(slot:number)=>run(async current=>{
-  const submitted=macroDrafts[slot],v=await api.mchoseMacro(id,slot);if(!current())return;
+ const discardBoard=()=>hw&&run(async current=>{const board=hw.profile,submitted=boardDrafts[board],value=await api.mchoseHardware(id,connectionKey);if(current()){setBoardDrafts(all=>{if(all[board]!==submitted)return all;const next={...all};delete next[board];return next;});adopt(value);}});
+ const readMacro=(slot:number)=>hw&&run(async current=>{
+  const submitted=macroDrafts[slot],v=await api.mchoseMacro(id,slot,hw.target);if(!current())return;
   const next=v??emptyMacro(slot).macro,saved=confirmedMacro(next,JSON.stringify(next.events,null,2));
   setMacroDrafts(all=>({...all,[slot]:all[slot]===submitted?saved:{...(all[slot]??emptyMacro(slot)),confirmed:saved.confirmed}}));
  });
@@ -120,9 +122,9 @@ export function MchosePanel({id}:{id:string}){
   if(down)held.current.add(scan);else held.current.delete(scan);
   editMacro(old=>{const events=[...old.macro.events,...(elapsed>5?[{kind:"delay"as const,code:0,down:false,delay_ms:elapsed}]:[]),{kind:"key"as const,code:scan,down,delay_ms:0}];return {...old,macro:{...old.macro,events},text:JSON.stringify(events,null,2)};});
  };
- const exportConfig=()=>run(async current=>{const path=await save({defaultPath:`A7-V3-板载${(hw?.profile??0)+1}.json`,filters:[{name:"配置备份",extensions:["json"]}]});if(path&&current())await api.mchoseExport(id,path);},"备份已导出");
- const restoreConfig=()=>run(async current=>{const path=await open({multiple:false,filters:[{name:"配置备份",extensions:["json"]}]});if(typeof path==="string"&&current()){const value=await api.mchoseRestore(id,path);if(current())adopt(value);}},"配置已恢复");
- if(!hw)return <PanelShell title="迈从控制中心"><PanelSection><Button disabled={busy} onClick={()=>void reload()}>刷新设备</Button><p className="mt-3 text-sm">{error||"正在读取鼠标现有配置…"}</p></PanelSection></PanelShell>;
+ const exportConfig=()=>hw&&run(async current=>{const path=await save({defaultPath:`A7-V3-板载${(hw?.profile??0)+1}.json`,filters:[{name:"配置备份",extensions:["json"]}]});if(path&&current())await api.mchoseExport(id,path,hw.target);},"备份已导出");
+ const restoreConfig=()=>hw&&run(async current=>{const path=await open({multiple:false,filters:[{name:"配置备份",extensions:["json"]}]});if(typeof path==="string"&&current()){const value=await api.mchoseRestore(id,path,hw.target);if(current())adopt(value);}},"配置已恢复");
+ if(!hw)return <PanelShell title="迈从控制中心"><PanelSection><Button disabled={busy||!connectionKey} onClick={()=>void reload()}>刷新设备</Button><p className="mt-3 text-sm">{error||"正在读取鼠标现有配置…"}</p></PanelSection></PanelShell>;
  const settingsApply=()=>apply({kind:"settings",sleep:hw.sleep,never_sleep:hw.never_sleep,left_debounce:hw.left_debounce,right_debounce:hw.right_debounce,sensor:hw.sensor,rotation:hw.rotation});
  const bindingOptions=BINDINGS.map(([label,b],i)=><option value={i} key={i}>{label}{JSON.stringify(hw.buttons[buttonIndex])===JSON.stringify(b)?"（当前）":""}</option>);
  return <PanelShell title="A7 V3 Ultra+" aside={busy?"正在读写…":`板载 ${hw.profile+1}`} toolbar={<div className="flex flex-wrap gap-1">{[["dpi","DPI"],["sensor","性能"],["buttons","按键"],["macro","宏"],["boards","板载/备份"],["lighting","灯光同步"]].map(([k,n])=><Button key={k} size="sm" variant={page===k?"secondary":"ghost"} onClick={()=>setPage(k)}>{n}</Button>)}</div>}>
@@ -137,7 +139,7 @@ export function MchosePanel({id}:{id:string}){
      <div className="grid grid-cols-[36px_1fr_1fr_48px] items-center gap-2 text-xs"><span>档位</span><span>X DPI</span><span>Y DPI</span><span>当前</span>{hw.dpi_x.flatMap((x,i)=>[<span key={`l${i}`}>{i+1}</span>,<Num key={`x${i}`} label={`档 ${i+1} X DPI`} min={50} max={50000} step={50} value={x} onChange={v=>update({dpi_x:hw.dpi_x.map((o,k)=>i===k?v:o)})}/>,<Num disabled={!hw.independent} key={`y${i}`} label={`档 ${i+1} Y DPI`} min={50} max={50000} step={50} value={hw.independent?hw.dpi_y[i]:x} onChange={v=>update({dpi_y:hw.dpi_y.map((o,k)=>i===k?v:o)})}/>,<input key={`a${i}`} aria-label={`选择档 ${i+1}`} type="radio" name="activeDpi" checked={hw.active===i} disabled={i>=hw.count} onChange={()=>update({active:i})}/>])}</div>
      <Button className="mt-3" onClick={()=>void apply({kind:"dpi",x:hw.dpi_x,y:hw.dpi_y,count:hw.count,active:hw.active,independent:hw.independent})}>保存六档 DPI</Button>
     </PanelSection>
-    <PanelSection title="回报率"><p className="mb-2 text-xs text-muted-foreground">线缆和无线回报率同步设置。</p><div className="flex flex-wrap gap-2">{RATES.map(([v,hz])=><Button size="sm" variant={(hw.raw_settings[2]>>4)===v?"secondary":"outline"} key={v} onClick={()=>void run(async current=>{await api.setReportRate(id,v);if(current()){const value=await api.mchoseHardware(id);if(current())adopt(value);}},`已设为 ${hz} Hz`)}>{hz} Hz</Button>)}</div></PanelSection>
+    <PanelSection title="回报率"><p className="mb-2 text-xs text-muted-foreground">线缆和无线回报率同步设置。</p><div className="flex flex-wrap gap-2">{RATES.map(([v,hz])=><Button size="sm" variant={(hw.raw_settings[2]>>4)===v?"secondary":"outline"} key={v} onClick={()=>void apply({kind:"report_rate",value:v})}>{hz} Hz</Button>)}</div></PanelSection>
    </>}
    {page==="sensor"&&<>
     <PanelSection title="抬升高度（LOD）"><Pick label="LOD" value={hw.lod} onChange={v=>void apply({kind:"lod",index:Number(v)})}>{LOD.map((n,i)=><option key={i} value={i}>{n}</option>)}</Pick></PanelSection>

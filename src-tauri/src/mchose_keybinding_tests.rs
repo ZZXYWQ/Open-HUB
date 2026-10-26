@@ -302,6 +302,7 @@ fn actual_ui_key_actions_replay_through_two_isolated_native_transports() {
         #[serde(rename = "expectedProfile")]
         expected_profile: u8,
         action: Action,
+        target: crate::mchose_target::Target,
     }
 
     let path = std::env::var("OPEN_HUB_MCHOSE_KEYS_UI_ACTIONS").unwrap();
@@ -356,10 +357,9 @@ fn actual_ui_key_actions_replay_through_two_isolated_native_transports() {
         let before = target.mouse.lock().unwrap().boards.clone();
         let other_before = other.mouse.lock().unwrap().boards.clone();
         let other_writes = other.mouse.lock().unwrap().writes.clone();
-        let state = target
-            .transport
-            .apply_hardware_for(request.expected_profile, request.action)
-            .unwrap();
+        let device = crate::mchose_target::simulated_device(&request.id);
+        let state = crate::mchose_target::with_target(&device, &target.transport, &request.target,
+            |t| t.apply_hardware_for(request.expected_profile, request.action)).unwrap();
         assert_eq!(state.buttons[4], binding);
         target.assert_only_binding_changed(&before, &binding);
         assert_eq!(
