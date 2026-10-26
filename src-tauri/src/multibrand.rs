@@ -20,6 +20,9 @@ pub use steelseries_persistence::Saved;
 #[path="import_execution_tests.rs"]
 mod import_execution_tests;
 #[cfg(test)]
+#[path="multibrand_lifetime_tests.rs"]
+mod lifetime_integration_tests;
+#[cfg(test)]
 #[path="tuning_models.rs"]
 mod tuning_models;
 #[cfg(test)]
@@ -66,7 +69,7 @@ pub struct View {
 }
 #[derive(Clone,Default)]
 pub struct Service(Arc<Mutex<Option<DeviceManager>>>,Arc<Mutex<std::collections::HashMap<String,Cleanup>>>,Arc<AtomicBool>,Arc<Mutex<std::collections::HashMap<String,session_plan::Session>>>);
-#[derive(Clone)]struct Cleanup{input_proof:Option<crate::input_identity::Proof>,source:crate::host_macros::Source,settings:Vec<Setting>,expected:std::collections::HashMap<u16,ButtonAction>,software_input:bool,cancelled:Arc<AtomicBool>,shift:Arc<Mutex<Option<gearwise_core::model::DpiState>>>,journal:Option<Arc<crate::macro_recovery::Journal>>,serial:Option<String>}
+#[derive(Clone)]struct Cleanup{input_proof:Option<crate::macro_runtime::PreparedProof>,source:crate::host_macros::Source,settings:Vec<Setting>,expected:std::collections::HashMap<u16,ButtonAction>,software_input:bool,cancelled:Arc<AtomicBool>,shift:Arc<Mutex<Option<gearwise_core::model::DpiState>>>,journal:Option<Arc<crate::macro_recovery::Journal>>,serial:Option<String>}
 pub fn choose_profile_device(ids:&[String],selected:Option<&str>)->Result<String,String>{
  if selected.is_some_and(|id|id.len()>4096){return Err("设备标识过长".into());}
  let matches=ids.iter().filter(|id|selected.is_none_or(|s|id.as_str()==s)).collect::<Vec<_>>();
@@ -151,7 +154,7 @@ impl Service {
     fn input_context(manager:&DeviceManager,id:&str)->Result<(crate::input_identity::Target,Vec<crate::input_identity::Target>),String>{
         let peers=manager.devices().map(|d|crate::input_identity::Target::of(d)).collect::<Vec<_>>();let target=peers.iter().find(|d|d.id==raw_id(id)).cloned().ok_or("鼠标已断开")?;Ok((target,peers))
     }
-    fn prepare_input_target(&self,id:&str,source:&crate::host_macros::Source,runtime:&crate::macro_runtime::Runtime)->Result<Option<crate::input_identity::Proof>,String>{
+    fn prepare_input_target(&self,id:&str,source:&crate::host_macros::Source,runtime:&crate::macro_runtime::Runtime)->Result<crate::macro_runtime::PreparedProof,String>{
         let(target,peers)=self.with(|m|Self::input_context(m,id))?;runtime.prepare_target(source,&target,&peers)
     }
     pub fn input_sources(&self,id:&str)->Result<Vec<crate::raw_input::SourceInfo>,String>{
@@ -170,7 +173,7 @@ impl Service {
         let peer=self.peers().into_iter().find(|d|d.id==raw_id(id)).ok_or("鼠标已断开")?;
         if (peer.vendor_id,peer.product_id)!=(plan.vendor,plan.product){return Err("方案与当前鼠标的品牌/型号不一致".into());}
         if expected_identity.is_some_and(|key| key != crate::profile_routing::serial_key(peer.vendor_id,peer.product_id,peer.serial.as_deref())) { return Err("鼠标身份在配置预览后已变化；未应用配置".into()); }
-        let (source,input_proof)=if compiled.bindings.is_empty()&&!compiled.software_input{(None,None)}else{let source=plan.source.clone().ok_or("软件宏需要选择此鼠标的具体输入来源")?;let proof=self.prepare_input_target(id,&source,runtime)?;(Some(source),proof)};
+        let (source,input_proof)=if compiled.bindings.is_empty()&&!compiled.software_input{(None,None)}else{let source=plan.source.clone().ok_or("软件宏需要选择此鼠标的具体输入来源")?;let proof=self.prepare_input_target(id,&source,runtime)?;(Some(source),Some(proof))};
         self.with(|manager|{
             rate_reconnect::guard_apply(root,manager,id,resume)?;
             let current=manager.device_mut(raw_id(id)).ok_or("鼠标已断开")?.descriptor();
@@ -210,7 +213,7 @@ impl Service {
             let journal=if let Some(source)=source.clone(){Some(Arc::new(crate::macro_recovery::Journal::create(&root.join("recovery"),crate::macro_recovery::Record{version:if crate::steelseries::supported(plan.vendor,plan.product){2}else{1},device_id:raw_id(id).into(),serial:peer.serial.clone(),source,settings:restore.clone(),expected:expected.clone(),software_input:compiled.software_input,shift:None})?))}else{None};
             if let Some(source)=source.clone(){self.1.lock().map_err(|_|"宏恢复记录锁异常")?.insert(raw_id(id).into(),Cleanup{input_proof:input_proof.clone(),source,settings:restore,expected,software_input:compiled.software_input,cancelled:cancelled.clone(),shift:shift.clone(),journal:journal.clone(),serial:peer.serial.clone()});}
             let operation=(||->Result<View,String>{
-                for (index,setting) in compiled.settings.iter().enumerate(){if matches!(setting,Setting::ReportRate(rate) if before.state.report_rate==Some(*rate)){continue;}device.apply(setting).map_err(|e|format!("第 {} 项写入失败：{e}；此前设置可能已生效，快照：{}",index+1,snapshot.display()))?;}
+                for (index,setting) in compiled.settings.iter().enumerate(){if let Some(proof)=&input_proof{runtime.assert_prepared(proof)?;}if matches!(setting,Setting::ReportRate(rate) if before.state.report_rate==Some(*rate)){continue;}device.apply(setting).map_err(|e|format!("第 {} 项写入失败：{e}；此前设置可能已生效，快照：{}",index+1,snapshot.display()))?;}
                 view(device.as_mut())
             })();
             let mut result=match operation{Ok(v)=>v,Err(e)=>{let restored=self.restore_one(manager,raw_id(id),runtime);return Err(format!("{e}；宏触发键恢复：{}",restored.map(|_|"完成".to_string()).unwrap_or_else(|e|e)));}};
@@ -220,7 +223,7 @@ impl Service {
                 let manager=self.0.clone();let device_id=raw_id(id).to_string();let actions=compiled.dpi_actions.clone();let stopped=cancelled.clone();let saved=shift.clone();
                 crate::macro_runtime::Hooks{dpi:Some(Arc::new(move|button,down|{let mut manager=manager.lock().map_err(|_|"DPI 设备锁异常")?;if stopped.load(Ordering::Acquire){return Ok(());}let device=manager.as_mut().and_then(|m|m.device_mut(&device_id)).ok_or("DPI 鼠标已断开")?;let action=actions.get(&button).ok_or("DPI 动作缺失")?;software_dpi_journal(device.as_mut(),action,down,&saved,journal.as_deref())})),cancel:Some(Arc::new(move||{cancelled.store(true,Ordering::Release);} ))}
             }else{crate::macro_runtime::Hooks{dpi:None,cancel:Some(Arc::new(move||{cancelled.store(true,Ordering::Release);} ))}};
-            if let Some(source)=source{if let Err(e)=runtime.arm(source,compiled.bindings,compiled.input,hooks){let restore=self.restore_one(manager,raw_id(id),runtime);return Err(format!("{e}；恢复结果：{restore:?}"));}}
+            if let Some(source)=source{if let Err(e)=runtime.arm_prepared(input_proof.as_ref().ok_or("软件宏缺少已准备的输入连接")?,source,compiled.bindings,compiled.input,hooks){let restore=self.restore_one(manager,raw_id(id),runtime);return Err(format!("{e}；恢复结果：{restore:?}"));}}
             self.remember_session(&result,plan,needs_software)?;
             self.attach_session(&mut result,runtime)?;
             if let Some((key,_,_))=resume{rate_reconnect::finish(root,key)?;}
@@ -232,22 +235,25 @@ impl Service {
         if let Some(cleanup)=cleanup{
             cleanup.cancelled.store(true,Ordering::Release);
             let trigger_keys=cleanup.expected.values().filter_map(|a|match a{ButtonAction::Key{usage:0x68..=0x73,mods:gearwise_core::model::Modifiers(0)}=>if let ButtonAction::Key{usage,..}=a{Some(u16::from(*usage)+0x14)}else{None},_=>None}).collect::<Vec<_>>();
-            if !runtime.quiesce(&cleanup.source,&trigger_keys)?{return Err(if runtime.is_quiescing(&cleanup.source){"宏已停止；请松开仍按住的触发键，随后会自动恢复原始映射"}else{"宏已停止；请松开触发键后重新检查待恢复记录"}.into());}
-            runtime.remove(&cleanup.source.path);
+            let ready=if let Some(proof)=&cleanup.input_proof{runtime.quiesce_prepared(proof,&cleanup.source,&trigger_keys)?}else{runtime.unowned_recovery_ready(&cleanup.source,&trigger_keys)?};
+            if !ready{return Err(if runtime.is_quiescing(&cleanup.source){"宏已停止；请松开仍按住的触发键，随后会自动恢复原始映射"}else{"宏已停止；请松开触发键后重新检查待恢复记录"}.into());}
+            if let Some(proof)=&cleanup.input_proof{runtime.remove_prepared(proof)?;}
             if let Some(proof)=&cleanup.input_proof{let(target,peers)=Self::input_context(manager,id)?;runtime.recheck_target(proof,&target,&peers)?;}
+            let check_authority=||->Result<(),String>{if let Some(proof)=&cleanup.input_proof{runtime.assert_prepared(proof)}else{Ok(())}};
             let device=manager.device_mut(id).ok_or("鼠标已断开，宏已停止；原始按键需连接后再恢复")?;
             if (device.descriptor().vendor_id,device.descriptor().product_id)!=(cleanup.source.vendor,cleanup.source.product){return Err("恢复目标与原始品牌/型号不一致".into());}
             if cleanup.serial.as_deref().filter(|s|!s.trim().is_empty()).is_some_and(|s|device.descriptor().serial.as_deref()!=Some(s)){return Err("鼠标序列号已改变，保留恢复记录，未写入其他鼠标".into());}
-            if cleanup.software_input{device.stop_software_actions().map_err(|e|format!("软件按键硬件模式恢复失败：{e}"))?;let mut shift=cleanup.shift.lock().map_err(|_|"狙击 DPI 锁异常")?;if let Some(original)=shift.as_ref(){let owned=cleanup.journal.as_ref().map(|j|j.record()).transpose()?.and_then(|r|r.shift);let actual=device.read_state().map_err(|e|e.to_string())?.dpi;if owned.as_ref().is_some_and(|s|actual.as_ref()!=Some(&s.expected)&&actual.as_ref()!=Some(original)){return Err("本次会话的 DPI 已改变，保留恢复记录，未覆盖当前设置".into());}device.apply(&Setting::Dpi(original.clone())).map_err(|e|format!("狙击 DPI 恢复失败：{e}"))?;if let Some(j)=&cleanup.journal{j.shift(None)?;}*shift=None;}}
+            if cleanup.software_input{check_authority()?;device.stop_software_actions().map_err(|e|format!("软件按键硬件模式恢复失败：{e}"))?;let mut shift=cleanup.shift.lock().map_err(|_|"狙击 DPI 锁异常")?;if let Some(original)=shift.as_ref(){let owned=cleanup.journal.as_ref().map(|j|j.record()).transpose()?.and_then(|r|r.shift);let actual=device.read_state().map_err(|e|e.to_string())?.dpi;if owned.as_ref().is_some_and(|s|actual.as_ref()!=Some(&s.expected)&&actual.as_ref()!=Some(original)){return Err("本次会话的 DPI 已改变，保留恢复记录，未覆盖当前设置".into());}check_authority()?;device.apply(&Setting::Dpi(original.clone())).map_err(|e|format!("狙击 DPI 恢复失败：{e}"))?;if let Some(j)=&cleanup.journal{j.shift(None)?;}*shift=None;}}
             let actual=if readable_host_buttons(cleanup.source.vendor,cleanup.source.product){Some(device.read_state().map_err(|e|format!("宏已停止，无法读取当前按键以验证恢复归属：{e}"))?)}else{None};
             let mut changed=Vec::new();
             if crate::steelseries::complete_table(cleanup.source.product,&cleanup.settings)&&cleanup.source.vendor==0x1038{
-                crate::steelseries::restore_table(device.as_mut(),&cleanup.settings)?;
+                check_authority()?;crate::steelseries::restore_table(device.as_mut(),&cleanup.settings)?;
             }else{for setting in &cleanup.settings{
                 if let(Setting::Button{id,action},Some(actual))=(setting,&actual){let current=actual.buttons.get(id);if current==Some(action){continue;}if !cleanup.expected.contains_key(id)||cleanup.expected.get(id)!=current{changed.push(*id);continue;}}
-                device.apply(setting).map_err(|e|format!("宏已停止，但原始按键恢复失败：{e}"))?;
+                check_authority()?;device.apply(setting).map_err(|e|format!("宏已停止，但原始按键恢复失败：{e}"))?;
             }
             }
+            check_authority()?;
             if let Some(journal)=&cleanup.journal{journal.finish()?;}
             self.1.lock().map_err(|_|"宏恢复记录锁异常")?.remove(id);
             if !changed.is_empty(){return Err(format!("宏已停止；按键 {changed:?} 已被其他控制器改变，保留当前动作，未覆盖外部设置"));}
@@ -307,15 +313,17 @@ impl Service {
         let result=self.with(|manager|{
             for journal in journals{
                 if !journal.path.try_exists().map_err(|e|e.to_string())?{continue;}
-                let tracked=self.1.lock().map_err(|_|"宏恢复记录锁异常")?.iter().filter(|(_,c)|c.journal.as_ref().is_some_and(|j|j.path==journal.path)).map(|(id,c)|(id.clone(),c.cancelled.load(Ordering::Acquire))).collect::<Vec<_>>();
-                if tracked.iter().any(|(_,cancelled)|!*cancelled){continue;}
+                let tracked=self.1.lock().map_err(|_|"宏恢复记录锁异常")?.iter().filter(|(_,c)|c.journal.as_ref().is_some_and(|j|j.path==journal.path)).map(|(id,c)|(id.clone(),c.cancelled.load(Ordering::Acquire),c.input_proof.is_some())).collect::<Vec<_>>();
+                // Never downgrade a retained in-process authority to a serial-only
+                // restart record after its input connection has expired.
+                if tracked.iter().any(|(_,cancelled,proof)|!*cancelled||*proof){continue;}
                 let record=journal.record()?;
                 if runtime.is_quiescing(&record.source){continue;}
                 if !readable_host_buttons(record.source.vendor,record.source.product){issues.push("海盗船/赛睿待恢复设置需要手动检查：尚不能可靠核实当前软件路由归属，重启后未自动覆盖".into());continue;}
                 let matches=manager.devices().filter(|d|record.matches(d.descriptor())).map(|d|d.descriptor().id.clone()).collect::<Vec<_>>();
                 if matches.len()!=1{issues.push(format!("有待恢复的宏按键（{:04X}:{:04X}）；需要唯一匹配的鼠标序列号，当前未自动写入",record.source.vendor,record.source.product));continue;}
                 let id=&matches[0];
-                {let mut active=self.1.lock().map_err(|_|"宏恢复记录锁异常")?;for (old,_) in &tracked{active.remove(old);}}
+                {let mut active=self.1.lock().map_err(|_|"宏恢复记录锁异常")?;for (old,_,_) in &tracked{active.remove(old);}}
                 if self.1.lock().map_err(|_|"宏恢复记录锁异常")?.contains_key(id){issues.push("当前鼠标已有运行中的宏，保留旧恢复记录，未覆盖".into());continue;}
                 self.1.lock().map_err(|_|"宏恢复记录锁异常")?.insert(id.clone(),Cleanup{input_proof:None,source:record.source,settings:record.settings,expected:record.expected,software_input:record.software_input,cancelled:Arc::new(AtomicBool::new(true)),shift:Arc::new(Mutex::new(record.shift.map(|s|s.original))),journal:Some(Arc::new(journal)),serial:record.serial});
             }
@@ -892,8 +900,16 @@ fn resolve_defaults(compiled:&mut Compiled,before:&View)->Result<(),String>{
  }
  fn wait(rec:&Rec,n:usize){let end=std::time::Instant::now()+std::time::Duration::from_secs(1);while rec.0.lock().unwrap().len()<n&&std::time::Instant::now()<end{std::thread::sleep(std::time::Duration::from_millis(1));}assert_eq!(rec.0.lock().unwrap().len(),n);}
  fn held_naga()->(Service,std::path::PathBuf,crate::macro_runtime::Runtime,Rec,crate::host_macros::Source){
-  use gearwise_core::profile::{Macro,MacroMode,MacroStep};let(service,dir)=setup(Some("unit-a"),0x68,1);let source=crate::macro_recovery::load(&dir).0[0].record().unwrap().source;let rec=Rec::default();let runtime=crate::macro_runtime::Runtime::simulation(Arc::new(Mutex::new(rec.clone())));
-  runtime.arm(source.clone(),vec![crate::host_macros::Binding{button:0x40,action:Macro{id:"owned".into(),name:"hold".into(),mode:MacroMode::WhileHeld,steps:vec![MacroStep::KeyDown(4),MacroStep::Delay(5000),MacroStep::KeyUp(4)]}}],crate::macro_runtime::InputMap{keys:std::collections::BTreeMap::from([(0x7c,0x40)]),buttons:vec![],dpi_buttons:vec![]},crate::macro_runtime::Hooks::default()).unwrap();runtime.simulate_event(crate::raw_input::Event::Key{source:source.clone(),vkey:0x7c,down:true});wait(&rec,1);
+  use gearwise_core::profile::{Macro,MacroMode,MacroStep};
+  let(service,dir)=setup(Some("unit-a"),0x68,1);
+  let mut journals=crate::macro_recovery::load(&dir).0;let old=journals.remove(0);let mut record=old.record().unwrap();old.finish().unwrap();
+  record.source.path="simulation:live-naga".into();let source=record.source.clone();let journal=Arc::new(crate::macro_recovery::Journal::create(&dir,record.clone()).unwrap());
+  let rec=Rec::default();let runtime=crate::macro_runtime::Runtime::simulation(Arc::new(Mutex::new(rec.clone())));
+  let proof=service.prepare_input_target("connected:new-path:0",&source,&runtime).unwrap();
+  runtime.arm_prepared(&proof,source.clone(),vec![crate::host_macros::Binding{button:0x40,action:Macro{id:"owned".into(),name:"hold".into(),mode:MacroMode::WhileHeld,steps:vec![MacroStep::KeyDown(4),MacroStep::Delay(5000),MacroStep::KeyUp(4)]}}],crate::macro_runtime::InputMap{keys:std::collections::BTreeMap::from([(0x7c,0x40)]),buttons:vec![],dpi_buttons:vec![]},crate::macro_runtime::Hooks::default()).unwrap();
+  service.1.lock().unwrap().insert("connected:new-path:0".into(),Cleanup{input_proof:Some(proof),source:source.clone(),settings:record.settings,expected:record.expected,software_input:false,cancelled:Arc::new(AtomicBool::new(false)),shift:Arc::new(Mutex::new(None)),journal:Some(journal),serial:record.serial});
+  runtime.simulate_event(crate::raw_input::Event::Key{source:source.clone(),vkey:0x7c,down:true});wait(&rec,1);
+  assert!(service.with(|m|service.restore_one(m,"connected:new-path:0",&runtime)).unwrap_err().contains("触发键"));
   let issues=service.recover_from(&dir,&runtime).unwrap();assert!(issues.iter().any(|s|s.contains("触发键")));assert_eq!(current(&service),key(0x68));wait(&rec,2);assert_eq!(runtime.status().source_count,0);assert!(runtime.has_quiescing());(service,dir,runtime,rec,source)
  }
  #[test]fn owned_hid_mapping_restores_only_after_its_physical_key_up(){let(service,dir,runtime,rec,source)=held_naga();let mut other=source.clone();other.path.push_str("-other");runtime.simulate_event(crate::raw_input::Event::Key{source:other,vkey:0x7c,down:false});assert!(!service.recover_from(&dir,&runtime).unwrap().is_empty());assert_eq!(current(&service),key(0x68));runtime.simulate_event(crate::raw_input::Event::Key{source,vkey:0x7c,down:false});assert!(service.recover_from(&dir,&runtime).unwrap().is_empty());assert_eq!(current(&service),key(4));assert!(crate::macro_recovery::load(&dir).0.is_empty());assert!(!runtime.has_quiescing());assert_eq!(*rec.0.lock().unwrap(),vec!["d4","u4"]);runtime.shutdown();std::fs::remove_dir(dir).unwrap();}
@@ -902,7 +918,7 @@ fn resolve_defaults(compiled:&mut Compiled,before:&View)->Result<(),String>{
  #[test]fn live_corsair_vendor_mode_waits_for_release_before_actual_hardware_mode_restore(){
   use gearwise_core::profile::{Macro,MacroMode,MacroStep};let(mut device,log)=gearwise_corsair::simulated_m65_pro();device.apply(&Setting::Button{id:4,action:ButtonAction::Disabled}).unwrap();let descriptor=device.descriptor().clone();let source=crate::host_macros::Source{vendor:0x1b1c,product:0x1b2e,path:"simulation:live-vendor".into()};let dir=std::env::temp_dir().join(format!("held-vendor-{}",crate::profiles::new_id()));let journal=Arc::new(crate::macro_recovery::Journal::create(&dir,crate::macro_recovery::Record{version:1,device_id:descriptor.id.clone(),serial:descriptor.serial.clone(),source:source.clone(),settings:vec![],expected:Default::default(),software_input:true,shift:None}).unwrap());
   let mut manager=DeviceManager::new(Box::new(MockBackend::new(vec![],|_|Err(gearwise_core::Error::Unsupported("no physical HID")))),vec![]);manager.add_virtual(vec![device]);let service=Service::default();*service.0.lock().unwrap()=Some(manager);service.1.lock().unwrap().insert(descriptor.id,Cleanup{input_proof:None,source:source.clone(),settings:vec![],expected:Default::default(),software_input:true,cancelled:Arc::new(AtomicBool::new(false)),shift:Arc::new(Mutex::new(None)),journal:Some(journal.clone()),serial:descriptor.serial});
-  let rec=Rec::default();let runtime=crate::macro_runtime::Runtime::simulation(Arc::new(Mutex::new(rec.clone())));runtime.arm(source.clone(),vec![crate::host_macros::Binding{button:4,action:Macro{id:"owned".into(),name:"once".into(),mode:MacroMode::Once,steps:vec![MacroStep::KeyDown(4),MacroStep::KeyUp(4)]}}],crate::macro_runtime::InputMap{keys:Default::default(),buttons:vec![4],dpi_buttons:vec![]},crate::macro_runtime::Hooks::default()).unwrap();runtime.simulate_event(crate::raw_input::Event::Buttons{source:source.clone(),mask:8});wait(&rec,2);log.lock().unwrap().clear();assert!(service.stop_software(&runtime).unwrap_err().contains("触发键"));assert!(runtime.has_quiescing());assert_eq!(runtime.status().source_count,0);assert!(log.lock().unwrap().is_empty());assert!(journal.path.exists());
+  let rec=Rec::default();let runtime=crate::macro_runtime::Runtime::simulation(Arc::new(Mutex::new(rec.clone())));let owner_id=service.peers()[0].id.clone();let proof=service.prepare_input_target(&owner_id,&source,&runtime).unwrap();service.1.lock().unwrap().get_mut(&owner_id).unwrap().input_proof=Some(proof.clone());runtime.arm_prepared(&proof,source.clone(),vec![crate::host_macros::Binding{button:4,action:Macro{id:"owned".into(),name:"once".into(),mode:MacroMode::Once,steps:vec![MacroStep::KeyDown(4),MacroStep::KeyUp(4)]}}],crate::macro_runtime::InputMap{keys:Default::default(),buttons:vec![4],dpi_buttons:vec![]},crate::macro_runtime::Hooks::default()).unwrap();runtime.simulate_event(crate::raw_input::Event::Buttons{source:source.clone(),mask:8});wait(&rec,2);log.lock().unwrap().clear();assert!(service.stop_software(&runtime).unwrap_err().contains("触发键"));assert!(runtime.has_quiescing());assert_eq!(runtime.status().source_count,0);assert!(log.lock().unwrap().is_empty());assert!(journal.path.exists());
   runtime.simulate_event(crate::raw_input::Event::Buttons{source,mask:0});wait_restore(&service,&journal.path);assert!(!journal.path.exists());assert!(!runtime.has_quiescing());assert!(log.lock().unwrap().iter().any(|r|matches!(r,gearwise_core::transport::MockRecord::Write(p) if p.windows(3).any(|v|v==[7,4,1]))));runtime.shutdown();std::fs::remove_dir(dir).unwrap();
  }
  fn wait_restore(service:&Service,path:&std::path::Path){let deadline=std::time::Instant::now()+std::time::Duration::from_secs(2);while (path.exists()||service.2.load(Ordering::Acquire))&&std::time::Instant::now()<deadline{std::thread::sleep(std::time::Duration::from_millis(2));}assert!(!path.exists());assert!(!service.2.load(Ordering::Acquire));}

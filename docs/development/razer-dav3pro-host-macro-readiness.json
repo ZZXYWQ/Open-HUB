@@ -1,6 +1,6 @@
 {
   "date": "2026-10-26",
-  "reviewed_code_checkpoint": "b0ecf20",
+  "reviewed_code_checkpoint": "working_tree_after_8a2b0c4",
   "status": "research_only_not_enabled",
   "vendor": "1532",
   "wired_product": "00B6",
@@ -9,18 +9,12 @@
   "existing_basis": [
     "exact DA native keyboard scalar supports F13–F24 reconstructed record format",
     "shared router can retain nonzero u16 logical IDs including secondary controls",
-    "existing Basilisk bridge supports Once/Toggle through per-source key triggers"
+    "existing Basilisk bridge supports Once/Toggle through per-source key triggers",
+    "Reviewed B6/B4/AA/AB serial matches now retain physical control-to-keyboard path/container proof; B7 remains rejected.",
+    "Ephemeral RawInput connection lease survives no path removal/reuse; per-preparation grant prevents stale cleanup from cancelling a newer route on the same live source.",
+    "Prepare, each temporary mapping write, arm, manual/automatic restoration and journal completion recheck captured live authority; uncertain inventory and listener exit invalidate it."
   ],
   "blockers": [
-    {
-      "kind": "input_identity",
-      "code": [
-        "src-tauri/src/input_identity.rs Razer serial branch",
-        "src-tauri/src/macro_runtime.rs prepare_target",
-        "src-tauri/src/multibrand.rs apply/arm/restore live proof checks"
-      ],
-      "fact": "Razer serial verification does not return a retained live proof; a B6 input source lifetime and control-to-keyboard correlation must be established and rechecked through arm/removal/restoration."
-    },
     {
       "kind": "capture_gap",
       "code": [
@@ -50,8 +44,6 @@
     }
   ],
   "required_simulation": [
-    "two B6 units with distinct matching serial/input paths; missing/duplicate/mismatched identities rejected",
-    "path removal/reuse between prepare/apply/arm and recovery",
     "both-layer fresh F-key collision and unknown action refusal before I/O",
     "12-binding boundary and13th rejection before writes",
     "Once repeat suppression, Toggle second press, held-trigger quiesce and unplug cancellation",
@@ -62,5 +54,22 @@
   "no_new_downloads": true,
   "no_vendor_code_executed": true,
   "no_hardware_claim": true,
-  "full_accepted_distinct_models_added": 0
+  "full_accepted_distinct_models_added": 0,
+  "implemented_input_authority": {
+    "status": "synthetic_validation_only",
+    "physical_metadata_tests": 13,
+    "registry_tests": 4,
+    "runtime_lifetime_tests": 6,
+    "raw_input_inventory_tests": 4,
+    "watcher_startup_tests": 2,
+    "known_unrelated_removal": "preserves other mouse routes",
+    "unresolved_topology": "invalidates pending/live input authority",
+    "recovery_record": "never downgrades a retained expired live proof into restart-only serial authority",
+    "production_macro_gate": "B6/B7 disabled; source lifetime tests do not prove OEM keyboard event delivery",
+    "Service_restore_fault_tests": 7
+  },
+  "remaining_physical_evidence": [
+    "Actual B6 keyboard RawInput press/release events and serial/container correlation under the shipped firmware/driver configuration.",
+    "Receiver multipairing separation; B7 container identity alone is insufficient."
+  ]
 }

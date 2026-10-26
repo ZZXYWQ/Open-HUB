@@ -28,7 +28,7 @@ impl Service {
  pub(super) fn attach_session(&self,out:&mut View,runtime:&Runtime)->Result<(),String>{
   let cached=self.3.lock().map_err(|_|"会话方案锁异常")?.get(&out.descriptor.id).cloned();
   if cached.as_ref().is_some_and(|s|s.connection_key!=out.connection_key){
-   if let Some(cleanup)=self.1.lock().map_err(|_|"宏恢复记录锁异常")?.get(&out.descriptor.id){cleanup.cancelled.store(true,Ordering::Release);runtime.remove(&cleanup.source.path);}
+   if let Some(cleanup)=self.1.lock().map_err(|_|"宏恢复记录锁异常")?.get(&out.descriptor.id){cleanup.cancelled.store(true,Ordering::Release);if let Some(proof)=&cleanup.input_proof{let _=runtime.remove_prepared(proof);}}
    out.session=None;return Ok(());
   }
   let Some(session)=cached.filter(|s|same_device(&s.descriptor,&out.descriptor))else{out.session=None;return Ok(())};
@@ -93,8 +93,8 @@ impl Service {
   rt.simulate_event(crate::raw_input::Event::Buttons{source,mask:0});assert!(!s.read(&id,&rt).unwrap().session.unwrap().temporary_dpi);clean(&s,&rt,&root);
  }
  #[test]fn removed_source_is_stopped_and_full_desired_plan_remains_editable(){
-  let(s,id,root,rt,rec,plan,_)=scenario(0x1532,0x00b4);s.apply_at(&id,&plan,&rt,&root,None).unwrap();rt.simulate_event(crate::raw_input::Event::Removed{path:plan.source.as_ref().unwrap().path.clone()});
-  let view=s.read(&id,&rt).unwrap();assert_eq!(view.session.as_ref().unwrap().software_state,"stopped");assert_eq!(view.session.unwrap().plan.macros,plan.macros);assert!(s.1.lock().unwrap()[&id].cancelled.load(Ordering::Acquire));press(&rt,&plan,true);assert!(rec.0.lock().unwrap().is_empty());press(&rt,&plan,false);clean(&s,&rt,&root);
+  let(s,id,root,rt,rec,plan,log)=scenario(0x1532,0x00b4);s.apply_at(&id,&plan,&rt,&root,None).unwrap();rt.simulate_event(crate::raw_input::Event::Removed{path:plan.source.as_ref().unwrap().path.clone()});
+  let view=s.read(&id,&rt).unwrap();assert_eq!(view.session.as_ref().unwrap().software_state,"stopped");assert_eq!(view.session.unwrap().plan.macros,plan.macros);assert!(s.1.lock().unwrap()[&id].cancelled.load(Ordering::Acquire));press(&rt,&plan,true);assert!(rec.0.lock().unwrap().is_empty());press(&rt,&plan,false);log.lock().unwrap().clear();assert!(s.stop_software(&rt).unwrap_err().contains("输入连接已变化"));assert!(log.lock().unwrap().is_empty());assert_eq!(crate::macro_recovery::load(&root.join("recovery")).0.len(),1);rt.shutdown();std::fs::remove_dir_all(root).unwrap();
  }
  #[test]fn session_identity_does_not_leak_to_another_serial_or_model(){
   let(s,id,root,rt,_,plan,_)=scenario(0x1532,0x00b4);s.apply_at(&id,&plan,&rt,&root,None).unwrap();let mut view=s.read(&id,&rt).unwrap();view.descriptor.serial=Some("another-unit".into());s.attach_session(&mut view,&rt).unwrap();assert!(view.session.is_none());view.descriptor.vendor_id=0x046d;s.attach_session(&mut view,&rt).unwrap();assert!(view.session.is_none());clean(&s,&rt,&root);

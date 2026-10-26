@@ -6,49 +6,163 @@ use gearwise_input::SharedSink;
 use serde::Serialize;
 #[derive(Clone,Debug)]pub struct InputMap{pub keys:BTreeMap<u16,u16>,pub buttons:Vec<u16>,pub dpi_buttons:Vec<u16>}
 #[derive(Clone,Default)]pub struct Hooks{pub dpi:Option<Arc<dyn Fn(u16,bool)->Result<(),String>+Send+Sync>>,pub cancel:Option<Arc<dyn Fn()+Send+Sync>>}
-struct Config{source:Source,map:InputMap,last_mask:u32,hooks:Hooks,quiescing:bool}
-#[derive(Default)]struct Physical{keys:HashSet<u16>,buttons:u32}
-#[derive(Clone)]struct ReleaseWatch{keys:Vec<u16>,buttons:u32}
-struct Hub{router:Router,configs:Mutex<HashMap<String,Config>>,physical:Mutex<HashMap<Source,Physical>>,pending:Mutex<HashMap<Source,ReleaseWatch>>,errors:Mutex<Vec<String>>}
-impl Hub{
- fn new(sink:SharedSink)->Self{Self{router:Router::new(sink),configs:Mutex::new(HashMap::new()),physical:Mutex::new(HashMap::new()),pending:Mutex::new(HashMap::new()),errors:Mutex::new(vec![])}}
- fn configure(&self,source:Source,bindings:Vec<Binding>,map:InputMap,hooks:Hooks)->Result<(),String>{
-  if self.pending.lock().map_err(|_|"恢复等待状态锁异常")?.keys().any(|s|s.path==source.path){return Err("此输入来源仍在等待原始映射恢复，暂不能重新运行宏".into());}
-  if map.keys.keys().any(|k|!(0x7c..=0x87).contains(k))||map.buttons.iter().any(|b|!(1..=25).contains(b)){return Err("软件宏触发映射无效".into());}
-  let ids=bindings.iter().map(|b|b.button).collect::<std::collections::HashSet<_>>();if map.keys.values().chain(map.buttons.iter()).any(|b|!ids.contains(b)&&!map.dpi_buttons.contains(b)){return Err("触发映射缺少对应宏".into());}
-  let mask=map.buttons.iter().fold(0u32,|mask,b|mask|1u32<<(*b-1));let physical=self.physical.lock().map_err(|_|"物理按键状态锁异常")?;if physical.get(&source).is_some_and(|p|p.buttons&mask!=0||map.keys.keys().any(|k|p.keys.contains(k)))||map.keys.keys().any(|k|native_key_down(*k)){return Err("触发键仍按住，请松开后重新应用方案".into());}drop(physical);
-  let mut configs=self.configs.lock().map_err(|_|"输入配置锁异常")?;self.router.configure(source.clone(),bindings)?;let previous=configs.insert(source.path.clone(),Config{source,map,last_mask:0,hooks,quiescing:false});drop(configs);if let Some(cancel)=previous.and_then(|c|c.hooks.cancel){cancel();}Ok(())
+#[path="macro_lifetime.rs"]
+mod lifetime;
+use lifetime::{Lease, Registry};
+
+struct Config { source:Source, map:InputMap, last_mask:u32, hooks:Hooks, quiescing:bool, _lease:Lease, grant:Option<Arc<()>> }
+#[derive(Default)]struct Physical { keys:HashSet<u16>, buttons:u32 }
+#[derive(Clone)]struct ReleaseWatch { keys:Vec<u16>, buttons:u32, grant:Option<Arc<()>> }
+#[derive(Default)]struct Routing { configs:HashMap<String,Config>, leases:Registry }
+struct Hub {
+ router:Router, routing:Mutex<Routing>, physical:Mutex<HashMap<Source,Physical>>,
+ pending:Mutex<HashMap<Source,ReleaseWatch>>, errors:Mutex<Vec<String>>,
+}
+impl Hub {
+ fn new(sink:SharedSink)->Self { Self { router:Router::new(sink),routing:Mutex::new(Routing::default()),physical:Mutex::new(HashMap::new()),pending:Mutex::new(HashMap::new()),errors:Mutex::new(vec![]) } }
+ fn capture(&self,source:&Source)->Result<Lease,String> { self.routing.lock().map_err(|_|"输入连接锁异常")?.leases.capture(source) }
+ fn check_lease(&self,lease:&Lease)->Result<(),String> { self.routing.lock().map_err(|_|"输入连接锁异常")?.leases.check(lease) }
+ #[cfg(test)]
+ fn configure(&self,source:Source,bindings:Vec<Binding>,map:InputMap,hooks:Hooks)->Result<(),String> {
+  let lease=self.capture(&source)?;self.configure_with_lease(&lease,None,source,bindings,map,hooks)
  }
- // Cancel owned synthetic output now, but keep observing the physical source
- // until restoring its native F13 mapping can no longer swallow a key-up.
- fn quiesce(&self,source:&Source,expected_keys:&[u16])->Result<bool,String>{
-  let (watch,cancel)={let mut configs=self.configs.lock().map_err(|_|"输入配置锁异常")?;match configs.get_mut(&source.path){Some(config)=>{if config.source!=*source{return Err("恢复记录与正在监听的输入来源不一致".into());}config.quiescing=true;(ReleaseWatch{keys:config.map.keys.keys().copied().collect(),buttons:config.map.buttons.iter().fold(0u32,|mask,b|mask|1u32<<(*b-1))},config.hooks.cancel.take())},None=>(ReleaseWatch{keys:expected_keys.to_vec(),buttons:if source.vendor==0x1b1c{u32::MAX}else{0}},None)}};
-  let watch=self.pending.lock().map_err(|_|"恢复等待状态锁异常")?.entry(source.clone()).or_insert(watch).clone();
-  self.router.remove(&source.path);if let Some(cancel)=cancel{cancel();}
-  let physical=self.physical.lock().map_err(|_|"物理按键状态锁异常")?;let held=physical.get(source).is_some_and(|p|p.buttons&watch.buttons!=0||watch.keys.iter().any(|k|p.keys.contains(k)));Ok(!held&&!watch.keys.iter().any(|k|native_key_down(*k)))
+ fn configure_with_lease(&self,lease:&Lease,grant:Option<&Arc<()>>,source:Source,bindings:Vec<Binding>,map:InputMap,hooks:Hooks)->Result<(),String> {
+  let mut routing=self.routing.lock().map_err(|_|"输入配置锁异常")?;
+  routing.leases.check(lease)?;
+  if lease.source()!=&source { return Err("准备的输入来源与宏目标不一致".into()); }
+  if self.pending.lock().map_err(|_|"恢复等待状态锁异常")?.keys().any(|s|s.path==source.path) { return Err("此输入来源仍在等待原始映射恢复，暂不能重新运行宏".into()); }
+  if map.keys.keys().any(|k|!(0x7c..=0x87).contains(k))||map.buttons.iter().any(|b|!(1..=25).contains(b)) { return Err("软件宏触发映射无效".into()); }
+  let ids=bindings.iter().map(|b|b.button).collect::<std::collections::HashSet<_>>();
+  if map.keys.values().chain(map.buttons.iter()).any(|b|!ids.contains(b)&&!map.dpi_buttons.contains(b)) { return Err("触发映射缺少对应宏".into()); }
+  let mask=map.buttons.iter().fold(0u32,|mask,b|mask|1u32<<(*b-1));
+  let physical=self.physical.lock().map_err(|_|"物理按键状态锁异常")?;
+  if physical.get(&source).is_some_and(|p|p.buttons&mask!=0||map.keys.keys().any(|k|p.keys.contains(k)))||map.keys.keys().any(|k|native_key_down(*k)) { return Err("触发键仍按住，请松开后重新应用方案".into()); }
+  drop(physical);
+  // Connection invalidation and route publication share this lock. A removal
+  // cannot slip between the final lease check and enabling its output route.
+  self.router.configure(source.clone(),bindings)?;
+  let previous=routing.configs.insert(source.path.clone(),Config { source,map,last_mask:0,hooks,quiescing:false,_lease:lease.clone(),grant:grant.cloned() });
+  drop(routing);
+  if let Some(cancel)=previous.and_then(|c|c.hooks.cancel) { cancel(); }
+  Ok(())
  }
- fn is_quiescing(&self,source:&Source)->bool{self.pending.lock().map(|p|p.contains_key(source)).unwrap_or(false)}
- fn stop_output(&self){let configs=self.configs.lock().map(|mut c|c.drain().map(|(_,c)|c).collect::<Vec<_>>()).unwrap_or_default();for config in configs{if let Some(cancel)=config.hooks.cancel{cancel();}}self.router.stop_all();if let Ok(mut pending)=self.pending.lock(){pending.clear();}}
- fn remove(&self,path:&str){if let Ok(mut pending)=self.pending.lock(){pending.retain(|source,_|source.path!=path);}let config=self.configs.lock().ok().and_then(|mut c|c.remove(path));self.router.remove(path);if let Some(config)=config{if let Some(cancel)=config.hooks.cancel{cancel();}}}
- fn event(&self,event:Event){
-  if let Event::Removed{path}=event{if let Ok(mut physical)=self.physical.lock(){physical.retain(|source,_|source.path!=path);}self.remove(&path);return;}
-  // Observe supported sources even between native remapping and route arming.
-  // Always release this lock before the config/Router locks.
-  if let Ok(mut physical)=self.physical.lock(){match &event{
-   Event::Key{source,vkey,down} if crate::multibrand::supported(source.vendor,source.product)&&(0x7c..=0x87).contains(vkey)=>{let state=physical.entry(source.clone()).or_default();if *down{state.keys.insert(*vkey);}else{state.keys.remove(vkey);}},
-   Event::Buttons{source,mask} if crate::multibrand::supported(source.vendor,source.product)=>physical.entry(source.clone()).or_default().buttons=*mask,
-   _=>{}
-  }}
-  let Ok(mut configs)=self.configs.lock()else{return};let mut dpi_events=Vec::new();
-  match event{
-   Event::Key{source,vkey,down}=>{let Some(config)=configs.get(&source.path).filter(|c|c.source==source&&!c.quiescing)else{return};if let Some(button)=config.map.keys.get(&vkey){self.router.input(&source,*button,down);}},
-   Event::Buttons{source,mask}=>{let Some(config)=configs.get_mut(&source.path).filter(|c|c.source==source&&!c.quiescing)else{return};let changed=config.last_mask^mask;config.last_mask=mask;for button in &config.map.buttons{let bit=1u32<<(*button-1);if changed&bit!=0{if config.map.dpi_buttons.contains(button){if let Some(callback)=&config.hooks.dpi{dpi_events.push((callback.clone(),*button,mask&bit!=0));}}else{self.router.input(&source,*button,mask&bit!=0);}}}},
+ #[cfg(test)]
+ fn quiesce(&self,source:&Source,expected_keys:&[u16])->Result<bool,String> { self.quiesce_owned(source,expected_keys,None) }
+ fn quiesce_owned(&self,source:&Source,expected_keys:&[u16],owner:Option<(&Lease,&Arc<()>)>)->Result<bool,String> {
+  let (watch,cancel)={
+   let mut routing=self.routing.lock().map_err(|_|"输入配置锁异常")?;
+   if let Some((lease,grant))=owner { routing.leases.check(lease)?;Self::check_owner(&routing,&self.pending,source,grant)?; }
+   let (watch,cancel)=match routing.configs.get_mut(&source.path) {
+    Some(config)=>{
+     if config.source!=*source { return Err("恢复记录与正在监听的输入来源不一致".into()); }
+     config.quiescing=true;
+     (ReleaseWatch { keys:config.map.keys.keys().copied().collect(),buttons:config.map.buttons.iter().fold(0u32,|mask,b|mask|1u32<<(*b-1)),grant:config.grant.clone() },config.hooks.cancel.take())
+    }
+    None=>(ReleaseWatch { keys:expected_keys.to_vec(),buttons:if source.vendor==0x1b1c { u32::MAX } else { 0 },grant:owner.map(|(_,g)|g.clone()) },None),
+   };
+   let watch=self.pending.lock().map_err(|_|"恢复等待状态锁异常")?.entry(source.clone()).or_insert(watch).clone();
+   self.router.remove(&source.path);
+   (watch,cancel)
+  };
+  if let Some(cancel)=cancel { cancel(); }
+  let physical=self.physical.lock().map_err(|_|"物理按键状态锁异常")?;
+  let held=physical.get(source).is_some_and(|p|p.buttons&watch.buttons!=0||watch.keys.iter().any(|k|p.keys.contains(k)));
+  Ok(!held&&!watch.keys.iter().any(|k|native_key_down(*k)))
+ }
+ fn is_quiescing(&self,source:&Source)->bool { self.pending.lock().map(|p|p.contains_key(source)).unwrap_or(false) }
+ fn stop_output(&self) { self.clear_all(true); }
+ fn clear_all(&self,close:bool) {
+  let configs={
+   let Ok(mut routing)=self.routing.lock() else { return; };
+   if close { routing.leases.close(); } else { routing.leases.invalidate_all(); }
+   let configs=routing.configs.drain().map(|(_,c)|c).collect::<Vec<_>>();
+   self.router.stop_all();
+   if let Ok(mut pending)=self.pending.lock() { pending.clear(); }
+   if let Ok(mut physical)=self.physical.lock() { physical.clear(); }
+   configs
+  };
+  for config in configs { if let Some(cancel)=config.hooks.cancel { cancel(); } }
+ }
+ fn check_owner(routing:&Routing,pending:&Mutex<HashMap<Source,ReleaseWatch>>,source:&Source,grant:&Arc<()>)->Result<(),String> {
+  if routing.configs.get(&source.path).is_some_and(|c|c.source!=*source||!c.grant.as_ref().is_some_and(|g|Arc::ptr_eq(g,grant))) {
+   return Err("输入路径已有另一方案，旧恢复记录未停止或覆盖新方案".into());
+  }
+  if pending.lock().map_err(|_|"恢复等待状态锁异常")?.iter().any(|(s,w)|s.path==source.path&&(s!=source||!w.grant.as_ref().is_some_and(|g|Arc::ptr_eq(g,grant)))) {
+   return Err("输入路径由另一恢复方案占用，保留原记录".into());
+  }
+  Ok(())
+ }
+ #[cfg(test)]
+ fn remove(&self,path:&str) { let _=self.remove_inner(path,false,None); }
+ fn disconnect(&self,path:&str) { let _=self.remove_inner(path,true,None); }
+ fn remove_inner(&self,path:&str,invalidate:bool,owner:Option<(&Lease,&Arc<()>)>)->Result<(),String> {
+  let config={
+   let mut routing=self.routing.lock().map_err(|_|"输入配置锁异常")?;
+   if let Some((lease,grant))=owner { routing.leases.check(lease)?;Self::check_owner(&routing,&self.pending,lease.source(),grant)?; }
+   if invalidate { routing.leases.invalidate_path(path); }
+   self.pending.lock().map_err(|_|"恢复等待状态锁异常")?.retain(|source,_|source.path!=path);
+   if invalidate { self.physical.lock().map_err(|_|"物理按键状态锁异常")?.retain(|source,_|source.path!=path); }
+   let config=routing.configs.remove(path);
+   self.router.remove(path);
+   config
+  };
+  if let Some(cancel)=config.and_then(|c|c.hooks.cancel) { cancel(); }
+  Ok(())
+ }
+ fn unowned_recovery_ready(&self,source:&Source,keys:&[u16])->Result<bool,String> {
+  let routing=self.routing.lock().map_err(|_|"输入配置锁异常")?;
+  if routing.configs.contains_key(&source.path)||self.pending.lock().map_err(|_|"恢复等待状态锁异常")?.keys().any(|s|s.path==source.path) {
+   return Err("旧恢复记录的输入路径已有其他运行或停止中的方案，未改变其状态".into());
+  }
+  let physical=self.physical.lock().map_err(|_|"物理按键状态锁异常")?;
+  Ok(!physical.get(source).is_some_and(|p|p.buttons!=0||keys.iter().any(|k|p.keys.contains(k)))&&!keys.iter().any(|k|native_key_down(*k)))
+ }
+ fn event(&self,event:Event) {
+  match &event {
+   Event::Removed { path }=>{ self.disconnect(path);return; }
+   Event::Arrived { source }=>{ self.disconnect(&source.path);return; }
+   Event::InventoryUncertain=>{ self.clear_all(false);return; }
+   Event::Stopped=>{ self.stop_output();if let Ok(mut errors)=self.errors.lock(){if errors.len()<128{errors.push("输入监听已停止；软件宏已取消，请先停止软件宏并重新准备方案".into());}}return; }
    _=>{},
   }
-  drop(configs); // Never acquire a device manager/HID lock while holding routing state.
-  for (callback,button,down) in dpi_events{if let Err(e)=callback(button,down){if let Ok(mut errors)=self.errors.lock(){if errors.len()<128{errors.push(e);}}}}
+  // Physical observation always releases its lock before routing. Removal and
+  // arrival also clear it, so a reused path cannot inherit an old held key.
+  if let Ok(mut physical)=self.physical.lock() { match &event {
+   Event::Key { source,vkey,down } if crate::multibrand::supported(source.vendor,source.product)&&(0x7c..=0x87).contains(vkey)=>{
+    let state=physical.entry(source.clone()).or_default();if *down { state.keys.insert(*vkey); } else { state.keys.remove(vkey); }
+   }
+   Event::Buttons { source,mask } if crate::multibrand::supported(source.vendor,source.product)=>physical.entry(source.clone()).or_default().buttons=*mask,
+   _=>{},
+  } }
+  let Ok(mut routing)=self.routing.lock() else { return; };let mut dpi_events=Vec::new();
+  match event {
+   Event::Key { source,vkey,down }=>{
+    let Some(config)=routing.configs.get(&source.path).filter(|c|c.source==source&&!c.quiescing) else { return; };
+    if let Some(button)=config.map.keys.get(&vkey) { self.router.input(&source,*button,down); }
+   }
+   Event::Buttons { source,mask }=>{
+    let Some(config)=routing.configs.get_mut(&source.path).filter(|c|c.source==source&&!c.quiescing) else { return; };
+    let changed=config.last_mask^mask;config.last_mask=mask;
+    for button in &config.map.buttons { let bit=1u32<<(*button-1);if changed&bit!=0 {
+     if config.map.dpi_buttons.contains(button) { if let Some(callback)=&config.hooks.dpi { dpi_events.push((callback.clone(),*button,mask&bit!=0)); } }
+     else { self.router.input(&source,*button,mask&bit!=0); }
+    } }
+   }
+   _=>{},
+  }
+  drop(routing);
+  for (callback,button,down) in dpi_events { if let Err(e)=callback(button,down) { if let Ok(mut errors)=self.errors.lock() { if errors.len()<128 { errors.push(e); } } } }
  }
-
+}
+#[derive(Clone,Debug,PartialEq,Eq)]
+struct TargetStamp { id:String,vendor:u16,product:u16,serial:Option<String>,control_path:Option<String>,connection_key:Option<String>,wired:bool }
+impl From<&crate::input_identity::Target> for TargetStamp {
+ fn from(t:&crate::input_identity::Target)->Self { Self { id:t.id.clone(),vendor:t.vendor,product:t.product,serial:t.serial.clone(),control_path:t.control_path.clone(),connection_key:t.connection_key.clone(),wired:t.wired } }
+}
+#[derive(Clone)]
+pub(crate) struct PreparedProof { physical:Option<crate::input_identity::Proof>, target:TargetStamp, lease:Lease, hub:std::sync::Weak<Hub>, grant:Arc<()> }
+impl std::fmt::Debug for PreparedProof {
+ fn fmt(&self,f:&mut std::fmt::Formatter<'_>)->std::fmt::Result { f.debug_struct("PreparedProof").field("target",&self.target).field("lease",&self.lease).finish_non_exhaustive() }
 }
 fn native_key_down(vkey:u16)->bool{
  #[cfg(all(windows,not(test)))]{unsafe{windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow().is_null()||windows_sys::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(i32::from(vkey)) as u16&0x8000!=0}}
@@ -74,36 +188,83 @@ impl Runtime{
    #[cfg(windows)]{let sink:SharedSink=Arc::new(Mutex::new(gearwise_input::create_sink().map_err(|e|e.to_string())?));let hub=Arc::new(Hub::new(sink));let callback_hub=hub.clone();let watcher=raw_input::Watcher::start(Arc::new(move|e|callback_hub.event(e)))?;*native=Some(Native{hub,_watcher:Some(watcher),#[cfg(test)]simulation:false,#[cfg(test)]identity:None});}
    #[cfg(not(windows))]return Err("软件宏输入采集目前需要 Windows".into());
   }Ok(())}
- pub(crate) fn prepare_target(&self,source:&Source,target:&crate::input_identity::Target,peers:&[crate::input_identity::Target])->Result<Option<crate::input_identity::Proof>,String>{
-  let proof=self.verify_target(source,target,peers)?;self.initialize()?;Ok(proof)
+ fn current_hub(&self)->Result<Arc<Hub>,String> {
+  self.0.lock().map_err(|_|"输入运行时锁异常")?.as_ref().map(|n|n.hub.clone()).ok_or("输入采集尚未初始化".into())
+ }
+ pub(crate) fn assert_prepared(&self,proof:&PreparedProof)->Result<(),String> {
+  let hub=self.current_hub()?;
+  if !proof.hub.upgrade().is_some_and(|prepared|Arc::ptr_eq(&prepared,&hub)) { return Err("输入监听已重新启动，未复用旧方案".into()); }
+  hub.check_lease(&proof.lease)
+ }
+ pub(crate) fn prepare_target(&self,source:&Source,target:&crate::input_identity::Target,peers:&[crate::input_identity::Target])->Result<PreparedProof,String> {
+  self.prepare_target_after_capture(source,target,peers,||{})
+ }
+ fn prepare_target_after_capture(&self,source:&Source,target:&crate::input_identity::Target,peers:&[crate::input_identity::Target],captured:impl FnOnce())->Result<PreparedProof,String> {
+  // Start observing topology before capturing identity. A removal during the
+  // following fresh inventory invalidates this exact lease, never a new one.
+  self.initialize()?;
+  let hub=self.current_hub()?;
+  let lease=hub.capture(source)?;
+  captured();
+  let physical=self.verify_target(source,target,peers)?;
+  let proof=PreparedProof { physical,target:target.into(),lease,hub:Arc::downgrade(&hub),grant:Arc::new(()) };
+  self.assert_prepared(&proof)?;
+  Ok(proof)
  }
  pub(crate) fn verify_target(&self,source:&Source,target:&crate::input_identity::Target,peers:&[crate::input_identity::Target])->Result<Option<crate::input_identity::Proof>,String>{
   #[cfg(test)]{let simulation=self.0.lock().map_err(|_|"输入运行时锁异常")?.as_ref().filter(|n|n.simulation&&source.path.starts_with("simulation:")&&crate::multibrand::supported(source.vendor,source.product)).map(|n|n.identity.clone());if let Some(context)=simulation{return match context{Some(f)=>crate::input_identity::verify(f.sources,source,target,peers,|p|f.containers.get(p).copied()),None=>Ok(None)};}}
   crate::input_identity::verify(raw_input::sources()?,source,target,peers,crate::hid_container::id)
  }
- pub(crate) fn recheck_target(&self,proof:&crate::input_identity::Proof,target:&crate::input_identity::Target,peers:&[crate::input_identity::Target])->Result<(),String>{
-  #[cfg(test)]{let context=self.0.lock().map_err(|_|"输入运行时锁异常")?.as_ref().filter(|n|n.simulation).map(|n|n.identity.clone());if let Some(context)=context{let f=context.ok_or("模拟输入关联缺少物理元数据")?;return crate::input_identity::recheck(proof,f.sources,target,peers,|p|f.containers.get(p).copied());}}
-  crate::input_identity::recheck(proof,raw_input::sources()?,target,peers,crate::hid_container::id)
+ pub(crate) fn recheck_target(&self,proof:&PreparedProof,target:&crate::input_identity::Target,peers:&[crate::input_identity::Target])->Result<(),String> {
+  if proof.target!=TargetStamp::from(target) { return Err("鼠标控制连接已变化（包括序列号或接口身份），未沿用旧输入关联".into()); }
+  self.assert_prepared(proof)?;
+  if self.verify_target(proof.lease.source(),target,peers)?!=proof.physical { return Err("鼠标输入关联已变化，请重新读取".into()); }
+  self.assert_prepared(proof)
  }
  #[cfg(test)]pub(crate) fn identity_fixture(&self,fixture:crate::input_identity::Fixture){self.0.lock().unwrap().as_mut().unwrap().identity=Some(fixture);}
- pub fn arm(&self,source:Source,bindings:Vec<Binding>,map:InputMap,hooks:Hooks)->Result<(),String>{let native=self.0.lock().map_err(|_|"软件宏运行时锁异常")?;native.as_ref().ok_or("输入采集尚未初始化")?.hub.configure(source,bindings,map,hooks)}
- pub fn remove(&self,path:&str){if let Ok(native)=self.0.lock(){if let Some(native)=native.as_ref(){native.hub.remove(path);}}}
- pub fn quiesce(&self,source:&Source,expected_keys:&[u16])->Result<bool,String>{let native=self.0.lock().map_err(|_|"软件宏运行时锁异常")?;let ready=match native.as_ref(){Some(n)=>n.hub.quiesce(source,expected_keys)?,None=>true};Ok(ready&&!expected_keys.iter().any(|k|native_key_down(*k)))}
+ pub(crate) fn arm_prepared(&self,proof:&PreparedProof,source:Source,bindings:Vec<Binding>,map:InputMap,hooks:Hooks)->Result<(),String> {
+  let hub=self.current_hub()?;
+  if !proof.hub.upgrade().is_some_and(|prepared|Arc::ptr_eq(&prepared,&hub)) { return Err("输入监听已重新启动，未复用旧方案".into()); }
+  hub.configure_with_lease(&proof.lease,Some(&proof.grant),source,bindings,map,hooks)
+ }
+ pub(crate) fn quiesce_prepared(&self,proof:&PreparedProof,source:&Source,keys:&[u16])->Result<bool,String> {
+  self.assert_prepared(proof)?;
+  if proof.lease.source()!=source { return Err("停止来源与原始授权不一致".into()); }
+  self.current_hub()?.quiesce_owned(source,keys,Some((&proof.lease,&proof.grant)))
+ }
+ pub(crate) fn remove_prepared(&self,proof:&PreparedProof)->Result<(),String> {
+  self.assert_prepared(proof)?;
+  self.current_hub()?.remove_inner(&proof.lease.source().path,false,Some((&proof.lease,&proof.grant)))
+ }
+ pub(crate) fn unowned_recovery_ready(&self,source:&Source,keys:&[u16])->Result<bool,String> {
+  let hub=self.0.lock().map_err(|_|"输入运行时锁异常")?.as_ref().map(|n|n.hub.clone());
+  match hub { Some(hub)=>hub.unowned_recovery_ready(source,keys),None=>Ok(!keys.iter().any(|k|native_key_down(*k))) }
+ }
+ #[cfg(test)]
+ pub fn arm(&self,source:Source,bindings:Vec<Binding>,map:InputMap,hooks:Hooks)->Result<(),String> { self.current_hub()?.configure(source,bindings,map,hooks) }
+ #[cfg(test)]
+ pub fn remove(&self,path:&str) { if let Ok(hub)=self.current_hub() { hub.remove(path); } }
+ #[cfg(test)]
+ pub fn quiesce(&self,source:&Source,expected_keys:&[u16])->Result<bool,String> {
+  let hub=self.0.lock().map_err(|_|"软件宏运行时锁异常")?.as_ref().map(|n|n.hub.clone());
+  let ready=match hub { Some(hub)=>hub.quiesce(source,expected_keys)?,None=>true };
+  Ok(ready&&!expected_keys.iter().any(|k|native_key_down(*k)))
+ }
  pub fn is_quiescing(&self,source:&Source)->bool{self.0.lock().map(|n|n.as_ref().is_some_and(|n|n.hub.is_quiescing(source))).unwrap_or(false)}
- pub(crate) fn is_armed(&self,source:&Source)->bool{self.0.lock().map(|n|n.as_ref().is_some_and(|n|n.hub.configs.lock().map(|c|c.get(&source.path).is_some_and(|c|c.source==*source&&!c.quiescing)).unwrap_or(false))).unwrap_or(false)}
- pub(crate) fn manual_recovery_ready(&self,source:&Source,keys:&[u16])->Result<bool,String>{
-  let native=self.0.lock().map_err(|_|"软件宏运行时锁异常")?;
-  let hub=&native.as_ref().ok_or("请先准备恢复并选择当前鼠标的输入来源")?.hub;
-  if hub.configs.lock().map_err(|_|"输入配置锁异常")?.contains_key(&source.path){return Err("此输入来源仍有运行或停止中的方案，请先停止并等待恢复完成".into());}
-  if source.vendor==0x1b1c&&!hub.physical.lock().map_err(|_|"物理按键状态锁异常")?.contains_key(source){return Err("尚未收到此鼠标的按钮状态；请移动鼠标并松开所有按钮后重试".into());}
-  hub.quiesce(source,keys)
+ pub(crate) fn is_armed(&self,source:&Source)->bool{self.0.lock().map(|n|n.as_ref().is_some_and(|n|n.hub.routing.lock().map(|r|r.configs.get(&source.path).is_some_and(|c|c.source==*source&&!c.quiescing)).unwrap_or(false))).unwrap_or(false)}
+ pub(crate) fn manual_recovery_ready(&self,source:&Source,keys:&[u16])->Result<bool,String> {
+  let hub=self.current_hub().map_err(|_|"请先准备恢复并选择当前鼠标的输入来源")?;
+  if source.vendor==0x1b1c&&!hub.physical.lock().map_err(|_|"物理按键状态锁异常")?.contains_key(source) { return Err("尚未收到此鼠标的按钮状态；请移动鼠标并松开所有按钮后重试".into()); }
+  // Manual review holds the device manager lock throughout. It must not mint
+  // an orphan pending-release owner when a held button asks the user to retry.
+  hub.unowned_recovery_ready(source,keys)
  }
  pub fn has_quiescing(&self)->bool{self.0.lock().map(|n|n.as_ref().is_some_and(|n|n.hub.pending.lock().map(|p|!p.is_empty()).unwrap_or(true))).unwrap_or(true)}
- pub fn status(&self)->Status{self.0.lock().ok().and_then(|n|n.as_ref().map(|n|Status{source_count:n.hub.configs.lock().map(|c|c.values().filter(|c|!c.quiescing).count()).unwrap_or(0),errors:{let mut errors=n.hub.router.errors();if let Ok(extra)=n.hub.errors.lock(){errors.extend(extra.clone());}errors}})).unwrap_or(Status{source_count:0,errors:vec![]})}
+ pub fn status(&self)->Status{self.0.lock().ok().and_then(|n|n.as_ref().map(|n|Status{source_count:n.hub.routing.lock().map(|r|r.configs.values().filter(|c|!c.quiescing).count()).unwrap_or(0),errors:{let mut errors=n.hub.router.errors();if let Ok(extra)=n.hub.errors.lock(){errors.extend(extra.clone());}errors}})).unwrap_or(Status{source_count:0,errors:vec![]})}
  pub(crate) fn notice(&self,message:String){if let Ok(native)=self.0.lock(){if let Some(native)=native.as_ref(){if let Ok(mut errors)=native.hub.errors.lock(){if errors.len()<128{errors.push(message);}}}}}
  pub fn shutdown(&self){let native=self.0.lock().ok().and_then(|mut state|state.take());if let Some(native)=native{native.hub.stop_output();drop(native);}}
  #[cfg(test)]pub(crate) fn simulation(sink:SharedSink)->Self{Self(Arc::new(Mutex::new(Some(Native{hub:Arc::new(Hub::new(sink)),#[cfg(windows)]_watcher:None,simulation:true,identity:None}))))}
- #[cfg(test)]pub(crate) fn simulate_event(&self,event:Event){let native=self.0.lock().unwrap();if let Some(native)=native.as_ref(){native.hub.event(event);}}
+ #[cfg(test)]pub(crate) fn simulate_event(&self,event:Event){if let Ok(hub)=self.current_hub(){hub.event(event);}}
 }
 #[cfg(test)]mod tests{
  use super::*;use gearwise_core::{model::MouseButton,profile::{Macro,MacroMode,MacroStep}};use gearwise_input::InputSink;use std::time::{Duration,Instant};
@@ -159,3 +320,7 @@ impl Runtime{
   }
  }
 }
+
+#[cfg(test)]
+#[path="macro_lifetime_tests.rs"]
+mod lifetime_tests;

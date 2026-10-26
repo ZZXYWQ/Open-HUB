@@ -50,12 +50,12 @@ impl Service {
         self.prepare_input_target(id,source,runtime).map(|_|())
     }
     pub fn restore_recovery(&self,id:&str,key:&str,expected_revision:&str,source:&Source,confirmed:bool,runtime:&Runtime)->Result<(),String>{
-        let(target,peers)=self.with(|m|Self::input_context(m,id))?;runtime.verify_target(source,&target,&peers)?;
         self.restore_recovery_from(&macro_recovery::directory()?,id,key,expected_revision,source,confirmed,runtime)
     }
     pub(super) fn restore_recovery_from(&self,dir:&Path,id:&str,key:&str,expected_revision:&str,source:&Source,confirmed:bool,runtime:&Runtime)->Result<(),String>{
         if !confirmed{return Err("请核对原始动作、目标鼠标与覆盖范围后确认恢复".into());}
         if key.len()>256||expected_revision.len()>128*1024{return Err("恢复请求大小无效".into());}
+        let input_proof=self.prepare_input_target(id,source,runtime)?;
         self.with(|manager|{
             // Select only an enumerated journal; the request can never supply a path.
             let(journals,_)=macro_recovery::load(dir);
@@ -65,7 +65,7 @@ impl Service {
             let reviewed:serde_json::Value=serde_json::from_str(expected_revision).map_err(|_|"恢复记录已变化或无效，请刷新并重新核对")?;
             if review(&record,&descriptor)?!=reviewed{return Err("恢复记录已变化或目标鼠标已更换，请刷新并重新核对".into());}
             target(&record,&descriptor,Some(source))?;
-            let(current,peers)=Self::input_context(manager,id)?;runtime.verify_target(source,&current,&peers)?;
+            let(current,peers)=Self::input_context(manager,id)?;runtime.recheck_target(&input_proof,&current,&peers)?;
             {
                 let active=self.1.lock().map_err(|_|"宏恢复记录锁异常")?;
                 for (active_id,cleanup) in active.iter(){
@@ -81,14 +81,15 @@ impl Service {
             let device=manager.device_mut(raw_id(id)).ok_or("鼠标已断开")?;
             // User explicitly reviewed these originals. Cached state is never
             // presented or used as proof of routing/DPI ownership here.
-            if record.software_input {device.restore_hardware_input().map_err(|e|format!("硬件模式恢复失败，记录已保留：{e}"))?;}
-            if let Some(shift)=&record.shift {device.apply(&Setting::Dpi(shift.original.clone())).map_err(|e|format!("原始 DPI 恢复失败，记录已保留：{e}"))?;}
-            if record.version==2{crate::steelseries::restore_table(device.as_mut(),&record.settings)?;}else{
-                for setting in &record.settings {device.apply(setting).map_err(|e|format!("原始按键恢复失败，记录已保留：{e}"))?;}
+            if record.software_input {runtime.assert_prepared(&input_proof)?;device.restore_hardware_input().map_err(|e|format!("硬件模式恢复失败，记录已保留：{e}"))?;}
+            if let Some(shift)=&record.shift {runtime.assert_prepared(&input_proof)?;device.apply(&Setting::Dpi(shift.original.clone())).map_err(|e|format!("原始 DPI 恢复失败，记录已保留：{e}"))?;}
+            if record.version==2{runtime.assert_prepared(&input_proof)?;crate::steelseries::restore_table(device.as_mut(),&record.settings)?;}else{
+                for setting in &record.settings {runtime.assert_prepared(&input_proof)?;device.apply(setting).map_err(|e|format!("原始按键恢复失败，记录已保留：{e}"))?;}
             }
+            runtime.remove_prepared(&input_proof)?;
+            runtime.assert_prepared(&input_proof)?;
             journal.finish()?;
             self.1.lock().map_err(|_|"宏恢复记录锁异常")?.retain(|_,c|!c.journal.as_ref().is_some_and(|j|j.path==journal.path));
-            runtime.remove(&source.path);
             Ok(())
         })
     }

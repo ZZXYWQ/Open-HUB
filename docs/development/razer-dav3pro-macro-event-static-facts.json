@@ -25,6 +25,16 @@
       "retained_artifact": "research-next-brands/razer-official-182-mw-unpacked/RzCtl_00B6.dll",
       "sha256": "caffd8cf48986e3559aca551d9069a36563b77c01e3061373d8b5a4ee223c217"
     },
+    "B6_driver_metadata": {
+      "retained_artifact": "research-next-brands/razer-official-182-module-unpacked/$PLUGINSDIR/PID00b6Drv_v0.1.1.0.exe",
+      "sha256": "b565b0ec4c1c83096c954fd227f6f17c34747d858735dbcfd4299ba893a81e1a",
+      "inspection": "Only seven INF text members were extracted from the already retained same-product archive; no installer, driver or OEM code was executed",
+      "members": {
+        "Drivers/x64/RzDevU_00b6_Mou.inf": "e184df979a007052e83f4399ddce04f5d77156d3889b62bc2c78e3c27d14a33b",
+        "Drivers/x64/KB/RzDevU_00b6_Kbd.inf": "06d9b3743fa004830ad3210482d1f814e6feae4c60f20dca9777309c22a78b6a",
+        "Drivers/x64/Lower/RzDevU_00b6_Dkm.inf": "a880022de96351f6386dde341e4c1acdc618d9d2accd123564088851aa3bb6c4"
+      }
+    },
     "mapping_base": {
       "retained_artifact": "research-next-brands/razer-official-182-module-unpacked/$APPDATA/Razer/Synapse3/Service/Staging/Devices/LitaT1/Bin/RSy3_MappingBaseV2M.dll",
       "sha256": "cc5efd5bb6fad74462f38c4998c88e9042e80651a16ba1faf57c5606c9153b2b",
@@ -66,6 +76,19 @@
     "notification_read": "DriverNotificationThread at 0x1001E5E0 issues overlapped IOCTL 0x88883018 with a 0x130-byte output buffer and dispatches DriverNotify at 0x1001E720. That decoder distinguishes driver notification classes 1, 2, 4 and 8. It is not a direct HID report-4/report-5 parser.",
     "device_event_boundary": "The reviewed user-mode subscription/start/worker path contains no explicit calibration 0B feature-report setter. Kernel behavior behind the IOCTLs was not inspected; neither zero kernel side effects nor calibration activation dependence is established."
   },
+  "proven_B6_filter_driver_macro_edges": {
+    "dispatch": "DriverNotify 0x1001E720 notification class 2 requires a 0xD4-byte mapping context, converts the driver input with 0x1001E390 and forwards feature 0x4010001. InputHookCallback 0x10021450 dispatches CMapping vtable offset 0x64 to ProcessMapping 0x10023A00. The latter requires at least 0x6C bytes of mapping data and accepts only an absent owner or its current CMapping owner before calling 0x10023C60.",
+    "mouse_edge_decode": "0x1001F610 decodes the driver mouse-input flag pairs 0x1/0x2, 0x4/0x8, 0x10/0x20, 0x40/0x80 and 0x100/0x200 into internal mouse controls 1 through 5 with low flag bit 0 for down and 1 for up. Additional 0x10000/0x20000 and 0x40000/0x80000 pairs similarly produce controls 6 and 7. These are driver structure flags, not HID report bytes.",
+    "macro_call_arguments": "For middleware mapping group 2, 0x10023C60 at 0x100249E4 resolves feature 0x403 and calls MacroEngine vtable offset 0x14, resolved by vtable 0x100638A8 to 0x100453A0. Assembly 0x100249FA through 0x10024A14 passes the mapping GUID at record+0x4C, playback at +0x48, repeat at +0x5C, pressed value computed as complement of input flags bit 0, context at +0x40 and literal 1. This is a six-argument internal host-engine call, not a decoded firmware Fn3 payload.",
+    "playback_edges": "MacroEngine 0x100453A0 resolves work by GUID and forwards to MacroWork::Start 0x10045480. That start function starts only for a nonzero pressed value when idle; while running in playback code 2 Held, pressed=0 sets the repeat count to zero and requests stop. In playback code 3 Toggle, a subsequent nonzero pressed value requests stop. Code 1 Once/NTimes does not stop on release.",
+    "identity_boundary": "Driver input acceptance at 0x1001FBA0 can compare its driver unit field against a current CInputHook unit. Init 0x1001F020 obtains the driver/control interfaces from the current device controller. Neither chain establishes a Windows RawInput keyboard handle, a shared HID serial/container identity, or a standalone source independent of the OEM filter driver."
+  },
+  "proven_B6_interface_metadata": {
+    "mouse_control": "RzDevU_00b6_Mou.inf [Standard.NTamd64] matches HID\\Vid_1532&Pid_00b6&MI_00, uses standard HID_Mouse_Inst.NT, and sets ControlDevice=1 and DeviceType=1.",
+    "keyboard": "RzDevU_00b6_Kbd.inf [Standard.NTamd64] matches HID\\Vid_1532&Pid_00b6&MI_02 and uses standard HID_Keyboard_Inst.NT. This independently establishes the official B6 keyboard interface declaration.",
+    "filter": "RzDevU_00b6_Dkm.inf matches USB\\Vid_1532&Pid_00b6&MI_01 and declares the RzDev_00b6 lower filter with DkmKeyDevice and DkmMouseDevice enabled.",
+    "limit": "INF hardware IDs do not contain a HID report descriptor, report lengths, a usage maximum, the actual Fn2 F13-F24 input delivery, a physical unit serial or container ID. The retained public B6 write capture identifies only the MI_00 mouse/control interface and distributes no serial payload. Neither source proves the control-to-keyboard association for two simultaneous B6 units. B7 metadata also declares extra keyboard/mouse collections and does not prove per-paired-mouse identity."
+  },
   "unresolved_before_any_bridge_implementation": [
     "Exact relation between native Fn3/4/5 macro assignments, stored macro IDs, the GUID-based host engine and physical input notifications",
     "Exact B6 HID report-4/report-5 payload layout and press/release/layer semantics",
@@ -83,6 +106,9 @@
     "outputs/100-model-development/ghidra-razer-macro-b6-inputpath.json",
     "outputs/100-model-development/ghidra-razer-macro-b6-drivernotify.json",
     "outputs/100-model-development/ghidra-razer-macro-b6-engine.json",
+    "outputs/100-model-development/ghidra-razer-macro-b6-mapping-input.json",
+    "outputs/100-model-development/razer-macro-mapping-rtti.json",
+    "outputs/100-model-development/razer-b6-driver-inf",
     "outputs/100-model-development/ghidra-razer-calibration-deviceevent-subscribe.json",
     "outputs/100-model-development/ghidra-razer-calibration-notify-thread.json",
     "outputs/100-model-development/razer-macro-rtti.json"
