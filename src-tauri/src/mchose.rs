@@ -443,6 +443,10 @@ impl Drop for Transport {
 mod board_tests;
 
 #[cfg(test)]
+#[path = "mchose_keybinding_tests.rs"]
+mod keybinding_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     #[test]

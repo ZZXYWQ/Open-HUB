@@ -1,0 +1,332 @@
+{
+  "date": "2026-10-27",
+  "status": "static_source_facts; macro codec changes pending",
+  "source": {
+    "url": "https://www.mchose.com.cn/assets/purify.es-CxLZ1Htw.js",
+    "bytes": 7763164,
+    "utf16_chars": 7749886,
+    "sha256": "b64fdf6d0f85aa9548c8d7ddb43a7f1b39e4d662762d5e3f359e69a600fbdfae",
+    "method": "Static text/Babel AST; independently calculated data vectors. No require/import/eval of the OEM bundle or OEM function execution.",
+    "coordinates": "Zero-based UTF-16 character offsets and UTF-8 byte offsets, all end-exclusive."
+  },
+  "spans": {
+    "V3_macro_encoder_vbt": {
+      "char_start": 4186633,
+      "char_end_exclusive": 4187293,
+      "byte_start": 4194361,
+      "byte_end_exclusive": 4195021
+    },
+    "V3_write_chunk_Qbt": {
+      "char_start": 4187294,
+      "char_end_exclusive": 4187516,
+      "byte_start": 4195022,
+      "byte_end_exclusive": 4195244
+    },
+    "V3_write_sequence_HUe": {
+      "char_start": 4187517,
+      "char_end_exclusive": 4187607,
+      "byte_start": 4195245,
+      "byte_end_exclusive": 4195335
+    },
+    "V3_slot_allocate_and_bind": {
+      "char_start": 4187869,
+      "char_end_exclusive": 4188549,
+      "byte_start": 4195597,
+      "byte_end_exclusive": 4196277
+    },
+    "V3_packet_formatter_i1e": {
+      "char_start": 4204573,
+      "char_end_exclusive": 4204872,
+      "byte_start": 4213567,
+      "byte_end_exclusive": 4213866
+    },
+    "V3_serial_send_mu": {
+      "char_start": 4207673,
+      "char_end_exclusive": 4207968,
+      "byte_start": 4216677,
+      "byte_end_exclusive": 4216972
+    },
+    "V3_name_reader_TJ": {
+      "char_start": 4217427,
+      "char_end_exclusive": 4217764,
+      "byte_start": 4226483,
+      "byte_end_exclusive": 4226820
+    },
+    "V3_macro_refresh_ygt": {
+      "char_start": 4219854,
+      "char_end_exclusive": 4220196,
+      "byte_start": 4228950,
+      "byte_end_exclusive": 4229292
+    },
+    "NewMouse_family_X8": {
+      "char_start": 4236810,
+      "char_end_exclusive": 4237225,
+      "byte_start": 4245924,
+      "byte_end_exclusive": 4246339
+    },
+    "NewMouse_membership_D": {
+      "char_start": 4237226,
+      "char_end_exclusive": 4237267,
+      "byte_start": 4246340,
+      "byte_end_exclusive": 4246381
+    },
+    "NewMouse_macro_apply": {
+      "char_start": 4246163,
+      "char_end_exclusive": 4247133,
+      "byte_start": 4255293,
+      "byte_end_exclusive": 4256263
+    },
+    "NewMouse_versus_old_macro_dispatch": {
+      "char_start": 4248290,
+      "char_end_exclusive": 4248411,
+      "byte_start": 4257420,
+      "byte_end_exclusive": 4257541
+    },
+    "mouse_mode_picker_bVt": {
+      "char_start": 4446279,
+      "char_end_exclusive": 4447513,
+      "byte_start": 4455758,
+      "byte_end_exclusive": 4456992
+    },
+    "old_M7_writer_aJ_for_separation_only": {
+      "char_start": 1460713,
+      "char_end_exclusive": 1462949,
+      "byte_start": 1467068,
+      "byte_end_exclusive": 1469336
+    }
+  },
+  "family_route": {
+    "family_includes": "MCHOSE A7 V3 Ultra+",
+    "route": "applyMouseMacro dispatch checks $D(device.productName), which tests X8 membership. NewMouse/Nordic branch calls $Ue -> HUe -> vbt/Qbt -> mu(0x090B) -> i1e(report ID0x4D).",
+    "old_route": "The other branch uses aJ with older0x12/0x55 framing and a distinct body format; it must not supply V3 header/count/event semantics.",
+    "identity_limit": "The historical physical3837:4026 identity and source catalog A7 V3 Ultra+4033 discrepancy is tracked by root. These shared NewMouse-family protocol facts do not authorize changing MODEL_PID or enabling another model."
+  },
+  "header": {
+    "length": 64,
+    "fields": [
+      {
+        "bytes": [
+          0,
+          1
+        ],
+        "fact": "Little-endian length in bytes of event body: event count times4."
+      },
+      {
+        "bytes": [
+          2,
+          3
+        ],
+        "fact": "Writer emits literal zeroes. Meaning unproved; no repeat-count inference."
+      },
+      {
+        "bytes": [
+          4
+        ],
+        "fact": "Source macro type/UI mode, passed directly to the writer."
+      },
+      {
+        "bytes": [
+          5,
+          6,
+          7
+        ],
+        "fact": "Writer emits literal zeroes. Meaning unproved; preserve unknown baseline data."
+      },
+      {
+        "bytes": [
+          8,
+          63
+        ],
+        "fact": "56-byte name region: UTF-8 bytes, source writer truncates at56 bytes and pads zeroes."
+      }
+    ]
+  },
+  "OEM_modes": [
+    {
+      "value": 0,
+      "label_key": "mouseMacro.heldDown",
+      "description_key": "mouseMacro.heldDownText"
+    },
+    {
+      "value": 1,
+      "label_key": "mouseMacro.sameDown",
+      "description_key": "mouseMacro.sameDownText"
+    },
+    {
+      "value": 3,
+      "label_key": "mouseMacro.otherDown",
+      "description_key": "mouseMacro.otherDownText"
+    },
+    {
+      "value": 2,
+      "label_key": "mouseMacro.cycleRepetition",
+      "description_key": "mouseMacro.cycleRepetitionText"
+    }
+  ],
+  "mode2_limit": "Localized label/description strings are not in this retained bundle. No numeric repeat count is sent by the V3 writer; this does not prove mode2 means a single run or N runs. Keep original-mode2 wording and do not invent count controls.",
+  "event": {
+    "length": 4,
+    "first_word": "Bytes0..1 are little-endian val only for source type time. The source writer emits0,0 for key/mouse/mousescroll.",
+    "opcode": "Byte2 bits0..5: key17,mouse0,mousescroll5,time63. Bit6 is1 iff press is down. Bit7 is1 iff this is the final event.",
+    "code": "Byte3: keyboard usage from qM; mouse mask Left1,Middle4,Right2,Forward16,Back8; scroll Up0/Down1; time0.",
+    "inline_limit": "Nonzero words on non-time records are not established timing semantics by this source. Existing read data must be retained as opaque bytes or edits explicitly refused; do not reinterpret or silently zero them."
+  },
+  "commands": {
+    "write": "0x090B; payload [slot,offset_lo,offset_hi,write_control,...part]; parts at most19 bytes; control=(part_length<<2)|flags, first1,middle0,last2. Macro has at least64 bytes, so first and last chunks are distinct. Source requests total packet length32.",
+    "read": "0x090C name reader requests22 data bytes at offsets0,22,44, takes returned slice1..23, concatenates, extracts bytes8..63 and decodes UTF-8 until NUL, then trims for display. It does not prove a full event-body decoder.",
+    "read_prefix_limit": "This source drops the first returned byte; it does not explicitly label or validate that byte as length versus status.",
+    "command090A": "No StringLiteral or NumericLiteral0x090A and no explicit090A route found in the full AST. This is an evidence gap, not proof firmware lacks it.",
+    "packet": "Report ID0x4D, version byte1, flags1, payload length, little-endian command, bizCode/sequence, payload; XOR checksum over flags through payload."
+  },
+  "independently_authored_vectors": [
+    {
+      "name": "A",
+      "mode": 1,
+      "input": "key A down; time37; key A up",
+      "header_prefix": [
+        12,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        65
+      ],
+      "remaining_header_zero_bytes": 55,
+      "event_bytes": [
+        [
+          0,
+          0,
+          81,
+          4
+        ],
+        [
+          37,
+          0,
+          63,
+          0
+        ],
+        [
+          0,
+          0,
+          145,
+          4
+        ]
+      ],
+      "total_bytes": 76,
+      "chunks": [
+        {
+          "offset": 0,
+          "length": 19,
+          "control": 77
+        },
+        {
+          "offset": 19,
+          "length": 19,
+          "control": 76
+        },
+        {
+          "offset": 38,
+          "length": 19,
+          "control": 76
+        },
+        {
+          "offset": 57,
+          "length": 19,
+          "control": 78
+        }
+      ]
+    },
+    {
+      "name": "宏",
+      "mode": 3,
+      "input": "mouse Left down/up; scrollUp; time513",
+      "header_prefix": [
+        16,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        0,
+        229,
+        174,
+        143
+      ],
+      "remaining_header_zero_bytes": 53,
+      "event_bytes": [
+        [
+          0,
+          0,
+          64,
+          1
+        ],
+        [
+          0,
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          0,
+          5,
+          0
+        ],
+        [
+          1,
+          2,
+          191,
+          0
+        ]
+      ],
+      "total_bytes": 80,
+      "chunks": [
+        {
+          "offset": 0,
+          "length": 19,
+          "control": 77
+        },
+        {
+          "offset": 19,
+          "length": 19,
+          "control": 76
+        },
+        {
+          "offset": 38,
+          "length": 19,
+          "control": 76
+        },
+        {
+          "offset": 57,
+          "length": 19,
+          "control": 76
+        },
+        {
+          "offset": 76,
+          "length": 4,
+          "control": 18
+        }
+      ]
+    }
+  ],
+  "limitations": {
+    "OEM_code_executed": false,
+    "hardware_tested": false,
+    "new_runtime_dependencies": false,
+    "macro_production_changes": false,
+    "full_model_compatibility_claim": false
+  },
+  "pending_codec_design": {
+    "production_edits_made": false,
+    "raw_baseline": "Carry optional original raw macro content through native read, unchanged save, macro-file export/import and write. This is content provenance, not a physical-mouse identity or a repeat-count schema.",
+    "unchanged": "When requested name/mode/events still match the decoded baseline, preserve and write/export exact baseline bytes, including opaque header words, non-time words and terminal flags.",
+    "canonical": "For a new or canonically edited macro, retain the independently implemented OEM canonical encoder and balanced-key checks. Reject non-delay delay_ms!=0 instead of silently discarding it.",
+    "opaque_edits": "If a baseline contains unmodelled header/event words or flags and user changes its interpreted values, retain the source and explicitly refuse lossy editing. Do not invent semantics or normalize the opaque bytes.",
+    "UI": "Retain four source mode values0/1/3/2 with mode2 qualified as original mode2. No repeat-count field or new inline-delay control.",
+    "next_validation": "Stateful production request test: read native slot -> unchanged save/export/import -> write/read exact bytes; canonical edit roundtrip and unknown opaque edit refusal. No hardware macro playback or OS input required."
+  }
+}

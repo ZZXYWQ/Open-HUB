@@ -207,6 +207,14 @@ fn validate_binding(b: &[u8]) -> Result<()> {
         Some(0) => b.len() == 3 && b[2] == 0 && [1, 2, 4, 8, 16].contains(&b[1]),
         Some(5) => b.len() == 3 && b[2] == 0 && b[1] <= 1,
         Some(0x11) => b.len() == 3 && b[2] == 0 && b[1] > 0,
+        Some(0x12) => b.len() == 3 && (1..=0x0f).contains(&b[1]) && b[2] == 0,
+        Some(0x13) => {
+            // The official 4D picker uses four generic modifiers and the
+            // qM main-key set; modifier usages and reserved gaps are excluded.
+            b.len() == 3
+                && (1..=0x0f).contains(&b[1])
+                && matches!(b[2], 0x04..=0x31 | 0x33..=0x63 | 0x65)
+        }
         Some(0x14) => b.len() == 3,
         Some(0x16) => b.len() == 3 && b[2] > 0,
         Some(1) => b.len() == 4 && b[2] == 0 && b[3] == 0 && [0, 2, 3].contains(&b[1]),

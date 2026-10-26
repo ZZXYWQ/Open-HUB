@@ -23,6 +23,8 @@
 
 迈从后续修复保存其他设置时丢失草稿、切换板载组时旧操作重新选取目标组的问题；各板载组与宏槽保留独立草稿，写入始终使用原先核对的组。[611 项主程序测试及 20 组相关 UI 回归通过](docs/development/2026-10-27-mchose-drafts-board-validation.json)，新增功能仍未计作实机完整验收。
 
+迈从键盘分配后续按[原厂 0x4D 编码事实](docs/development/mchose-v3-keyboard-official-facts.json)补齐 96 个主键、通用组合键及单独修饰键，保留复制/粘贴预设和宏中的左右修饰键。[617 项主程序测试、27 组相关 UI 回归及 108 条实际界面请求的原生模拟回放通过](docs/development/2026-10-27-mchose-keyboard-validation.json)。[宏原始字段的无损保存](docs/development/mchose-v3-macro-official-facts.json)仍待实现，不计为完整型号。
+
 > [!WARNING]
 > **这仅是一个实验性版本，不是稳定版。** 多数新增鼠标只有生产驱动与模拟设备测试，没有对应实机验证，不能认定整个品牌兼容。连接方式、USB ID、固件和功能边界均会影响支持情况。应用前请先保留原配置，只对明确列出的型号进行测试。
 

@@ -1,0 +1,67 @@
+{
+  "date_local": "2026-10-27",
+  "base_commit": "917a67a",
+  "release_version": "0.3.7",
+  "installer_built_or_installed": false,
+  "accepted_complete_models": 0,
+  "scope": "MCHOSE V3 native keyboard assignments and corresponding UI",
+  "source_facts": "mchose-v3-keyboard-official-facts.json",
+  "implemented": {
+    "plain_key": [17, "known main usage", 0],
+    "generic_modifiers_only": [18, "mask 1..15", 0],
+    "generic_chord": [19, "mask 1..15", "known main usage"],
+    "named_copy_paste_presets": "Existing type22 unchanged",
+    "main_key_options": 96,
+    "distinct_macro_modifier_usages": [224, 225, 226, 227, 228, 229, 230, 231],
+    "general_chord_left_right_distinction": false
+  },
+  "validation": {
+    "default_application_tests_passed": 617,
+    "default_application_tests_failed": 0,
+    "default_ignored_tests": 41,
+    "focused_new_native_tests_passed": 6,
+    "explicit_actual_UI_to_native_replay_tests_passed": 1,
+    "actual_UI_requests_replayed": 108,
+    "target_A_requests": 107,
+    "target_B_requests": 1,
+    "request_types": {"17": 99, "18": 3, "19": 4, "22": 2},
+    "new_keyboard_UI_groups_passed": 7,
+    "existing_draft_UI_groups_passed": 10,
+    "existing_target_lifetime_UI_groups_passed": 10,
+    "typescript": "passed",
+    "vite": "passed",
+    "visual_QA": "Focused Ctrl+Shift+Numpad1 editor screenshot reviewed",
+    "physical_HID_settings_writes": false,
+    "OEM_code_executed": false,
+    "OS_input_injected": false,
+    "runtime_dependencies_added": 0,
+    "javascript_bundle_bytes": 759305,
+    "javascript_bundle_delta_from_9e1ab0b_bytes": 5447,
+    "javascript_bundle_sha256": "b91ef33c84b9e305908b847cdace48946d3d3e1d49bbc47c42fde2146749cdc2"
+  },
+  "scenarios": [
+    "All 96 rendered main-key choices submit correct plain-key payloads",
+    "Generic chord and modifier-only assignments use their distinct proved native types",
+    "All 15 nonzero generic modifier masks pass native stateful apply/readback",
+    "Malformed sizes, masks, reserved usages and modifier-as-main inputs reject before SET or backup",
+    "Successful SET acknowledgement without matching readback returns failure without resending",
+    "Other buttons, unknown raw actions, three board states and the other mouse remain unchanged",
+    "Actual UI requests deserialize to production Action and execute production framing/apply/readback",
+    "Eight macro modifier usages remain distinct and balanced",
+    "F13..F24 remain outside the proved picker rather than being silently mapped"
+  ],
+  "limits": [
+    "These are simulated native protocol and built-UI tests, not firmware or physical playback certification",
+    "General chord modifiers deliberately follow the OEM four generic bits; macro usages do not prove eight-bit chord masks",
+    "Macro raw-byte preservation and opaque-field editing are separate pending work; see mchose-v3-macro-official-facts.json",
+    "Historical physical model word4026 and current official catalog4033 differ; no new model PID was enabled",
+    "Installed application, GitHub release and updater feed remain at the previously published version"
+  ],
+  "source_sha256": {
+    "src/lib/mchose-keys.ts": "a8ac911d12ad14638b82d9bf36c2b7767c4bf3e2772a346372080efbb0dd81d6",
+    "src/components/mchose-panel.tsx": "8ef7a351ceb512d3aa4de7f2d9e37ad051246b6bac5ace06a2b9c858c14c4bc2",
+    "src-tauri/src/mchose_config.rs": "7eebc7928fe805ac76b478a257240ada8fa5446bb3d384a4aa3b7b6e60af39a9",
+    "src-tauri/src/mchose_keybinding_tests.rs": "0cb55621cd8733f95499de71217dd5614d208acb8c0ea8d74e242a1dd1057aab",
+    "scripts/test-mchose-keys-ui.cjs": "811459fdd4b2fe9e624b3d18bfcec9743943bc89a44a99b2068123af62514a23"
+  }
+}

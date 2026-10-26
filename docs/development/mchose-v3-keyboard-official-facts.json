@@ -1,0 +1,130 @@
+{
+  "schema": 1,
+  "source": {
+    "url": "https://www.mchose.com.cn/assets/purify.es-CxLZ1Htw.js",
+    "bytes": 7763164,
+    "sha256": "b64fdf6d0f85aa9548c8d7ddb43a7f1b39e4d662762d5e3f359e69a600fbdfae"
+  },
+  "locations": {
+    "keyUsageTable": {
+      "utf16Offset": 4185087,
+      "utf8ByteOffset": 4192801
+    },
+    "modifierMask": {
+      "utf16Offset": 4518484,
+      "utf8ByteOffset": 4527995
+    },
+    "keyCombinationEncoder": {
+      "utf16Offset": 4520251,
+      "utf8ByteOffset": 4529762
+    },
+    "keyCombinationEmission": {
+      "utf16Offset": 4523371,
+      "utf8ByteOffset": 4532882
+    },
+    "keyCombinationDispatch": {
+      "utf16Offset": 4552361,
+      "utf8ByteOffset": 4562112
+    },
+    "keySettingApply": {
+      "utf16Offset": 4550804,
+      "utf8ByteOffset": 4560555
+    },
+    "command0101Binding": {
+      "utf16Offset": 4218761,
+      "utf8ByteOffset": 4227825
+    },
+    "buttonPayloadEncoder": {
+      "utf16Offset": 4207969,
+      "utf8ByteOffset": 4216973
+    },
+    "frame4DEncoder": {
+      "utf16Offset": 4204573,
+      "utf8ByteOffset": 4213567
+    },
+    "catalogRouteAllowlist": {
+      "utf16Offset": 4236810,
+      "utf8ByteOffset": 4245924
+    },
+    "routeNewMouse": {
+      "utf16Offset": 7686785,
+      "utf8ByteOffset": 7699783
+    }
+  },
+  "liveCrossCheck": "Relevant qM/N1e/kSt/egt/i1e functions and route symbols remain at the same offsets as the cached renderer source. The numeric qM table is text-identical after independent live-source read.",
+  "bindings": {
+    "modifiersOnly": {
+      "type": 18,
+      "fields": [
+        "type",
+        "nonzero mask1..15",
+        "zero"
+      ]
+    },
+    "generalChord": {
+      "type": 19,
+      "fields": [
+        "type",
+        "nonzero mask1..15",
+        "known non-modifier HID usage"
+      ],
+      "knownMainUsageRanges": [
+        [
+          4,
+          49
+        ],
+        [
+          51,
+          99
+        ],
+        [
+          101,
+          101
+        ]
+      ],
+      "keyCount": 96
+    },
+    "modifierBits": {
+      "Ctrl": 1,
+      "Shift": 2,
+      "Alt": 4,
+      "Win": 8
+    },
+    "namedSpecialPresets": {
+      "type": 22,
+      "scope": "Existing Copy/Cut/Paste preset encoding preserved"
+    },
+    "mainModifierUsagesExcluded": [
+      224,
+      225,
+      226,
+      227,
+      228,
+      229,
+      230,
+      231
+    ]
+  },
+  "implementationScope": [
+    "Only two new validate_binding arms",
+    "Existing type11/type16 acceptance unchanged",
+    "Unknown read and prewrite snapshot raw data retained",
+    "No macro codec or device identity changes"
+  ],
+  "validationBoundary": "Production Transport framing/apply/readback over two separate in-memory synthetic devices; no physical HID or OEM execution",
+  "historicalPhysicalScope": {
+    "capture_date_utc": "2026-10-22T00:57:54.5407705Z",
+    "capture_sha256": "16e7983f76ab127869ecd9583c953be1be777680392289f1700c15909e6cd362",
+    "receiver": "3837:1014",
+    "reported_usb_product": "MCHOSE A7 V3 Ultra+",
+    "identity_model_word_le_bytes": [
+      38,
+      64
+    ],
+    "identity_model": "4026",
+    "firmware": "0.23",
+    "receiver_firmware": "0.6",
+    "current_official_catalog_model": "4033",
+    "interpretation": "Historical physical identity and current catalog differ. Existing exact firmware scope is retained; no alternate PID is enabled from a catalog entry alone."
+  }
+}

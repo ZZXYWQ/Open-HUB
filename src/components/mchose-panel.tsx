@@ -7,6 +7,7 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {PanelShell,PanelSection} from "@/components/panel";
 import {api,type MchoseHardware,type MchoseMacro,type MchoseMacroEvent} from "@/lib/api";
+import {MCHOSE_MAIN_KEYS,MCHOSE_COMBINATION_MODIFIERS,mchoseKeyUsage,mchoseKeyboardBinding,mchoseKeyboardLabel} from "@/lib/mchose-keys";
 
 const RATES=[[0,125],[2,500],[3,1000],[4,2000],[5,4000],[6,8000]];
 const BUTTONS=["左键","右键","中键","前侧键","后侧键","DPI 键"];
@@ -31,12 +32,6 @@ function Num({value,onChange,min=0,max=255,step=1,label,disabled=false}:{value:n
 }
 function Check({checked,onChange,children}:{checked:boolean;onChange:(v:boolean)=>void;children:React.ReactNode}){
  return <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)}/>{children}</label>;
-}
-function keyCode(code:string):number|null{
- if(/^Key[A-Z]$/.test(code))return code.charCodeAt(3)-65+4;
- if(/^Digit[0-9]$/.test(code)){const d=Number(code[5]);return d===0?39:29+d;}
- if(/^F([1-9]|1[0-2])$/.test(code))return 57+Number(code.slice(1));
- return ({Enter:40,Escape:41,Backspace:42,Tab:43,Space:44,Minus:45,Equal:46,BracketLeft:47,BracketRight:48,Backslash:49,Semicolon:51,Quote:52,Backquote:53,Comma:54,Period:55,Slash:56,CapsLock:57,Delete:76,Home:74,End:77,PageUp:75,PageDown:78,ArrowRight:79,ArrowLeft:80,ArrowDown:81,ArrowUp:82,ControlLeft:224,ShiftLeft:225,AltLeft:226,MetaLeft:227,ControlRight:228,ShiftRight:229,AltRight:230,MetaRight:231}as Record<string,number>)[code]??null;
 }
 
 const DPI_DRAFT_KEYS=['dpi_x','dpi_y','count','active','independent'] as const;
@@ -66,6 +61,8 @@ export function MchosePanel({id}:{id:string}){
  const held=useRef(new Set<number>()),lastKey=useRef(0);
  const [buttonIndex,setButtonIndex]=useState(4),[binding,setBinding]=useState("0"),[capture,setCapture]=useState(false);
  const [customKey,setCustomKey]=useState<number[]|null>(null);
+ const [keyboardUsage,setKeyboardUsage]=useState(4),[keyboardModifiers,setKeyboardModifiers]=useState(0),[captureHint,setCaptureHint]=useState("");
+ const chooseKeyboard=(usage:number,modifiers:number)=>{setKeyboardUsage(usage);setKeyboardModifiers(modifiers);setCustomKey(mchoseKeyboardBinding(usage,modifiers));setCaptureHint("");};
 
  const lifetime=useRef({live:true,operation:0});
  const adopt=(v:MchoseHardware)=>setHardware(v);
@@ -115,7 +112,7 @@ export function MchosePanel({id}:{id:string}){
  const selectMacro=(slot:number)=>{setMacroSlot(slot);if(!macroDrafts[slot])void readMacro(slot);};
  const stopRecord=()=>{setRecording(false);const events=[...macro.events,...[...held.current].map(code=>({kind:"key"as const,code,down:false,delay_ms:0}))];held.current.clear();editMacro(old=>({...old,macro:{...old.macro,events},text:JSON.stringify(events,null,2)}));};
  const addRecorded=(down:boolean,code:string)=>{
-  const scan=keyCode(code);if(scan===null)return;
+  const scan=mchoseKeyUsage(code);if(scan===null)return;
   if(down&&held.current.has(scan)||!down&&!held.current.has(scan))return;
   const elapsed=Math.min(60000,Math.round(performance.now()-lastKey.current));lastKey.current=performance.now();
   if(down)held.current.add(scan);else held.current.delete(scan);
@@ -151,8 +148,8 @@ export function MchosePanel({id}:{id:string}){
 
    </>}
    {page==="buttons"&&<>
-    <PanelSection title="现有按键映射"><div className="space-y-2">{hw.buttons.map((b,i)=><div className="flex justify-between text-sm" key={i}><span>{BUTTONS[i]}</span><span>{BINDINGS.find(([,v])=>JSON.stringify(v)===JSON.stringify(b))?.[0]??(b.every(v=>v===255)?"未配置":b.map(v=>v.toString(16).padStart(2,"0")).join(" "))}</span></div>)}</div></PanelSection>
-    <PanelSection title="更改按键"><div className="flex flex-col gap-3"><Pick label="选择物理按键" value={buttonIndex} onChange={v=>setButtonIndex(Number(v))}>{BUTTONS.map((n,i)=>hw.buttons[i]?.[0]!==255&&<option key={i} value={i}>{n}</option>)}</Pick><Pick label="选择按键动作" value={binding} onChange={v=>{setBinding(v);setCustomKey(null);}}>{bindingOptions}</Pick><Button variant="outline" onClick={()=>{setCapture(true);setCustomKey(null);}}>录入键盘键 / 组合键</Button>{capture&&<Input autoFocus aria-label="录入组合键" placeholder="按下目标键（支持 Ctrl/Shift/Alt/Win）" onKeyDown={e=>{e.preventDefault();const code=keyCode(e.code);if(code===null||code>=224)return;const mask=(e.ctrlKey?1:0)|(e.shiftKey?2:0)|(e.altKey?4:0)|(e.metaKey?8:0);setCustomKey(mask?[22,mask,code]:[17,code,0]);setCapture(false);}}/>}{customKey&&<p className="text-xs">已录入：{customKey.map(v=>v.toString(16)).join(" ")}</p>}<Button onClick={()=>void apply({kind:"button",index:buttonIndex,binding:customKey??BINDINGS[Number(binding)][1]})}>应用到{BUTTONS[buttonIndex]}</Button></div></PanelSection>
+    <PanelSection title="现有按键映射"><div className="space-y-2">{hw.buttons.map((b,i)=><div className="flex justify-between text-sm" key={i}><span>{BUTTONS[i]}</span><span>{BINDINGS.find(([,v])=>JSON.stringify(v)===JSON.stringify(b))?.[0]??mchoseKeyboardLabel(b)??(b.every(v=>v===255)?"未配置":b.map(v=>v.toString(16).padStart(2,"0")).join(" "))}</span></div>)}</div></PanelSection>
+    <PanelSection title="更改按键"><div className="flex flex-col gap-3"><Pick label="选择物理按键" value={buttonIndex} onChange={v=>setButtonIndex(Number(v))}>{BUTTONS.map((n,i)=>hw.buttons[i]?.[0]!==255&&<option key={i} value={i}>{n}</option>)}</Pick><Pick label="选择按键动作" value={binding} onChange={v=>{setBinding(v);setCustomKey(null);setCapture(false);}}>{bindingOptions}</Pick><Button variant="outline" onClick={()=>{setCapture(true);chooseKeyboard(keyboardUsage,keyboardModifiers);}}>录入键盘键 / 组合键</Button>{capture&&<div role="group" aria-label="自定义键盘组合" className="space-y-3 rounded-md border p-3"><p className="text-xs text-muted-foreground">组合键使用通用修饰键，不区分左右；宏录制仍分别记录左右修饰键。</p><Pick label="自定义主键" value={keyboardUsage} onChange={v=>chooseKeyboard(Number(v),keyboardModifiers)}><option value={0}>仅修饰键</option>{MCHOSE_MAIN_KEYS.map(key=><option key={key.usage} value={key.usage}>{key.label}</option>)}</Pick><div className="flex flex-wrap gap-3">{MCHOSE_COMBINATION_MODIFIERS.map(item=><label key={item.bit} className="flex items-center gap-2 text-sm"><input type="checkbox" aria-label={item.label} checked={Boolean(keyboardModifiers&item.bit)} onChange={e=>chooseKeyboard(keyboardUsage,e.target.checked?keyboardModifiers|item.bit:keyboardModifiers&~item.bit)}/>{item.label}</label>)}</div><Input autoFocus readOnly aria-label="录入组合键" placeholder="在这里按下目标键或组合键" onKeyDown={e=>{e.preventDefault();const usage=mchoseKeyUsage(e.code);if(usage===null){chooseKeyboard(0,0);setCaptureHint("原厂键表未列出此键，请从上方列表选择。");return;}const modifiers=(e.ctrlKey?1:0)|(e.shiftKey?2:0)|(e.altKey?4:0)|(e.metaKey?8:0);chooseKeyboard(usage>=224?0:usage,modifiers);}}/><p role="status" aria-label="自定义键盘预览" className="text-xs">{customKey?`待应用：${mchoseKeyboardLabel(customKey)}`:captureHint||"请选择主键或至少一项通用修饰键。"}</p></div>}<Button disabled={capture&&!customKey} onClick={()=>void apply({kind:"button",index:buttonIndex,binding:customKey??BINDINGS[Number(binding)][1]})}>应用到{BUTTONS[buttonIndex]}</Button></div></PanelSection>
    </>}
    {page==="macro"&&<>
     <PanelSection title="板载宏"><div className="flex flex-wrap gap-2"><Pick label="宏槽" value={macro.slot} onChange={v=>selectMacro(Number(v))}>{Array.from({length:18},(_,i)=><option key={i} value={i}>宏槽 {i+1}</option>)}</Pick><Button variant="outline" onClick={()=>void readMacro(macro.slot)}>读取鼠标</Button></div><p className="mt-2 text-xs text-muted-foreground">切换宏槽会保留各槽草稿；“读取鼠标”会放弃当前槽草稿并重新读回。</p><p role="status" aria-label="宏槽保存状态" className="mt-2 text-xs text-muted-foreground">{macroConfirmed?`已核对：${macro.name} · ${macro.events.length} 条事件`:'当前宏槽有未保存草稿'}</p><div className="mt-3 space-y-3"><Input aria-label="宏名称" value={macro.name} onChange={e=>setMacro({...macro,name:e.target.value})}/><Pick label="宏循环方式" value={macro.mode} onChange={v=>setMacro({...macro,mode:Number(v)})}><option value={0}>按住重复</option><option value={1}>再次按下停止</option><option value={2}>循环执行（原厂模式 2）</option><option value={3}>其他按键停止</option></Pick><p className="text-xs text-muted-foreground">可录制键盘序列，或编辑事件 JSON。kind 支持 key、mouse、scroll、delay；code 为 USB HID 键码或鼠标位掩码。</p><textarea aria-label="宏事件编辑器" className="h-48 w-full rounded-md border border-input bg-background p-2 font-mono text-xs" value={macroText} onChange={e=>setMacroText(e.target.value)}/><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={()=>{held.current.clear();lastKey.current=performance.now();setMacro({...macro,events:[]});setMacroText("[]");setRecording(true);}}>录制键盘宏</Button><Button onClick={()=>{let events:MchoseMacroEvent[];try{events=JSON.parse(macroText);}catch{toast.error("事件 JSON 格式错误");return;}void apply({kind:"macro",slot:macro.slot,name:macro.name,mode:macro.mode,events});}}>保存到宏槽</Button><Button variant="outline" onClick={()=>void run(async current=>{const events=JSON.parse(macroText);const path=await save({defaultPath:macro.name+".json",filters:[{name:"宏文件",extensions:["json"]}]});if(path&&current())await api.mchoseMacroFile(path,{...macro,events});},"宏已导出")}>导出宏</Button><Button variant="outline" onClick={()=>void apply({kind:"delete_macro",slot:macro.slot})}>删除空闲宏槽</Button></div><label className="text-sm">导入宏 JSON <input type="file" accept=".json" onChange={e=>{const file=e.target.files?.[0];if(file)void run(async current=>{const m=JSON.parse(await file.text());if(!Array.isArray(m.events))throw Error("请选择本适配版导出的宏 JSON");if(current()){setMacro({...m,slot:macro.slot});setMacroText(JSON.stringify(m.events,null,2));}});}}/></label><p className="text-xs text-muted-foreground">保存后，到“按键”页将目标按键设为对应宏槽。录制只在下面的录制区域获得焦点时工作。</p></div></PanelSection>
