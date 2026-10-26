@@ -326,69 +326,90 @@ impl Transport {
             } else {
                 x[s.active as usize] - 50
             };
-            self.apply_hardware(Action::Dpi {
-                x,
-                y,
-                count: s.count,
-                active: s.active,
-                independent: true,
-            })?;
+            self.apply_hardware_for(
+                s.profile,
+                Action::Dpi {
+                    x,
+                    y,
+                    count: s.count,
+                    active: s.active,
+                    independent: true,
+                },
+            )?;
             tested.push("six-stage DPI and independent X/Y");
-            self.apply_hardware(Action::Lod {
-                index: (s.lod + 1) % 5,
-            })?;
+            self.apply_hardware_for(
+                s.profile,
+                Action::Lod {
+                    index: (s.lod + 1) % 5,
+                },
+            )?;
             tested.push("LOD");
-            self.apply_hardware(Action::Settings {
-                sleep: if s.sleep == 3 { 4 } else { 3 },
-                never_sleep: s.never_sleep,
-                left_debounce: if s.left_debounce == 8 { 9 } else { 8 },
-                right_debounce: s.right_debounce,
-                sensor: s.sensor ^ 4,
-                rotation: s.rotation,
-            })?;
+            self.apply_hardware_for(
+                s.profile,
+                Action::Settings {
+                    sleep: if s.sleep == 3 { 4 } else { 3 },
+                    never_sleep: s.never_sleep,
+                    left_debounce: if s.left_debounce == 8 { 9 } else { 8 },
+                    right_debounce: s.right_debounce,
+                    sensor: s.sensor ^ 4,
+                    rotation: s.rotation,
+                },
+            )?;
             tested.push("sleep, debounce and sensor flags");
-            self.apply_hardware(Action::Button {
-                index: 4,
-                binding: vec![0, 8, 0],
-            })?;
+            self.apply_hardware_for(
+                s.profile,
+                Action::Button {
+                    index: 4,
+                    binding: vec![0, 8, 0],
+                },
+            )?;
             tested.push("button remapping");
-            self.apply_hardware(Action::Rename {
-                name: "Open HUB test".into(),
-            })?;
+            self.apply_hardware_for(
+                s.profile,
+                Action::Rename {
+                    name: "Open HUB test".into(),
+                },
+            )?;
             tested.push("board rename");
-            self.apply_hardware(Action::Profile {
-                index: (s.profile + 1) % 3,
-            })?;
-            self.apply_hardware(Action::Profile { index: s.profile })?;
+            self.apply_hardware_for(
+                s.profile,
+                Action::Profile {
+                    index: (s.profile + 1) % 3,
+                },
+            )?;
+            self.apply_hardware_for((s.profile + 1) % 3, Action::Profile { index: s.profile })?;
             tested.push("board selection");
             if let Some(slot) = free {
                 macro_touched = true;
-                self.apply_hardware(Action::Macro {
-                    slot,
-                    name: "Open HUB test".into(),
-                    mode: 0,
-                    events: vec![
-                        MacroEvent {
-                            kind: "key".into(),
-                            code: 4,
-                            down: true,
-                            delay_ms: 0,
-                        },
-                        MacroEvent {
-                            kind: "delay".into(),
-                            code: 0,
-                            down: false,
-                            delay_ms: 20,
-                        },
-                        MacroEvent {
-                            kind: "key".into(),
-                            code: 4,
-                            down: false,
-                            delay_ms: 0,
-                        },
-                    ],
-                })?;
-                self.apply_hardware(Action::DeleteMacro { slot })?;
+                self.apply_hardware_for(
+                    s.profile,
+                    Action::Macro {
+                        slot,
+                        name: "Open HUB test".into(),
+                        mode: 0,
+                        events: vec![
+                            MacroEvent {
+                                kind: "key".into(),
+                                code: 4,
+                                down: true,
+                                delay_ms: 0,
+                            },
+                            MacroEvent {
+                                kind: "delay".into(),
+                                code: 0,
+                                down: false,
+                                delay_ms: 20,
+                            },
+                            MacroEvent {
+                                kind: "key".into(),
+                                code: 4,
+                                down: false,
+                                delay_ms: 0,
+                            },
+                        ],
+                    },
+                )?;
+                self.apply_hardware_for(s.profile, Action::DeleteMacro { slot })?;
                 macro_touched = false;
                 tested.push("hardware macro write, read and delete");
             }
@@ -539,12 +560,14 @@ impl Transport {
             macros,
         })
     }
-    fn backup_full(&self) -> Result<()> {
+    fn backup_full_for(&self, expected_board: u8) -> Result<()> {
+        self.require_board(expected_board)?;
         let snapshot = self.full_snapshot()?;
-        let root = std::env::var_os("LOCALAPPDATA").ok_or_else(|| bad("无法保存备份"))?;
-        let dir = std::path::PathBuf::from(root)
-            .join("Open HUB")
-            .join("backups");
+        if snapshot.state.profile != expected_board {
+            return Err(bad("板载配置已改变，请刷新重试"));
+        }
+        self.require_board(expected_board)?;
+        let dir = self.backup_directory()?;
         std::fs::create_dir_all(&dir).map_err(|e| bad(e.to_string()))?;
         let id = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -669,9 +692,23 @@ impl Transport {
         Ok(())
     }
     pub fn apply_hardware(&self, action: Action) -> Result<HardwareState> {
+        let board = self.settings()?[0];
+        self.apply_hardware_for(board, action)
+    }
+    /// Pin a draft to the board it was read from. A physical board switch
+    /// cannot be stopped by the app's command mutex and must never retarget it.
+    pub fn apply_hardware_for(&self, expected_board: u8, action: Action) -> Result<HardwareState> {
+        profile(expected_board)?;
         self.identity()?;
         let mut cfg = self.settings()?;
-        let p = cfg[0];
+        if cfg[0] != expected_board {
+            return Err(bad("板载配置已改变，请刷新重试"));
+        }
+        let p = expected_board;
+        let expected_after = match &action {
+            Action::Profile { index } => *index,
+            _ => p,
+        };
         // Validate before any backup or device write.
         match &action {
             Action::Settings {
@@ -759,10 +796,8 @@ impl Transport {
                 }
             }
         }
-        self.backup_full()?;
-        if self.settings()?[0] != p {
-            return Err(bad("板载配置已改变，请刷新重试"));
-        }
+        self.backup_full_for(p)?;
+        self.require_board(p)?;
         match action {
             Action::Settings {
                 sleep,
@@ -816,7 +851,12 @@ impl Transport {
             } => self.write_macro_raw(slot, &encode_macro(&name, mode, &events)?)?,
             Action::DeleteMacro { slot } => self.write_macro_raw(slot, &[0u8; 64])?,
         }
-        self.hardware_state()
+        let state = self.hardware_state()?;
+        if state.profile != expected_after {
+            return Err(bad("板载配置已改变，请刷新重试"));
+        }
+        self.require_board(expected_after)?;
+        Ok(state)
     }
     pub fn restore_snapshot(&self, s: Snapshot) -> Result<HardwareState> {
         self.restore_snapshot_inner(s, true)
@@ -864,8 +904,9 @@ impl Transport {
             decode_macro(m.slot, m.raw.clone())?;
         }
         if backup {
-            self.backup_full()?;
+            self.backup_full_for(t.profile)?;
         }
+        self.require_board(t.profile)?;
         for m in s.macros {
             self.write_macro_raw(m.slot, &m.raw)?
         }
@@ -888,7 +929,12 @@ impl Transport {
         if let Some(name) = t.names.get(t.profile as usize) {
             self.write_name(t.profile, name)?
         }
-        self.hardware_state()
+        let state = self.hardware_state()?;
+        if state.profile != t.profile {
+            return Err(bad("板载配置已改变，请刷新重试"));
+        }
+        self.require_board(t.profile)?;
+        Ok(state)
     }
 }
 

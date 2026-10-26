@@ -39,17 +39,43 @@ function keyCode(code:string):number|null{
  return ({Enter:40,Escape:41,Backspace:42,Tab:43,Space:44,Minus:45,Equal:46,BracketLeft:47,BracketRight:48,Backslash:49,Semicolon:51,Quote:52,Backquote:53,Comma:54,Period:55,Slash:56,CapsLock:57,Delete:76,Home:74,End:77,PageUp:75,PageDown:78,ArrowRight:79,ArrowLeft:80,ArrowDown:81,ArrowUp:82,ControlLeft:224,ShiftLeft:225,AltLeft:226,MetaLeft:227,ControlRight:228,ShiftRight:229,AltRight:230,MetaRight:231}as Record<string,number>)[code]??null;
 }
 
+const DPI_DRAFT_KEYS=['dpi_x','dpi_y','count','active','independent'] as const;
+const SETTINGS_DRAFT_KEYS=['sleep','never_sleep','left_debounce','right_debounce','sensor','rotation'] as const;
+type DraftValues=Partial<Pick<MchoseHardware,typeof DPI_DRAFT_KEYS[number]|typeof SETTINGS_DRAFT_KEYS[number]>>;
+type BoardDraft={values:DraftValues;name?:string};
+type MacroValue={macro:MchoseMacro;text:string};
+type MacroDraft=MacroValue&{confirmed?:MacroValue};
+const confirmedMacro=(macro:MchoseMacro,text:string):MacroDraft=>({macro,text,confirmed:{macro,text}});
+const emptyMacro=(slot:number):MacroDraft=>({macro:{slot,name:slot===0?'新宏':`新宏 ${slot+1}`,mode:0,events:[]},text:'[]'});
+
 export function MchosePanel({id}:{id:string}){
- const [hw,setHw]=useState<MchoseHardware|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState("");
- const [page,setPage]=useState("dpi");
- const [name,setName]=useState(""),[macro,setMacro]=useState<MchoseMacro>({slot:0,name:"新宏",mode:0,events:[]});
- const [macroText,setMacroText]=useState("[]"),[recording,setRecording]=useState(false);
+ const [hardware,setHardware]=useState<MchoseHardware|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState("");
+ const [page,setPage]=useState("dpi"),[boardDrafts,setBoardDrafts]=useState<Record<number,BoardDraft>>({});
+ const [macroSlot,setMacroSlot]=useState(0),[macroDrafts,setMacroDrafts]=useState<Record<number,MacroDraft>>({});
+ const [recording,setRecording]=useState(false);
+ const draft=hardware?boardDrafts[hardware.profile]:undefined;
+ const hw=hardware?{...hardware,...draft?.values}:null;
+ const name=draft?.name??(hardware?.names[hardware.profile]??"");
+ const macroDraft=macroDrafts[macroSlot]??emptyMacro(macroSlot);
+ const {macro,text:macroText}=macroDraft;
+ const macroConfirmed=macroDraft.confirmed?.macro===macro&&macroDraft.confirmed.text===macroText;
+ const editMacro=(edit:(value:MacroDraft)=>MacroDraft)=>setMacroDrafts(all=>({...all,[macroSlot]:edit(all[macroSlot]??emptyMacro(macroSlot))}));
+ const setMacro=(value:MchoseMacro)=>editMacro(old=>({...old,macro:value}));
+ const setMacroText=(text:string)=>editMacro(old=>({...old,text}));
+ const setName=(value:string)=>{if(hardware){const board=hardware.profile;setBoardDrafts(all=>({...all,[board]:{...all[board],values:all[board]?.values??{},name:value}}));}};
  const held=useRef(new Set<number>()),lastKey=useRef(0);
  const [buttonIndex,setButtonIndex]=useState(4),[binding,setBinding]=useState("0"),[capture,setCapture]=useState(false);
  const [customKey,setCustomKey]=useState<number[]|null>(null);
 
  const lifetime=useRef({live:true,operation:0});
- const adopt=(v:MchoseHardware)=>{setHw(v);setName(v.names[v.profile]??"");};
+ const adopt=(v:MchoseHardware)=>setHardware(v);
+ const clearSection=(board:number,kind:unknown,submitted:BoardDraft|undefined)=>setBoardDrafts(all=>{
+  const previous=all[board];if(!previous)return all;
+  const next:BoardDraft={...previous,values:{...previous.values}};
+  if(kind==='rename'&&previous.name===submitted?.name)delete next.name;
+  for(const key of kind==='dpi'?DPI_DRAFT_KEYS:kind==='settings'?SETTINGS_DRAFT_KEYS:[]){if(previous.values[key]===submitted?.values[key])delete next.values[key];}
+  return {...all,[board]:next};
+ });
  // DevicePage keys this panel by physical target. Async continuations also
  // retain this mount and operation, including native file-dialog results.
  const run=async<T,>(f:(current:()=>boolean)=>Promise<T>,message?:string)=>{
@@ -62,16 +88,38 @@ export function MchosePanel({id}:{id:string}){
  };
  const reload=()=>run(async current=>{const value=await api.mchoseHardware(id);if(current())adopt(value);});
  useEffect(()=>{const owner={live:true,operation:0};lifetime.current=owner;void reload();return()=>{owner.live=false;held.current.clear();};},[id]);
- const apply=(action:Record<string,unknown>)=>hw&&run(async current=>{const value=await api.mchoseApply(id,hw.profile,action);if(current())adopt(value);},"已写入并核对鼠标设置");
- const update=(v:Partial<MchoseHardware>)=>hw&&setHw({...hw,...v});
- const readMacro=(slot:number)=>run(async current=>{const v=await api.mchoseMacro(id,slot);if(!current())return;const next=v??{slot,name:`新宏 ${slot+1}`,mode:0,events:[]};setMacro(next);setMacroText(JSON.stringify(next.events,null,2));});
- const stopRecord=()=>{setRecording(false);const events=[...macro.events,...[...held.current].map(code=>({kind:"key"as const,code,down:false,delay_ms:0}))];held.current.clear();setMacro({...macro,events});setMacroText(JSON.stringify(events,null,2));};
+ const apply=(action:Record<string,unknown>)=>hw&&run(async current=>{
+  const board=hw.profile,submittedDraft=boardDrafts[board];
+  const slot=Number(action.slot),submittedMacro=macroDrafts[slot];
+  const savedMacro:MchoseMacro|undefined=action.kind==='macro'?{slot,name:String(action.name),mode:Number(action.mode),events:action.events as MchoseMacroEvent[]}:undefined;
+  const value=await api.mchoseApply(id,board,action);
+  if(current()){
+   adopt(value);
+   if(value.profile===board)clearSection(board,action.kind,submittedDraft);
+   if(savedMacro){
+    const text=submittedMacro?.text??JSON.stringify(savedMacro.events,null,2),saved=confirmedMacro(savedMacro,text);
+    setMacroDrafts(all=>({...all,[slot]:all[slot]===submittedMacro?saved:{...(all[slot]??emptyMacro(slot)),confirmed:saved.confirmed}}));
+   }else if(action.kind==='delete_macro'){
+    const empty=emptyMacro(slot),saved=confirmedMacro(empty.macro,empty.text);
+    setMacroDrafts(all=>({...all,[slot]:all[slot]===submittedMacro?saved:{...(all[slot]??emptyMacro(slot)),confirmed:saved.confirmed}}));
+   }
+  }
+ },"已写入并核对鼠标设置");
+ const update=(v:DraftValues)=>{if(hw){const board=hw.profile;setBoardDrafts(all=>({...all,[board]:{...all[board],values:{...all[board]?.values,...v}}}));}};
+ const discardBoard=()=>hw&&run(async current=>{const board=hw.profile,submitted=boardDrafts[board],value=await api.mchoseHardware(id);if(current()){setBoardDrafts(all=>{if(all[board]!==submitted)return all;const next={...all};delete next[board];return next;});adopt(value);}});
+ const readMacro=(slot:number)=>run(async current=>{
+  const submitted=macroDrafts[slot],v=await api.mchoseMacro(id,slot);if(!current())return;
+  const next=v??emptyMacro(slot).macro,saved=confirmedMacro(next,JSON.stringify(next.events,null,2));
+  setMacroDrafts(all=>({...all,[slot]:all[slot]===submitted?saved:{...(all[slot]??emptyMacro(slot)),confirmed:saved.confirmed}}));
+ });
+ const selectMacro=(slot:number)=>{setMacroSlot(slot);if(!macroDrafts[slot])void readMacro(slot);};
+ const stopRecord=()=>{setRecording(false);const events=[...macro.events,...[...held.current].map(code=>({kind:"key"as const,code,down:false,delay_ms:0}))];held.current.clear();editMacro(old=>({...old,macro:{...old.macro,events},text:JSON.stringify(events,null,2)}));};
  const addRecorded=(down:boolean,code:string)=>{
   const scan=keyCode(code);if(scan===null)return;
   if(down&&held.current.has(scan)||!down&&!held.current.has(scan))return;
   const elapsed=Math.min(60000,Math.round(performance.now()-lastKey.current));lastKey.current=performance.now();
   if(down)held.current.add(scan);else held.current.delete(scan);
-  setMacro(v=>{const events=[...v.events,...(elapsed>5?[{kind:"delay"as const,code:0,down:false,delay_ms:elapsed}]:[]),{kind:"key"as const,code:scan,down,delay_ms:0}];setMacroText(JSON.stringify(events,null,2));return {...v,events};});
+  editMacro(old=>{const events=[...old.macro.events,...(elapsed>5?[{kind:"delay"as const,code:0,down:false,delay_ms:elapsed}]:[]),{kind:"key"as const,code:scan,down,delay_ms:0}];return {...old,macro:{...old.macro,events},text:JSON.stringify(events,null,2)};});
  };
  const exportConfig=()=>run(async current=>{const path=await save({defaultPath:`A7-V3-板载${(hw?.profile??0)+1}.json`,filters:[{name:"配置备份",extensions:["json"]}]});if(path&&current())await api.mchoseExport(id,path);},"备份已导出");
  const restoreConfig=()=>run(async current=>{const path=await open({multiple:false,filters:[{name:"配置备份",extensions:["json"]}]});if(typeof path==="string"&&current()){const value=await api.mchoseRestore(id,path);if(current())adopt(value);}},"配置已恢复");
@@ -83,7 +131,7 @@ export function MchosePanel({id}:{id:string}){
   {page==="lighting"&&<LightingPanel embedded/>}
   <fieldset disabled={busy||recording} className="min-w-0 border-0 p-0">
    {error&&<p role="alert" className="mx-7 mt-3 text-sm text-destructive">{error}</p>}
-   {page!=="lighting"&&<PanelSection><div className="flex items-center gap-2"><Pick label="板载配置" value={hw.profile} onChange={v=>void apply({kind:"profile",index:Number(v)})}>{hw.names.map((n,i)=><option key={i} value={i}>{n||`板载配置 ${i+1}`}</option>)}</Pick><Button size="sm" variant="outline" onClick={()=>void reload()}>重新读取</Button></div></PanelSection>}
+   {page!=="lighting"&&<PanelSection><div className="flex items-center gap-2"><Pick label="板载配置" value={hw.profile} onChange={v=>void apply({kind:"profile",index:Number(v)})}>{hw.names.map((n,i)=><option key={i} value={i}>{n||`板载配置 ${i+1}`}</option>)}</Pick><Button size="sm" variant="outline" onClick={()=>void reload()}>重新读取</Button>{draft&&(Object.keys(draft.values).length>0||draft.name!==undefined)&&<Button size="sm" variant="outline" onClick={()=>void discardBoard()}>放弃本组草稿并重新读取</Button>}</div><p className="mt-2 text-xs text-muted-foreground">重新读取和保存其他设置会保留本组草稿；只有保存对应设置或明确放弃时才清除。{draft&&(Object.keys(draft.values).length>0||draft.name!==undefined)&&' 当前板载组有未保存草稿。'}</p></PanelSection>}
    {page==="dpi"&&<>
     <PanelSection title="六档板载 DPI" help="直接编辑鼠标内的六档设置，关闭软件后仍然有效。">
      <div className="mb-3 flex gap-3"><label className="text-sm">启用档数 <Pick label="启用 DPI 档数" value={hw.count} onChange={v=>update({count:Number(v),active:Math.min(hw.active,Number(v)-1)})}>{[1,2,3,4,5,6].map(n=><option key={n}>{n}</option>)}</Pick></label><Check checked={hw.independent} onChange={v=>update({independent:v})}>独立 X/Y</Check></div>
@@ -107,7 +155,7 @@ export function MchosePanel({id}:{id:string}){
     <PanelSection title="更改按键"><div className="flex flex-col gap-3"><Pick label="选择物理按键" value={buttonIndex} onChange={v=>setButtonIndex(Number(v))}>{BUTTONS.map((n,i)=>hw.buttons[i]?.[0]!==255&&<option key={i} value={i}>{n}</option>)}</Pick><Pick label="选择按键动作" value={binding} onChange={v=>{setBinding(v);setCustomKey(null);}}>{bindingOptions}</Pick><Button variant="outline" onClick={()=>{setCapture(true);setCustomKey(null);}}>录入键盘键 / 组合键</Button>{capture&&<Input autoFocus aria-label="录入组合键" placeholder="按下目标键（支持 Ctrl/Shift/Alt/Win）" onKeyDown={e=>{e.preventDefault();const code=keyCode(e.code);if(code===null||code>=224)return;const mask=(e.ctrlKey?1:0)|(e.shiftKey?2:0)|(e.altKey?4:0)|(e.metaKey?8:0);setCustomKey(mask?[22,mask,code]:[17,code,0]);setCapture(false);}}/>}{customKey&&<p className="text-xs">已录入：{customKey.map(v=>v.toString(16)).join(" ")}</p>}<Button onClick={()=>void apply({kind:"button",index:buttonIndex,binding:customKey??BINDINGS[Number(binding)][1]})}>应用到{BUTTONS[buttonIndex]}</Button></div></PanelSection>
    </>}
    {page==="macro"&&<>
-    <PanelSection title="板载宏"><div className="flex flex-wrap gap-2"><Pick label="宏槽" value={macro.slot} onChange={v=>void readMacro(Number(v))}>{Array.from({length:18},(_,i)=><option key={i} value={i}>宏槽 {i+1}</option>)}</Pick><Button variant="outline" onClick={()=>void readMacro(macro.slot)}>读取鼠标</Button></div><div className="mt-3 space-y-3"><Input aria-label="宏名称" value={macro.name} onChange={e=>setMacro({...macro,name:e.target.value})}/><Pick label="宏循环方式" value={macro.mode} onChange={v=>setMacro({...macro,mode:Number(v)})}><option value={0}>按住重复</option><option value={1}>再次按下停止</option><option value={2}>循环执行（原厂模式 2）</option><option value={3}>其他按键停止</option></Pick><p className="text-xs text-muted-foreground">可录制键盘序列，或编辑事件 JSON。kind 支持 key、mouse、scroll、delay；code 为 USB HID 键码或鼠标位掩码。</p><textarea aria-label="宏事件编辑器" className="h-48 w-full rounded-md border border-input bg-background p-2 font-mono text-xs" value={macroText} onChange={e=>setMacroText(e.target.value)}/><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={()=>{held.current.clear();lastKey.current=performance.now();setMacro({...macro,events:[]});setMacroText("[]");setRecording(true);}}>录制键盘宏</Button><Button onClick={()=>{let events:MchoseMacroEvent[];try{events=JSON.parse(macroText);}catch{toast.error("事件 JSON 格式错误");return;}void apply({kind:"macro",slot:macro.slot,name:macro.name,mode:macro.mode,events});}}>保存到宏槽</Button><Button variant="outline" onClick={()=>void run(async current=>{const events=JSON.parse(macroText);const path=await save({defaultPath:macro.name+".json",filters:[{name:"宏文件",extensions:["json"]}]});if(path&&current())await api.mchoseMacroFile(path,{...macro,events});},"宏已导出")}>导出宏</Button><Button variant="outline" onClick={()=>void apply({kind:"delete_macro",slot:macro.slot})}>删除空闲宏槽</Button></div><label className="text-sm">导入宏 JSON <input type="file" accept=".json" onChange={e=>{const file=e.target.files?.[0];if(file)void run(async current=>{const m=JSON.parse(await file.text());if(!Array.isArray(m.events))throw Error("请选择本适配版导出的宏 JSON");if(current()){setMacro({...m,slot:macro.slot});setMacroText(JSON.stringify(m.events,null,2));}});}}/></label><p className="text-xs text-muted-foreground">保存后，到“按键”页将目标按键设为对应宏槽。录制只在下面的录制区域获得焦点时工作。</p></div></PanelSection>
+    <PanelSection title="板载宏"><div className="flex flex-wrap gap-2"><Pick label="宏槽" value={macro.slot} onChange={v=>selectMacro(Number(v))}>{Array.from({length:18},(_,i)=><option key={i} value={i}>宏槽 {i+1}</option>)}</Pick><Button variant="outline" onClick={()=>void readMacro(macro.slot)}>读取鼠标</Button></div><p className="mt-2 text-xs text-muted-foreground">切换宏槽会保留各槽草稿；“读取鼠标”会放弃当前槽草稿并重新读回。</p><p role="status" aria-label="宏槽保存状态" className="mt-2 text-xs text-muted-foreground">{macroConfirmed?`已核对：${macro.name} · ${macro.events.length} 条事件`:'当前宏槽有未保存草稿'}</p><div className="mt-3 space-y-3"><Input aria-label="宏名称" value={macro.name} onChange={e=>setMacro({...macro,name:e.target.value})}/><Pick label="宏循环方式" value={macro.mode} onChange={v=>setMacro({...macro,mode:Number(v)})}><option value={0}>按住重复</option><option value={1}>再次按下停止</option><option value={2}>循环执行（原厂模式 2）</option><option value={3}>其他按键停止</option></Pick><p className="text-xs text-muted-foreground">可录制键盘序列，或编辑事件 JSON。kind 支持 key、mouse、scroll、delay；code 为 USB HID 键码或鼠标位掩码。</p><textarea aria-label="宏事件编辑器" className="h-48 w-full rounded-md border border-input bg-background p-2 font-mono text-xs" value={macroText} onChange={e=>setMacroText(e.target.value)}/><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={()=>{held.current.clear();lastKey.current=performance.now();setMacro({...macro,events:[]});setMacroText("[]");setRecording(true);}}>录制键盘宏</Button><Button onClick={()=>{let events:MchoseMacroEvent[];try{events=JSON.parse(macroText);}catch{toast.error("事件 JSON 格式错误");return;}void apply({kind:"macro",slot:macro.slot,name:macro.name,mode:macro.mode,events});}}>保存到宏槽</Button><Button variant="outline" onClick={()=>void run(async current=>{const events=JSON.parse(macroText);const path=await save({defaultPath:macro.name+".json",filters:[{name:"宏文件",extensions:["json"]}]});if(path&&current())await api.mchoseMacroFile(path,{...macro,events});},"宏已导出")}>导出宏</Button><Button variant="outline" onClick={()=>void apply({kind:"delete_macro",slot:macro.slot})}>删除空闲宏槽</Button></div><label className="text-sm">导入宏 JSON <input type="file" accept=".json" onChange={e=>{const file=e.target.files?.[0];if(file)void run(async current=>{const m=JSON.parse(await file.text());if(!Array.isArray(m.events))throw Error("请选择本适配版导出的宏 JSON");if(current()){setMacro({...m,slot:macro.slot});setMacroText(JSON.stringify(m.events,null,2));}});}}/></label><p className="text-xs text-muted-foreground">保存后，到“按键”页将目标按键设为对应宏槽。录制只在下面的录制区域获得焦点时工作。</p></div></PanelSection>
    </>}
    {page==="boards"&&<>
     <PanelSection title="板载配置名称"><div className="flex gap-2"><Input aria-label="板载名称" value={name} onChange={e=>setName(e.target.value)}/><Button onClick={()=>void apply({kind:"rename",name})}>重命名</Button></div></PanelSection>

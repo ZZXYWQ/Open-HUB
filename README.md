@@ -21,6 +21,8 @@
 
 最近增量补充[罗技原生呼吸波形](docs/LOGITECH-NATIVE-LIGHTING.md)、[电脑与底座独立灯光](docs/LIGHTING-INDEPENDENT-OUTPUTS.md)及[迈从界面离开目标后的异步隔离](docs/development/2026-10-26-mchose-target-lifetime-validation.json)。[开发验证记录](docs/development/2026-10-26-shiftxy-waveform-validation.json)区分原厂静态证据、协议模拟、实际界面测试与缺少的实机覆盖；软件宏来源及完整型号验收继续推进。
 
+迈从后续修复保存其他设置时丢失草稿、切换板载组时旧操作重新选取目标组的问题；各板载组与宏槽保留独立草稿，写入始终使用原先核对的组。[611 项主程序测试及 20 组相关 UI 回归通过](docs/development/2026-10-27-mchose-drafts-board-validation.json)，新增功能仍未计作实机完整验收。
+
 > [!WARNING]
 > **这仅是一个实验性版本，不是稳定版。** 多数新增鼠标只有生产驱动与模拟设备测试，没有对应实机验证，不能认定整个品牌兼容。连接方式、USB ID、固件和功能边界均会影响支持情况。应用前请先保留原配置，只对明确列出的型号进行测试。
 

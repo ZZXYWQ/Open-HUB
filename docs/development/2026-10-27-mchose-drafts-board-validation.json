@@ -1,0 +1,57 @@
+{
+  "date_local": "2026-10-27",
+  "base_commit": "9e1ab0b",
+  "release_version": "0.3.7",
+  "new_installer_built": false,
+  "accepted_complete_models": 0,
+  "scope": "MCHOSE board ownership and independent UI drafts",
+  "changes": [
+    "DPI, performance and name drafts are isolated by mounted physical target and board 0..2",
+    "Unrelated saves, report-rate changes and refreshes retain unsaved drafts; successful saves clear only matching submitted fields",
+    "Each macro slot retains its own name, mode and exact event text; save/read/delete confirmations retain newer local edits",
+    "Native apply, standard DPI with optional LOD, report-rate writes and restore backups retain the original expected board",
+    "Stateful native simulations exercise production frame/decode with isolated temporary backup files"
+  ],
+  "validation": {
+    "default_application_tests_passed": 611,
+    "default_application_tests_failed": 0,
+    "explicit_tests_ignored_not_executed": 40,
+    "new_native_board_packet_tests_passed": 9,
+    "new_draft_UI_groups_passed": 10,
+    "existing_target_lifetime_UI_groups_passed": 10,
+    "typescript": "passed",
+    "vite": "passed",
+    "non_test_cargo_check": "passed",
+    "physical_read_only_probe": "The previously reviewed dev binary --mchose-hardware-probe returned No MCHOSE mouse found; no settings writes performed",
+    "new_physical_validation": false,
+    "dependencies_added": 0,
+    "javascript_bundle_bytes": 756302,
+    "javascript_bundle_delta_from_base_bytes": 2444,
+    "javascript_bundle_sha256": "e95a4119d4cc40bf7869f173279c7166c18acc765077e432aeeb8b951a88c845"
+  },
+  "native_scenarios": [
+    "switch after deriving original-board X/Y tables rejects before any SET",
+    "stale caller board and switch during full backup reject before any SET",
+    "normal six-stage independent X/Y plus LOD preserves other boards and settings",
+    "switch after DPI prevents optional LOD from adopting another board",
+    "switch between axis writes never changes either packet's original board selector and returns failure",
+    "intentional profile selection remains allowed",
+    "restore backup switch prevents native writes",
+    "report-rate backup cannot adopt a changed board",
+    "normal report-rate change preserves both low nibbles, DPI and other boards"
+  ],
+  "limits": [
+    "Device-side profile switches cannot be made atomic with multiple USB SETs; an original-board write may already have happened before a detected later switch",
+    "The memory writer does not prove physical USB timing, timeout routing, firmware behavior or full model compatibility",
+    "MCHOSE macro codec, repeat semantics, general shortcut encoding and catalog/device identity require further OEM and physical verification",
+    "Installed application, GitHub release and updater feed were not replaced"
+  ],
+  "source_sha256": {
+    "src-tauri/src/main.rs": "0a745519dcc5fca9a65d1da3291cb744f532da78a7f916982778263dc50a29a9",
+    "src-tauri/src/mchose.rs": "7cc06275ce9331df0f2df2cf003b066f7a4529740a72aacb0c6fbc604504b37f",
+    "src-tauri/src/mchose_config.rs": "0783f3d5b07a0199112faad0e43ac551a8aa0c83ea4ac7c476bc11622de893df",
+    "src-tauri/src/mchose_board_tests.rs": "87693c06a53eb68186db64b14db3640a7cd8949161447293770997cab7039243",
+    "src/components/mchose-panel.tsx": "51df899010804d83cc30554f3f159f6f629f6832301d746f285f674792da0468",
+    "scripts/test-mchose-drafts-ui.cjs": "21f004ca100fa0587c501da3eb2ce66e5d07d5741d96b0eaa63899df1179c319"
+  }
+}

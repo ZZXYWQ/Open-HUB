@@ -254,10 +254,7 @@ fn mchose_macro_file(path:String,slot:u8,name:String,mode:u8,events:Vec<mchose_c
 }
 #[tauri::command(async)]
 fn mchose_apply(app:AppHandle,state:State<AppState>,id:String,expected_profile:u8,action:mchose_config::Action)->Result<mchose_config::HardwareState,String>{
-    let result=with_mchose(&state,&id,|t|{
-        if t.settings()?[0]!=expected_profile{return Err(hidpp::Error::Other("板载配置已经改变，请刷新后重试".into()))}
-        t.apply_hardware(action)
-    })?;
+    let result=with_mchose(&state,&id,|t|t.apply_hardware_for(expected_profile,action))?;
     let _=app.emit("device-changed",id);Ok(result)
 }
 #[tauri::command(async)]

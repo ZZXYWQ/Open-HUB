@@ -74,8 +74,16 @@ struct Shared {
     ready: Condvar,
     alive: AtomicBool,
 }
+enum Writer {
+    Hid(HidDevice),
+    #[cfg(test)]
+    Memory {
+        request: Box<dyn Fn(u16, &[u8]) -> Result<Vec<u8>> + Send + Sync>,
+        backup_directory: std::path::PathBuf,
+    },
+}
 pub struct Transport {
-    writer: HidDevice,
+    writer: Writer,
     shared: Arc<Shared>,
     transaction: Mutex<()>,
 }
@@ -131,7 +139,7 @@ impl Transport {
             })
             .map_err(|e| invalid(e.to_string()))?;
         Ok(Self {
-            writer,
+            writer: Writer::Hid(writer),
             shared,
             transaction: Mutex::new(()),
         })
@@ -150,8 +158,16 @@ impl Transport {
         if !self.is_alive() {
             return Err(Error::Disconnected);
         }
-        std::thread::sleep(Duration::from_millis(40));
         let packet = frame(command, args)?;
+        #[cfg(test)]
+        if let Writer::Memory { request, .. } = &self.writer {
+            // Exercise the production packet layout in both directions while
+            // replacing only physical HID I/O with a stateful native device.
+            let (command, args) = decode(&packet)?;
+            let response = request(command, &args)?;
+            return decode(&frame(command, &response)?).map(|(_, body)| body);
+        }
+        std::thread::sleep(Duration::from_millis(40));
         {
             let mut p = self
                 .shared
@@ -161,7 +177,12 @@ impl Transport {
             p.command = Some(command);
             p.reply = None;
         }
-        if let Err(e) = self.writer.write(&packet) {
+        let sent = match &self.writer {
+            Writer::Hid(writer) => writer.write(&packet),
+            #[cfg(test)]
+            Writer::Memory { .. } => unreachable!("memory request returned above"),
+        };
+        if let Err(e) = sent {
             if let Ok(mut p) = self.shared.pending.lock() {
                 p.command = None;
             }
@@ -189,6 +210,44 @@ impl Transport {
                 .map_err(|_| invalid("MCHOSE reply lock poisoned"))?
                 .0;
         }
+    }
+    #[cfg(test)]
+    pub(crate) fn memory(
+        request: impl Fn(u16, &[u8]) -> Result<Vec<u8>> + Send + Sync + 'static,
+        backup_directory: std::path::PathBuf,
+    ) -> Self {
+        Self {
+            writer: Writer::Memory {
+                request: Box::new(request),
+                backup_directory,
+            },
+            shared: Arc::new(Shared {
+                pending: Mutex::new(Pending::default()),
+                ready: Condvar::new(),
+                alive: AtomicBool::new(true),
+            }),
+            transaction: Mutex::new(()),
+        }
+    }
+    pub(crate) fn require_board(&self, expected: u8) -> Result<()> {
+        if expected > 2 || self.settings()?[0] != expected {
+            return Err(invalid("板载配置已改变，请刷新重试"));
+        }
+        Ok(())
+    }
+    pub(crate) fn backup_directory(&self) -> Result<std::path::PathBuf> {
+        #[cfg(test)]
+        if let Writer::Memory {
+            backup_directory, ..
+        } = &self.writer
+        {
+            return Ok(backup_directory.clone());
+        }
+        let root = std::env::var_os("LOCALAPPDATA")
+            .ok_or_else(|| invalid("LOCALAPPDATA is unavailable; refusing write without backup"))?;
+        Ok(std::path::PathBuf::from(root)
+            .join("Open HUB")
+            .join("backups"))
     }
     pub fn identity(&self) -> Result<Vec<u8>> {
         let data = self.request(0x0900, &[])?;
@@ -287,16 +346,16 @@ impl Transport {
                 .collect(),
         }))
     }
-    fn backup(&self) -> Result<()> {
+    fn backup_for(&self, expected_board: u8) -> Result<()> {
         let identity = self.identity()?;
         let cfg = self.settings()?;
+        if cfg[0] != expected_board {
+            return Err(invalid("板载配置已改变，请刷新重试"));
+        }
         let x = self.dpi_table(cfg[0], 0)?;
         let y = self.dpi_table(cfg[0], 1)?;
-        let root = std::env::var_os("LOCALAPPDATA")
-            .ok_or_else(|| invalid("LOCALAPPDATA is unavailable; refusing write without backup"))?;
-        let dir = std::path::PathBuf::from(root)
-            .join("Open HUB")
-            .join("backups");
+        self.require_board(expected_board)?;
+        let dir = self.backup_directory()?;
         std::fs::create_dir_all(&dir).map_err(|e| invalid(e.to_string()))?;
         let tick = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -317,6 +376,7 @@ impl Transport {
             return Err(invalid("DPI must be 50–50000 in steps of 50"));
         }
         let cfg = self.settings()?;
+        let board = cfg[0];
         let a = self.dpi_table(cfg[0], 0)?;
         let b = self.dpi_table(cfg[0], 1)?;
         let mut xs: Vec<u16> = (0..6)
@@ -330,16 +390,19 @@ impl Transport {
         if xs[at] != x || ys[at] != y {
             xs[at] = x;
             ys[at] = y;
-            self.apply_hardware(crate::mchose_config::Action::Dpi {
-                x: xs,
-                y: ys,
-                count: a[2],
-                active: a[3],
-                independent: a[4] != 0 || x != y,
-            })?;
+            self.apply_hardware_for(
+                board,
+                crate::mchose_config::Action::Dpi {
+                    x: xs,
+                    y: ys,
+                    count: a[2],
+                    active: a[3],
+                    independent: a[4] != 0 || x != y,
+                },
+            )?;
         }
         if let Some(index) = lod {
-            self.apply_hardware(crate::mchose_config::Action::Lod { index })?;
+            self.apply_hardware_for(board, crate::mchose_config::Action::Lod { index })?;
         }
         Ok(())
     }
@@ -351,7 +414,9 @@ impl Transport {
         if cfg[1] >> 4 == value && cfg[2] >> 4 == value {
             return Ok(());
         }
-        self.backup()?;
+        let board = cfg[0];
+        self.backup_for(board)?;
+        self.require_board(board)?;
         cfg[1] = (value << 4) | (cfg[1] & 15);
         cfg[2] = (value << 4) | (cfg[2] & 15);
         self.request(0x0102, &cfg)?;
@@ -372,6 +437,10 @@ impl Drop for Transport {
         self.shared.alive.store(false, Ordering::SeqCst);
     }
 }
+
+#[cfg(test)]
+#[path = "mchose_board_tests.rs"]
+mod board_tests;
 
 #[cfg(test)]
 mod tests {
