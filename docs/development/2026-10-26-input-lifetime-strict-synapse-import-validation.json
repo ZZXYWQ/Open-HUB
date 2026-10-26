@@ -1,0 +1,90 @@
+{
+  "date": "2026-10-26",
+  "status": "development_only",
+  "full_accepted_distinct_models": 0,
+  "counts_are_not_mouse_acceptance": true,
+  "hardware_tested": false,
+  "validation": {
+    "application_default_tests_passed": 591,
+    "explicit_saved_UI_config_native_cross_tests_passed": 38,
+    "headless_UI_suites_passed": 49,
+    "parser_unit_property_and_public_export_tests_passed": 150,
+    "parser_existing_user_local_test_ignored": 1,
+    "core_driver_unit_tests_passed": 373,
+    "core_doctests_passed": 1,
+    "memory_transport_development_exe_cases_passed": 38,
+    "typescript": "passed",
+    "vite": "passed",
+    "independent_PC_dock_UI_checks_passed": 18,
+    "strict_import_and_saved_UI_native_tests_passed": 20,
+    "source_identity_tests_passed": 13,
+    "runtime_lifetime_tests_passed": 6,
+    "registry_tests_passed": 4,
+    "RawInput_inventory_tests_passed": 4,
+    "watcher_startup_tests_passed": 2,
+    "Service_fault_injection_tests_passed": 7
+  },
+  "implemented": [
+    "Retained Razer reviewed-model physical proof and captured control instance identity",
+    "Per-connection RawInput leases plus per-preparation grants; old cleanup cannot cancel a reused path newer route",
+    "Fresh input authority before SET/arm/every automatic or confirmed manual restore SET/journal completion",
+    "Unknown topology and listener exit invalidate authority; late startup cannot steal a newer listener registration",
+    "Strict exact B6/B7 Synapse4 import subset uses retained original source, validated OEM checksum, one-based active DPI conversion and explicit all16 normal/Hypershift mappings",
+    "Five-stage XY DPI and selected transport rate survive import preview/edit/save/store/load/production native simulation",
+    "Sparse source mappings never gain invented defaults; unknown lighting/calibration/options/macros block the whole candidate with source path diagnostics"
+  ],
+  "lighting_scope": {
+    "independent_PC_dock_outputs": "existing implementation regression passed; no scope expansion",
+    "B6_B7": "no configurable mouse RGB; no RGB UI or Settings invented",
+    "source_lighting_or_calibration_fields": "authored unknown-feature fixtures rejected; raw source retained internally",
+    "real_RGB_server_audio_HID_tested": false
+  },
+  "proof_limits": [
+    "Authored/reconstructed source fixtures; no captured DA export or physical DA validation",
+    "B6/B7 host macros remain disabled: standalone event delivery, reserved trigger collision/paired ownership/capacity and shared receiver proof remain gaps",
+    "Original Synapse3 DA identity schema, source macros and additional OEM feature conversion remain unsupported",
+    "Source-sidecar retention is bounded and serde-skipped; original file remains unchanged",
+    "RawInput/Service tests use recording sinks and production simulated HID; no OS input or real HID writes"
+  ],
+  "frontend": {
+    "javascript_bytes": 751821,
+    "javascript_gzip9_bytes": 226461,
+    "new_runtime_dependencies": 0
+  },
+  "development_exe_sha256": "0f4bc6723df5ba53c2744bfbe181cfab1fbaecc812c95a3ec36c4f84927127d5",
+  "installed_0_3_7_exe_sha256_unchanged": "e77fc588993d0a7f2d1c1cd12313610731d5b3ecec293ba2c7d7f5e397ea06b0",
+  "release_version_unchanged": "0.3.7",
+  "installer_created": false,
+  "release_published": false,
+  "OEM_code_executed": false,
+  "another_OEM_application_downloaded": false,
+  "source_sha256": {
+    "src-tauri/src/input_identity.rs": "6e05776dfba9663d1772b2384707f8bd6d3a63ca9223dc3b58ee23b52caa9ff4",
+    "src-tauri/src/macro_runtime.rs": "48ba67e2a2da1c2d9614e0d1f7a16a06b8ca16ec5caa6bedc02c492c3a42f6a2",
+    "src-tauri/src/macro_lifetime.rs": "cf63cf9bbd49b02556bade8f25fe8a58f8f89a5c2185f569247d015fcb9d0836",
+    "src-tauri/src/macro_lifetime_tests.rs": "ca85a6fedeb9f10d0f8c8819eacdb308e23b901f135b6e407da5c8287c7e4acc",
+    "src-tauri/src/raw_input.rs": "3b9140742f2bb44e3878a5cb3146175c4d2b1b5fdb3c70d1994fedbf700ab296",
+    "src-tauri/src/raw_input_inventory.rs": "dae2fa691e9175098094de35661bd846296c87f02c2e34f7ee9df78bab8a58a6",
+    "src-tauri/src/raw_input_startup.rs": "bfe638dd67bad51bef2dd3f37a18fe9d1ef48c1b73ecae23b9cded576301b3b0",
+    "src-tauri/src/manual_recovery.rs": "b0bdaf5d3426b5636662eccfc8397f51f8b920ec7a9da9ac246a91aacef9ec55",
+    "src-tauri/src/multibrand.rs": "c7a986c5e92b9e6f728634cc1147cc8f5cbe62a170dfccea1bec3971bc03b378",
+    "src-tauri/src/multibrand_lifetime_tests.rs": "2c430485accd105cfc6498c0108da27df1a9fb38d296a3d7ec49b40d08b94cc8",
+    "src-tauri/src/session_plan.rs": "2311c1556b92f57786614703325fc74a43de21631dd71eaf36a4a9aacb6c945d",
+    "src-tauri/src/synapse_profiles.rs": "73950832daa267975120badce4348bf109147bf54d258b3a712eef091e33c2b1",
+    "src-tauri/src/synapse_dav3pro.rs": "638bc07d2de8d3c9783b5c831cdf557b34075e33e55cc15a85ad60b7ec8b026f",
+    "src-tauri/src/synapse_source_hash.rs": "d9c8f1928e0b89ee5e50a796e61d5cab41fca00802b9cc7cb65959f02670b6cf",
+    "src-tauri/src/synapse_dav3pro_import_tests.rs": "a60f505084705659f8822ae7e73693bb1802e55917d85d2c3b22187c29f21283",
+    "src-tauri/vendor/sidearm-synapse-parser/src/raw_source.rs": "9bde55f4c5d2eebd5194f985d453a1c4ab58003bc163df17047fa35267169781",
+    "src-tauri/vendor/sidearm-synapse-parser/src/lib.rs": "e2e8e99b1a97e413d26c3c0e434e435b911807071815da360554bbd7918995b7",
+    "src-tauri/vendor/sidearm-synapse-parser/src/types.rs": "0d16a461fe9260c6507cbe04d9e347f4473165d7b044ccac108080cd49837e12",
+    "src-tauri/vendor/sidearm-synapse-parser/src/format_v3.rs": "14969beade0d968731ceb6dcaf8544806d571607b3d8561e98acd7d5273cdaad",
+    "src-tauri/vendor/sidearm-synapse-parser/src/format_v4.rs": "f1d851ca761ebcf7e5976633feb5b9936d9dfa4de657baa7e6d5c61176b42d7d",
+    "src/components/synapse-preview.tsx": "dc3ee3c2a814584aebd2efe3ddee911612712843839d26511cfea5d7843cdca9",
+    "scripts/test-dav3pro-import-ui.cjs": "ad62da8d9028cbc593504648ce37f5e379504f27e4f05e4dfe7aa49b2939e77e"
+  },
+  "code_checkpoints": {
+    "input_authority": "8a121ff",
+    "strict_import": "e962847"
+  },
+  "source_hashes_are_local_working_tree_bytes": true
+}
