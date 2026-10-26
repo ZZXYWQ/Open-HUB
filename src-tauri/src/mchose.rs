@@ -7,10 +7,12 @@ use hidapi::{HidApi, HidDevice};
 use std::ffi::CStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant};
 
 pub const VID: u16 = 0x3837;
 pub const RECEIVER_PID: u16 = 0x1014;
+/// Product field of the observed 0900 identity payload, not the USB PID.
+/// It does not establish a globally unique market model or RF mouse identity.
 pub const MODEL_PID: u16 = 0x4026;
 pub const USAGE_PAGE: u16 = 0xFF01;
 pub fn known_interface(
@@ -440,28 +442,6 @@ impl Transport {
                 .collect(),
         }))
     }
-    fn backup_for(&self, expected_board: u8) -> Result<()> {
-        let identity = self.identity()?;
-        let cfg = self.settings()?;
-        if cfg[0] != expected_board {
-            return Err(invalid("板载配置已改变，请刷新重试"));
-        }
-        let x = self.dpi_table(cfg[0], 0)?;
-        let y = self.dpi_table(cfg[0], 1)?;
-        self.require_board(expected_board)?;
-        let dir = self.backup_directory()?;
-        std::fs::create_dir_all(&dir).map_err(|e| invalid(e.to_string()))?;
-        let tick = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|e| invalid(e.to_string()))?
-            .as_nanos();
-        let data = serde_json::json!({"format":"mchose-v3-raw-v1","model":"A7 V3 Ultra+","identity":identity,"settings":cfg,"dpi_x":x,"dpi_y":y});
-        std::fs::write(
-            dir.join(format!("{tick}.json")),
-            serde_json::to_vec_pretty(&data).map_err(|e| invalid(e.to_string()))?,
-        )
-        .map_err(|e| invalid(format!("Could not save backup: {e}")))
-    }
     pub fn set_dpi(&self, x: u16, y: Option<u16>, lod: Option<u8>) -> Result<()> {
         if !(50..=50000).contains(&x)
             || x % 50 != 0
@@ -501,29 +481,8 @@ impl Transport {
         Ok(())
     }
     pub fn set_report_rate(&self, value: u8) -> Result<()> {
-        if !RATES.iter().any(|(v, _)| *v == value) {
-            return Err(invalid("Unsupported MCHOSE report rate"));
-        }
-        let mut cfg = self.settings()?;
-        if cfg[1] >> 4 == value && cfg[2] >> 4 == value {
-            return Ok(());
-        }
-        let board = cfg[0];
-        self.backup_for(board)?;
-        self.require_board(board)?;
-        cfg[1] = (value << 4) | (cfg[1] & 15);
-        cfg[2] = (value << 4) | (cfg[2] & 15);
-        self.request(0x0102, &cfg)?;
-        for _ in 0..5 {
-            std::thread::sleep(Duration::from_millis(100));
-            let now = self.settings()?;
-            if now == cfg {
-                return Ok(());
-            }
-        }
-        Err(invalid(
-            "MCHOSE report-rate read-back did not match; inspect the saved backup",
-        ))
+        if !RATES.iter().any(|(v,_)|*v==value) { return Err(invalid("Unsupported MCHOSE report rate")); }
+        self.apply_hardware(crate::mchose_config::Action::ReportRate {value}).map(|_|())
     }
 }
 impl Drop for Transport {

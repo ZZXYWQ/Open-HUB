@@ -1,0 +1,89 @@
+{
+  "date_local": "2026-10-27",
+  "base_commit": "a432b62e91e9cf41cc0985577edb72fae63d1160",
+  "scope": "independent live A7 USB/wireless rates and source model-capability distinctions; no new hardware registration",
+  "accepted_complete_models": 0,
+  "release_version": "0.3.7",
+  "installer_built_published_or_installed": false,
+  "validation": {
+    "default_native_passed": 739,
+    "default_native_failed": 0,
+    "default_native_ignored": 59,
+    "new_default_native_tests": 5,
+    "new_explicit_ui_replay": 1,
+    "native_board_regression_passed": 16,
+    "independent_live_ui_checks": [
+      "six supported rates per connection",
+      "unsupported 250 Hz absent",
+      "USB changes preserve wireless selection",
+      "wireless changes preserve USB selection",
+      "DPI draft preserved during rate writes",
+      "full observed settings sent with each action",
+      "second mouse retains independent defaults",
+      "exact owner/board/connection included",
+      "no browser exceptions"
+    ],
+    "native_replayed_live_requests": 4,
+    "native_replayed_reconnect_cases": 2,
+    "existing_draft_ui_groups": 11,
+    "existing_target_lifetime_ui_cases": 22,
+    "typescript": "passed",
+    "vite": "passed",
+    "development_build": "passed",
+    "physical_HID_access": false,
+    "OEM_execution": false,
+    "OS_input_injection": false,
+    "new_dependencies": 0,
+    "new_images": 0,
+    "javascript_bytes": 795982,
+    "previous_javascript_bytes": 795585,
+    "javascript_delta_bytes": 397
+  },
+  "implementation": [
+    "ConnectionRate action validates the exact observed 19-byte settings before backup",
+    "Only requested rate high nibble changes; other connection, both active-DPI low nibbles and all remaining bytes preserved",
+    "Full backup is durable before checking current board and entire settings image again",
+    "Exactly one SET; settings readback polls do not retry SET; failed readback includes original backup path",
+    "No-op rates have no SET and create no backup",
+    "Legacy both-links setter retains readback and now shares the full v3 restorable backup, post-backup recheck and failure context; obsolete raw-only backup helper removed",
+    "New live UI sends selected connection and current hardware before-image while preserving independent drafts",
+    "Settings verified but subsequent full-state refresh fails: retain original backup and describe completed readback instead of claiming no write",
+    "Identity-unavailable transport error describes identity only; it cannot infer whether a prior transaction stage already wrote settings"
+  ],
+  "capability_source": {
+    "models_in_selected_tables": 17,
+    "DPI_key_members": 15,
+    "dedicated_LOD_members": 9,
+    "MagDock_productKey_entries": 21,
+    "USB_identity_fields": "different provenance; no required equality established",
+    "registration_expanded": false
+  },
+  "limits": [
+    "Simulation and built UI replay do not certify physical rate timing or firmware persistence",
+    "Current enabled hardware still exact named 3837:1014 interface and observed identity 3837:4026",
+    "4033 in USB descriptor table is not proof of GET0900 payload model; no new USB interface enabled",
+    "Exact receiver RF unit identity and current FF failure remain unresolved",
+    "Other models in source capability tables are not declared compatible",
+    "Source non-JQ LOD branch and adaptive K5 thresholds recorded for future model-specific work; not copied into A7"
+  ],
+  "source_sha256": {
+    "src-tauri/src/mchose.rs": "a1425303fa97c42d6e8206c563d36f8fcbfb84efd339bc575dff1a07eb073d90",
+    "src-tauri/src/mchose_config.rs": "16664167eb84cc6b10fc52c2b1d0ae5e5568bbaf72d2e484da4532f1c322b5c1",
+    "src-tauri/src/mchose_board_tests.rs": "4ce1456e170988a65ee8182ef728ff1d41feba2fd875f8bc833ab02cc5937b00",
+    "src-tauri/src/mhub_full_wire_tests.rs": "e59c2272ddb50fb85867ec8e45dd0aeb40f5c82b46996647584888251668535c",
+    "src/components/mchose-panel.tsx": "011984218b4f2c67ec403601aec56acc8be3c3a08b2aa6a0ab59b21f49f562c3",
+    "scripts/test-mchose-independent-rates-ui.cjs": "942086f71c19142434165c403acdbd28b493a75b18b05d4eee0fec3f22f9ab5b",
+    "scripts/test-mchose-drafts-ui.cjs": "ad278c19b91dda7173a1cfbe89f8c308fa1a35d871d14d9216188172bd8c8d6a",
+    "scripts/test-mchose-target-lifetime-ui.cjs": "76841465ba0f960bf3d70631be814f7c4d1267ff33900ef609c91b952375498f",
+    "scripts/extract-mchose-model-gates.cjs": "b7ed965e49835a9e76631c9326ffe2b2159430db824a613fc4d7ecf6b9d10997",
+    "docs/development/mchose-model-feature-gates-official-facts.json": "1e4e196eea3150308437c187173b5d39590b29dce67104cee655215306322383",
+    "src-tauri/src/hidpp.rs": "4baeaa7749291bbb02e2b71d6625c7f1ff74634dc03cb5929b8d19d4ab83a95d"
+  },
+  "private_evidence_sha256": {
+    "mchose-independent-rates-ui\\requests.json": "3eb8813e6198e64f4952030272c55abbcb17a0c1b07d2649286a606e93f2887a",
+    "mchose-independent-rates-ui\\report.json": "c6e78d77405d4061d2e199123422dca87ca0c568661796a05760e4f5c951c692",
+    "2026-10-27-mchose-independent-rates-full.log": "b3e3a9900f44e13b0a50aa194e25a3f8ed29e3d6b93ad9e55467b0d67d1e07cf",
+    "2026-10-27-mchose-independent-rates-ui-native.log": "aa7ee22456ff3dece2e9ad8c4c5af896a0744409c459a6bb702fc0ba6b51a6ac",
+    "2026-10-27-mchose-independent-rates-reconnect-native.log": "d0b71990c1ae705a71f2887354b3ab3362ffeaaab19ec181cb175a87d0c96ee4"
+  }
+}

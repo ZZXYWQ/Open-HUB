@@ -155,10 +155,16 @@ pub(crate) fn validate_snapshot(s: &Snapshot) -> Result<()> {
     Ok(())
 }
 
+#[derive(Clone, Copy, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RateConnection { Usb, Wireless }
+impl RateConnection { fn settings_byte(self)->usize {match self {Self::Usb=>1,Self::Wireless=>2}} }
+
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Action {
     ReportRate { value: u8 },
+    ConnectionRate { connection: RateConnection, value: u8, expected_settings: Vec<u8> },
     Settings {
         sleep: u8,
         never_sleep: bool,
@@ -633,14 +639,14 @@ impl Transport {
             macros,
         })
     }
-    fn backup_full_for(&self, expected_board: u8) -> Result<()> {
+    fn backup_full_for(&self, expected_board: u8) -> Result<std::path::PathBuf> {
         self.require_board(expected_board)?;
         let snapshot = self.full_snapshot()?;
         if snapshot.state.profile != expected_board {
             return Err(bad("板载配置已改变，请刷新重试"));
         }
         self.require_board(expected_board)?;
-        self.persist_snapshot(&snapshot).map(|_| ())
+        self.persist_snapshot(&snapshot)
     }
     pub(crate) fn persist_snapshot(&self, snapshot: &Snapshot) -> Result<std::path::PathBuf> {
         use std::io::Write;
@@ -662,6 +668,15 @@ impl Transport {
             }
         }
         Err(bad("设置回读未匹配，请检查备份"))
+    }
+    /// Rate changes own only high nibbles in bytes 1/2. Recheck the complete
+    /// observed image after durable backup before sending exactly one SET.
+    fn checked_rates(&self, board:u8, before:&[u8], desired:&[u8], backup:&std::path::Path)->Result<()> {
+        self.require_board(board)?;
+        if self.settings()?!=before {
+            return Err(bad(format!("回报率或其他设置已改变，请重新读取；未写入。原始备份：{}",backup.display())));
+        }
+        self.checked_settings(desired).map_err(|e|bad(format!("{e}；可能已有部分设置生效，未自动重试。原始备份：{}",backup.display())))
     }
     fn write_dpi_table(
         &self,
@@ -798,6 +813,10 @@ impl Transport {
         // Validate before any backup or device write.
         match &action {
             Action::ReportRate { value } => rate(*value)?,
+            Action::ConnectionRate { value, expected_settings, .. } => {
+                rate(*value)?;
+                if expected_settings!=&cfg { return Err(bad("回报率预览已过期，请重新读取；未写入")); }
+            }
             Action::Settings {
                 sleep,
                 left_debounce,
@@ -884,13 +903,32 @@ impl Transport {
                 }
             }
         }
-        self.backup_full_for(p)?;
+        let unchanged=match &action {
+            Action::ReportRate {value}=>cfg[1]>>4==*value&&cfg[2]>>4==*value,
+            Action::ConnectionRate {connection,value,..}=>cfg[connection.settings_byte()]>>4==*value,
+            _=>false,
+        };
+        if unchanged {
+            let state=self.hardware_state()?;
+            if state.profile!=p||state.raw_settings!=cfg {return Err(bad("回报率或板载配置已改变，请重新读取；未写入"));}
+            self.require_board(p)?;
+            return Ok(state);
+        }
+        let backup=self.backup_full_for(p)?;
+        let is_rate=matches!(&action,Action::ReportRate{..}|Action::ConnectionRate{..});
         self.require_board(p)?;
         match action {
             Action::ReportRate { value } => {
+                let before=cfg.clone();
                 cfg[1] = (cfg[1] & 0x0f) | (value << 4);
                 cfg[2] = (cfg[2] & 0x0f) | (value << 4);
-                self.checked_settings(&cfg)?;
+                self.checked_rates(p,&before,&cfg,&backup)?;
+            }
+            Action::ConnectionRate {connection,value,..}=>{
+                let before=cfg.clone();
+                let at=connection.settings_byte();
+                cfg[at]=(cfg[at]&15)|(value<<4);
+                self.checked_rates(p,&before,&cfg,&backup)?;
             }
             Action::Settings {
                 sleep,
@@ -948,12 +986,15 @@ impl Transport {
             )?,
             Action::DeleteMacro { slot } => self.write_macro_raw(slot, &[0u8; 64])?,
         }
-        let state = self.hardware_state()?;
-        if state.profile != expected_after {
-            return Err(bad("板载配置已改变，请刷新重试"));
-        }
-        self.require_board(expected_after)?;
-        Ok(state)
+        let refreshed=(||->Result<HardwareState>{
+            let state = self.hardware_state()?;
+            if state.profile != expected_after { return Err(bad("板载配置已改变，请刷新重试")); }
+            self.require_board(expected_after)?;
+            Ok(state)
+        })();
+        if is_rate {
+            refreshed.map_err(|e|bad(format!("回报率设置已读回匹配，但完整状态刷新未完成：{e}；未自动重试。原始备份：{}",backup.display())))
+        } else {refreshed}
     }
     pub fn restore_snapshot(&self, s: Snapshot) -> Result<HardwareState> {
         self.restore_snapshot_inner(s, true)

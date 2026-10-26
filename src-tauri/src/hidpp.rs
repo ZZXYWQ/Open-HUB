@@ -54,7 +54,7 @@ pub enum Error {
     Hidpp10(u8),
     #[error("feature {0:#06x} is not supported by this device")]
     Unsupported(u16),
-    #[error("迈从接收器未返回鼠标身份（状态 0xFF）；请检查鼠标连接，原因尚未确认；未写入配置")]
+    #[error("迈从接收器未返回鼠标身份（状态 0xFF）；请检查鼠标连接，原因尚未确认")]
     MchoseIdentityUnavailable,
     #[error("{0}")]
     Other(String),

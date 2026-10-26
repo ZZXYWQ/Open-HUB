@@ -10,7 +10,7 @@ const out=path.resolve('../outputs/100-model-development/mchose-target-lifetime-
    let generation=1;
    const target=id=>({device_key:'session:'+id+(id==='mchose-A'&&generation>1?':reconnected':''),connection_key:'connection:'+id+':'+(id==='mchose-A'?generation:1)});
    const peers=['A','B'].map(unit=>({id:'mchose-'+unit,profile_key:'session:mchose-'+unit,connection_key:'connection:mchose-'+unit+':1',vendor_id:0x3837,product_id:'1014',model_ids:['4026'],name:'A7 V3 Ultra+ '+unit,product:'A7 V3 Ultra+',kind:'mouse',firmware_name:'fixture',connection:'wireless',protocol:'MCHOSE',features:[]}));
-   const hw=id=>{const p=id==='mchose-A'?0:1,dpi=id==='mchose-A'&&generation===1?800:2200;return {target:target(id),profile:p,names:['板载 A','板载 B','板载 C'],dpi_x:Array(6).fill(dpi),dpi_y:Array(6).fill(dpi),count:6,active:0,independent:true,sleep:3,never_sleep:false,left_debounce:8,right_debounce:8,sensor:0,rotation:0,lod:2,buttons:[[0,1,0],[0,2,0],[0,4,0],[0,16,0],[0,8,0],[1,0,0,0]],adaptive:[],firmware:'1',receiver_firmware:'1',raw_settings:[p,0x30,0x30,3,0,0,0,8,8,...Array(10).fill(0)]};};
+   const hw=id=>{const p=id==='mchose-A'?0:1,dpi=id==='mchose-A'&&generation===1?800:2200;return {target:target(id),profile:p,names:['板载 A','板载 B','板载 C'],dpi_x:Array(6).fill(dpi),dpi_y:Array(6).fill(dpi),count:6,active:0,independent:true,sleep:3,never_sleep:false,left_debounce:8,right_debounce:8,sensor:0,rotation:0,lod:2,buttons:[[0,1,0],[0,2,0],[0,4,0],[0,16,0],[0,8,0],[1,0,0,0]],adaptive:[],firmware:'1',receiver_firmware:'1',raw_settings:[p,0x33,0x33,3,0,64,0,8,8,...Array(10).fill(8)]};};
    window.__reconnectA=()=>{generation++;peers[0].connection_key=target('mchose-A').connection_key;window.__emitDevices();};
    window.__hold=null;window.__deferred=null;window.__badReceipt=null;window.__peers=peers;if(missingConnection)peers[0].connection_key="";
    const defer=(cmd,args,value)=>new Promise((resolve,reject)=>{window.__deferred={cmd,args,resolve:()=>resolve(value),reject:()=>reject(Error('STALE_A_FAILURE'))};});
@@ -58,7 +58,7 @@ const out=path.resolve('../outputs/100-model-development/mchose-target-lifetime-
  // A write already sent stays bound to A; no old refresh or toast is published
  // after switching to B. The test never claims to cancel an in-flight HID write.
  for(const [cmd,tab,button,reject]of[
-  ['mchose_apply','DPI','2000 Hz',false],['mchose_apply','DPI','2000 Hz',true],
+  ['mchose_apply','DPI','无线 2000 Hz',false],['mchose_apply','DPI','无线 2000 Hz',true],
   ['mchose_apply','DPI','保存六档 DPI',false],['mchose_macro','宏','读取鼠标',true]]){
   const t=await setup();await t.open('A');await t.ready('A');await t.page.getByRole('button',{name:tab,exact:true}).click();
   await t.hold(cmd);await t.page.getByRole('button',{name:button,exact:true}).click();await t.pending();await t.leave();await t.open('B');await t.ready('B');await t.release(reject);await t.ready('B');
@@ -80,7 +80,7 @@ const out=path.resolve('../outputs/100-model-development/mchose-target-lifetime-
  // Same path and profile alias remain visible while the transport generation changes.
  for(const [cmd,tab,button,reject]of[
   ['mchose_hardware',null,null,false],['mchose_hardware',null,null,true],
-  ['mchose_apply','DPI','保存六档 DPI',false],['mchose_apply','DPI','2000 Hz',true],
+  ['mchose_apply','DPI','保存六档 DPI',false],['mchose_apply','DPI','无线 2000 Hz',true],
   ['mchose_macro','宏','读取鼠标',false]]){
   const t=await setup();
   if(tab){await t.open('A');await t.ready('A');await t.page.getByRole('button',{name:tab,exact:true}).click();await t.hold(cmd);await t.page.getByRole('button',{name:button,exact:true}).click();}
@@ -90,7 +90,7 @@ const out=path.resolve('../outputs/100-model-development/mchose-target-lifetime-
   assert.equal(await t.page.getByText('已写入并核对鼠标设置',{exact:true}).count(),0);
   const calls=await t.page.evaluate(()=>window.__qaCalls);
   assert.deepEqual(calls.filter(c=>c.cmd==='mchose_hardware').map(c=>c.args.connectionKey),['connection:mchose-A:1','connection:mchose-A:2']);
-  if(button==='2000 Hz')staleRateRequest=calls.find(c=>c.cmd==='mchose_apply').args;
+  if(button==='无线 2000 Hz')staleRateRequest=calls.find(c=>c.cmd==='mchose_apply').args;
   await t.finish();checks.push('same-path reconnect isolates pending '+cmd+' '+(reject?'failure':'success'));
  }
  for(const [tab,button,dialog,forbidden]of[
@@ -108,11 +108,11 @@ const out=path.resolve('../outputs/100-model-development/mchose-target-lifetime-
   await t.reconnect();await t.page.getByRole('button',{name:'宏',exact:true}).click();
   assert.equal(await t.page.getByRole('textbox',{name:'宏名称',exact:true}).inputValue(),'新宏');
   await t.page.getByRole('button',{name:'DPI',exact:true}).click();await t.ready('B');
-  await t.page.getByRole('button',{name:'2000 Hz',exact:true}).click();
+  await t.page.getByRole('button',{name:'无线 2000 Hz',exact:true}).click();
   await t.page.waitForFunction(()=>{const f=document.querySelector('fieldset');return f&&!f.disabled;});
   const calls=await t.page.evaluate(()=>window.__qaCalls),request=calls.filter(c=>c.cmd==='mchose_apply').at(-1);
   assert.deepEqual(request.args.target,{device_key:'session:mchose-A:reconnected',connection_key:'connection:mchose-A:2'});
-  assert.deepEqual(request.args.action,{kind:'report_rate',value:4});assert(!calls.some(c=>c.cmd==='set_report_rate'));
+  assert.deepEqual(request.args.action,{kind:'connection_rate',connection:'wireless',value:4,expected_settings:[0,0x33,0x33,3,0,64,0,8,8,...Array(10).fill(8)]});assert(!calls.some(c=>c.cmd==='set_report_rate'));
   assert(staleRateRequest);fs.writeFileSync(path.join(out,'reconnect-rate-requests.json'),JSON.stringify({stale:staleRateRequest,fresh:request.args},null,2));
   await t.finish();checks.push('reconnected same-path device clears old DPI/macro drafts and fresh rate writes use newly read raw owner');
  }

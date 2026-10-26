@@ -18,6 +18,7 @@ enum Fault {
     SwitchAfterX,
     RefAfterFirstChunk,
     SettingsAfterMacroScan,
+    IdentityAfterSettings,
     RefDuringRecheck,
 }
 struct Mouse {
@@ -47,6 +48,7 @@ impl Mouse {
         self.requests.push((cmd, args.to_vec()));
         let response = match cmd {
             0x0900 => {
+                if self.fault==Some(Fault::IdentityAfterSettings)&&self.requests.iter().any(|(c,_)|*c==0x0102) {return Err(Error::MchoseIdentityUnavailable);}
                 let mut r = vec![0; 16];
                 r[..4].copy_from_slice(&[0x37, 0x38, 0x26, 0x40]);
                 r[10] = 2;
@@ -1045,4 +1047,103 @@ fn mhub_receipt_ui_bridge() {
     let profile:crate::profiles::Profile=serde_json::from_value(value["profile"].clone()).unwrap();
     let activation=receipt_activation(value["scenario"].as_str().unwrap(),profile,value["args"]["deviceId"].as_str().unwrap(),value["args"]["expectedConnection"].as_str().unwrap());
     std::fs::write(std::env::var("OPEN_HUB_MHUB_RECEIPT_RESPONSE").unwrap(),serde_json::to_vec_pretty(&activation).unwrap()).unwrap();
+}
+
+
+#[test]
+fn connection_rates_preserve_other_link_dpi_headers_settings_and_other_mouse() {
+    use crate::mchose_config::{Action,RateConnection};
+    let a=Rig::new();let b=Rig::new();
+    let macro_raw=plan().macros[0].raw.clone();
+    a.mouse.lock().unwrap().macros.insert(7,macro_raw.clone());
+    let before_macros=a.mouse.lock().unwrap().macros.clone();
+    let before_other_keys=a.mouse.lock().unwrap().other_keys.clone();
+    for (connection,byte,value) in [(RateConnection::Usb,1,4),(RateConnection::Wireless,2,6)] {
+        let before=a.t.hardware_state().unwrap();
+        let request_start=a.mouse.lock().unwrap().requests.len();
+        let after=a.t.apply_hardware_for(0,Action::ConnectionRate{connection,value,expected_settings:before.raw_settings.clone()}).unwrap();
+        let mut expected=before.raw_settings.clone();expected[byte]=(value<<4)|(expected[byte]&15);
+        assert_eq!(after.raw_settings,expected);
+        assert_eq!(after.dpi_x,before.dpi_x);assert_eq!(after.dpi_y,before.dpi_y);assert_eq!(after.buttons,before.buttons);
+        assert_eq!(after.count,before.count);assert_eq!(after.active,before.active);
+        let m=a.mouse.lock().unwrap();let setters=m.requests[request_start..].iter().filter(|(c,_)|*c==0x0102).collect::<Vec<_>>();
+        assert_eq!(setters.len(),1);assert_eq!(setters[0].1,expected);
+        assert_eq!(m.macros,before_macros);assert_eq!(m.other_keys,before_other_keys);
+        assert!(!m.requests[request_start..].iter().any(|(c,_)|*c==0x090b));drop(m);
+        let files=std::fs::read_dir(&a.directory).unwrap().map(|e|e.unwrap().path()).collect::<Vec<_>>();
+        assert!(files.iter().any(|p|{let saved:Snapshot=serde_json::from_slice(&std::fs::read(p).unwrap()).unwrap();saved.state==before&&saved.macros.iter().any(|m|m.slot==7&&m.raw==macro_raw)}));
+        let setters=set_records(&a.mouse.lock().unwrap()).len();let backups=files.len();
+        a.t.apply_hardware_for(0,Action::ConnectionRate{connection,value,expected_settings:expected}).unwrap();
+        assert_eq!(set_records(&a.mouse.lock().unwrap()).len(),setters);
+        assert_eq!(std::fs::read_dir(&a.directory).unwrap().count(),backups);
+    }
+    assert!(b.mouse.lock().unwrap().requests.is_empty());
+}
+#[test]
+fn invalid_or_stale_connection_rate_is_rejected_before_backup_and_set() {
+    use crate::mchose_config::{Action,RateConnection};
+    for case in 0..4 {
+        let a=Rig::new();let mut expected=a.t.hardware_state().unwrap().raw_settings;
+        let value=if case==0{1}else{4};
+        match case {1=>expected[1]^=0x10,2=>expected[3]^=1,3=>{expected.pop();},_=>{}}
+        assert!(a.t.apply_hardware_for(0,Action::ConnectionRate{connection:RateConnection::Usb,value,expected_settings:expected}).is_err());
+        assert!(set_records(&a.mouse.lock().unwrap()).is_empty());assert!(!a.directory.exists());
+    }
+}
+#[test]
+fn connection_rate_rechecks_after_backup_and_does_not_hide_ignored_write() {
+    use crate::mchose_config::{Action,RateConnection};
+    for fault in [Fault::SettingsAfterMacroScan,Fault::IgnoreSettings] {
+        let a=Rig::new();let expected=a.t.hardware_state().unwrap().raw_settings;
+        a.mouse.lock().unwrap().fault=Some(fault);
+        let e=a.t.apply_hardware_for(0,Action::ConnectionRate{connection:RateConnection::Wireless,value:6,expected_settings:expected}).err().unwrap().to_string();
+        assert!(e.contains("原始备份"));
+        let setters=set_records(&a.mouse.lock().unwrap());
+        assert_eq!(setters.len(),if fault==Fault::SettingsAfterMacroScan{0}else{1});
+        assert!(e.contains(if fault==Fault::SettingsAfterMacroScan{"未写入"}else{"可能已有部分设置生效"}));
+    }
+}
+#[test]
+fn generic_rate_setter_uses_full_backup_and_verifies_both_links() {
+    let a=Rig::new();let before=a.t.hardware_state().unwrap();
+    a.t.set_report_rate(4).unwrap();
+    let after=a.t.hardware_state().unwrap();let mut expected=before.raw_settings.clone();
+    for at in [1,2]{expected[at]=(4<<4)|(expected[at]&15);}
+    assert_eq!(after.raw_settings,expected);
+    let files=std::fs::read_dir(&a.directory).unwrap().collect::<Vec<_>>();assert_eq!(files.len(),1);
+    let saved:Snapshot=serde_json::from_slice(&std::fs::read(files[0].as_ref().unwrap().path()).unwrap()).unwrap();assert!(saved.state==before);
+    let a=Rig::new();a.mouse.lock().unwrap().fault=Some(Fault::IgnoreSettings);
+    assert!(a.t.set_report_rate(4).is_err());
+    assert_eq!(set_records(&a.mouse.lock().unwrap()).len(),1);
+}
+
+#[test]
+#[ignore="requires actual live connection-rate UI request capture"]
+fn live_connection_rate_ui_requests_replay_production_owner_and_settings() {
+    #[derive(serde::Deserialize)]struct Request{id:String,board:u8,action:crate::mchose_config::Action,target:crate::mchose_target::Target}
+    let requests:Vec<Request>=serde_json::from_slice(&std::fs::read(std::env::var("OPEN_HUB_MCHOSE_RATE_UI_CAPTURE").unwrap()).unwrap()).unwrap();
+    assert_eq!(requests.len(),4);let a=Rig::new();let b=Rig::new();
+    for r in requests {
+        let (rig,device_id)=if r.id=="mchose-A"{(&a,"mchose-A")}else{assert_eq!(r.id,"mchose-B");(&b,"mchose-B")};
+        let device=crate::mchose_target::simulated_device(device_id);
+        let before=rig.t.hardware_state().unwrap();
+        let value=crate::mchose_target::with_target(&device,&rig.t,&r.target,|t|t.apply_hardware_for(r.board,r.action)).unwrap();
+        assert_eq!(value.profile,0);assert_eq!(value.buttons,before.buttons);
+        assert_eq!(value.raw_settings[1]&15,before.raw_settings[1]&15);assert_eq!(value.raw_settings[2]&15,before.raw_settings[2]&15);
+    }
+    let a=a.t.hardware_state().unwrap();let b=b.t.hardware_state().unwrap();
+    assert_eq!((a.raw_settings[1]>>4,a.raw_settings[2]>>4),(3,6));
+    assert_eq!((b.raw_settings[1]>>4,b.raw_settings[2]>>4),(6,3));
+}
+
+
+#[test]
+fn rate_readback_success_followed_by_identity_failure_retains_backup_and_never_claims_no_write() {
+    let a=Rig::new();let before=a.t.hardware_state().unwrap();
+    a.mouse.lock().unwrap().fault=Some(Fault::IdentityAfterSettings);
+    let e=a.t.apply_hardware_for(0,crate::mchose_config::Action::ConnectionRate{connection:crate::mchose_config::RateConnection::Usb,value:4,expected_settings:before.raw_settings}).err().unwrap().to_string();
+    assert!(e.contains("回报率设置已读回匹配"));assert!(e.contains("完整状态刷新未完成"));
+    assert!(e.contains("原始备份"));assert!(!e.contains("未写入配置"));
+    let m=a.mouse.lock().unwrap();assert_eq!(set_records(&m).len(),1);assert_eq!(m.state.raw_settings[1]>>4,4);assert_eq!(m.state.raw_settings[2]>>4,3);
+    assert_eq!(std::fs::read_dir(&a.directory).unwrap().count(),1);
 }

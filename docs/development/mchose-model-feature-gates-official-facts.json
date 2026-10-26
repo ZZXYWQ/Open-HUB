@@ -1,0 +1,333 @@
+{
+  "date_local": "2026-10-27",
+  "source": {
+    "url": "https://www.mchose.com.cn/assets/purify.es-BufdR6vO.js",
+    "decoded_sha256": "c3e91c2828283cbcb8edb24474b45d64b2526bcbed0a2740919a0deef7ad61bc",
+    "decoded_bytes": 7763164,
+    "method": "literal AST extraction and direct consumer inspection; no OEM execution"
+  },
+  "settings_codec": {
+    "encoder": {
+      "symbol": "tgt",
+      "utf16_offset": 4209149,
+      "command": 258
+    },
+    "decoder": {
+      "symbol": "o1e",
+      "utf16_offset": 4205824,
+      "command": 2
+    },
+    "usb_rate": "settings byte1 high nibble",
+    "wireless_rate": "settings byte2 high nibble",
+    "low_nibbles": "active DPI index; not a rate code",
+    "picker_to_wire": "positive index plus one; zero unchanged",
+    "Open_HUB_policy": "change only requested high nibble; preserve other link, low nibbles and remaining bytes"
+  },
+  "tables": {
+    "qD": {
+      "utf16_offset": 4240743,
+      "purpose": "DPI-key remapping membership, additionally gated by device record"
+    },
+    "JQ": {
+      "utf16_offset": 4230281,
+      "purpose": "dedicated LOD command membership; other UI branch updates sensor bits 5..6"
+    },
+    "XQ": {
+      "utf16_offset": 4238078,
+      "purpose": "external MagDock discovery/light-page gate, not built-in mouse RGB"
+    },
+    "w5": {
+      "utf16_offset": 4239351,
+      "purpose": "adaptive polling firmware thresholds"
+    }
+  },
+  "models": [
+    {
+      "product_name": "MCHOSE A5 V3 Pro",
+      "dpi_button_remapping_gate": "also requires non-FF physical DPI-key record",
+      "dedicated_lod_0009_0109": false,
+      "magdock_usb_product_ids": [],
+      "adaptive_firmware_threshold_literal": null
+    },
+    {
+      "product_name": "MCHOSE A5 V3 Ultra+",
+      "dpi_button_remapping_gate": "also requires non-FF physical DPI-key record",
+      "dedicated_lod_0009_0109": false,
+      "magdock_usb_product_ids": [
+        16422,
+        4116,
+        4120
+      ],
+      "adaptive_firmware_threshold_literal": null
+    },
+    {
+      "product_name": "MCHOSE A5 V3 Ultra+(3955)",
+      "dpi_button_remapping_gate": "also requires non-FF physical DPI-key record",
+      "dedicated_lod_0009_0109": true,
+      "magdock_usb_product_ids": [
+        16436,
+        4116,
+        4120
+      ],
+      "adaptive_firmware_threshold_literal": null
+    },
+    {
+      "product_name": "MCHOSE A7 V3",
+      "dpi_button_remapping_gate": "also requires non-FF physical DPI-key record",
+      "dedicated_lod_0009_0109": false,
+      "magdock_usb_product_ids": [],
+      "adaptive_firmware_threshold_literal": null
+    },
+    {
+      "product_name": "MCHOSE A7 V3 Magnetic",
+      "dpi_button_remapping_gate": "not in qD",
+      "dedicated_lod_0009_0109": true,
+      "magdock_usb_product_ids": [],
+      "adaptive_firmware_threshold_literal": null
+    },
+    {
+      "product_name": "MCHOSE A7 V3 Pro",
+      "dpi_button_remapping_gate": "also requires non-FF physical DPI-key record",
+      "dedicated_lod_0009_0109": false,
+      "magdock_usb_product_ids": [],
+      "adaptive_firmware_threshold_literal": null
+    },
+    {
+      "product_name": "MCHOSE A7 V3 Pro+",
+      "dpi_button_remapping_gate": "also requires non-FF physical DPI-key record",
+      "dedicated_lod_0009_0109": false,
+      "magdock_usb_product_ids": [
+        16434,
+        4116,
+        4120
+      ],
+      "adaptive_firmware_threshold_literal": null
+    },
+    {
+      "product_name": "MCHOSE A7 V3 Ultra",
+      "dpi_button_remapping_gate": "also requires non-FF physical DPI-key record",
+      "dedicated_lod_0009_0109": true,
+      "magdock_usb_product_ids": [],
+      "adaptive_firmware_threshold_literal": null
+    },
+    {
+      "product_name": "MCHOSE A7 V3 Ultra+",
+      "dpi_button_remapping_gate": "also requires non-FF physical DPI-key record",
+      "dedicated_lod_0009_0109": true,
+      "magdock_usb_product_ids": [
+        16435,
+        4116,
+        4120
+      ],
+      "adaptive_firmware_threshold_literal": null
+    },
+    {
+      "product_name": "MCHOSE A7 V3-X",
+      "dpi_button_remapping_gate": "also requires non-FF physical DPI-key record",
+      "dedicated_lod_0009_0109": true,
+      "magdock_usb_product_ids": [
+        16442,
+        4116,
+        4120
+      ],
+      "adaptive_firmware_threshold_literal": null
+    },
+    {
+      "product_name": "MCHOSE K5 Pro",
+      "dpi_button_remapping_gate": "also requires non-FF physical DPI-key record",
+      "dedicated_lod_0009_0109": false,
+      "magdock_usb_product_ids": [],
+      "adaptive_firmware_threshold_literal": "13"
+    },
+    {
+      "product_name": "MCHOSE K5 Ultra",
+      "dpi_button_remapping_gate": "also requires non-FF physical DPI-key record",
+      "dedicated_lod_0009_0109": true,
+      "magdock_usb_product_ids": [],
+      "adaptive_firmware_threshold_literal": "12"
+    },
+    {
+      "product_name": "MCHOSE K7 V2 Pro",
+      "dpi_button_remapping_gate": "also requires non-FF physical DPI-key record",
+      "dedicated_lod_0009_0109": false,
+      "magdock_usb_product_ids": [],
+      "adaptive_firmware_threshold_literal": null
+    },
+    {
+      "product_name": "MCHOSE K7 V2 Pro+",
+      "dpi_button_remapping_gate": "also requires non-FF physical DPI-key record",
+      "dedicated_lod_0009_0109": false,
+      "magdock_usb_product_ids": [
+        16423,
+        4116,
+        4120
+      ],
+      "adaptive_firmware_threshold_literal": null
+    },
+    {
+      "product_name": "MCHOSE K7 V2 Ultra",
+      "dpi_button_remapping_gate": "also requires non-FF physical DPI-key record",
+      "dedicated_lod_0009_0109": true,
+      "magdock_usb_product_ids": [],
+      "adaptive_firmware_threshold_literal": null
+    },
+    {
+      "product_name": "MCHOSE K7 V2 Ultra+",
+      "dpi_button_remapping_gate": "also requires non-FF physical DPI-key record",
+      "dedicated_lod_0009_0109": true,
+      "magdock_usb_product_ids": [
+        16424,
+        4116,
+        4120
+      ],
+      "adaptive_firmware_threshold_literal": null
+    },
+    {
+      "product_name": "MCHOSE R7 Ultra",
+      "dpi_button_remapping_gate": "not in qD",
+      "dedicated_lod_0009_0109": true,
+      "magdock_usb_product_ids": [],
+      "adaptive_firmware_threshold_literal": null
+    }
+  ],
+  "usb_descriptor_origins": [
+    {
+      "utf16_offset": 1283230,
+      "bindings": [
+        {
+          "property": "vendorId",
+          "local": "h"
+        },
+        {
+          "property": "productId",
+          "local": "p"
+        },
+        {
+          "property": "productKey",
+          "local": "b"
+        }
+      ],
+      "parent_kind": "VariableDeclarator",
+      "initializer": "d"
+    }
+  ],
+  "reference_sites": {
+    "JQ": [
+      {
+        "utf16_offset": 7749670,
+        "kind": "ExportSpecifier"
+      },
+      {
+        "utf16_offset": 4617435,
+        "kind": "MemberExpression"
+      },
+      {
+        "utf16_offset": 4616690,
+        "kind": "MemberExpression"
+      },
+      {
+        "utf16_offset": 4613290,
+        "kind": "MemberExpression"
+      },
+      {
+        "utf16_offset": 4220935,
+        "kind": "MemberExpression"
+      },
+      {
+        "utf16_offset": 4217133,
+        "kind": "MemberExpression"
+      }
+    ],
+    "qD": [
+      {
+        "utf16_offset": 7749593,
+        "kind": "ExportSpecifier"
+      },
+      {
+        "utf16_offset": 4547621,
+        "kind": "MemberExpression"
+      },
+      {
+        "utf16_offset": 4496271,
+        "kind": "MemberExpression"
+      },
+      {
+        "utf16_offset": 4494426,
+        "kind": "MemberExpression"
+      },
+      {
+        "utf16_offset": 4243578,
+        "kind": "MemberExpression"
+      }
+    ],
+    "XQ": [
+      {
+        "utf16_offset": 4654448,
+        "kind": "MemberExpression"
+      },
+      {
+        "utf16_offset": 4653405,
+        "kind": "MemberExpression"
+      },
+      {
+        "utf16_offset": 4639474,
+        "kind": "MemberExpression"
+      },
+      {
+        "utf16_offset": 4639387,
+        "kind": "MemberExpression"
+      },
+      {
+        "utf16_offset": 4635733,
+        "kind": "MemberExpression"
+      }
+    ],
+    "w5": [
+      {
+        "utf16_offset": 4612123,
+        "kind": "MemberExpression"
+      },
+      {
+        "utf16_offset": 4221123,
+        "kind": "MemberExpression"
+      },
+      {
+        "utf16_offset": 4217246,
+        "kind": "MemberExpression"
+      },
+      {
+        "utf16_offset": 4193515,
+        "kind": "MemberExpression"
+      },
+      {
+        "utf16_offset": 4192499,
+        "kind": "MemberExpression"
+      }
+    ]
+  },
+  "identity_namespaces": {
+    "USB_productKey": "Name + USB descriptor VID/PID; XQ includes receiver transports as well as direct-device USB product IDs",
+    "GET_0900_payload": "AK decodes vid/pid from payload bytes 0..3; these are not assigned to the USB descriptor in the inspected identity reader",
+    "A7_V3_Ultra_plus_usb_in_dock_gate": {
+      "vendor": 14391,
+      "products": [
+        16435,
+        4116,
+        4120
+      ]
+    },
+    "historical_observed_payload": {
+      "vendor": 14391,
+      "product": 16422
+    },
+    "conclusion": "These values have different provenance. No equality or alias between USB productId and GET0900 pid is established. They are not by themselves a proven model conflict."
+  },
+  "limits": [
+    "Membership is not registration or complete model support",
+    "No extra hardware/USB PID is enabled by this inventory",
+    "Names and USB IDs do not establish a stable RF mouse identity",
+    "No model-specific maximum DPI/rate inferred from table membership",
+    "No raw OEM source is distributed in this fact file",
+    "Non-JQ exact LOD options and firmware behavior still require model-specific evidence"
+  ]
+}

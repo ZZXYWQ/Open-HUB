@@ -393,13 +393,10 @@ fn report_rate_keeps_original_board_settings_and_backups() {
         .map(|e| e.unwrap().path())
         .collect::<Vec<_>>();
     assert_eq!(files.len(), 1);
-    let backup: serde_json::Value =
-        serde_json::from_slice(&std::fs::read(&files[0]).unwrap()).unwrap();
-    assert_eq!(backup["format"], "mchose-v3-raw-v1");
-    assert_eq!(
-        backup["settings"],
-        serde_json::json!(before[0].raw_settings)
-    );
+    let backup: Snapshot = serde_json::from_slice(&std::fs::read(&files[0]).unwrap()).unwrap();
+    assert_eq!(backup.format,crate::mchose_config::SNAPSHOT_FORMAT);
+    assert!(backup.state==before[0]);
+    assert!(backup.macros.is_empty());
 }
 
 #[test]
@@ -422,6 +419,10 @@ fn bound_rate_action_preserves_all_xy_values_low_nibbles_and_other_boards() {
         expected[1] = (value << 4) | 0x04;
         expected[2] = (value << 4) | 0x05;
         assert_eq!(state.raw_settings, expected);
+        if value==3 {
+            let mouse=rig.mouse.lock().unwrap();assert!(mouse.writes.is_empty());assert!(mouse.boards==before);drop(mouse);
+            assert!(!rig.backup.exists());continue;
+        }
         let mouse = rig.mouse.lock().unwrap();
         assert_eq!(mouse.writes, [(0x0102, expected)]);
         for board in 0..3 {
@@ -529,7 +530,7 @@ fn actual_same_path_reconnect_ui_rate_requests_replay_before_native_io() {
         t.apply_hardware_for(fresh.board, fresh.action)
     })
     .unwrap();
-    assert_eq!(state.raw_settings[1] >> 4, 4);
+    assert_eq!(state.raw_settings[1] >> 4, 3);
     assert_eq!(state.raw_settings[2] >> 4, 4);
     assert_eq!(rig.mouse.lock().unwrap().writes.len(), 1);
 }

@@ -10,10 +10,10 @@ const out=path.resolve('../outputs/100-model-development/mchose-drafts-ui');fs.m
   const peers=['A','B'].map(unit=>({id:'mchose-'+unit,profile_key:'session:mchose-'+unit,connection_key:'connection:mchose-'+unit+':1',vendor_id:0x3837,product_id:'1014',model_ids:['4026'],name:'A7 V3 Ultra+ '+unit,product:'A7 V3 Ultra+',kind:'mouse',firmware_name:'fixture',connection:'wireless',protocol:'MCHOSE',features:[]}));
   const events=code=>[{kind:'key',code,down:true,delay_ms:0},{kind:'delay',code:0,down:false,delay_ms:25},{kind:'key',code,down:false,delay_ms:0}];
   const state={};
-  for(const unit of ['A','B'])state['mchose-'+unit]={profile:0,names:['Native '+unit+' 0','Native '+unit+' 1','Native '+unit+' 2'],rate:3,boards:[0,1,2].map(p=>({dpi_x:Array(6).fill(unit==='A'?800*(p+1):2200),dpi_y:Array(6).fill(unit==='A'?800*(p+1):2200),count:6,active:0,independent:true,sleep:3,never_sleep:false,left_debounce:8,right_debounce:8,sensor:0,rotation:0,lod:2,buttons:[[0,1,0],[0,2,0],[0,4,0],[0,16,0],[0,8,0],[1,0,0,0]]})),macros:unit==='A'?{0:{slot:0,name:'Native macro 0',mode:1,events:events(4)},1:{slot:1,name:'Native macro 1',mode:2,events:events(5)}}:{}};
+  for(const unit of ['A','B'])state['mchose-'+unit]={profile:0,names:['Native '+unit+' 0','Native '+unit+' 1','Native '+unit+' 2'],usbRate:3,wirelessRate:3,boards:[0,1,2].map(p=>({dpi_x:Array(6).fill(unit==='A'?800*(p+1):2200),dpi_y:Array(6).fill(unit==='A'?800*(p+1):2200),count:6,active:0,independent:true,sleep:3,never_sleep:false,left_debounce:8,right_debounce:8,sensor:0,rotation:0,lod:2,buttons:[[0,1,0],[0,2,0],[0,4,0],[0,16,0],[0,8,0],[1,0,0,0]]})),macros:unit==='A'?{0:{slot:0,name:'Native macro 0',mode:1,events:events(4)},1:{slot:1,name:'Native macro 1',mode:2,events:events(5)}}:{}};
   window.__mchoseDraftFixture={state,fail:null,hold:null,pending:null};
   const reply=(kind,value)=>{const fixture=window.__mchoseDraftFixture;if(fixture.hold!==kind)return value;fixture.hold=null;return new Promise((resolve,reject)=>{fixture.pending={resolve:()=>resolve(value),reject:()=>reject(Error('AUTHORED_DEFERRED_FAILURE'))};});};
-  const hw=id=>{const s=state[id],p=s.profile,b=s.boards[p];return clone({target:{device_key:"session:"+id,connection_key:"connection:"+id+":1"},profile:p,names:s.names,...b,adaptive:[],firmware:'1',receiver_firmware:'1',raw_settings:[p,s.rate<<4,s.rate<<4,b.sleep,Number(b.never_sleep),b.sensor,b.rotation/4,b.left_debounce,b.right_debounce,...Array(10).fill(0)]});};
+  const hw=id=>{const s=state[id],p=s.profile,b=s.boards[p];return clone({target:{device_key:"session:"+id,connection_key:"connection:"+id+":1"},profile:p,names:s.names,...b,adaptive:[],firmware:'1',receiver_firmware:'1',raw_settings:[p,s.usbRate<<4,s.wirelessRate<<4,b.sleep,Number(b.never_sleep),b.sensor,b.rotation/4,b.left_debounce,b.right_debounce,...Array(10).fill(0)]});};
   const old=window.__TAURI_INTERNALS__.invoke;
   window.__TAURI_INTERNALS__.invoke=async(cmd,args={})=>{
    if(!['scan_devices','list_devices','mchose_hardware','mchose_apply','mchose_macro','set_report_rate'].includes(cmd))return old(cmd,args);
@@ -32,7 +32,8 @@ const out=path.resolve('../outputs/100-model-development/mchose-drafts-ui');fs.m
    if(args.expectedProfile!==p)throw Error('wrong board');
    if(window.__mchoseDraftFixture.fail===a.kind){window.__mchoseDraftFixture.fail=null;throw Error('AUTHORED_WRITE_FAILURE');}
    if(a.kind==='dpi')Object.assign(b,{dpi_x:a.x,dpi_y:a.independent?a.y:a.x,count:a.count,active:a.active,independent:a.independent});
-   else if(a.kind==='report_rate')s.rate=a.value;
+   else if(a.kind==='report_rate'){s.usbRate=a.value;s.wirelessRate=a.value;}
+   else if(a.kind==='connection_rate'){if(JSON.stringify(a.expected_settings)!==JSON.stringify(hw(args.id).raw_settings))throw Error('stale rate image');if(a.connection==='usb')s.usbRate=a.value;else s.wirelessRate=a.value;}
    else if(a.kind==='settings')for(const k of ['sleep','never_sleep','left_debounce','right_debounce','sensor','rotation'])b[k]=a[k];
    else if(a.kind==='button')b.buttons[a.index]=a.binding;
    else if(a.kind==='lod')b.lod=a.index;
@@ -71,7 +72,7 @@ const out=path.resolve('../outputs/100-model-development/mchose-drafts-ui');fs.m
  await tab('按键');await click('应用到后侧键');
  await tab('DPI');await value('档 1 X DPI',1200);
  await refresh();await value('档 1 X DPI',1200);
- await click('2000 Hz');await value('档 1 X DPI',1200);
+ await click('无线 2000 Hz');await value('档 1 X DPI',1200);
  await tab('性能');await value('左键消抖',12);
  await tab('板载/备份');assert.equal(await page.getByRole('textbox',{name:'板载名称',exact:true}).inputValue(),'Draft board 0');
  checks.push('DPI, performance and name drafts survive button writes, refresh and report-rate updates');
