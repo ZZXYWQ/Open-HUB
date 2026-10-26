@@ -486,6 +486,8 @@ pub enum DpiFunction {
     Cycle,
     /// "Sniper"/DPI-shift: hold for this DPI, release to restore.
     Shift(u16),
+    /// Native DPI clutch with independently configured axes. Driver support is explicit.
+    ShiftXY { x: u16, y: u16 },
     /// Previous stage, wrapping to the last stage before the first.
     CycleDown,
 }
@@ -564,6 +566,7 @@ impl ButtonAction {
             ButtonAction::Dpi(DpiFunction::Down) => "DPI down".into(),
             ButtonAction::Dpi(DpiFunction::Cycle) => "DPI cycle".into(),
             ButtonAction::Dpi(DpiFunction::Shift(d)) => format!("DPI shift ({d})"),
+            ButtonAction::Dpi(DpiFunction::ShiftXY { x, y }) => format!("DPI shift ({x} × {y})"),
             ButtonAction::Dpi(DpiFunction::CycleDown) => "DPI cycle down".into(),
             ButtonAction::ProfileCycle => "Profile cycle".into(),
             ButtonAction::Hypershift => "Hold Hypershift".into(),
@@ -646,6 +649,21 @@ mod button_action_serialization_tests {
             assert_eq!(action.label(), label);
         }
         for value in [json!({"Scroll": "Left"}), json!({"Scroll": "up"}), json!({"Scroll": 1})] {
+            assert!(serde_json::from_value::<ButtonAction>(value).is_err());
+        }
+    }
+
+    #[test]
+    fn independent_clutch_json_preserves_legacy_uniform_shape() {
+        for (action, value) in [
+            (ButtonAction::Dpi(DpiFunction::Shift(800)), json!({"Dpi":{"Shift":800}})),
+            (ButtonAction::Dpi(DpiFunction::ShiftXY { x:800,y:1600 }), json!({"Dpi":{"ShiftXY":{"x":800,"y":1600}}})),
+        ] {
+            assert_eq!(serde_json::to_value(&action).unwrap(), value);
+            assert_eq!(serde_json::from_value::<ButtonAction>(value).unwrap(), action);
+        }
+        assert_eq!(ButtonAction::Dpi(DpiFunction::ShiftXY { x:800,y:1600 }).label(), "DPI shift (800 × 1600)");
+        for value in [json!({"Dpi":{"ShiftXY":{"x":800}}}), json!({"Dpi":{"ShiftXY":{"x":800,"y":65536}}})] {
             assert!(serde_json::from_value::<ButtonAction>(value).is_err());
         }
     }

@@ -28,7 +28,7 @@ function settingLabel(s:MultiSetting,plan:MultiPlan){
   else if('Mouse'in a)action=`鼠标 ${{Left:'左键',Right:'右键',Middle:'中键',Back:'后退',Forward:'前进',WheelLeft:'滚轮左倾',WheelRight:'滚轮右倾'}[a.Mouse]}`;
   else if('Scroll'in a)action=a.Scroll==='Up'?'向上滚动':'向下滚动';
   else if('Media'in a)action=`媒体 ${NATIVE_MEDIA_KEYS.find(([id])=>id===a.Media)?.[1]??'0x'+a.Media.toString(16)}`;
-  else action=typeof a.Dpi==='string'?`DPI ${{Cycle:'循环档位',CycleDown:'反向循环档位',Up:'提高一档',Down:'降低一档'}[a.Dpi]}`:`按住狙击 DPI ${a.Dpi.Shift}`;
+  else action=typeof a.Dpi==='string'?`DPI ${{Cycle:'循环档位',CycleDown:'反向循环档位',Up:'提高一档',Down:'降低一档'}[a.Dpi]}`:('ShiftXY'in a.Dpi?`按住狙击 DPI ${a.Dpi.ShiftXY.x} × ${a.Dpi.ShiftXY.y}`:`按住狙击 DPI ${a.Dpi.Shift}`);
   return `按键 ${s.Button.id}：${action}`;
  }
  const effect=s.Lighting.state.effect;

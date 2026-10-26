@@ -93,6 +93,9 @@ fn preview_bindings(value: &Value) -> Vec<sidearm_synapse_parser::types::ParsedB
                             DpiFunction::Cycle => "DPI 正向循环".into(),
                             DpiFunction::CycleDown => "DPI 反向循环".into(),
                             DpiFunction::Shift(value) => format!("按住切换 {value} DPI"),
+                            DpiFunction::ShiftXY { x, y } => {
+                                format!("按住切换 X={x} / Y={y} DPI")
+                            }
                         },
                         ButtonAction::Media(usage) => match usage {
                             0xb5 => "下一曲",
@@ -224,6 +227,22 @@ fn boolean(obj: &Map<String, Value>, key: &str, path: &str) -> Result<bool, Stri
         .ok_or_else(|| format!("{path}/{key}: 必须是布尔值"))
 }
 
+// The retained renderer loads these from the device-level storage object,
+// separately from its selected profile. DEFAULTPROFILE alone also contains
+// placeholder power values, which is not proof that an export owns them.
+// Keep a specific source-path diagnostic instead of treating those defaults
+// as an instruction to overwrite the live device's independent settings.
+fn reject_unproved_device_features(value: &Value, path: &str) -> Result<(), String> {
+    for key in ["powerSavingValue", "lowPowerMode", "calibration", "smartTracking"] {
+        if value.get(key).is_some() {
+            return Err(format!(
+                "{path}/{key}: 已识别原厂设备级功能，但配置导出位置/覆盖规则尚未证实；原始来源完整保留，未转换任何部分"
+            ));
+        }
+    }
+    Ok(())
+}
+
 pub(super) fn convert(
     parsed: &ParsedSynapseProfiles,
     product: u16,
@@ -250,6 +269,7 @@ pub(super) fn convert(
     }
     let mut global = Vec::new();
     let check = (|| {
+        reject_unproved_device_features(&outer.value, "")?;
         let obj = object(
             &outer.value,
             "",
@@ -330,6 +350,7 @@ fn candidate(env: &RawEnvelope, product: u16, index: usize, global: &[String]) -
                 "{path}/hash: 原厂排序 JSON 校验不符；不能确认完整来源"
             ));
         }
+        reject_unproved_device_features(&raw.value, &format!("{path}/payload"))?;
         let obj = object(
             &raw.value,
             &format!("{path}/payload"),
@@ -708,10 +729,11 @@ fn action(row: &Value, _id: u16, path: &str) -> Result<ButtonAction, String> {
                         &group_path,
                         None,
                     )?;
-                    if stage.x != stage.y {
-                        return Err(format!("{group_path}: XY 狙击值不能压成统一 DPI"));
+                    if group.get("independent") == Some(&Value::Bool(true)) {
+                        DpiFunction::ShiftXY { x: stage.x, y: stage.y }
+                    } else {
+                        DpiFunction::Shift(stage.x)
                     }
-                    DpiFunction::Shift(stage.x)
                 }
                 other => return Err(format!("{group_path}: 未支持灵敏度动作 {other}")),
             };

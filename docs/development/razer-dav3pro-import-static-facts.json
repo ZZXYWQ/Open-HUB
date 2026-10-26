@@ -21,7 +21,8 @@
       "PollingRate.xml": "33ec7917a87a4fda73d0775a16b83fe83034fb2c243cc9f99902274cec9b54b1",
       "HighSpeedPollingRate.xml": "14afdeb050c9347b512f9af8e37d8a7f4a48b7bd591004363c2ea2c74c221b6c",
       "PowerManagement.xml": "463a92512d3954f43ddcf74d31737716ebddadf1c3414e451f74dc4393493d2d",
-      "LowPowerMode.xml": "03a10e6a08db45177b71bb308eb2019d165b6fffc5c5888dd680cdb433b4b9af"
+      "LowPowerMode.xml": "03a10e6a08db45177b71bb308eb2019d165b6fffc5c5888dd680cdb433b4b9af",
+      "SensorCalibrationV2.xml": "917138a38202a7f6a605da14b0a31f417d903f11482ee7ab8eaa1ddd6e10ef5b"
     },
     "official_ui_url": "https://apps.razer.com/synapse/products/182/ui/static/js/main.998a1822.js",
     "official_ui_sha256": "c5f739f700e7e1613a7ef27fb862f2b49a727f90dcdb9f6d3d130d8a2a1eccf7"
@@ -150,8 +151,8 @@
     "DA original macro/text configuration remains preserved and blocked. No imported host-macro bridge or source-input ownership is enabled."
   ],
   "validation": {
-    "command": "OPEN_HUB_DAV3PRO_IMPORT_UI_PROFILES=<saved synthetic browser profiles>; cargo test --manifest-path src-tauri/Cargo.toml synapse_profiles:: -- --include-ignored --nocapture",
-    "result": "19 default import tests plus1 explicitly run saved-browser native cross:20 passed,0failed; the cross remains ignored in ordinary runs until its saved-profile environment is supplied.",
+    "command": "OPEN_HUB_DAV3PRO_IMPORT_UI_PROFILES=<saved baseline browser profiles>; OPEN_HUB_DAV3PRO_SHIFTXY_UI_PROFILES=<saved XY browser profiles>; cargo test --manifest-path src-tauri/Cargo.toml synapse_profiles:: -- --include-ignored --nocapture",
+    "result": "23 default import tests plus2 explicitly run saved-browser native crosses:25 passed,0failed,0ignored. Each browser cross remains ignored in ordinary runs until its saved-profile environment is supplied.",
     "parser_regression": "147 unit/property tests passed, 1 existing user-local fixture test ignored; 3 public-export tests passed",
     "test_source": "src-tauri/src/synapse_dav3pro_import_tests.rs",
     "inputs": "Authored synthetic v4 JSON/base64/checksum and stored v3 ZIP through prepare(path); no captured DA export or real user configuration committed",
@@ -163,7 +164,11 @@
       "Unknown/raw/macro retention without frontend raw leak; duplicate/checksum/stage/control/identity refusal",
       "Sparse export refusals never invent omitted hardware records",
       "Complete16 source negatives exercise actual HS-pair and normal-left guards; explicit authored top-level/nested lighting/calibration fields fail closed with exact source paths, without claiming an OEM schema",
-      "Consistent off-step1601 current/active-stage values are rejected for both transports before producing a profile; browser saves preserve original nativeDPI/rate/actions"
+      "Consistent off-step1601 current/active-stage values are rejected for both transports before producing a profile; browser saves preserve original nativeDPI/rate/actions",
+      "Both transports refuse authored device-feature fields at decoded-profile and outer-envelope positions with exact paths, complete16 source bindings, raw feature retention, unchanged input bytes and no calibration-cache preview leak. These negative placements are not claimed as valid OEM export schemas.",
+      "Complete source-file XY and legacy uniform clutches in both layers/transports retain raw data, source bytes and all16 bindings through ProfileStore and production native readback; exact seven-byte vectors checked independently. Explicit independent:true/equal axes keeps saved intent and legacy wire compatibility.",
+      "Invalid, missing, conflicting or extra independent-clutch group fields block complete16 sources in both layers/transports; no fallback to uniform or Disabled.",
+      "Production headless UI displays real Prepared XY/uniform source DTOs, toggles independent-checkbox both directions, edits both layers and preserves noRGB/hostmacro gates. Both exact browser saves replay through store/native codec with all16 bindings, stages/rate and unchanged power/calibration."
     ],
     "prepared_DTO_export_env": "OPEN_HUB_DAV3PRO_IMPORT_PREPARED writes accepted B6/B7 Prepared array plus sibling dav3pro-import-blocked-prepared.json with real sparse/unknown/checksum/macro refusal responses",
     "browser_cross_env": "OPEN_HUB_DAV3PRO_IMPORT_UI_PROFILES: explicit ignored test stores/reloads unchanged browser saves and replays both transports through production native codec",
@@ -176,7 +181,25 @@
     "DA_persisted_native_simulation_applicable": true,
     "new_fully_accepted_models": 0,
     "release_or_install_performed": false,
-    "browser_cross_result": "Both unchanged B6/B7 browser saves merged into ProfileStore, saved/reloaded, exact18settings/16bindings checked, then simulated and natively applied/read with no host macros or OS input."
+    "browser_cross_result": "Both unchanged B6/B7 browser saves merged into ProfileStore, saved/reloaded, exact18settings/16bindings checked, then simulated and natively applied/read with no host macros or OS input.",
+    "latest_focused_log": "Private outputs/100-model-development/dav3pro-shiftxy-ui-native-cross.log;25 passed,0failed,0ignored. Power/calibration import remains blocked for unproved export context.",
+    "shiftxy_prepared_DTO_export_env": "OPEN_HUB_DAV3PRO_SHIFTXY_IMPORT_PREPARED writes a two-transport production Prepared array from complete authored source files",
+    "shiftxy_browser_cross_env": "OPEN_HUB_DAV3PRO_SHIFTXY_UI_PROFILES reads two edited saved profiles from scripts/test-dav3pro-shiftxy-ui.cjs for explicit ignored native cross",
+    "shiftxy_UI": {
+      "command": "node -r ./scripts/ui-browser-runtime.cjs scripts/test-dav3pro-shiftxy-ui.cjs",
+      "passed": true,
+      "profiles": 2,
+      "source": "Fresh production prepare(path) DTOs from authored complete16 exports; existing native capability DTOs; IPC stubbed and existing Edge reused",
+      "report": "Private outputs/100-model-development/dav3pro-shiftxy-ui/report.json",
+      "build": {
+        "typescript_passed": true,
+        "js_kB": 753.78,
+        "js_gzip_kB": 230.39,
+        "css_kB": 105.16,
+        "css_gzip_kB": 18.54
+      },
+      "hardware_tested": false
+    }
   },
   "verified_v4_static_facts": {
     "offset_unit": "JavaScript UTF-16 source offsets, not UTF-8 file byte offsets",
@@ -211,6 +234,80 @@
     "media": {
       "utf16_offset": 4045899,
       "fact": "Seven supported names: NextTrack, PrevTrack, MediaStop, Play, MuteVolume, VolumeUp, VolumeDown. Other media names remain unsupported."
+    },
+    "device_feature_context_audit": {
+      "offset_unit": "JavaScript UTF-16 source offsets in the same retained main.998a1822.js; static source reading only",
+      "profile_defaults": {
+        "utf16_offset": 108814,
+        "fact": "DEFAULTPROFILE contains numeric powerSavingValue5 and lowPowerMode5. It also contains unsupported lighting placeholders. The defaults object alone does not prove that those fields are owned or updated by a profile export."
+      },
+      "device_storage_load": {
+        "utf16_offsets": [
+          4822935,
+          4824448,
+          4824951,
+          4825060
+        ],
+        "fact": "The load-data loop iterates the device storage root. Its profiles branch loads brightness, dpiStages, quickEffects, switchOffLighting, pollingRate(/Wireless), and mappings. Separate root branches load calibration, powerSavingValue and lowPowerMode. Calibration dispatches smartTracking into calibration reducers.",
+        "limit": "This root is a device storage message, not a captured exported Synapse4 envelope. Moving its fields into either an export envelope or decoded profile payload is unproved."
+      },
+      "power_controls": {
+        "utf16_offsets": [
+          4291394,
+          4292192,
+          4819596,
+          4820454
+        ],
+        "fact": "Sleep UI uses powerSavingValue with integer slider1..15 and a localized minutes description. Low-power UI uses lowPowerMode with percentage labels, integer range5..100 step5; its live reducer starts at30, distinct from DEFAULTPROFILE lowPowerMode5.",
+        "limit": "The ON_SET_POWER_SAVING_VALUE and ON_SET_LOW_POWER_MODE messages pass values to middleware. The retained renderer does not show an XML SleepModeInSeconds/BatteryLevel-to-export conversion. Factory sleep300 versus UI5 is correlation, not independent proof of an export unit/ownership bridge."
+      },
+      "calibration_controls": {
+        "utf16_offsets": [
+          4290788,
+          4687563,
+          4688447,
+          4690174,
+          4690464
+        ],
+        "fact": "The smart-only reducer stores smartTracking with isAsymmetric, trackingDistance, liftOffDistance and landingDistance; UI defaults are false/2/13/12. UI constrains Standard tracking to1..3 and asymmetric lift2..26, landing1..25 with landing<lift. Updates post complete merged smartTracking to middleware.",
+        "limit": "These are device-feature UI/storage values. The retained code does not establish a calibration member in the exported profile payload, nor a lossless profile representation of inactive Standard and Pro values. Typed SensorCalibrationV2 XML/native facts do not establish this JSON export placement."
+      },
+      "xml_migration": {
+        "utf16_offset": 4069378,
+        "fact": "The XML-to-profile helper Ue handles LedBrightness, PollingRate, LedPowerSettings, DPIStages, DPI, LightingEffects and Mappings. It has no PowerManagement, LowPowerMode or SensorCalibrationV2 case. It begins by copying DEFAULTPROFILE, so leftover power defaults must not be interpreted as migrated source settings."
+      },
+      "export_boundary": {
+        "utf16_offsets": [
+          4229431,
+          4640850,
+          4641750
+        ],
+        "fact": "The export reducer passes selectedProfiles to middleware; processData/decodeDataObject accepts the decoded profile object after checksum verification. Neither boundary establishes which separate device feature values middleware includes in each exported payload.",
+        "required_evidence": "Exact retained middleware export/apply serializer or a captured exact-model export plus independently established feature ownership, units, completeness and inactive-value semantics."
+      },
+      "twin_xml": {
+        "models": [
+          "182",
+          "183"
+        ],
+        "fact": "PowerManagement.xml, LowPowerMode.xml and SensorCalibrationV2.xml are byte-identical between retained wired and stock-receiver defaults; hashes are listed above. This does not make a v4 JSON feature schema proven."
+      },
+      "decision": "Power/calibration import remains blocked for both exact transports, even for complete or default-looking values. Specific diagnostics identify the unresolved source context; original raw data is retained. No device setting or RGB is invented."
+    },
+    "sensitivity_clutch": {
+      "json_bridge": {
+        "utf16_offset": 4041920,
+        "fact": "The XML sensitivity-group bridge copies SensitivityAssignment, X, Y and Independent into sensitivityAssignment, x, y and independent without collapsing axes."
+      },
+      "obm_conversion": {
+        "utf16_offset": 4063707,
+        "fact": "The exact182 onboard sensitivity converter retains both source x and y for DPI_Clutch; this is an additional logical-feature confirmation, not a captured export."
+      },
+      "native_proof_document": "docs/development/razer-dav3pro-shiftxy-static-facts.json",
+      "native_record": "Independent-axis native setter construction is confirmed separately in retained B6 and B7 serializers: sensitivity group4/case4 emits06 05 05 Xhi Xlo Yhi Ylo. The exact DA codec accepts the pair; other model codecs do not inherit this new variant.",
+      "import_semantics": "Explicit independent:true produces DpiFunction::ShiftXY{x,y}, including equal axes to preserve source/UI intent. Uniformfalse/omitted flags retain legacyShift(value). Unequal axes require explicittrue; invalid ranges, off50DPIstep values and unknown group options block the complete profile.",
+      "equal_axes": "Equal-axis native readback canonically remains legacyShift(value) with unchanged seven-byte records. Persisted source/UI profiles retain explicitShiftXY intent; native verification compares exact encoded records.",
+      "limits": "Strict reconstructed Synapse4 subset, both exact transports and layers; all16 canonical records still required. No real export capture, hardware capture, hostmacrobridge or RGB added."
     }
   },
   "implementation": {
@@ -220,7 +317,7 @@
       "Exact1532:B6 or B7 product/category with coherent optional vendorId and valid OEM checksum",
       "Complete enabled2-5-stage visible XY table, native100-30000 range and confirmed50DPI step, active1..N converted to native0..N-1, matching currentXY",
       "Selected connection stock125/500/1000Hz; other connection value retained in original source",
-      "Known Mouse/Scroll/key shortcuts with side-specific modifier strings, DPI Up/Down/Cycle/CycleDown/uniform clutch, seven media and paired Hypershift",
+      "Known Mouse/Scroll/key shortcuts with side-specific modifier strings, DPI Up/Down/Cycle/CycleDown/uniform and explicit independent XY clutch, seven media and paired Hypershift",
       "All16 canonical normal/HS input records must be explicit. No missing binding is inferred or expanded; sparse sources block."
     ],
     "aliases": "DKM_M_03/04 never become Naga thumb IDs. They require an explicit agreeing same-layer canonical Button4/5 record. Standalone/conflicting compatibility records block. DKM_SB_03 is independently confirmed bottom DPI96.",

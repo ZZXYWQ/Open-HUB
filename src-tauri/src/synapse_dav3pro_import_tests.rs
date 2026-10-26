@@ -103,6 +103,273 @@ fn canonical_mappings() -> Vec<Value> {
     rows
 }
 
+fn clutch_payload() -> Value {
+    let mut source = payload();
+    for row in source["mappings"].as_array_mut().unwrap() {
+        let second = row["isHyperShift"] == true;
+        let group = match row["inputID"].as_str().unwrap() {
+            "RightClick" => Some(json!({"sensitivityAssignment":"DPI_Clutch",
+                "x":if second {2400}else{800},"y":if second {3200}else{1600},"independent":true})),
+            "ScrollButton" => Some(json!({"sensitivityAssignment":"DPI_Clutch",
+                "x":if second {1800}else{1200},"y":if second {1800}else{1200},"independent":false})),
+            _ => None,
+        };
+        if let Some(group) = group {
+            *row = mapping(
+                row["inputID"].as_str().unwrap(),
+                second,
+                "sensitivityGroup",
+                Some(group),
+            );
+        }
+    }
+    source
+}
+
+fn assert_clutch_profile_store_and_native_readback(profile: &Profile) {
+    let mut store = crate::profiles::ProfileStore::default();
+    crate::profile_transfer::merge(&mut store, vec![profile.clone()]).unwrap();
+    let file = ExportFile::new("json", b"");
+    store.save(&file.0).unwrap();
+    let loaded = crate::profiles::ProfileStore::load(&file.0);
+    let stored = loaded.get(&profile.id).unwrap();
+    assert_eq!(
+        serde_json::to_value(stored).unwrap(),
+        serde_json::to_value(profile).unwrap()
+    );
+    let plan = stored.multi.as_ref().unwrap();
+    crate::multibrand::validate(plan).unwrap();
+    assert_eq!(plan.settings.len(), 18);
+    assert_eq!(
+        plan.settings
+            .iter()
+            .filter(|s| matches!(s, Setting::Button { .. }))
+            .count(),
+        16
+    );
+    assert!(plan.macros.is_empty() && plan.source.is_none());
+    assert_eq!(
+        crate::multibrand::simulate(plan).unwrap()["software_macros"],
+        json!([])
+    );
+    let (mut device, _) = gearwise_razer::simulated_dav3pro(plan.product).unwrap();
+    let before = device.read_state().unwrap();
+    for setting in &plan.settings {
+        device.apply(setting).unwrap();
+    }
+    let state = device.read_state().unwrap();
+    for setting in &plan.settings {
+        match setting {
+            Setting::Button { id, action } => assert_eq!(
+                gearwise_razer::dav3pro_buttons::encode(*id, action).unwrap(),
+                gearwise_razer::dav3pro_buttons::encode(*id, &state.buttons[id]).unwrap()
+            ),
+            Setting::Dpi(dpi) => assert_eq!(state.dpi.as_ref(), Some(dpi)),
+            Setting::ReportRate(rate) => assert_eq!(state.report_rate, Some(*rate)),
+            _ => panic!("unexpected imported setting"),
+        }
+    }
+    assert!(state.lighting.is_empty());
+    assert_eq!(state.tuning, before.tuning);
+    assert_eq!(state.calibration, before.calibration);
+}
+
+#[test]
+fn dav3pro_v4_independent_xy_and_uniform_clutches_parse_persist_and_execute_without_source_loss() {
+    let mut exported = vec![];
+    for product in [0xb6, 0xb7] {
+        let source = clutch_payload();
+        let file = v4(product, source.clone());
+        let original = std::fs::read(&file.0).unwrap();
+        let prepared = prepare(&file.0).unwrap();
+        let profile = prepared.candidates[0]
+            .profile
+            .as_ref()
+            .unwrap_or_else(|| panic!("{:?}", prepared.candidates[0].issues));
+        let plan = profile.multi.as_ref().unwrap();
+        for (id, expected, bytes) in [
+            (
+                2,
+                json!({"Dpi":{"ShiftXY":{"x":800,"y":1600}}}),
+                [6, 5, 5, 3, 32, 6, 64],
+            ),
+            (3, json!({"Dpi":{"Shift":1200}}), [6, 5, 5, 4, 176, 4, 176]),
+            (
+                258,
+                json!({"Dpi":{"ShiftXY":{"x":2400,"y":3200}}}),
+                [6, 5, 5, 9, 96, 12, 128],
+            ),
+            (259, json!({"Dpi":{"Shift":1800}}), [6, 5, 5, 7, 8, 7, 8]),
+        ] {
+            let action = plan
+                .settings
+                .iter()
+                .find_map(|s| match s {
+                    Setting::Button { id: actual, action } if *actual == id => Some(action),
+                    _ => None,
+                })
+                .unwrap();
+            assert_eq!(serde_json::to_value(action).unwrap(), expected);
+            assert_eq!(
+                gearwise_razer::dav3pro_buttons::encode(id, action).unwrap(),
+                bytes
+            );
+        }
+        assert!(prepared.parsed.profiles[0]
+            .bindings
+            .iter()
+            .any(|b| b.label == "按住切换 X=800 / Y=1600 DPI"));
+        assert!(prepared.parsed.profiles[0]
+            .bindings
+            .iter()
+            .any(|b| b.label == "按住切换 1200 DPI"));
+        let sidearm_synapse_parser::raw_source::RawSource::V4 { profiles, .. } =
+            prepared.parsed.raw_source.as_deref().unwrap()
+        else {
+            panic!()
+        };
+        assert_eq!(profiles[0].decoded.as_ref().unwrap().value, source);
+        assert_eq!(prepared.parsed.profiles[0].bindings.len(), 16);
+        assert_clutch_profile_store_and_native_readback(profile);
+        assert_eq!(std::fs::read(&file.0).unwrap(), original);
+        exported.push(serde_json::to_value(prepared).unwrap());
+    }
+    if let Some(path) = std::env::var_os("OPEN_HUB_DAV3PRO_SHIFTXY_IMPORT_PREPARED") {
+        std::fs::write(path, serde_json::to_vec_pretty(&exported).unwrap()).unwrap();
+    }
+}
+
+#[test]
+fn dav3pro_v4_explicit_independent_equal_axes_preserve_source_intent_and_legacy_wire() {
+    for product in [0xb6, 0xb7] {
+        let mut source = clutch_payload();
+        for row in source["mappings"].as_array_mut().unwrap() {
+            if row["inputID"] == "RightClick" {
+                row["sensitivityGroup"] = json!({"sensitivityAssignment":"DPI_Clutch",
+                    "x":1600,"y":1600,"independent":true});
+            }
+        }
+        let prepared = prepare(&v4(product, source).0).unwrap();
+        let profile = prepared.candidates[0].profile.as_ref().unwrap();
+        let (mut device, _) = gearwise_razer::simulated_dav3pro(product).unwrap();
+        device.read_state().unwrap();
+        for id in [2, 258] {
+            let setting = profile
+                .multi
+                .as_ref()
+                .unwrap()
+                .settings
+                .iter()
+                .find(|s| matches!(s, Setting::Button { id: actual, .. } if *actual == id))
+                .unwrap();
+            let Setting::Button { action, .. } = setting else {
+                panic!()
+            };
+            assert_eq!(
+                serde_json::to_value(action).unwrap(),
+                json!({"Dpi":{"ShiftXY":{"x":1600,"y":1600}}})
+            );
+            assert_eq!(
+                gearwise_razer::dav3pro_buttons::encode(id, action).unwrap(),
+                [6, 5, 5, 6, 64, 6, 64]
+            );
+            device.apply(setting).unwrap();
+            assert_eq!(
+                serde_json::to_value(&device.read_state().unwrap().buttons[&id]).unwrap(),
+                json!({"Dpi":{"Shift":1600}})
+            );
+        }
+        assert_clutch_profile_store_and_native_readback(profile);
+    }
+}
+
+#[test]
+fn dav3pro_v4_invalid_independent_clutches_and_unproved_options_block_complete_sources() {
+    for product in [0xb6, 0xb7] {
+        for layer in [false, true] {
+            for group in [
+                json!({"sensitivityAssignment":"DPI_Clutch","x":800,"y":1600,"independent":false}),
+                json!({"sensitivityAssignment":"DPI_Clutch","x":800,"y":1600}),
+                json!({"sensitivityAssignment":"DPI_Clutch","x":99,"y":1600,"independent":true}),
+                json!({"sensitivityAssignment":"DPI_Clutch","x":800,"y":30050,"independent":true}),
+                json!({"sensitivityAssignment":"DPI_Clutch","x":800,"y":1601,"independent":true}),
+                json!({"sensitivityAssignment":"DPI_Clutch","x":800,"independent":true}),
+                json!({"sensitivityAssignment":"DPI_Clutch","x":800,"y":1600,"independent":"true"}),
+                json!({"sensitivityAssignment":"DPI_Clutch","x":800,"y":1600,"independent":true,"turbo":false}),
+            ] {
+                let mut source = clutch_payload();
+                let row = source["mappings"]
+                    .as_array_mut()
+                    .unwrap()
+                    .iter_mut()
+                    .find(|r| r["inputID"] == "RightClick" && r["isHyperShift"] == layer)
+                    .unwrap();
+                *row = mapping("RightClick", layer, "sensitivityGroup", Some(group));
+                let file = v4(product, source.clone());
+                let original = std::fs::read(&file.0).unwrap();
+                let prepared = prepare(&file.0).unwrap();
+                assert!(prepared.candidates[0].profile.is_none());
+                assert!(prepared.candidates[0]
+                    .issues
+                    .iter()
+                    .any(|issue| issue.contains("/sensitivityGroup")));
+                let sidearm_synapse_parser::raw_source::RawSource::V4 { profiles, .. } =
+                    prepared.parsed.raw_source.as_deref().unwrap()
+                else {
+                    panic!()
+                };
+                assert_eq!(profiles[0].decoded.as_ref().unwrap().value, source);
+                assert_eq!(std::fs::read(&file.0).unwrap(), original);
+            }
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires saved profiles from the current exact DA ShiftXY source UI"]
+fn browser_imported_dav3pro_xy_clutches_preserve_full_profiles_through_store_and_native_codec() {
+    use std::collections::{BTreeMap, BTreeSet};
+    let profiles: Vec<Profile> = serde_json::from_slice(
+        &std::fs::read(std::env::var_os("OPEN_HUB_DAV3PRO_SHIFTXY_UI_PROFILES").unwrap()).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(profiles.len(), 2);
+    let mut transports = BTreeSet::new();
+    for profile in profiles {
+        let plan = profile.multi.as_ref().unwrap();
+        assert_eq!(profile.target_vendor, Some(0x1532));
+        assert_eq!(profile.target_model, Some(plan.product));
+        assert!([0xb6, 0xb7].contains(&plan.product));
+        assert!(transports.insert(plan.product));
+        let source = prepare(&v4(plan.product, clutch_payload()).0).unwrap();
+        let expected = source.candidates[0].profile.as_ref().unwrap();
+        assert_eq!(profile.levels, expected.levels);
+        assert_eq!(profile.active_level, expected.active_level);
+        assert_eq!(profile.report_rate_hz, expected.report_rate_hz);
+        let actions = |plan: &Plan| {
+            plan.settings
+                .iter()
+                .filter_map(|s| match s {
+                    Setting::Button { id, action } => Some((*id, action.clone())),
+                    _ => None,
+                })
+                .collect::<BTreeMap<_, _>>()
+        };
+        let mut desired = actions(expected.multi.as_ref().unwrap());
+        desired.insert(
+            2,
+            serde_json::from_value(json!({"Dpi":{"ShiftXY":{"x":1000,"y":2000}}})).unwrap(),
+        );
+        desired.insert(
+            258,
+            serde_json::from_value(json!({"Dpi":{"ShiftXY":{"x":2400,"y":4800}}})).unwrap(),
+        );
+        assert_eq!(actions(plan), desired);
+        assert_clutch_profile_store_and_native_readback(&profile);
+    }
+    assert_eq!(transports, BTreeSet::from([0xb6, 0xb7]));
+}
+
 #[test]
 fn dav3pro_exact_transports_parse_persist_and_execute_native_stage_and_binding_profiles() {
     let mut exported = vec![];
@@ -642,7 +909,7 @@ fn dav3pro_v4_unknown_action_options_and_unsafe_control_combinations_are_never_d
             "RightClick",
             false,
             "sensitivityGroup",
-            Some(json!({"sensitivityAssignment":"DPI_Clutch","x":800,"y":1600,"independent":true})),
+            Some(json!({"sensitivityAssignment":"DPI_Clutch","x":800,"y":1600,"independent":false})),
         ),
         mapping("Button4", false, "hyperShiftGroup", None),
         mapping("LeftClick", false, "disableGroup", None),
@@ -690,6 +957,66 @@ fn dav3pro_v4_unknown_action_options_and_unsafe_control_combinations_are_never_d
         mapping("RightClick", false, "disableGroup", None)
     ]);
     assert!(prepare(&v4(0xb6, source).0).unwrap().candidates[0].issues[0].contains("重复"));
+}
+
+#[test]
+fn dav3pro_v4_device_feature_context_is_not_inferred_from_profile_defaults() {
+    // The names/values below occur in the retained renderer's device storage
+    // and reducers. Their placement in these authored exports is deliberately
+    // unproved: neither a complete value nor a default-looking value grants
+    // profile ownership of a separate device-wide setting.
+    let smart = json!({"isAsymmetric":true,"trackingDistance":2,
+        "liftOffDistance":13,"landingDistance":12});
+    for product in [0xb6, 0xb7] {
+        for outer_feature in [false, true] {
+            for (key, value) in [
+                ("powerSavingValue", json!(5)),
+                ("lowPowerMode", json!(30)),
+                ("calibration", json!({"smartTracking":smart.clone()})),
+                ("smartTracking", smart.clone()),
+            ] {
+                let mut source = payload();
+                if !outer_feature {
+                    source[key] = value.clone();
+                }
+                let file = v4(product, source.clone());
+                let mut outer: Value =
+                    serde_json::from_slice(&std::fs::read(&file.0).unwrap()).unwrap();
+                if outer_feature {
+                    outer[key] = value;
+                    std::fs::write(&file.0, serde_json::to_vec(&outer).unwrap()).unwrap();
+                }
+                let original = std::fs::read(&file.0).unwrap();
+                let prepared = prepare(&file.0).unwrap();
+                let candidate = &prepared.candidates[0];
+                assert!(candidate.profile.is_none());
+                let expected = if outer_feature {
+                    format!("/{key}")
+                } else {
+                    format!("/profiles/0/payload/{key}")
+                };
+                assert!(candidate.issues.iter().any(|issue| {
+                    issue.contains(&expected) && issue.contains("配置导出位置/覆盖规则尚未证实")
+                }), "{:?}", candidate.issues);
+                let sidearm_synapse_parser::raw_source::RawSource::V4 {
+                    outer: retained_outer,
+                    profiles,
+                    ..
+                } = prepared.parsed.raw_source.as_deref().unwrap()
+                else {
+                    panic!()
+                };
+                assert_eq!(retained_outer.value, outer);
+                assert_eq!(profiles[0].decoded.as_ref().unwrap().value, source);
+                assert_eq!(prepared.parsed.profiles[0].bindings.len(), 16);
+                assert_eq!(std::fs::read(&file.0).unwrap(), original);
+                // Refusal does not leak the calibration cache into preview.
+                assert!(!serde_json::to_string(&prepared)
+                    .unwrap()
+                    .contains("liftOffDistance"));
+            }
+        }
+    }
 }
 
 #[test]

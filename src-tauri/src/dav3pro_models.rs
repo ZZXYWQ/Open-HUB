@@ -280,7 +280,7 @@ fn dav3pro_click_transfer_is_compiled_before_primary_remap_and_rejects_clickless
 fn scroll_outputs_and_reverse_cycle_are_exact_deathadder_native_actions_without_host_input(){
     use gearwise_core::model::ScrollDirection;
     for v in templates().unwrap(){
-        for action in [ButtonAction::Scroll(ScrollDirection::Up),ButtonAction::Scroll(ScrollDirection::Down),ButtonAction::Dpi(DpiFunction::CycleDown)]{
+        for action in [ButtonAction::Scroll(ScrollDirection::Up),ButtonAction::Scroll(ScrollDirection::Down),ButtonAction::Dpi(DpiFunction::CycleDown),ButtonAction::Dpi(DpiFunction::ShiftXY{x:800,y:1600})]{
             let p=Plan{vendor:v.descriptor.vendor_id,product:v.descriptor.product_id,settings:vec![Setting::Button{id:2,action:action.clone()}],macros:vec![],source:None};
             let exact=p.vendor==0x1532&&matches!(p.product,0xb6|0xb7);
             if exact{

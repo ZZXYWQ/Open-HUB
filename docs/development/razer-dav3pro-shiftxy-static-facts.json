@@ -1,0 +1,96 @@
+{
+  "scope": {
+    "model": "Razer DeathAdder V3 Pro",
+    "vendor_id": "0x1532",
+    "product_ids": [
+      "0x00B6",
+      "0x00B7"
+    ],
+    "official_product": 182,
+    "other_models_enabled": false
+  },
+  "status": "static-primary-serializer-proof-with-production-memory-transport-tests",
+  "physical_hardware_tested": false,
+  "OEM_code_executed": false,
+  "OEM_component_distributed": false,
+  "new_OEM_downloads": false,
+  "sources": [
+    {
+      "artifact": "retained official product182 main.998a1822.js",
+      "url": "https://apps.razer.com/synapse/products/182/ui/static/js/main.998a1822.js",
+      "sha256": "c5f739f700e7e1613a7ef27fb862f2b49a727f90dcdb9f6d3d130d8a2a1eccf7",
+      "coordinates": "UTF-16 text offsets approximately4041940 and4063900",
+      "facts": [
+        "The XML bridge maps SensitivityAssignment, X, Y and Independent into sensitivityGroup.",
+        "The onboard sensitivityGroup conversion retains both x and y for DPI_Clutch."
+      ]
+    },
+    {
+      "artifact": "retained shared RSy3_MappingTypesM.dll",
+      "sha256": "885e5044cf82983666648a8fdbc8f360abd39e7f4f640f71875050765796f226",
+      "mvid": "ee5f1da7-97c1-45d1-9c45-e6d73c1a0175",
+      "coordinates": "CMapTypeM.ConvertMapping token0x06000208 RVA0x114C8, IL321..352",
+      "facts": [
+        "The sensitivity conversion stores get_X at output+12, get_Y at output+16 and get_Independent at output+8.",
+        "The source conversion explicitly rejects physical wheel inputs9/10 for clutch."
+      ],
+      "private_evidence": "razer-shiftxy-source-convert-cil.json"
+    },
+    {
+      "artifact": "retained exact B6 RzCtl_00B6.dll",
+      "sha256": "caffd8cf48986e3559aca551d9069a36563b77c01e3061373d8b5a4ee223c217",
+      "coordinates": "native serializer1004B110; group4/subtype4 branch1004B424..1004B445",
+      "facts": [
+        "The seven-byte action starts06 05 05.",
+        "The serializer writes the two separate source scalars at native record+0x30 and+0x34 as big-endian16-bit values into action offsets3..4 and5..6.",
+        "At1004C208 this serializer constructs the assignment payload;1004C240 calls CProtocol25 vtable+0x248, the exact02/0C ten-byte assignment setter1002E2D0."
+      ],
+      "private_evidence": "ghidra-razer-shiftxy-wire.json; retained B6 assembly1004C203..1004C246"
+    },
+    {
+      "artifact": "retained exact B7 RzCtl_00B7.dll",
+      "sha256": "a9eb216514f15d8b51db7ffeeffba28b905024d5522863353810a6ae559ceb28",
+      "coordinates": "native serializer10051780; group4/subtype4 branch10051ABF",
+      "facts": [
+        "Its independent clutch branch writes the same06 05 05 prefix and separate big-endian16-bit values from native record+0x30/+0x34.",
+        "CStorage.SetProfileData100524C0 calls serializer10051780, including its mouse assignment branch that dispatches through native protocol vtable+0x278."
+      ],
+      "private_evidence": "ghidra-razer-shiftxy-b7-wire.json; ghidra-razer-shiftxy-b7-caller.json"
+    }
+  ],
+  "implemented_contract": {
+    "new_core_action": {
+      "Dpi": {
+        "ShiftXY": {
+          "x": 800,
+          "y": 1600
+        }
+      }
+    },
+    "preserved_legacy_action": {
+      "Dpi": {
+        "Shift": 800
+      }
+    },
+    "native_action_bytes": "06 05 05 Xhi Xlo Yhi Ylo",
+    "native_range_per_axis": [
+      100,
+      30000
+    ],
+    "uniform_decode": "Equal axis bytes continue to decode as legacy Shift(value); explicit ShiftXY equal-axis intent can remain in a saved plan because native equality is checked by bytes.",
+    "input_scope": "Normal and Hypershift physical inputs1/2/3/4/5/96; wheel9/10 on both layers rejects all sensitivity actions.",
+    "transaction": "Existing exact assignment selectors, fresh prewrite ownership and parent checks, readback, uncertain-write no-retry and conditional exact-original recovery are unchanged.",
+    "frontend": "DA-only independent X/Y checkbox and axis inputs; legacy uniform editor unchanged. No software DPI runtime implementation added."
+  },
+  "validation": {
+    "core_serialization_tests_passed": 1,
+    "vendor_dav3pro_button_tests_passed": 20,
+    "typescript_check_passed": true,
+    "import_and_saved_UI_native_cross": "Owned separately by the strict source-import test suite; authored source fixtures and memory transports, not a hardware export/capture."
+  },
+  "limitations": [
+    "Static source/native serializer facts and reconstructed HID reports are not physical-device validation.",
+    "No macro event/input identity gate, lighting capability or other model capability is widened.",
+    "No full-model compatibility acceptance is claimed."
+  ]
+}

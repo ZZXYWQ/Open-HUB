@@ -4,6 +4,7 @@
 //! by razerqdhid 4363a883 (MIT). Host macros and unknown originals stay locked.
 //! Scroll and reverse-cycle outputs combine exact OEM logical support with
 //! reconstructed scalar records from that protocol reference; no hardware capture.
+//! Independent clutch axes are confirmed by the retained B6/B7 OEM serializer.
 use crate::{basilisk, link::Link, report::Report};
 use gearwise_core::{
     Error, Result,
@@ -103,6 +104,13 @@ pub fn encode(id: u16, action: &ButtonAction) -> Result<[u8; 7]> {
             let [hi, lo] = v.to_be_bytes();
             Ok([6, 5, 5, hi, lo, hi, lo])
         }
+        ButtonAction::Dpi(DpiFunction::ShiftXY { x, y })
+            if (100..=30000).contains(x) && (100..=30000).contains(y) =>
+        {
+            let [xh, xl] = x.to_be_bytes();
+            let [yh, yl] = y.to_be_bytes();
+            Ok([6, 5, 5, xh, xl, yh, yl])
+        }
         _ => basilisk::encode(
             if physical == 1 {
                 2
@@ -140,11 +148,12 @@ pub fn decode(id: u16, raw: &[u8]) -> Option<ButtonAction> {
             _ => {}
         }
     }
-    if !matches!(physical, 9 | 10) && raw[..3] == [6, 5, 5] && raw[3..5] == raw[5..7] {
-        let v = u16::from_be_bytes([raw[3], raw[4]]);
-        return (100..=30000)
-            .contains(&v)
-            .then_some(ButtonAction::Dpi(DpiFunction::Shift(v)));
+    if !matches!(physical, 9 | 10) && raw[..3] == [6, 5, 5] {
+        let x = u16::from_be_bytes([raw[3], raw[4]]);
+        let y = u16::from_be_bytes([raw[5], raw[6]]);
+        return ((100..=30000).contains(&x) && (100..=30000).contains(&y)).then_some(
+            ButtonAction::Dpi(if x == y { DpiFunction::Shift(x) } else { DpiFunction::ShiftXY { x, y } }),
+        );
     }
     let action = basilisk::decode(u16::from(physical), raw)?;
     if matches!(
@@ -381,6 +390,7 @@ mod tests {
                     DpiFunction::Cycle,
                     DpiFunction::CycleDown,
                     DpiFunction::Shift(30000),
+                    DpiFunction::ShiftXY { x: 800, y: 1600 },
                 ] {
                     let a = ButtonAction::Dpi(function);
                     assert_eq!(decode(id, &encode(id, &a).unwrap()), Some(a));
@@ -407,7 +417,7 @@ mod tests {
             decode(2, &[12, 1, 1, 0, 0, 0, 0]),
             Some(ButtonAction::Hypershift)
         );
-        assert!(decode(96, &[6, 5, 5, 1, 144, 3, 32]).is_none());
+        assert_eq!(decode(96, &[6, 5, 5, 1, 144, 3, 32]), Some(ButtonAction::Dpi(DpiFunction::ShiftXY { x: 400, y: 800 })));
     }
     #[derive(Clone, Copy, Debug, PartialEq)]
     enum Fault {
@@ -965,13 +975,13 @@ mod tests {
             assert!(decode(id, &unknown[3..]).is_none());
         }
         for id in [9, 10, 265, 266] {
-            for function in [DpiFunction::Up, DpiFunction::Down, DpiFunction::Cycle, DpiFunction::CycleDown, DpiFunction::Shift(400)] {
+            for function in [DpiFunction::Up, DpiFunction::Down, DpiFunction::Cycle, DpiFunction::CycleDown, DpiFunction::Shift(400), DpiFunction::ShiftXY { x: 800, y: 1600 }] {
                 assert!(encode(id, &ButtonAction::Dpi(function)).is_err());
             }
             assert!(decode(id, &[6, 1, 7, 0, 0, 0, 0]).is_none());
         }
         // Sharing scalar types must not enable these assignments on another driver.
-        for action in [ButtonAction::Scroll(ScrollDirection::Up), ButtonAction::Scroll(ScrollDirection::Down), ButtonAction::Dpi(DpiFunction::CycleDown)] {
+        for action in [ButtonAction::Scroll(ScrollDirection::Up), ButtonAction::Scroll(ScrollDirection::Down), ButtonAction::Dpi(DpiFunction::CycleDown), ButtonAction::Dpi(DpiFunction::ShiftXY { x: 800, y: 1600 })] {
             assert!(basilisk::encode(2, &action).is_err());
         }
         assert!(basilisk::decode(2, &[6, 1, 7, 0, 0, 0, 0]).is_none());
@@ -981,7 +991,7 @@ mod tests {
     fn scroll_and_reverse_cycle_roundtrip_exact_controls_without_changing_other_records() {
         for pid in [0xb6, 0xb7] {
             for (id, _) in controls() {
-                for action in [ButtonAction::Scroll(ScrollDirection::Up), ButtonAction::Scroll(ScrollDirection::Down), ButtonAction::Dpi(DpiFunction::CycleDown)] {
+                for action in [ButtonAction::Scroll(ScrollDirection::Up), ButtonAction::Scroll(ScrollDirection::Down), ButtonAction::Dpi(DpiFunction::CycleDown), ButtonAction::Dpi(DpiFunction::ShiftXY { x: 800, y: 1600 })] {
                     if matches!(id & 255, 9 | 10) && matches!(action, ButtonAction::Dpi(_)) {
                         continue;
                     }
@@ -1011,8 +1021,8 @@ mod tests {
     #[test]
     fn new_scalar_actions_keep_mode_original_parent_click_and_hypershift_guards() {
         for pid in [0xb6, 0xb7] {
-            for action in [ButtonAction::Scroll(ScrollDirection::Up), ButtonAction::Scroll(ScrollDirection::Down), ButtonAction::Dpi(DpiFunction::CycleDown)] {
-                for (id, fault) in [(2, Fault::UnknownOriginal), (258, Fault::UnknownOriginal), (2, Fault::DriverMode), (258, Fault::DriverMode), (258, Fault::UnknownNormal), (1, Fault::None)] {
+            for action in [ButtonAction::Scroll(ScrollDirection::Up), ButtonAction::Scroll(ScrollDirection::Down), ButtonAction::Dpi(DpiFunction::CycleDown), ButtonAction::Dpi(DpiFunction::ShiftXY { x: 800, y: 1600 })] {
+                for (id, fault) in [(2, Fault::UnknownOriginal), (258, Fault::UnknownOriginal), (2, Fault::DriverMode), (258, Fault::DriverMode), (2, Fault::ForeignBeforeWrite), (258, Fault::ParentChangedBeforeSecondary), (258, Fault::UnknownNormal), (1, Fault::None)] {
                     let (mut d, state) = rig(pid, fault);
                     assert!(d.apply(&Setting::Button { id, action: action.clone() }).is_err());
                     assert!(state.lock().unwrap().writes.is_empty());
@@ -1042,6 +1052,8 @@ mod tests {
                     (ButtonAction::Scroll(ScrollDirection::Up), [6, 1, 7, 0, 0, 0, 0]),
                     (ButtonAction::Scroll(ScrollDirection::Down), [1, 1, 9, 0, 0, 0, 0]),
                     (ButtonAction::Dpi(DpiFunction::CycleDown), [1, 1, 10, 0, 0, 0, 0]),
+                    (ButtonAction::Dpi(DpiFunction::ShiftXY { x: 800, y: 1600 }), [6, 5, 5, 9, 96, 12, 128]),
+                    (ButtonAction::Scroll(ScrollDirection::Up), [6, 5, 5, 3, 32, 6, 64]),
                 ] {
                     for fault in [Fault::SetterFailure, Fault::Busy, Fault::BadReadback, Fault::Foreign, Fault::RestoreFailure, Fault::OtherLayer] {
                         let (mut d, state) = rig(pid, fault);
@@ -1069,4 +1081,43 @@ mod tests {
         }
     }
 
+    #[test]
+    fn independent_clutch_matches_primary_oem_scalar_vectors_and_preserves_uniform_canonical_form() {
+        // Retained B6 1004B110 and B7 10051780 serializers, not captured HID traffic.
+        for (id, x, y, args, crc) in [
+            (2, 800, 1600, [1, 2, 0, 6, 5, 5, 3, 32, 6, 64], 0x64),
+            (258, 2400, 3200, [1, 2, 1, 6, 5, 5, 9, 96, 12, 128], 0xe5),
+        ] {
+            let action = ButtonAction::Dpi(DpiFunction::ShiftXY { x, y });
+            assert_eq!(encode(id, &action).unwrap(), args[3..]);
+            assert_eq!(decode(id, &args[3..]), Some(action));
+            let mut expected = [0; 91];
+            expected[..9].copy_from_slice(&[0, 0, 31, 0, 0, 0, 10, 2, 12]);
+            expected[9..19].copy_from_slice(&args);
+            expected[89] = crc;
+            let mut report = Report::new(2, 12, 10, &args);
+            report.transaction_id = 31;
+            assert_eq!(report.to_wire(), expected);
+        }
+        for id in [2, 258] {
+            for value in [100, 400, 30000] {
+                let uniform = ButtonAction::Dpi(DpiFunction::Shift(value));
+                let axes = ButtonAction::Dpi(DpiFunction::ShiftXY { x:value, y:value });
+                assert_eq!(encode(id, &uniform).unwrap(), encode(id, &axes).unwrap());
+                assert_eq!(decode(id, &encode(id, &axes).unwrap()), Some(uniform));
+            }
+            for bad in [0, 99, 30001, 65535] {
+                for (x,y) in [(bad,800),(800,bad)] {
+                    let action = ButtonAction::Dpi(DpiFunction::ShiftXY { x,y });
+                    assert!(encode(id, &action).is_err());
+                    let [xh,xl]=x.to_be_bytes();let [yh,yl]=y.to_be_bytes();
+                    assert!(decode(id, &[6,5,5,xh,xl,yh,yl]).is_none());
+                }
+            }
+        }
+        for id in [9,10,265,266] {
+            assert!(decode(id, &[6,5,5,3,32,6,64]).is_none());
+        }
+        assert!(basilisk::decode(2, &[6,5,5,3,32,6,64]).is_none());
+    }
 }
