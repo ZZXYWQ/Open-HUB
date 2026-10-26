@@ -74,7 +74,7 @@ impl Mouse {
             }
             1 => self.state.raw_buttons.clone(),
             9 => vec![self.state.lod],
-            10 => self.state.adaptive.clone(),
+            0x000a | 0x010a | 0x010b => panic!("unsupported A7 adaptive-rate command"),
             0x0901 => vec![0, 23],
             0x0905 => {
                 let mut bytes = [0; 60];
@@ -133,8 +133,9 @@ struct Rig {
 }
 impl Rig {
     fn new(record: MouseMacro) -> Self {
-        let snapshot: Snapshot =
+        let mut snapshot: Snapshot =
             serde_json::from_str(include_str!("../tests/fixtures/mchose.json")).unwrap();
+        snapshot.state.adaptive.clear();
         let mouse = Arc::new(Mutex::new(Mouse {
             state: snapshot.state,
             macros: [(record.slot, record.raw)].into_iter().collect(),

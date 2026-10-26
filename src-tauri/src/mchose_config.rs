@@ -6,6 +6,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+pub const SNAPSHOT_FORMAT: &str = "mchose-v3-full-v3";
+const LEGACY_SNAPSHOT_FORMAT: &str = "mchose-v3-full-v2";
+
 fn bad(s: impl Into<String>) -> Error {
     Error::Other(s.into())
 }
@@ -48,6 +51,8 @@ pub struct HardwareState {
     pub rotation: i16,
     pub lod: u8,
     pub buttons: Vec<Vec<u8>>,
+    /// Legacy diagnostic bytes only. A7 has no OEM adaptive-rate capability.
+    /// Current views/backups use an empty vector; v2 migration validates it.
     pub adaptive: Vec<u8>,
     pub firmware: String,
     pub receiver_firmware: String,
@@ -80,10 +85,18 @@ pub struct Snapshot {
 }
 
 fn validate_snapshot(s: &Snapshot) -> Result<()> {
-    if s.format != "mchose-v3-full-v2" || s.model != "3837:4026" {
+    if ![SNAPSHOT_FORMAT, LEGACY_SNAPSHOT_FORMAT].contains(&s.format.as_str()) || s.model != "3837:4026" {
         return Err(bad("备份型号或版本不匹配"));
     }
     let t = &s.state;
+    // The authenticated OEM capability map excludes A7 from adaptive rate.
+    // Do not silently accept an enabled/unknown legacy value that we cannot
+    // restore. Only the captured inert v2 diagnostic record may migrate.
+    if !t.adaptive.is_empty()
+        && (s.format != LEGACY_SNAPSHOT_FORMAT || t.adaptive != [0, 0, 3, 0])
+    {
+        return Err(bad("A7 V3 Ultra+ 未开放自动省电回报率；备份含不能恢复的非默认省电字段"));
+    }
     profile(t.profile)?;
     dpi_values(&t.dpi_x)?;
     dpi_values(&t.dpi_y)?;
@@ -526,10 +539,10 @@ impl Transport {
         if lod.len() != 1 || lod[0] > 4 {
             return Err(bad("LOD 回复无效"));
         }
-        let adaptive = self.request(0xa, &[p, 0])?;
-        if adaptive.len() < 4 {
-            return Err(bad("省电模式回复不完整"));
-        }
+        // OEM all-info/UI/restore gates enable 000A/010A/010B only for the
+        // allowlisted K5 models. Do not require an unsupported GET on A7.
+        // See development/mchose-adaptive-capability-official-facts.json.
+        let adaptive = Vec::new();
         let mut names = Vec::new();
         for p in 0..3 {
             names.push(self.read_name(p)?)
@@ -614,7 +627,7 @@ impl Transport {
             }
         }
         Ok(Snapshot {
-            format: "mchose-v3-full-v2".into(),
+            format: SNAPSHOT_FORMAT.into(),
             model: "3837:4026".into(),
             state,
             macros,
@@ -934,7 +947,7 @@ impl Transport {
     }
     fn restore_snapshot_inner(&self, s: Snapshot, backup: bool) -> Result<HardwareState> {
         validate_snapshot(&s)?;
-        if s.format != "mchose-v3-full-v2" || s.model != "3837:4026" {
+        if ![SNAPSHOT_FORMAT, LEGACY_SNAPSHOT_FORMAT].contains(&s.format.as_str()) || s.model != "3837:4026" {
             return Err(bad("备份型号或版本不匹配"));
         }
         let t = s.state;
@@ -943,7 +956,6 @@ impl Transport {
             || t.raw_settings.len() != 19
             || t.raw_settings[0] != cfg[0]
             || t.lod > 4
-            || t.adaptive.len() < 4
             || t.buttons.len() != 6
         {
             return Err(bad("请先切到备份对应板载配置；备份结构必须完整"));

@@ -3,6 +3,7 @@ const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),ass
 const source=fs.readFileSync(path.join(__dirname,'test-synapse-import-ui.cjs'),'utf8'),marker='await page.addInitScript(()=>{',start=source.indexOf(marker)+marker.length,end=source.indexOf('\n});await ',start);assert(end>start);
 const out=path.resolve('../outputs/100-model-development/mchose-macro-raw-ui');fs.mkdirSync(out,{recursive:true});
 const hardware=JSON.parse(fs.readFileSync('src-tauri/tests/fixtures/mchose.json','utf8')).state;
+hardware.adaptive=[]; // Current A7 capability set, distinct from legacy diagnostic bytes.
 (async()=>{const browser=await chromium.launch({headless:true}),checks=[];try{
  const page=await browser.newPage({viewport:{width:1500,height:1150}}),errors=[];page.on('pageerror',e=>errors.push(String(e)));
  await page.addInitScript({content:`(()=>{${source.slice(start,end)}})()`});

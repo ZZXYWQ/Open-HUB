@@ -74,7 +74,7 @@ export interface MchoseHardware {
   target:MchoseTarget;
   raw_settings:number[]; profile:number; names:string[]; dpi_x:number[]; dpi_y:number[]; count:number; active:number; independent:boolean;
   sleep:number; never_sleep:boolean; left_debounce:number; right_debounce:number; sensor:number; rotation:number; lod:number;
-  buttons:number[][]; adaptive:number[]; firmware:string; receiver_firmware:string;
+  buttons:number[][]; /** Legacy diagnostic only; empty for the current A7 capability set. */ adaptive:number[]; firmware:string; receiver_firmware:string;
 }
 export interface MchoseMacroEvent {kind:"key"|"mouse"|"scroll"|"delay";code:number;down:boolean;delay_ms:number}
 export interface MchoseMacro {slot:number;name:string;mode:number;events:MchoseMacroEvent[];raw?:number[]}

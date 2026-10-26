@@ -14,6 +14,8 @@ struct Mouse {
     active: u8,
     boards: Vec<HardwareState>,
     writes: Vec<(u16, Vec<u8>)>,
+    requests: Vec<u16>,
+    staged_names: std::collections::BTreeMap<u8, Vec<u8>>,
     switch: Option<Switch>,
     dpi_written: bool,
     receiver_read_after_dpi: bool,
@@ -25,6 +27,7 @@ impl Mouse {
         let boards = (0..3)
             .map(|p| {
                 let mut state = snapshot.state.clone();
+                state.adaptive.clear(); // No adaptive-rate feature on the current A7 model.
                 state.profile = p;
                 state.raw_settings[0] = p;
                 state.names = vec!["Board A".into(), "Board B".into(), "Board C".into()];
@@ -43,12 +46,15 @@ impl Mouse {
             active: 0,
             boards,
             writes: vec![],
+            requests: vec![],
+            staged_names: Default::default(),
             switch,
             dpi_written: false,
             receiver_read_after_dpi: false,
         }
     }
     fn request(&mut self, command: u16, args: &[u8]) -> Result<Vec<u8>> {
+        self.requests.push(command);
         let response = match command {
             0x0900 => {
                 if matches!(self.switch, Some(Switch::BeforeOptionalLod))
@@ -75,7 +81,7 @@ impl Mouse {
             }
             0x0001 => self.boards[args[0] as usize].raw_buttons.clone(),
             0x0009 => vec![self.boards[args[0] as usize].lod],
-            0x000a => self.boards[args[0] as usize].adaptive.clone(),
+            0x000a | 0x010a | 0x010b => panic!("unsupported A7 adaptive-rate command"),
             0x0905 => {
                 let name = self.boards[0].names[args[0] as usize].as_bytes();
                 let mut raw = [0u8; 60];
@@ -117,6 +123,32 @@ impl Mouse {
             0x0102 => {
                 self.writes.push((command, args.to_vec()));
                 self.boards[args[0] as usize].raw_settings = args.to_vec();
+                vec![]
+            }
+            0x0910 => {
+                self.writes.push((command, args.to_vec()));
+                let index = args[0] as usize;
+                let offset = args[1] as usize;
+                let count = (args[2] >> 2) as usize;
+                assert_eq!(count, args.len() - 3);
+                if args[2] & 1 != 0 {
+                    self.staged_names.insert(args[0], vec![0; 60]);
+                }
+                let raw = self
+                    .staged_names
+                    .get_mut(&args[0])
+                    .expect("name upload started");
+                raw[offset..offset + count].copy_from_slice(&args[3..]);
+                if args[2] & 2 != 0 {
+                    let raw = self.staged_names.remove(&args[0]).unwrap();
+                    let name = String::from_utf8(raw)
+                        .unwrap()
+                        .trim_end_matches('\0')
+                        .to_owned();
+                    for board in &mut self.boards {
+                        board.names[index] = name.clone();
+                    }
+                }
                 vec![]
             }
             0x0906 => {
@@ -500,4 +532,108 @@ fn actual_same_path_reconnect_ui_rate_requests_replay_before_native_io() {
     assert_eq!(state.raw_settings[1] >> 4, 4);
     assert_eq!(state.raw_settings[2] >> 4, 4);
     assert_eq!(rig.mouse.lock().unwrap().writes.len(), 1);
+}
+
+#[test]
+fn a7_full_read_and_backup_do_not_depend_on_unexposed_adaptive_commands() {
+    let rig = Rig::new(None);
+    let snapshot = rig.transport.full_snapshot().unwrap();
+    assert_eq!(snapshot.format, crate::mchose_config::SNAPSHOT_FORMAT);
+    assert!(snapshot.state.adaptive.is_empty());
+    assert_eq!(snapshot.model, "3837:4026");
+    let json = serde_json::to_value(&snapshot).unwrap();
+    assert_eq!(json["state"]["adaptive"], serde_json::json!([]));
+    let mouse = rig.mouse.lock().unwrap();
+    assert!(!mouse
+        .requests
+        .iter()
+        .any(|c| [0x000a, 0x010a, 0x010b].contains(c)));
+    assert!(mouse.writes.is_empty());
+    assert!(!rig.backup.exists());
+}
+
+#[test]
+fn current_v3_backup_restores_every_applicable_field_without_adaptive_io() {
+    let rig = Rig::new(None);
+    let mut snapshot = rig.transport.full_snapshot().unwrap();
+    let before = snapshot.state.clone();
+    // The UTF-8 name crosses both 20-byte native upload boundaries.
+    snapshot.state.names[0] = "中文板载名称跨越原生分块边界".into();
+    assert!(snapshot.state.names[0].len() > 40 && snapshot.state.names[0].len() <= 60);
+    snapshot.state.sleep = 7;
+    snapshot.state.raw_settings[3] = 7;
+    snapshot.state.left_debounce = 12;
+    snapshot.state.raw_settings[7] = 12;
+    snapshot.state.rotation = 8;
+    snapshot.state.raw_settings[6] = 2;
+    snapshot.state.dpi_x[0] = 1350;
+    snapshot.state.dpi_y[0] = 1350;
+    snapshot.state.raw_x = table(&snapshot.state, 0);
+    snapshot.state.raw_y = table(&snapshot.state, 1);
+    let expected = snapshot.state.clone();
+    let restored = rig.transport.restore_snapshot(snapshot).unwrap();
+    assert!(restored == expected);
+    let mouse = rig.mouse.lock().unwrap();
+    assert!(!mouse
+        .requests
+        .iter()
+        .any(|c| [0x000a, 0x010a, 0x010b].contains(c)));
+    assert!(mouse.boards[1].adaptive.is_empty() && mouse.boards[2].adaptive.is_empty());
+    drop(mouse);
+    let files = std::fs::read_dir(&rig.backup).unwrap().collect::<Vec<_>>();
+    assert_eq!(files.len(), 1);
+    let backup: Snapshot =
+        serde_json::from_slice(&std::fs::read(files[0].as_ref().unwrap().path()).unwrap()).unwrap();
+    assert_eq!(backup.format, crate::mchose_config::SNAPSHOT_FORMAT);
+    assert!(backup.state == before);
+}
+
+#[test]
+fn known_inert_v2_diagnostics_migrate_without_becoming_an_a7_write_capability() {
+    let rig = Rig::new(None);
+    let mut snapshot = rig.transport.full_snapshot().unwrap();
+    let before = snapshot.state.clone();
+    snapshot.format = "mchose-v3-full-v2".into();
+    snapshot.state.adaptive = vec![0, 0, 3, 0];
+    let restored = rig.transport.restore_snapshot(snapshot).unwrap();
+    assert!(restored == before);
+    let roundtrip = rig.transport.full_snapshot().unwrap();
+    assert_eq!(roundtrip.format, crate::mchose_config::SNAPSHOT_FORMAT);
+    assert!(roundtrip.state.adaptive.is_empty());
+    assert!(!rig
+        .mouse
+        .lock()
+        .unwrap()
+        .requests
+        .iter()
+        .any(|c| [0x000a, 0x010a, 0x010b].contains(c)));
+}
+
+#[test]
+fn nondefault_unknown_or_v3_adaptive_data_is_refused_before_any_native_io() {
+    for (format, adaptive) in [
+        ("mchose-v3-full-v2", vec![1, 0, 3, 0]),
+        ("mchose-v3-full-v2", vec![0, 1, 3, 0]),
+        ("mchose-v3-full-v2", vec![0, 0, 4, 0]),
+        ("mchose-v3-full-v2", vec![0, 0, 3, 1]),
+        ("mchose-v3-full-v2", vec![0, 0, 3]),
+        ("mchose-v3-full-v2", vec![0, 0, 3, 0, 0]),
+        ("mchose-v3-full-v3", vec![0, 0, 3, 0]),
+    ] {
+        let rig = Rig::new(None);
+        let mut snapshot: Snapshot =
+            serde_json::from_str(include_str!("../tests/fixtures/mchose.json")).unwrap();
+        snapshot.format = format.into();
+        snapshot.state.adaptive = adaptive;
+        let before = rig.mouse.lock().unwrap().boards.clone();
+        let error = match rig.transport.restore_snapshot(snapshot) {
+            Ok(_) => panic!("unsupported fields were accepted"),
+            Err(error) => error,
+        };
+        assert!(error.to_string().contains("省电字段"));
+        let mouse = rig.mouse.lock().unwrap();
+        assert!(mouse.requests.is_empty() && mouse.writes.is_empty());
+        assert!(mouse.boards == before);
+        assert!(!rig.backup.exists());
+    }
 }

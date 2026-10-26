@@ -1,0 +1,74 @@
+{
+  "date_local": "2026-10-27",
+  "source": {
+    "url": "https://www.mchose.com.cn/assets/purify.es-BufdR6vO.js",
+    "sha256": "c3e91c2828283cbcb8edb24474b45d64b2526bcbed0a2740919a0deef7ad61bc",
+    "bytes": 7763164,
+    "method": "Babel AST over authenticated public static cache body; no OEM code execution"
+  },
+  "capability_map": {
+    "utf16_start": 4239351,
+    "utf8_start": 4248465,
+    "entries": [
+      {
+        "product_name": "MCHOSE K5 Pro",
+        "firmware_threshold_literal": "13"
+      },
+      {
+        "product_name": "MCHOSE K5 Ultra",
+        "firmware_threshold_literal": "12"
+      }
+    ],
+    "all_other_references_are_computed_reads": true,
+    "read_references": [
+      {
+        "utf16_start": 4612123,
+        "utf8_start": 4622195
+      },
+      {
+        "utf16_start": 4221123,
+        "utf8_start": 4230229
+      },
+      {
+        "utf16_start": 4217246,
+        "utf8_start": 4226302
+      },
+      {
+        "utf16_start": 4193515,
+        "utf8_start": 4201433
+      },
+      {
+        "utf16_start": 4192499,
+        "utf8_start": 4200403
+      }
+    ]
+  },
+  "name_normalizer": {
+    "utf16_start": 1473057,
+    "utf8_start": 1479480,
+    "operations": [
+      "strip leading RealTek whitespace",
+      "strip leading YJX-CHIP whitespace"
+    ],
+    "does_not_alias_A7_to_K5": true
+  },
+  "A7_V3_Ultra_plus": {
+    "adaptive_polling_rate": "not exposed by this OEM build",
+    "ordinary_sleep": "separate feature; remains supported",
+    "GET_000A": "not part of OEM all-info flow for A7",
+    "SET_010A_and_heartbeat_010B": "not enabled for A7 by this evidence"
+  },
+  "host_semantics_for_allowlisted_models": {
+    "game_mode": 0,
+    "non_game_power_save_mode": 1,
+    "heartbeat_interval_seconds": 30,
+    "immediate_entry_heartbeat": true,
+    "physical_timing_tested": false
+  },
+  "limits": [
+    "These are the capability gates of one authenticated OEM build, not a statement about all future firmware",
+    "K5 models are not registered as supported hardware in Open HUB by these facts",
+    "Legacy A7 GET000A diagnostic bytes are not proof of writable adaptive capability",
+    "No identity, firmware, settings write or input playback was performed"
+  ]
+}

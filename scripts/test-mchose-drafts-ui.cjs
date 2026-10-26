@@ -13,7 +13,7 @@ const out=path.resolve('../outputs/100-model-development/mchose-drafts-ui');fs.m
   for(const unit of ['A','B'])state['mchose-'+unit]={profile:0,names:['Native '+unit+' 0','Native '+unit+' 1','Native '+unit+' 2'],rate:3,boards:[0,1,2].map(p=>({dpi_x:Array(6).fill(unit==='A'?800*(p+1):2200),dpi_y:Array(6).fill(unit==='A'?800*(p+1):2200),count:6,active:0,independent:true,sleep:3,never_sleep:false,left_debounce:8,right_debounce:8,sensor:0,rotation:0,lod:2,buttons:[[0,1,0],[0,2,0],[0,4,0],[0,16,0],[0,8,0],[1,0,0,0]]})),macros:unit==='A'?{0:{slot:0,name:'Native macro 0',mode:1,events:events(4)},1:{slot:1,name:'Native macro 1',mode:2,events:events(5)}}:{}};
   window.__mchoseDraftFixture={state,fail:null,hold:null,pending:null};
   const reply=(kind,value)=>{const fixture=window.__mchoseDraftFixture;if(fixture.hold!==kind)return value;fixture.hold=null;return new Promise((resolve,reject)=>{fixture.pending={resolve:()=>resolve(value),reject:()=>reject(Error('AUTHORED_DEFERRED_FAILURE'))};});};
-  const hw=id=>{const s=state[id],p=s.profile,b=s.boards[p];return clone({target:{device_key:"session:"+id,connection_key:"connection:"+id+":1"},profile:p,names:s.names,...b,adaptive:[0,0,0,0],firmware:'1',receiver_firmware:'1',raw_settings:[p,s.rate<<4,s.rate<<4,b.sleep,Number(b.never_sleep),b.sensor,b.rotation/4,b.left_debounce,b.right_debounce,...Array(10).fill(0)]});};
+  const hw=id=>{const s=state[id],p=s.profile,b=s.boards[p];return clone({target:{device_key:"session:"+id,connection_key:"connection:"+id+":1"},profile:p,names:s.names,...b,adaptive:[],firmware:'1',receiver_firmware:'1',raw_settings:[p,s.rate<<4,s.rate<<4,b.sleep,Number(b.never_sleep),b.sensor,b.rotation/4,b.left_debounce,b.right_debounce,...Array(10).fill(0)]});};
   const old=window.__TAURI_INTERNALS__.invoke;
   window.__TAURI_INTERNALS__.invoke=async(cmd,args={})=>{
    if(!['scan_devices','list_devices','mchose_hardware','mchose_apply','mchose_macro','set_report_rate'].includes(cmd))return old(cmd,args);
@@ -64,6 +64,9 @@ const out=path.resolve('../outputs/100-model-development/mchose-drafts-ui');fs.m
  await page.getByRole('button',{name:'Open A7 V3 Ultra+ A',exact:true}).click();await input('档 1 X DPI').waitFor();
  await input('档 1 X DPI').fill('1200');
  await tab('性能');await input('左键消抖').fill('12');
+ assert(await page.getByText('A7 V3 Ultra+ 当前原厂界面未开放自动省电回报率；普通休眠设置仍可使用。',{exact:true}).isVisible());
+ assert.equal(await page.getByRole('checkbox',{name:'自动省电回报率',exact:true}).count(),0);
+ checks.push('A7 OEM adaptive-rate exclusion is visible while ordinary sleep/debounce remain editable');
  await tab('板载/备份');await page.getByRole('textbox',{name:'板载名称',exact:true}).fill('Draft board 0');
  await tab('按键');await click('应用到后侧键');
  await tab('DPI');await value('档 1 X DPI',1200);

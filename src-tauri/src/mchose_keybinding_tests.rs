@@ -19,6 +19,7 @@ impl Mouse {
         let boards = (0..3)
             .map(|p| {
                 let mut state = snapshot.state.clone();
+                state.adaptive.clear(); // No adaptive-rate feature on the current A7 model.
                 state.profile = p;
                 state.raw_settings[0] = p;
                 state.raw_x[0] = p;
@@ -61,7 +62,7 @@ impl Mouse {
             }
             0x0001 => Ok(self.boards[args[0] as usize].raw_buttons.clone()),
             0x0009 => Ok(vec![self.boards[args[0] as usize].lod]),
-            0x000a => Ok(self.boards[args[0] as usize].adaptive.clone()),
+            0x000a | 0x010a | 0x010b => panic!("unsupported A7 adaptive-rate command"),
             0x0905 => {
                 let name = self.boards[0].names[args[0] as usize].as_bytes();
                 let mut raw = [0; 60];

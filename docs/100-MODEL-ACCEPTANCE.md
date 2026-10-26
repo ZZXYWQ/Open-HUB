@@ -88,3 +88,6 @@ DeathAdder V3 Pro 后续增量已接通两连接的传感器校准和独立 XY �
 
 
 迈从后续将[当前连接校验](MCHOSE-LIVE-CONNECTIONS.md)贯穿读取、按键/宏/性能写入、完整备份导出恢复与回报率；同一路径重连清空旧面板草稿，旧文件对话框和回执不得接管新连接。连接标记不充当无线鼠标序列号，接收器不断开换配的身份问题仍未解决。没有新增实机参数/宏/固件写入或完整型号计数。[验证记录](development/2026-10-27-mchose-context-validation.json)。
+
+
+迈从后续完成[自动省电能力门槛核对](MCHOSE-CAPABILITY-BOUNDARIES.md)：原厂名单、名称归一化及五处调用的静态 AST 证据表明本构建仅向 K5 Pro / Ultra 开放，当前 A7 不适用。移除 A7 完整读取对未开放命令的依赖；v3 完整备份明确无此能力，v2 默认诊断值可迁移，未知值在任何通信前拒绝。普通休眠仍可使用，没有启用 K5 型号或新增完整型号计数。[验证记录](development/2026-10-27-mchose-capability-validation.json)。
