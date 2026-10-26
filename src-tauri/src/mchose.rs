@@ -27,6 +27,9 @@ pub fn known_interface(
         && name == Some("MCHOSE A7 V3 Ultra+")
 }
 const REPORT: u8 = 0x4D;
+const IDENTITY_GROUPS: usize = 4;
+const IDENTITY_ATTEMPTS_PER_GROUP: usize = 5;
+const IDENTITY_RETRY_DELAY: Duration = Duration::from_millis(30);
 const TIMEOUT: Duration = Duration::from_millis(2000);
 const RATES: &[(u8, u32)] = &[
     (0, 125),
@@ -84,14 +87,66 @@ fn response(b: &[u8]) -> Result<(u16, Result<Vec<u8>>)> {
         && b[..9] == [0x4d, 1, 1, 1, 0, 9, 0, 0, 0xff]
         && b[9..].iter().all(|v| *v == 0)
     {
-        return Ok((
-            0x0900,
-            Err(invalid(
-                "迈从接收器未返回鼠标身份（状态 0xFF）；请检查连接并尝试唤醒鼠标，当前不能写入",
-            )),
-        ));
+        return Ok((0x0900, Err(Error::MchoseIdentityUnavailable)));
     }
-    decode(b).map(|(command, data)| (command, Ok(data)))
+    decode(b).map(|(command, data)| {
+        let reply = if command == 0x0900 && data == [0xff] {
+            Err(Error::MchoseIdentityUnavailable)
+        } else {
+            Ok(data)
+        };
+        (command, reply)
+    })
+}
+
+/// Mirror the pinned BR(5) / hgt(4) read-only retry bound, but only for the
+/// explicit unavailable identity response. Empty battery data, unknown models,
+/// checksum errors, disconnects and timeouts never become retryable writes.
+fn identity_with_retry(
+    mut query: impl FnMut() -> Result<Vec<u8>>,
+    mut wait: impl FnMut(Duration),
+) -> Result<Vec<u8>> {
+    for group in 0..IDENTITY_GROUPS {
+        for attempt in 0..IDENTITY_ATTEMPTS_PER_GROUP {
+            match query() {
+                Err(Error::MchoseIdentityUnavailable)
+                    if group + 1 < IDENTITY_GROUPS || attempt + 1 < IDENTITY_ATTEMPTS_PER_GROUP =>
+                {
+                    if attempt + 1 < IDENTITY_ATTEMPTS_PER_GROUP {
+                        wait(IDENTITY_RETRY_DELAY);
+                    }
+                }
+                result => return result,
+            }
+        }
+    }
+    unreachable!("final unavailable reply returns its error")
+}
+/// A partial/failed USB write can have uncertain effects. Invalidate this
+/// transport so later requests cannot reuse its pending response/connection.
+fn finish_output(
+    shared: &Shared,
+    sent: hidapi::HidResult<usize>,
+    expected: usize,
+    events: &EventSink,
+) -> Result<()> {
+    let result=match sent {
+        Ok(n) if n==expected=>Ok(()),
+        Ok(n)=>Err(invalid(format!("MCHOSE incomplete output report: {n}/{expected}; connection closed, no automatic retry"))),
+        Err(e)=>Err(e.into()),
+    };
+    if result.is_err() {
+        let was_alive = shared.alive.swap(false, Ordering::SeqCst);
+        if let Ok(mut pending) = shared.pending.lock() {
+            pending.command = None;
+            pending.reply = None;
+        }
+        shared.ready.notify_all();
+        if was_alive {
+            events(Event::Gone);
+        }
+    }
+    result
 }
 
 fn complete_reply(shared: &Shared, command: u16, reply: Result<Vec<u8>>) -> bool {
@@ -128,6 +183,7 @@ pub struct Transport {
     writer: Writer,
     shared: Arc<Shared>,
     transaction: Mutex<()>,
+    events: EventSink,
 }
 
 impl Transport {
@@ -141,6 +197,7 @@ impl Transport {
         });
         let state = shared.clone();
         let path = path.to_owned();
+        let publish = events.clone();
         std::thread::Builder::new()
             .name("mchose-v3-reader".into())
             .spawn(move || {
@@ -161,13 +218,15 @@ impl Transport {
                             }
                         }
                         Err(_) => {
-                            state.alive.store(false, Ordering::SeqCst);
+                            let was_alive = state.alive.swap(false, Ordering::SeqCst);
                             if let Ok(mut p) = state.pending.lock() {
                                 p.command = None;
                                 p.reply = Some(Err(Error::Disconnected));
                             }
                             state.ready.notify_all();
-                            events(Event::Gone);
+                            if was_alive {
+                                events(Event::Gone);
+                            }
                             break;
                         }
                     }
@@ -178,6 +237,7 @@ impl Transport {
             writer: Writer::Hid(writer),
             shared,
             transaction: Mutex::new(()),
+            events: publish,
         })
     }
     pub fn is_alive(&self) -> bool {
@@ -218,12 +278,7 @@ impl Transport {
             #[cfg(test)]
             Writer::Memory { .. } => unreachable!("memory request returned above"),
         };
-        if let Err(e) = sent {
-            if let Ok(mut p) = self.shared.pending.lock() {
-                p.command = None;
-            }
-            return Err(e.into());
-        }
+        finish_output(&self.shared, sent, packet.len(), &self.events)?;
         let deadline = Instant::now() + TIMEOUT;
         let mut p = self
             .shared
@@ -263,6 +318,7 @@ impl Transport {
                 alive: AtomicBool::new(true),
             }),
             transaction: Mutex::new(()),
+            events: Arc::new(|_| {}),
         }
     }
     pub(crate) fn require_board(&self, expected: u8) -> Result<()> {
@@ -286,7 +342,7 @@ impl Transport {
             .join("backups"))
     }
     pub fn identity(&self) -> Result<Vec<u8>> {
-        let data = self.request(0x0900, &[])?;
+        let data = identity_with_retry(|| self.request(0x0900, &[]), std::thread::sleep)?;
         if data.len() < 14
             || u16::from_le_bytes([data[0], data[1]]) != VID
             || u16::from_le_bytes([data[2], data[3]]) != MODEL_PID
@@ -296,7 +352,9 @@ impl Transport {
             ));
         }
         if data[10] == 0 {
-            return Err(invalid("MCHOSE receiver has no awake mouse"));
+            return Err(invalid(
+                "MCHOSE connection status is0; the connected mouse is not confirmed",
+            ));
         }
         Ok(data)
     }
