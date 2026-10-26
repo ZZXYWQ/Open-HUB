@@ -44,7 +44,7 @@ fn read(conn:&Connection)->Result<Prepared,String>{
    if id.is_empty()||id.len()>80||name.is_empty()||name.len()>256{return Err("GG 配置名称或标识无效".into());}
    let source=json(&text)?;let(plan,levels,active,rate)=convert(conn,&id,pid,&source,&mut c.notes)?;
    let app_path=associated_program(conn,&id)?;
-   let p=Profile{id:format!("gg:1038:{pid:04x}:{id}"),name,target_vendor:Some(0x1038),target_model:Some(pid),mchose_board:None,sino:None,multi:Some(plan),app_path,levels,active_level:active,report_rate_hz:Some(u32::from(rate)),ghub_id:None};crate::profile_transfer::validate(&p)?;Ok(p)
+   let p=Profile{id:format!("gg:1038:{pid:04x}:{id}"),name,target_vendor:Some(0x1038),target_model:Some(pid),mchose: None, mchose_board:None,sino:None,multi:Some(plan),app_path,levels,active_level:active,report_rate_hz:Some(u32::from(rate)),ghub_id:None};crate::profile_transfer::validate(&p)?;Ok(p)
   })();match p{Ok(p)=>c.profile=Some(p),Err(e)=>c.issues.push(e)}candidates.push(c);
  }
  Ok(Prepared{name:"SteelSeries GG 鼠标配置".into(),source_kind:"GG SQLite",candidates})

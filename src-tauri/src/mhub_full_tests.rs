@@ -419,3 +419,6 @@ fn larger_global_macro_library_and_compact_device_metadata_keep_exact_board_scop
     source[PRODUCT]["isSupportDpiKey"] = json!("false");
     assert!(parse(&source, &library()).is_err());
 }
+
+#[path="mhub_full_profile_tests.rs"]
+mod profiles;

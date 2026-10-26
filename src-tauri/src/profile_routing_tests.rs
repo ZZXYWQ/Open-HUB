@@ -4,6 +4,7 @@ fn mouse(id: &str, key: &str, vendor: u16, model: u16) -> Endpoint {
         id: id.into(),
         name: id.into(),
         key: key.into(),
+        connection_key:None,
         observed_key: key.into(),
         vendor,
         models: vec![model],

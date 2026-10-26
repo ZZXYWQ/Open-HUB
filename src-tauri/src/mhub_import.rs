@@ -58,7 +58,7 @@ pub fn import(store: &mut ProfileStore, doc: &Value) -> Result<ImportSummary, St
             pending.push(Profile {
                 target_vendor: Some(0x3837),
                 target_model: Some(0x4026),
-                mchose_board: Some(index as u8),
+                mchose: None, mchose_board: Some(index as u8),
                 sino: None,
             multi: None,
                 id,

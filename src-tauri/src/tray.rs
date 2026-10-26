@@ -128,8 +128,14 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
                 let label = format!("{}. {} · {}",i+1,device.name,active.map(|p|p.name.as_str()).unwrap_or("未分配配置"));
                 let submenu = Submenu::with_id(app,format!("device-profiles:{i}"),label,true)?;
                 for p in store.profiles.iter().filter(|p| device.matches(p) && store.profile_owners.get(&p.id).is_none_or(|owner| owner == &device.key)) {
-                    let payload = serde_json::to_string(&(device.id.as_str(),p.id.as_str())).expect("string pair serializes");
-                    submenu.append(&CheckMenuItem::with_id(app,format!("device-profile:{payload}"),&p.name,true,active.is_some_and(|a|a.id==p.id),None::<&str>)?)?;
+                    let (action,enabled)=if p.mchose.is_some() {
+                        let payload=serde_json::to_string(&(device.id.as_str(),p.id.as_str(),device.connection_key.as_deref())).expect("connection tuple serializes");
+                        (format!("mchose-device-profile:{payload}"),device.connection_key.as_ref().is_some_and(|s|!s.is_empty()))
+                    }else{
+                        let payload=serde_json::to_string(&(device.id.as_str(),p.id.as_str())).expect("string pair serializes");
+                        (format!("device-profile:{payload}"),true)
+                    };
+                    submenu.append(&CheckMenuItem::with_id(app,action,&p.name,enabled,active.is_some_and(|a|a.id==p.id),None::<&str>)?)?;
                 }
                 menu.append(&submenu)?;
             }
@@ -192,17 +198,17 @@ fn on_menu_event(app: &AppHandle, event: MenuEvent) {
             refresh(app);
         }
         _ => {
-            if let Some(payload) = id.strip_prefix("device-profile:") {
-                if let Ok((device_id,profile_id)) = serde_json::from_str::<(String,String)>(payload) {
+            let selected=id.strip_prefix("mchose-device-profile:").and_then(|payload|serde_json::from_str::<(String,String,Option<String>)>(payload).ok())
+                .or_else(||id.strip_prefix("device-profile:").and_then(|payload|serde_json::from_str::<(String,String)>(payload).ok()).map(|(d,p)|(d,p,None)));
+            if let Some((device_id,profile_id,connection))=selected {
                     let app = app.clone();
                     std::thread::spawn(move || {
-                        match crate::activate_target(&app,&profile_id,"tray",Some(&device_id)) {
+                        match crate::activate_target_copy_context(&app,&profile_id,"tray",Some(&device_id),false,connection.as_deref()) {
                             Err(e) => notify(&app,"Open HUB",&format!("Could not apply profile: {e}")),
                             Ok(result) if !result.errors.is_empty() => notify(&app,"Open HUB",&result.errors.join("\n")),
                             _ => {},
                         }
                     });
-                }
             }
         }
     }

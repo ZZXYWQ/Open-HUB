@@ -15,7 +15,7 @@ interface Props {
   section: Section;
   onSection: (s: Section) => void;
   profiles: ProfilesView | null;
-  onActivateProfile: (id: string,deviceId?:string) => void;
+  onActivateProfile: (id: string,deviceId?:string,asCopy?:boolean,expectedConnection?:string) => void;
   device: DeviceSummary | null;
   state: DeviceState | null;
   scanning: boolean;
@@ -38,11 +38,11 @@ const tabClass =
   "relative flex items-center text-[15px] font-semibold hover:text-primary data-[active=true]:text-primary data-[active=true]:after:absolute data-[active=true]:after:-bottom-px data-[active=true]:after:left-1/2 data-[active=true]:after:h-0.5 data-[active=true]:after:w-9 data-[active=true]:after:-translate-x-1/2 data-[active=true]:after:bg-muted-foreground";
 
 /** G HUB-style "Desktop: Default" pill: shows and switches the active profile. */
-function ProfilePicker({ profiles, onActivate,device }: { profiles: ProfilesView; onActivate: (id: string,deviceId?:string) => void;device?:DeviceSummary|null }) {
+function ProfilePicker({ profiles, onActivate,device }: { profiles: ProfilesView; onActivate: (id: string,deviceId?:string,asCopy?:boolean,expectedConnection?:string) => void;device?:DeviceSummary|null }) {
   const choices=device?profiles.profiles.filter(p=>ownedProfileMatches(p,device,profiles)):[];
   const active=activeDeviceProfile(profiles,device);
   return (
-    <Select value={active?.id??""} onValueChange={id=>onActivate(id,device?.id)}>
+    <Select value={active?.id??""} onValueChange={id=>onActivate(id,device?.id,false,choices.find(p=>p.id===id)?.mchose?device?.connection_key:undefined)}>
       <SelectTrigger className="h-[42px] max-w-72 gap-2.5 border-0 bg-card px-4 text-sm font-bold dark:bg-card dark:hover:bg-secondary" aria-label="Active profile">
         <MonitorCog className="size-5 text-foreground" />
         <span className="text-muted-foreground">Profile:</span>
@@ -50,7 +50,7 @@ function ProfilePicker({ profiles, onActivate,device }: { profiles: ProfilesView
       </SelectTrigger>
       <SelectContent position="popper" align="end" className="max-h-80">
         {choices.map((p) => (
-          <SelectItem key={p.id} value={p.id}>
+          <SelectItem key={p.id} value={p.id} disabled={Boolean(p.mchose&&!device?.connection_key)}>
             {p.name}
           </SelectItem>
         ))}
@@ -140,7 +140,7 @@ export function AppHeader({ section, onSection, profiles, onActivateProfile, dev
       </div>
 
       <div className="flex items-center justify-end gap-2">
-        {profiles&&<ProfilePicker profiles={profiles} onActivate={onActivateProfile} device={device}/>}
+        {profiles&&<ProfilePicker key={`${device?.id??"none"}:${device?.connection_key??""}`} profiles={profiles} onActivate={onActivateProfile} device={device}/>}
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon-lg" className="rounded-full text-muted-foreground" onClick={onScan} aria-label="Rescan devices">

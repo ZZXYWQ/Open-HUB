@@ -31,6 +31,8 @@ pub struct Profile {
     pub target_model: Option<u16>,
     #[serde(default)]
     pub mchose_board: Option<u8>,
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    pub mchose: Option<crate::mhub_full::Plan>,
     #[serde(default)]
     pub sino: Option<crate::sinowealth::Plan>,
     #[serde(default)]
@@ -53,7 +55,7 @@ impl Profile {
         Self {
             target_vendor: None,
             target_model: None,
-            mchose_board: None,
+            mchose: None, mchose_board: None,
             sino: None,
             multi: None,
             id: DESKTOP_ID.into(),
@@ -69,7 +71,7 @@ impl Profile {
     }
 
     pub fn targets(&self, vendor: u16, models: &[u16]) -> bool {
-        let expected = if self.mchose_board.is_some() {
+        let expected = if self.mchose_board.is_some() || self.mchose.is_some() {
             Some(crate::mchose::VID)
         } else {
             self.target_vendor
@@ -77,7 +79,7 @@ impl Profile {
         };
         expected.is_none_or(|v| v == vendor)
             && self.target_model.is_none_or(|m| models.contains(&m))
-            && (!self.mchose_board.is_some() || models.contains(&crate::mchose::MODEL_PID))
+            && (!(self.mchose_board.is_some() || self.mchose.is_some()) || models.contains(&crate::mchose::MODEL_PID))
     }
     pub fn active(&self) -> Option<&Level> {
         self.levels
@@ -183,10 +185,30 @@ impl ProfileStore {
 
 }
 
+/// Production per-device full-profile route. Profile ownership is selected by
+/// profile_routing under the store/manager locks before this helper is called.
+pub(crate) fn apply_mchose_profile(profile:&Profile,device:&Device,t:&crate::mchose::Transport)->Vec<String> {
+    let result=(||->crate::hidpp::Result<()> {
+        crate::profile_transfer::validate(profile).map_err(crate::hidpp::Error::Other)?;
+        let plan=profile.mchose.as_ref().ok_or_else(||crate::hidpp::Error::Other("缺少完整迈从方案".into()))?;
+        if !profile.targets(device.vendor_id,&device.model_ids) {return Err(crate::hidpp::Error::Other("完整迈从方案与目标型号不匹配".into()));}
+        let target=crate::mchose_target::read_context(device,&device.connection_key)?;
+        crate::mhub_transaction::apply(device,t,&target,plan.board,plan)?;
+        Ok(())
+    })();
+    match result {Ok(())=>vec![],Err(e)=>vec![format!("{}: {e}",device.name)]}
+}
+
 /// Applies a profile's active DPI level and report rate to one device.
 /// Values are snapped to what the device supports. Returns per-setting errors.
 pub fn apply_to_device(profile: &Profile, device: &Device, t: &Transport) -> Vec<String> {
     let mut errors = Vec::new();
+    if profile.mchose.is_some() {
+        return match t.mchose() {
+            Some(native)=>apply_mchose_profile(profile,device,native),
+            None=>vec!["完整迈从方案不能应用到其他品牌或传输".into()],
+        };
+    }
     if profile.multi.is_some() || profile.sino.is_some() || !profile.targets(device.vendor_id, &device.model_ids) {
         return errors;
     }
@@ -390,7 +412,7 @@ pub fn import_ghub(store: &mut ProfileStore, path: &Path) -> Result<ImportSummar
         store.upsert(Profile {
             target_vendor: Some(0x046D),
             target_model: None,
-            mchose_board: None,
+            mchose: None, mchose_board: None,
             sino: None,
             multi: None,
             id: existing_id.unwrap_or_else(new_id),

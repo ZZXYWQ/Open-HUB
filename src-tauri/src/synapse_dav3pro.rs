@@ -791,7 +791,7 @@ fn make_profile(plan: Plan, name: &str) -> Result<Profile, String> {
     let profile = Profile {
         target_vendor: Some(plan.vendor),
         target_model: Some(plan.product),
-        mchose_board: None,
+        mchose: None, mchose_board: None,
         sino: None,
         id: format!("synapse-{}", crate::profiles::new_id()),
         name: name.into(),

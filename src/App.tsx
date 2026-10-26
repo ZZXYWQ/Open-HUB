@@ -228,9 +228,9 @@ export default function App() {
     levels:[{x:state?.dpi?.x??1600,y:state?.dpi?.y??null}],active_level:0,report_rate_hz:null,
   } : null);
 
-  const activateProfile = async (id: string,deviceId?:string,asCopy=false) => {
+  const activateProfile = async (id: string,deviceId?:string,asCopy=false,expectedConnection?:string) => {
     try {
-      await reportActivation(await api.activateProfile(id,deviceId,asCopy));
+      await reportActivation(await api.activateProfile(id,deviceId,asCopy,expectedConnection));
     } catch (e) {
       toast.error(String(e));
     }

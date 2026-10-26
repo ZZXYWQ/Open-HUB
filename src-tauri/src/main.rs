@@ -49,6 +49,7 @@ mod profiles;
 mod profile_routing;
 mod mhub_import;
 mod mhub_full;
+mod mhub_transaction;
 mod settings;
 mod tray;
 mod updater;
@@ -375,7 +376,7 @@ struct Activation {
 struct ProfileConnections(Mutex<profile_routing::Sessions>);
 fn endpoints(devices: &[DeviceSummary]) -> Vec<profile_routing::Endpoint> {
     devices.iter().filter(|d| d.kind.eq_ignore_ascii_case("mouse") || d.kind.eq_ignore_ascii_case("trackball") || d.features.iter().any(|f|matches!(f.id,0x2201|0x2202))).map(|d| profile_routing::Endpoint {
-        id: d.id.clone(), name: d.name.clone(), key: d.profile_key.clone(), observed_key: d.profile_key.clone(), vendor: d.vendor_id,
+        id: d.id.clone(), name: d.name.clone(), key: d.profile_key.clone(), connection_key:d.connection_key.clone(), observed_key: d.profile_key.clone(), vendor: d.vendor_id,
         models: d.model_ids.iter().filter_map(|v| u16::from_str_radix(v,16).ok()).collect(),
         firmware: d.firmware_name.clone(),
         route: if d.id.starts_with("multi:") { profile_routing::Route::Multi } else if d.id.starts_with("sino:") { profile_routing::Route::Sino } else { profile_routing::Route::Native },
@@ -414,7 +415,8 @@ fn connected_profile_targets(app: &AppHandle) -> Result<Vec<profile_routing::End
 /// All brands select exactly one target before profile writes or store changes.
 /// Lock order during I/O: profile store, then one device service.
 fn activate_target(app: &AppHandle, id: &str, reason: &'static str, device_id: Option<&str>) -> Result<Activation, String> { activate_target_copy(app,id,reason,device_id,false) }
-fn activate_target_copy(app: &AppHandle, id: &str, reason: &'static str, device_id: Option<&str>, as_copy: bool) -> Result<Activation, String> {
+fn activate_target_copy(app: &AppHandle, id: &str, reason: &'static str, device_id: Option<&str>, as_copy: bool) -> Result<Activation, String> {activate_target_copy_context(app,id,reason,device_id,as_copy,None)}
+fn activate_target_copy_context(app: &AppHandle, id: &str, reason: &'static str, device_id: Option<&str>, as_copy: bool, expected_connection:Option<&str>) -> Result<Activation, String> {
     let peers = connected_profile_targets(app)?;
     let state = app.state::<ProfilesState>();
     let mut store = lock_store(&state)?;
@@ -425,6 +427,7 @@ fn activate_target_copy(app: &AppHandle, id: &str, reason: &'static str, device_
             let guard = manager(&devices)?;
             guard.as_ref().expect("manager initialised").with_device(&target.id, |d,t| {
                 if d.profile_key != target.observed_key { return Err(hidpp::Error::Other("设备在配置预览后发生变化，请重新选择；未写入配置".into())); }
+                if profile.mchose.is_some() {mhub_transaction::check_selected_connection(d,expected_connection)?;}
                 if d.profile_key.starts_with("unit:") {
                     let current = d.call_unpadded(t, device::feature::DEVICE_INFO, 0, &[])?;
                     if profile_routing::logitech_unit(&current).as_ref() != Some(&d.profile_key) {
@@ -747,7 +750,7 @@ fn get_profiles(state: State<ProfilesState>) -> Result<ProfilesView, String> {
 
 #[tauri::command(async)]
 fn save_profile(app: AppHandle, state: State<ProfilesState>, mut profile: Profile, device_id: Option<String>, make_active: Option<bool>) -> Result<ProfilesView, String> {
-    if profile.sino.is_some()||profile.multi.is_some(){profile_transfer::validate(&profile)?;}
+    if profile.sino.is_some()||profile.multi.is_some()||profile.mchose.is_some(){profile_transfer::validate(&profile)?;}
     if profile.mchose_board.is_some()&&profile.target_vendor.is_some_and(|v|v!=mchose::VID){return Err("板载引用与品牌不一致".into())}
     if profile.mchose_board.is_some_and(|b|b>2){return Err("迈从板载配置必须为 1–3".into())}
     if profile.id.is_empty() {
@@ -785,8 +788,8 @@ fn set_auto_switch(app: AppHandle, state: State<ProfilesState>, enabled: bool) -
 }
 
 #[tauri::command(async)]
-fn activate_profile(app: AppHandle, id: String,device_id:Option<String>,as_copy:Option<bool>) -> Result<Activation, String> {
-    activate_target_copy(&app, &id, "manual",device_id.as_deref(),as_copy.unwrap_or(false))
+fn activate_profile(app: AppHandle, id: String,device_id:Option<String>,as_copy:Option<bool>,expected_connection:Option<String>) -> Result<Activation, String> {
+    activate_target_copy_context(&app, &id, "manual",device_id.as_deref(),as_copy.unwrap_or(false),expected_connection.as_deref())
 }
 
 #[derive(Serialize)]
@@ -816,7 +819,7 @@ fn commit_profile_import(app:AppHandle,state:State<ProfilesState>,profiles:Vec<P
 #[tauri::command(async)]
 fn export_profile_pack(path:String,profiles:Vec<Profile>)->Result<(),String>{
  if profiles.len()>512{return Err("最多导出512组配置".into())}for p in &profiles{profile_transfer::validate(p)?;}
- std::fs::write(path,serde_json::to_vec_pretty(&serde_json::json!({"format":"open-hub-profiles/1","profiles":profiles})).map_err(|e|e.to_string())?).map_err(|e|e.to_string())
+ std::fs::write(path,serde_json::to_vec_pretty(&serde_json::json!({"format":profile_transfer::pack_format(&profiles),"profiles":profiles})).map_err(|e|e.to_string())?).map_err(|e|e.to_string())
 }
 
 // ---------- app settings and updates ----------

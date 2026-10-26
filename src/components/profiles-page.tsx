@@ -1,3 +1,4 @@
+import {mchoseRateHz} from "@/lib/mchose-plan";
 import {isLegacyBrand} from '@/lib/legacy';
 import {compxModel,compxBrand} from '@/lib/compx';
 import {type BoardImportBrand} from '@/lib/native-models';
@@ -36,7 +37,7 @@ interface Props {
   devices: DeviceSummary[];
   importing: boolean;
   onAutoSwitch: (enabled: boolean) => void;
-  onActivate: (id: string,deviceId?:string,asCopy?:boolean) => void;
+  onActivate: (id: string,deviceId?:string,asCopy?:boolean,expectedConnection?:string) => void;
   onSave: (profile: Profile) => Promise<boolean>;
   onDelete: (id: string) => void;
   onImport: () => void;
@@ -127,18 +128,21 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
                 <Badge variant="outline">{p.sino?.model.brand??brandName(profileVendor(p),p.target_model??p.multi?.product)}</Badge>
                 {p.sino&&<Badge variant="outline">完整按键 / {p.sino.macros.length} 个已记录宏 / {p.sino.model.firmware}</Badge>}
                 {p.mchose_board!=null&&<Badge>迈从板载 {p.mchose_board+1}</Badge>}
+                {p.mchose&&<Badge variant="outline">板载 {p.mchose.board+1} · {p.mchose.count}/6 档 · {p.mchose.buttons.filter(b=>b[0]!==255).length} 个按键 · {p.mchose.macros.length} 个宏</Badge>}
                 {p.levels.map((l, i) => (
                   <span
                     key={i}
                     className={cn(
                       "rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums",
                       i === p.active_level ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground",
+                      p.mchose&&i>=p.mchose.count&&"opacity-40",
                     )}
                   >
-                    {l.x}
+                    {l.x}{p.mchose&&l.y!=null&&l.y!==l.x?` × ${l.y}`:""}
                   </span>
                 ))}
-                {p.report_rate_hz != null && (
+                {p.mchose&&<span className="rounded-md border border-input px-2 py-0.5 text-xs text-muted-foreground tabular-nums">USB {mchoseRateHz(p.mchose.usb_rate)} Hz / 无线 {mchoseRateHz(p.mchose.wireless_rate)} Hz</span>}
+                {!p.mchose&&p.report_rate_hz != null && (
                   <span className="rounded-md border border-input px-2 py-0.5 text-xs text-muted-foreground tabular-nums">{p.report_rate_hz} Hz</span>
                 )}
               </div>
@@ -146,7 +150,7 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
               {needsTarget&&<label className="text-xs text-muted-foreground">应用到哪只鼠标<select aria-label={`配置 ${p.name} 目标鼠标`} className="mt-1 w-full rounded border bg-background p-2 text-sm" value={target} onChange={e=>setTargets({...targets,[p.id]:e.target.value})}><option value="">请选择目标鼠标</option>{candidates.map((d,i)=><option key={d.id} value={d.id}>{i+1}. {d.name} · {d.id.replace(/:board:\d+$/,'').split(':').at(-1)?.slice(-48)}</option>)}</select><span>仅应用到所选鼠标。导入的模板会生成独立副本。</span></label>}
               {asCopy&&<p className="text-xs text-muted-foreground">将保留原配置，为所选鼠标创建独立副本。</p>}
               <div className="mt-1 flex items-center gap-1">
-                <Button size="sm" disabled={!available||needsTarget&&!target} title={available?"应用到匹配品牌与型号的鼠标":"请先连接匹配的鼠标；未适配品牌无法应用参数"} variant={active ? "secondary" : "default"} onClick={() => onActivate(p.id,target||undefined,asCopy)}>
+                <Button size="sm" disabled={!available||needsTarget&&!target||Boolean(p.mchose&&!selected?.connection_key)} title={available?"应用到匹配品牌与型号的鼠标":"请先连接匹配的鼠标；未适配品牌无法应用参数"} variant={active ? "secondary" : "default"} onClick={() => onActivate(p.id,target||undefined,asCopy,p.mchose?selected?.connection_key:undefined)}>
                   <Play /> {!available?"未连接匹配鼠标":asCopy?"复制并应用":active ? "重新应用" : "应用配置"}
                 </Button>
                 <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setEditing(p)} aria-label={`Edit ${p.name}`}>

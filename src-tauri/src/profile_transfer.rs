@@ -3,9 +3,17 @@ use serde::Serialize;
 use std::path::PathBuf;
 #[derive(Serialize)]
 pub struct Preview {pub profiles:Vec<Profile>,pub note:String}
+pub fn pack_format(items:&[Profile])->&'static str {if items.iter().any(|p|p.mchose.is_some()){ "open-hub-profiles/2" }else{ "open-hub-profiles/1" }}
 pub fn validate(p:&Profile)->Result<(),String>{
- if let Some(plan)=&p.multi{crate::multibrand::validate(plan)?;if p.sino.is_some()||p.mchose_board.is_some()||p.ghub_id.is_some()||p.target_vendor!=Some(plan.vendor)||p.target_model!=Some(plan.product){return Err("三品牌配置的来源或型号标记不一致".into());}let (levels,active,rate)=if crate::x11::supported(plan.vendor,plan.product){let x=crate::x11::profile_from_plan(plan)?;(x.dpi.stages.iter().map(|v|crate::profiles::Level{x:*v,y:Some(*v)}).collect::<Vec<_>>(),x.dpi.active as usize,Some(u32::from(x.report_rate)))}else{let dpi=plan.settings.iter().find_map(|s|if let gearwise_core::Setting::Dpi(d)=s{Some(d)}else{None}).ok_or("完整方案缺少 DPI 设置")?;(dpi.stages.iter().map(|v|crate::profiles::Level{x:v.x,y:Some(v.y)}).collect::<Vec<_>>(),dpi.active as usize,plan.settings.iter().find_map(|s|if let gearwise_core::Setting::ReportRate(r)=s{Some(u32::from(*r))}else{None}))};if p.levels!=levels||p.active_level!=active||p.report_rate_hz!=rate{return Err("配置摘要与三品牌完整方案不一致".into());}}
- if let Some(s)=&p.sino{crate::sinowealth::validate(s)?;if p.target_vendor!=Some(s.model.vendor)||p.target_model!=Some(s.model.product)||p.mchose_board.is_some()||p.ghub_id.is_some(){return Err("完整设备配置与品牌/型号标记不一致".into())}let levels=s.dpi.iter().map(|xy|crate::profiles::Level{x:xy[0],y:Some(xy[1])}).collect::<Vec<_>>();if p.levels!=levels||p.active_level!=s.active||p.report_rate_hz!=Some(s.rate){return Err("配置摘要与完整硬件方案不一致".into())}}
+ if let Some(plan)=&p.mchose {
+  crate::mhub_full::validate(plan)?;
+  if p.multi.is_some()||p.sino.is_some()||p.mchose_board.is_some()||p.ghub_id.is_some()||p.target_vendor!=Some(plan.vendor)||p.target_model!=Some(plan.model){return Err("完整迈从方案的来源或型号标记不一致".into());}
+  let levels=crate::mhub_full::profile_levels(plan);
+  if p.levels!=levels||p.active_level!=usize::from(plan.active)||p.report_rate_hz!=crate::mhub_full::rate_hz(plan.wireless_rate){return Err("配置摘要与完整迈从方案不一致".into());}
+ }
+
+ if let Some(plan)=&p.multi{crate::multibrand::validate(plan)?;if p.mchose.is_some()||p.sino.is_some()||p.mchose_board.is_some()||p.ghub_id.is_some()||p.target_vendor!=Some(plan.vendor)||p.target_model!=Some(plan.product){return Err("三品牌配置的来源或型号标记不一致".into());}let (levels,active,rate)=if crate::x11::supported(plan.vendor,plan.product){let x=crate::x11::profile_from_plan(plan)?;(x.dpi.stages.iter().map(|v|crate::profiles::Level{x:*v,y:Some(*v)}).collect::<Vec<_>>(),x.dpi.active as usize,Some(u32::from(x.report_rate)))}else{let dpi=plan.settings.iter().find_map(|s|if let gearwise_core::Setting::Dpi(d)=s{Some(d)}else{None}).ok_or("完整方案缺少 DPI 设置")?;(dpi.stages.iter().map(|v|crate::profiles::Level{x:v.x,y:Some(v.y)}).collect::<Vec<_>>(),dpi.active as usize,plan.settings.iter().find_map(|s|if let gearwise_core::Setting::ReportRate(r)=s{Some(u32::from(*r))}else{None}))};if p.levels!=levels||p.active_level!=active||p.report_rate_hz!=rate{return Err("配置摘要与三品牌完整方案不一致".into());}}
+ if let Some(s)=&p.sino{crate::sinowealth::validate(s)?;if p.target_vendor!=Some(s.model.vendor)||p.target_model!=Some(s.model.product)||p.mchose.is_some()||p.mchose_board.is_some()||p.ghub_id.is_some(){return Err("完整设备配置与品牌/型号标记不一致".into())}let levels=s.dpi.iter().map(|xy|crate::profiles::Level{x:xy[0],y:Some(xy[1])}).collect::<Vec<_>>();if p.levels!=levels||p.active_level!=s.active||p.report_rate_hz!=Some(s.rate){return Err("配置摘要与完整硬件方案不一致".into())}}
 
  if p.name.trim().is_empty()||p.name.len()>512||p.id.len()>256{return Err("配置名称或标识无效".into())}
  if p.levels.len()>32||p.levels.iter().any(|l|l.x==0||l.y==Some(0)){return Err("DPI 档位无效".into())}
@@ -24,8 +32,8 @@ pub fn preview(source:&str,path:Option<String>)->Result<Preview,String>{
  "ghub"=>{profiles::import_ghub(&mut store,&path)?;"读取 DPI、回报率与应用关联；官方灯光、按键及宏尚未转换。"},
  "mhub"=>{let d=crate::mhub_import::read(&path)?;crate::mhub_import::import(&mut store,&d)?;"导入三组板载名称和引用；按键、宏、DPI 仍使用鼠标内已有数据。"},
  "openhub"|"attackshark"=>{let d:serde_json::Value=serde_json::from_slice(&std::fs::read(path).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;
- if d["format"]!="open-hub-profiles/1"{return Err("需要 Open HUB 导出的配置包；其他品牌私有文件不能直接转换".into())}
- store.profiles=serde_json::from_value(d["profiles"].clone()).map_err(|e|format!("配置包字段无效：{e}"))?;if source=="attackshark"{store.profiles.retain(|p|p.multi.as_ref().is_some_and(|m|crate::x11::supported(m.vendor,m.product)));}"保留配置的品牌、型号、DPI、回报率和应用关联；仅导入，不自动应用。"},
+ if d["format"]!="open-hub-profiles/1"&&d["format"]!="open-hub-profiles/2"{return Err("需要 Open HUB 导出的配置包；其他品牌私有文件不能直接转换".into())}
+ store.profiles=serde_json::from_value(d["profiles"].clone()).map_err(|e|format!("配置包字段无效：{e}"))?;if d["format"]=="open-hub-profiles/1"&&store.profiles.iter().any(|p|p.mchose.is_some()){return Err("完整迈从方案需要 Open HUB 配置包格式2，避免旧客户端静默忽略完整内容".into());}if source=="attackshark"{store.profiles.retain(|p|p.multi.as_ref().is_some_and(|m|crate::x11::supported(m.vendor,m.product)));}"保留配置的品牌、型号、DPI、回报率和应用关联；仅导入，不自动应用。"},
  _=>return Err("尚无此品牌的私有配置解析器".into())};
  if source!="openhub"&&source!="attackshark" {store.profiles.retain(|p|p.ghub_id.is_some()||p.mchose_board.is_some());}
  if store.profiles.len()>512{return Err("一次最多导入 512 组配置".into())}

@@ -265,7 +265,7 @@ fn candidate(source: &ParsedProfile, source_issues: &[String]) -> Candidate {
         let p = Profile {
             target_vendor: Some(plan.vendor),
             target_model: Some(plan.product),
-            mchose_board: None,
+            mchose: None, mchose_board: None,
             sino: None,
             id: format!("synapse-{}", crate::profiles::new_id()),
             name: source.name.clone(),

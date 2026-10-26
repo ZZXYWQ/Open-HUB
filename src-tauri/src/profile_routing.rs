@@ -25,6 +25,8 @@ pub struct Endpoint {
     pub key: String,
     /// Snapshot from the manager before duplicate-id quarantine. Recheck under the I/O lock.
     pub observed_key: String,
+    /// MCHOSE transport generation captured by UI/tray; not persistent ownership.
+    pub connection_key: Option<String>,
     pub vendor: u16,
     pub models: Vec<u16>,
     pub firmware: String,
@@ -36,15 +38,15 @@ impl Endpoint {
             return false;
         }
         match self.route {
-            Route::Native => p.multi.is_none() && p.sino.is_none(),
+            Route::Native => p.multi.is_none() && p.sino.is_none() && p.mchose.as_ref().is_none_or(|m|m.vendor==self.vendor&&self.models.contains(&m.model)),
             Route::Multi => {
-                p.sino.is_none()
+                p.sino.is_none() && p.mchose.is_none()
                     && p.multi.as_ref().is_some_and(|m| {
                         m.vendor == self.vendor && self.models.contains(&m.product)
                     })
             }
             Route::Sino => {
-                p.multi.is_none()
+                p.multi.is_none() && p.mchose.is_none()
                     && match &p.sino {
                         Some(s) => {
                             s.model.vendor == self.vendor
@@ -315,7 +317,7 @@ pub fn prepare(
     manual: bool,
 ) -> Result<Prepared, String> {
     let source = store.get(id).ok_or("profile not found")?;
-    if source.sino.is_some() || source.multi.is_some() {
+    if source.sino.is_some() || source.multi.is_some() || source.mchose.is_some() {
         crate::profile_transfer::validate(source)?;
     }
     if as_copy && (!manual || selected.is_none()) {

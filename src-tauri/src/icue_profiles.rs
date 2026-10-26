@@ -69,7 +69,7 @@ pub fn convert(text:&str)->Result<Prepared,String>{
    }
    if !bindings.contains_key(&8){if let Some(value)=sniper{bindings.insert(8,ButtonAction::Dpi(DpiFunction::Shift(value)));}}
    settings.extend(bindings.into_iter().map(|(id,action)|Setting::Button{id,action}));let plan=Plan{vendor:0x1b1c,product:0x1b2e,settings,macros,source:None};crate::multibrand::validate(&plan)?;
-   let p=Profile{id:format!("icue:1b1c:1b2e:{source_id}"),name:name.clone(),target_vendor:Some(0x1b1c),target_model:Some(0x1b2e),mchose_board:None,sino:None,multi:Some(plan),app_path:profile.t("linkedProgramPath").filter(|s|!s.is_empty()).map(str::to_owned),levels:mode.stages.iter().map(|s|Level{x:s.x,y:Some(s.y)}).collect(),active_level:usize::from(mode.active),report_rate_hz:None,ghub_id:None};crate::profile_transfer::validate(&p)?;Ok(p)
+   let p=Profile{id:format!("icue:1b1c:1b2e:{source_id}"),name:name.clone(),target_vendor:Some(0x1b1c),target_model:Some(0x1b2e),mchose: None, mchose_board:None,sino:None,multi:Some(plan),app_path:profile.t("linkedProgramPath").filter(|s|!s.is_empty()).map(str::to_owned),levels:mode.stages.iter().map(|s|Level{x:s.x,y:Some(s.y)}).collect(),active_level:usize::from(mode.active),report_rate_hz:None,ghub_id:None};crate::profile_transfer::validate(&p)?;Ok(p)
   })();match result{Ok(p)=>candidate.profile=Some(p),Err(e)=>candidate.issues.push(e)}candidates.push(candidate);
  }
  if candidates.is_empty(){return Err("没有可转换的鼠标 DPI 型号关联".into());}Ok(Prepared{name,source_kind:"iCUE cereal XML",candidates})

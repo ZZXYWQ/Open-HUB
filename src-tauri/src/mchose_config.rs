@@ -640,19 +640,20 @@ impl Transport {
             return Err(bad("板载配置已改变，请刷新重试"));
         }
         self.require_board(expected_board)?;
+        self.persist_snapshot(&snapshot).map(|_| ())
+    }
+    pub(crate) fn persist_snapshot(&self, snapshot: &Snapshot) -> Result<std::path::PathBuf> {
+        use std::io::Write;
         let dir = self.backup_directory()?;
         std::fs::create_dir_all(&dir).map_err(|e| bad(e.to_string()))?;
-        let id = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|e| bad(e.to_string()))?
-            .as_nanos();
-        std::fs::write(
-            dir.join(format!("full-{id}.json")),
-            serde_json::to_vec_pretty(&snapshot).map_err(|e| bad(e.to_string()))?,
-        )
-        .map_err(|e| bad(e.to_string()))
+        let id = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|e| bad(e.to_string()))?.as_nanos();
+        let path=dir.join(format!("full-{id}.json"));
+        let data=serde_json::to_vec_pretty(snapshot).map_err(|e|bad(e.to_string()))?;
+        let mut file=std::fs::OpenOptions::new().write(true).create_new(true).open(&path).map_err(|e|bad(e.to_string()))?;
+        file.write_all(&data).and_then(|()|file.sync_all()).map_err(|e|bad(format!("自动备份未保存完整，未开始写入鼠标：{e}")))?;
+        Ok(path)
     }
-    fn checked_settings(&self, args: &[u8]) -> Result<()> {
+    pub(crate) fn checked_settings(&self, args: &[u8]) -> Result<()> {
         self.request(0x0102, args)?;
         for _ in 0..5 {
             std::thread::sleep(Duration::from_millis(100));
@@ -671,6 +672,9 @@ impl Transport {
         active: u8,
         independent: bool,
     ) -> Result<()> {
+        self.write_dpi_table_checked(p,x,y,count,active,independent,||Ok(()))
+    }
+    pub(crate) fn write_dpi_table_checked(&self, p:u8,x:&[u16],y:&[u16],count:u8,active:u8,independent:bool,before_axis:impl Fn()->Result<()>) -> Result<()> {
         profile(p)?;
         dpi_values(x)?;
         dpi_values(y)?;
@@ -678,6 +682,7 @@ impl Transport {
             return Err(bad("DPI 启用档数或当前档位无效"));
         }
         for (axis, values) in [(0, x), (1, y)] {
+            before_axis()?;
             let mut args = vec![p, axis, independent as u8, count, active];
             for v in values {
                 args.extend_from_slice(&v.to_le_bytes())
@@ -698,7 +703,7 @@ impl Transport {
         }
         Ok(())
     }
-    fn write_binding(&self, p: u8, index: u8, b: &[u8]) -> Result<()> {
+    pub(crate) fn write_binding(&self, p: u8, index: u8, b: &[u8]) -> Result<()> {
         let mut args = vec![p, index, 11];
         args.extend_from_slice(b);
         self.request(0x0101, &args)?;
@@ -709,7 +714,11 @@ impl Transport {
         Ok(())
     }
     fn write_macro_raw(&self, slot: u8, raw: &[u8]) -> Result<()> {
+        self.write_macro_checked(slot,raw,||Ok(()))
+    }
+    pub(crate) fn write_macro_checked(&self,slot:u8,raw:&[u8],before_chunk:impl Fn()->Result<()>) -> Result<()> {
         for (i, part) in raw.chunks(19).enumerate() {
+            before_chunk()?;
             let offset = i * 19;
             let flags = if offset == 0 {
                 1
@@ -737,6 +746,9 @@ impl Transport {
         Ok(())
     }
     fn write_name(&self, p: u8, name: &str) -> Result<()> {
+        self.write_name_checked(p,name,||Ok(()))
+    }
+    pub(crate) fn write_name_checked(&self,p:u8,name:&str,before_chunk:impl Fn()->Result<()>) -> Result<()> {
         let raw = name.as_bytes();
         if raw.len() > 60 || name.contains('\0') {
             return Err(bad("配置名称无效"));
@@ -744,6 +756,7 @@ impl Transport {
         let mut padded = [0u8; 60];
         padded[..raw.len()].copy_from_slice(raw);
         for (i, part) in padded.chunks(20).enumerate() {
+            before_chunk()?;
             let mut a = vec![
                 p,
                 (i * 20) as u8,

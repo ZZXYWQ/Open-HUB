@@ -46,6 +46,22 @@ pub struct Compiled {
     pub slot_map: BTreeMap<u8, u8>,
 }
 
+pub fn rate_hz(code:u8)->Option<u32> {match code {0=>Some(125),2=>Some(500),3=>Some(1000),4=>Some(2000),5=>Some(4000),6=>Some(8000),_=>None}}
+pub fn profile_levels(plan:&Plan)->Vec<crate::profiles::Level> {
+    plan.dpi_x.iter().enumerate().map(|(index,x)|crate::profiles::Level{x:*x,y:if plan.independent {plan.dpi_y.as_ref().and_then(|y|y.get(index).copied())}else{None}}).collect()
+}
+pub fn to_profile(plan:Plan)->Result<crate::profiles::Profile> {
+    validate(&plan)?;
+    let profile=crate::profiles::Profile{
+        id:format!("mhub-full-3837-4026-b{}:{}",plan.board,plan.name),name:format!("M HUB · {}",plan.name),
+        target_vendor:Some(plan.vendor),target_model:Some(plan.model),mchose_board:None,sino:None,multi:None,
+        levels:profile_levels(&plan),active_level:usize::from(plan.active),report_rate_hz:rate_hz(plan.wireless_rate),
+        app_path:None,ghub_id:None,mchose:Some(plan),
+    };
+    crate::profile_transfer::validate(&profile)?;
+    Ok(profile)
+}
+
 // Preserve ambiguity as an error instead of letting a JSON map silently use
 // the last duplicate setting. This also covers nested macro events.
 struct StrictValue(Value);

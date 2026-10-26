@@ -93,6 +93,7 @@ export interface ProfileLevel {
 }
 
 export interface Profile {
+ mchose?:import("./mchose-plan").MchosePlan|null;
  multi?: import("./multi").MultiPlan|null;
  sino?:SinoPlan|null;
  target_vendor?:number|null;
@@ -290,7 +291,7 @@ export const api = {
   saveProfile: (profile: Profile, deviceId?:string, makeActive?:boolean) => invoke<ProfilesView>("save_profile", { profile,...(deviceId?{deviceId}:{}),...(makeActive==null?{}:{makeActive}) }),
   deleteProfile: (id: string) => invoke<ProfilesView>("delete_profile", { id }),
   setAutoSwitch: (enabled: boolean) => invoke<ProfilesView>("set_auto_switch", { enabled }),
-  activateProfile: (id: string, deviceId?:string, asCopy=false) => invoke<Activation>("activate_profile", { id,...(deviceId?{deviceId}:{}),...(asCopy?{asCopy:true}:{}) }),
+  activateProfile: (id: string, deviceId?:string, asCopy=false,expectedConnection?:string) => invoke<Activation>("activate_profile", { id,...(deviceId?{deviceId}:{}),...(asCopy?{asCopy:true}:{}),...(expectedConnection?{expectedConnection}:{}) }),
   importGhub: () => invoke<ImportResult>("import_ghub_profiles"),
 
   onboardSnapshot: (id: string) => invoke<OnboardSnapshot>("onboard_snapshot", { id }),
