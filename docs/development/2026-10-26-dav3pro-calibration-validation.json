@@ -1,0 +1,73 @@
+{
+  "date": "2026-10-26",
+  "source_parent_revision": "1adb5a2",
+  "scope": "DeathAdder V3 Pro 1532:00B6 sensor calibration; synthetic transport and headless UI validation only",
+  "completed_distinct_mouse_models": 0,
+  "full_compatibility": false,
+  "hardware_tested": false,
+  "implemented": [
+    "Strict typed Standard levels1..3 or Asymmetric lift2..26/landing1..25 with landing<lift; no mm inference and no raw command passthrough",
+    "B6-only exact0B State/Mode/Configuration GET/SET with selectors0,4; writable capability appears only after a confirmed semantic GET",
+    "Whole three-record fresh ownership guard before each SET and restoration; unknown/foreign values retained, no uncertain SET replay, final GET failure also reconciled",
+    "Read-gated native capability/state, model-scoped plan validation, session refresh, template, saved profile/store reload and corresponding React editor",
+    "Model identity gate prevents borrowed calibration from being hidden and saved under another vendor/product",
+    "Razer retains exact real control path and a fresh nonwrapping process-local open key; this does not enable unverified host macros",
+    "Other drivers explicitly reject the new setting; old JSON omits absent optional fields"
+  ],
+  "lighting_boundary": {
+    "this_model_has_controllable_rgb_zones": false,
+    "new_calibration_does_not_modify_dpi_buttons_lighting_or_other_devices": true,
+    "separate_mchose_dock_and_pc_lighting_regressions": "Existing lighting UI suites and Rust effects tests passed in this run",
+    "new_native_rgb_support_claimed": false
+  },
+  "verification": {
+    "application_default_tests_passed": 552,
+    "explicit_fixture_and_ui_native_cross_tests_passed": 37,
+    "core_and_driver_unit_tests_passed": 363,
+    "doc_tests_passed": 1,
+    "razer_unit_tests_included": 140,
+    "new_calibration_protocol_tests_included": 9,
+    "new_calibration_driver_boundary_tests_included": 6,
+    "new_core_calibration_tests_included": 3,
+    "new_razer_connection_context_tests_included": 5,
+    "ui": "47 existing headless suites passed; after the isolated fromMulti identity gate change, the new calibration suite and current/five-stage B6/B7 power/button suite passed again with fresh native DTOs",
+    "new_calibration_ui_profiles_saved_and_native_replayed": 2,
+    "calibration_ui_checks": [
+      "b6 Standard bounds, linked thresholds, saved native plan",
+      "b6 Asymmetric bounds, linked thresholds, saved native plan",
+      "unreadable calibration adds no guessed defaults",
+      "two foreign identities neither expose nor silently save DA calibration"
+    ],
+    "existing_dav3pro_ui_native_cross": "Four current/five-stage saved profiles and115 observed main-key usages x2 layers x2 transports replayed in production codec",
+    "development_exe_memory_transport_cases_passed": 38,
+    "typescript": "passed",
+    "vite_production_build": "passed",
+    "independent_static_review": "No remaining blocking finding after final-GET recovery correction",
+    "git_diff_check": "passed"
+  },
+  "frontend": {
+    "javascript_bytes": 751741,
+    "javascript_raw_growth_bytes_vs_parent": 4692,
+    "javascript_gzip_level9_bytes": 226441,
+    "vite_reported_gzip_kb": 229.78,
+    "new_runtime_dependencies": 0
+  },
+  "artifacts": {
+    "development_exe_sha256": "e46f09ed8c99be98a69fcc09951d1bb4e455b25c94c7d52c9f08773c7b66d250",
+    "development_exe_is_installer": false,
+    "debug_exe_ui_mode": "development URL; production frontend build verified separately, no new bundled installer",
+    "installed_0_3_7_exe_sha256_unchanged": "e77fc588993d0a7f2d1c1cd12313610731d5b3ecec293ba2c7d7f5e397ea06b0",
+    "release_installer_tag_feed_changed": false
+  },
+  "remaining": [
+    "B7 primary static trace is separately available, but this B6 baseline deliberately leaves B7 disabled pending its scoped simulation/UI/native replay",
+    "No physical B6 calibration capture or acceptance; kernel behavior behind OEM status subscription was not inspected",
+    "Original Synapse full-profile import and independent host macro trigger bridge remain incomplete",
+    "The100 distinct complete mouse model goal is still active; no new installer generated or installed"
+  ],
+  "one_oem_application_at_a_time": {
+    "current": "Retained Razer Synapse product182/shared components only; B7 selected extraction from same archive",
+    "next_oem_application_downloaded": false,
+    "cleanup": "Retained current-app sources remain for unfinished B7/native macro trace; delete owned downloads/extractions before starting next OEM application"
+  }
+}

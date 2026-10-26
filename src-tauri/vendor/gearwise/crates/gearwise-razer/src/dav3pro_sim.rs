@@ -1,4 +1,6 @@
-//! Synthetic firmware for exact B6/B7 power and current/staged DPI tests.
+//! Synthetic firmware for exact B6/B7 power, current/staged DPI and confirmed
+//! model calibration tests. Calibration records are constructed test state,
+//! not captured firmware behavior or evidence for an unsupported product.
 //! Stage-table refusal is constructed, not claimed as captured behavior.
 use super::*;
 use gearwise_core::{
@@ -32,6 +34,10 @@ fn mouse_mode(pid: u16, staged: bool) -> Result<(Box<dyn Device>, Arc<Mutex<Vec<
     let mut rate = 1;
     let mut sleep = 300u16;
     let mut low = 77u8;
+    let calibration = crate::dav3pro_calibration::calibration_caps(pid).is_some();
+    let mut calibration_state = 0u8;
+    let mut calibration_config = [1u8, 1]; // Standard native level 2.
+    let mut calibration_asymmetric = [12u8, 11]; // Deliberate inactive sentinel.
     let io = MockTransport::new(move |op| {
         let MockOp::SetFeature(bytes) = op else {
             return MockReply::none();
@@ -112,6 +118,27 @@ fn mouse_mode(pid: u16, staged: bool) -> Result<(Box<dyn Device>, Arc<Mutex<Vec<
             (7, 1) => low = req.args[0],
             (7, 0x80) => r.args[..2].copy_from_slice(&[0, 128]),
             (7, 0x84) => r.args[1] = u8::from(pid == 0x00b6),
+            (0x0b, 0x83) if calibration && req.data_size == 3 && req.args[..3] == [0, 4, 0] => {
+                r.args[..3].copy_from_slice(&[0, 4, calibration_state]);
+            }
+            (0x0b, 0x8b) if calibration && req.data_size == 4 && req.args[..4] == [0, 4, 0, 0] => {
+                r.args[..4].copy_from_slice(&[0, 4, calibration_config[0], calibration_config[1]]);
+            }
+            (0x0b, 0x85) if calibration && req.data_size == 4 && req.args[..4] == [0, 4, 0, 0] => {
+                r.args[..4].copy_from_slice(&[0, 4, calibration_asymmetric[0], calibration_asymmetric[1]]);
+            }
+            (0x0b, 0x03) if calibration && req.data_size == 3 && req.args[..2] == [0, 4] => {
+                calibration_state = req.args[2];
+                r.args[..3].copy_from_slice(&req.args[..3]);
+            }
+            (0x0b, 0x0b) if calibration && req.data_size == 4 && req.args[..2] == [0, 4] => {
+                calibration_config.copy_from_slice(&req.args[2..4]);
+                r.args[..4].copy_from_slice(&req.args[..4]);
+            }
+            (0x0b, 0x05) if calibration && req.data_size == 4 && req.args[..2] == [0, 4] => {
+                calibration_asymmetric.copy_from_slice(&req.args[2..4]);
+                r.args[..4].copy_from_slice(&req.args[..4]);
+            }
             _ => r.status = 5,
         }
         MockReply::feature(r.to_wire().to_vec())

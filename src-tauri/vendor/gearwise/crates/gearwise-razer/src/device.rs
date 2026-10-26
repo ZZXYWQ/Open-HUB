@@ -2,6 +2,7 @@
 //! between models lives in the [`Model`] table.
 
 use std::collections::BTreeMap;
+use std::sync::{OnceLock, atomic::{AtomicU64, Ordering}};
 use std::time::{Duration, Instant};
 
 use gearwise_core::model::{
@@ -11,6 +12,7 @@ use gearwise_core::model::{
 use gearwise_core::transport::HidInterfaceInfo;
 use gearwise_core::{
     Capabilities, Device, DeviceDescriptor, DeviceEvent, DeviceState, Error, Result, Setting,
+    SensorCalibration,
 };
 
 use crate::commands::{self, MAX_STAGES};
@@ -34,8 +36,47 @@ pub(crate) fn viper_decode(id:u8,args:&[u8])->Option<ButtonAction>{
 /// How often `poll_events` asks wireless/battery devices for their charge.
 const BATTERY_INTERVAL: Duration = Duration::from_secs(30);
 
+/// Process-local open identity, separate from the durable device descriptor or
+/// selected onboard profile. This is context for an already opened interface,
+/// not evidence that a keyboard collection belongs to the same physical mouse.
+struct ControlContext {
+    path: String,
+    connection_key: String,
+}
+
+impl ControlContext {
+    fn new(path: &str) -> Result<Option<Self>> {
+        if path.trim().is_empty() || path.trim_start().starts_with("simulation:") {
+            return Ok(None);
+        }
+        static PROCESS_NAMESPACE: OnceLock<String> = OnceLock::new();
+        static NEXT_CONNECTION: AtomicU64 = AtomicU64::new(1);
+        let namespace = PROCESS_NAMESPACE.get_or_init(|| format!(
+            "{:x}:{:x}",
+            std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
+                .map(|duration| duration.as_nanos()).unwrap_or(0),
+        ));
+        // Never wrap and reuse a key, even if this process exhausted its space.
+        let mut nonce = NEXT_CONNECTION.load(Ordering::Relaxed);
+        loop {
+            let next = nonce.checked_add(1)
+                .ok_or_else(|| Error::protocol("Razer open-instance identity space exhausted"))?;
+            match NEXT_CONNECTION.compare_exchange_weak(nonce, next, Ordering::Relaxed, Ordering::Relaxed) {
+                Ok(_) => break,
+                Err(current) => nonce = current,
+            }
+        }
+        Ok(Some(Self {
+            path: path.to_owned(),
+            connection_key: format!("razer-open:{namespace}:{nonce:x}"),
+        }))
+    }
+}
+
 /// A connected Razer mouse or keyboard.
 pub struct RazerDevice {
+    control_context: Option<ControlContext>,
     desc: DeviceDescriptor,
     caps: Capabilities,
     model: &'static Model,
@@ -83,6 +124,7 @@ impl RazerDevice {
             simulated: false,
         };
         Ok(Self {
+            control_context: ControlContext::new(&iface.path)?,
             desc,
             caps: capabilities(model),
             model,
@@ -130,6 +172,21 @@ impl RazerDevice {
     }
 
     // ----- validation + writes -------------------------------------------------
+
+    fn set_sensor_calibration(&mut self, value: &SensorCalibration) -> Result<()> {
+        // The static exact-model validator runs before either capability or
+        // transport access. A successful read is also required for this open.
+        crate::dav3pro_calibration::validate_sensor_calibration(self.model.pid, value)?;
+        let caps = self.caps.calibration.as_ref()
+            .ok_or(Error::Unsupported("read confirmed sensor calibration before applying"))?;
+        value.validate(caps)?;
+        if let Err(error) = crate::dav3pro_calibration::apply(&mut self.link, self.model.pid, value) {
+            self.state.calibration = None;
+            self.caps.calibration = None;
+            return Err(error);
+        }
+        Ok(())
+    }
 
     fn dpi_caps(&self) -> Result<&DpiCaps> {
         self.caps.dpi.as_ref().ok_or(Error::Unsupported("DPI"))
@@ -344,6 +401,24 @@ impl RazerDevice {
 
     // ----- reads ---------------------------------------------------------------
 
+    fn refresh_sensor_calibration(&mut self) {
+        // A missing/unknown calibration response must never leave an old
+        // writable capability behind, or prevent unrelated settings being read.
+        self.state.calibration = None;
+        self.caps.calibration = None;
+        let Some(caps) = crate::dav3pro_calibration::calibration_caps(self.model.pid) else {
+            return;
+        };
+        match crate::dav3pro_calibration::read(&mut self.link, self.model.pid)
+            .and_then(|value| value.validate(&caps).map(|_| value)) {
+            Ok(value) => {
+                self.state.calibration = Some(value);
+                self.caps.calibration = Some(caps);
+            }
+            Err(error) => log::debug!("razer: sensor calibration read skipped: {error}"),
+        }
+    }
+
     fn read_dpi(&mut self) -> Result<DpiState> {
         let dav3=matches!(self.model.pid,0x00b6|0x00b7);
         let staged=self.model.dpi.is_some_and(|s|s.stages)&&!(dav3&&self.caps.dpi.as_ref().is_some_and(|c|c.max_stages==1));
@@ -394,6 +469,14 @@ impl RazerDevice {
 }
 
 impl Device for RazerDevice {
+    fn control_path(&self) -> Option<&str> {
+        self.control_context.as_ref().map(|context| context.path.as_str())
+    }
+
+    fn connection_key(&self) -> Option<&str> {
+        self.control_context.as_ref().map(|context| context.connection_key.as_str())
+    }
+
     fn descriptor(&self) -> &DeviceDescriptor {
         &self.desc
     }
@@ -404,6 +487,7 @@ impl Device for RazerDevice {
 
     fn read_state(&mut self) -> Result<DeviceState> {
         self.check_board(false)?;
+        self.refresh_sensor_calibration();
         let mut s = self.state.clone();
         if self.board.is_some(){
             s.buttons.clear();
@@ -464,6 +548,10 @@ impl Device for RazerDevice {
     }
 
     fn apply(&mut self, setting: &Setting) -> Result<()> {
+        // Reject unsupported products before board/mode probes or other I/O.
+        if let Setting::SensorCalibration(value) = setting {
+            crate::dav3pro_calibration::validate_sensor_calibration(self.model.pid, value)?;
+        }
         self.check_board(true)?;
         match setting {
             Setting::Dpi(d) => self.set_dpi(d)?,
@@ -477,6 +565,7 @@ impl Device for RazerDevice {
             Setting::LiftOff(_) => return Err(Error::Unsupported("lift-off distance")),
             Setting::AngleSnapping(_) => return Err(Error::Unsupported("angle snapping")),
             Setting::Tuning(patch) if crate::power::supported(self.model.pid)=>{if let Err(e)=crate::power::apply(&mut self.link,self.model.pid,patch){self.state.tuning=None;return Err(e);}},
+            Setting::SensorCalibration(value) => self.set_sensor_calibration(value)?,
             Setting::VendorProfile{..} | Setting::Tuning(_) => return Err(Error::Unsupported("mouse performance")),
         }
         setting.apply_to(&mut self.state);
@@ -579,6 +668,10 @@ fn soft<T>(r: Result<T>) -> Result<Option<T>> {
         Err(e) => Err(e),
     }
 }
+
+#[cfg(test)]
+#[path = "device_calibration_tests.rs"]
+mod calibration_tests;
 
 #[cfg(test)]
 mod tests {
@@ -686,6 +779,134 @@ mod tests {
     fn devices_are_send() {
         fn is_send<T: Send>() {}
         is_send::<RazerDevice>();
+    }
+
+    fn context_firmware() -> Fake {
+        Fake::default()
+            .on(0, 0x82, 2, b"CTX-SERIAL-0001")
+            .on(0, 0x81, 2, &[2, 7])
+    }
+
+    fn open_context(pid: u16, path: &str, fake: &Fake) -> (RazerDevice, Log) {
+        let model = models::find(pid).unwrap();
+        let (io, log) = fake.transport();
+        let link = Link::new(Box::new(io), model.transaction_id, INSTANT);
+        let iface = HidInterfaceInfo {
+            path: path.into(),
+            serial: Some("INTERFACE-SERIAL".into()),
+            ..Default::default()
+        };
+        (RazerDevice::open(model, link, &iface).unwrap(), log)
+    }
+
+    #[test]
+    fn connection_context_reopens_same_path_and_serial_with_fresh_keys_without_extra_queries() {
+        let path = r"\\?\hid#vid_1532&pid_00b6&mi_00#context-unit";
+        for pid in [0x0084, 0x00b6, 0x00b7] {
+            let fake = context_firmware();
+            let (first, first_log) = open_context(pid, path, &fake);
+            let first_key = first.connection_key().unwrap().to_owned();
+            let (second, second_log) = open_context(pid, path, &fake);
+            let second_key = second.connection_key().unwrap().to_owned();
+            assert!(first_key.starts_with("razer-open:"));
+            assert_ne!(first_key, second_key);
+            assert_eq!(first.control_path(), Some(path));
+            assert_eq!(second.control_path(), Some(path));
+            assert_eq!(first.descriptor().id, format!("razer:{pid:04x}:CTX-SERIAL-0001"));
+            assert_eq!(first.descriptor().id, second.descriptor().id);
+            assert_eq!(second.descriptor().serial.as_deref(), Some("CTX-SERIAL-0001"));
+            assert_eq!(second.descriptor().firmware.as_deref(), Some("v2.7"));
+            drop(first);
+            let (reopened, reopened_log) = open_context(pid, path, &fake);
+            assert_ne!(reopened.connection_key().unwrap(), first_key);
+            assert_ne!(reopened.connection_key().unwrap(), second_key);
+            assert_eq!(reopened.descriptor().id, second.descriptor().id);
+            // Opening still performs only the original serial/firmware queries.
+            for log in [first_log, second_log, reopened_log] {
+                assert_eq!(sent(&log).iter().map(|p| (p[7], p[8])).collect::<Vec<_>>(), [(0, 0x82), (0, 0x81)]);
+            }
+        }
+    }
+
+    #[test]
+    fn connection_context_retains_distinct_exact_paths_without_changing_serial_identity() {
+        let fake = context_firmware();
+        let first_path = r"\\?\hid#vid_1532&pid_00b6&mi_00#unit-a";
+        let second_path = r"\\?\hid#vid_1532&pid_00b6&mi_01#unit-a";
+        let (first, _) = open_context(0x00b6, first_path, &fake);
+        let (second, _) = open_context(0x00b6, second_path, &fake);
+        assert_eq!(first.control_path(), Some(first_path));
+        assert_eq!(second.control_path(), Some(second_path));
+        assert_ne!(first.connection_key(), second.connection_key());
+        assert_eq!(first.descriptor().id, second.descriptor().id);
+        assert_eq!(first.descriptor().serial, second.descriptor().serial);
+    }
+
+    #[test]
+    fn connection_context_is_stable_through_reads_and_passive_access_sends_nothing() {
+        let path = r"\\?\hid#vid_1532&pid_0084&mi_00#context-unit";
+        let fake = context_firmware()
+            .on(4, 0x85, 2, &[0, 0x03, 0x20, 0x03, 0x20])
+            .on(0, 0x85, 2, &[1]);
+        let (mut device, log) = open_context(0x0084, path, &fake);
+        let key = device.connection_key().unwrap().to_owned();
+        let descriptor = device.descriptor().clone();
+        let opened_packets = log.lock().unwrap().clone();
+        for _ in 0..8 {
+            assert_eq!(device.control_path(), Some(path));
+            assert_eq!(device.connection_key(), Some(key.as_str()));
+            let _ = device.capabilities();
+            let _ = device.descriptor();
+        }
+        assert_eq!(*log.lock().unwrap(), opened_packets);
+        log.lock().unwrap().clear();
+        let state = device.read_state().unwrap();
+        assert_eq!(state.dpi, Some(stages(&[800], 0)));
+        assert_eq!(state.report_rate, Some(1000));
+        assert_eq!(device.control_path(), Some(path));
+        assert_eq!(device.connection_key(), Some(key.as_str()));
+        assert_eq!(device.descriptor().id, descriptor.id);
+        assert_eq!(device.descriptor().serial, descriptor.serial);
+        assert_eq!(sent(&log).iter().map(|p| (p[7], p[8])).collect::<Vec<_>>(), [(4, 0x85), (0, 0x85)]);
+        let read_packets = log.lock().unwrap().clone();
+        let _ = device.control_path();
+        let _ = device.connection_key();
+        let _ = device.capabilities();
+        assert_eq!(*log.lock().unwrap(), read_packets);
+    }
+
+    #[test]
+    fn connection_context_is_unavailable_for_empty_or_explicit_simulation_paths() {
+        for path in ["", " \t", "simulation:razer:00b6", "simulation:basilisk:00aa"] {
+            let (device, log) = open_context(0x00b6, path, &context_firmware());
+            assert_eq!(device.control_path(), None);
+            assert_eq!(device.connection_key(), None);
+            assert_eq!(device.descriptor().serial.as_deref(), Some("CTX-SERIAL-0001"));
+            assert_eq!(sent(&log).len(), 2);
+        }
+        let model = models::find(0x00b6).unwrap();
+        let (io, log) = context_firmware().transport();
+        let link = Link::new(Box::new(io), model.transaction_id, INSTANT);
+        let default_interface = RazerDevice::open(model, link, &HidInterfaceInfo::default()).unwrap();
+        assert_eq!(default_interface.control_path(), None);
+        assert_eq!(default_interface.connection_key(), None);
+        assert_eq!(sent(&log).len(), 2);
+    }
+
+    #[test]
+    fn connection_context_survives_basilisk_board_change_rejection_on_the_same_open() {
+        let path = r"\\?\hid#vid_1532&pid_00aa&mi_00#context-unit";
+        let fake = context_firmware().on(5, 0x84, 2, &[1]).on(5, 0x84, 2, &[2]);
+        let (mut device, log) = open_context(0x00aa, path, &fake);
+        let key = device.connection_key().unwrap().to_owned();
+        let descriptor_id = device.descriptor().id.clone();
+        assert!(descriptor_id.ends_with(":board:1"));
+        log.lock().unwrap().clear();
+        assert!(device.read_state().unwrap_err().to_string().contains("onboard profile changed"));
+        assert_eq!(device.control_path(), Some(path));
+        assert_eq!(device.connection_key(), Some(key.as_str()));
+        assert_eq!(device.descriptor().id, descriptor_id);
+        assert_eq!(sent(&log).iter().map(|p| (p[7], p[8])).collect::<Vec<_>>(), [(5, 0x84)]);
     }
 
     #[test]

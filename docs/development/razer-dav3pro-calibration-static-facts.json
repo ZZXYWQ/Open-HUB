@@ -1,5 +1,5 @@
 {
-  "status": "research only; no calibration UI or native writes enabled",
+  "status": "Exact product182 Standard/26-level Pro conversion statically proved; B6 implementation requires successful strict hardware GET before writable capability.",
   "source": "official product182 component already downloaded; static PE/CLI and x86 native inspection only",
   "RzCtl_00B6_sha256": "caffd8cf48986e3559aca551d9069a36563b77c01e3061373d8b5a4ee223c217",
   "RSy3_SurfaceCalBaseM_sha256": "c7c21bbaed93524d7a80e99b29e114ff93e03211124d1c74ca1e0800019bebe7",
@@ -47,7 +47,7 @@
       "set": "0B/03",
       "set_function": "0x10030F90",
       "size": 3,
-      "fields": "selectors 0,4 followed by one raw state byte; required high-level state for 26-level apply is unresolved"
+      "fields": "Selectors 0,4 followed by raw state 0 for Standard or 1 for Pro; other observed states are not silently coerced."
     },
     "Configuration": {
       "get": "0B/85",
@@ -55,7 +55,7 @@
       "set": "0B/05",
       "set_function": "0x10030D10",
       "size": "two selectors plus caller-specified configuration bytes; native SET accepts 0..20 data bytes and hardware GET requires an explicit length of 1..20",
-      "fields": "selectors 0,4 followed by Data bytes in original JSON array order; semantic lift/landing conversion is unresolved"
+      "fields": "Selectors 0,4 followed by lift-1 and landing-1 in that order; the exact product182 FeatureImpl conversion is recorded below."
     }
   },
   "verified_static_chain": {
@@ -69,11 +69,9 @@
     "legacy_SmartTracking": "SurfaceBase1002AEA0 maps only three fixed entries; do not substitute for the26-level factory Pro schema"
   },
   "remaining": [
-    "3950 high-level saved Standard/26-level Pro state to raw native apply conversion",
-    "exact mode and index conversion matched to product182 rather than only other products",
-    "known-length configuration GET semantics and physical effective write/readback; JSON zero-length convenience GET is only a size inquiry",
-    "unknown native fields preservation and recovery",
-    "native independent vectors and corresponding persisted UI"
+    "Physical effective calibration apply/readback on supported hardware; current report vectors and transaction tests are static or simulated.",
+    "B7 integration enablement and regression validation are deferred; its exact native selectors and report shapes are now independently established.",
+    "Kernel behavior behind the OEM status-notification IOCTLs is outside this static user-mode trace."
   ],
   "physical_tested": false,
   "OEM_code_executed": false,
@@ -110,7 +108,7 @@
         "Data=[two arguments]"
       ]
     },
-    "important": "Get/Set delegate resolvers, DeviceSet is no-op success; legacy SetAdjustmentMode/SetStandardAdjustment/SetProAdjustment methods explicitly throw NotImplementedException, not the3950 native implementation"
+    "important": "The generic wrapper Get/Set delegate storage resolvers and DeviceSet is no-op success. Its legacy adjustment methods throw, but the real LitaT1FeatureImpl and LitaT1DongleFeatureImpl adjustment methods implement the conversion and native apply sequence below."
   },
   "official_UI_constraints": {
     "frontend": "same c5f739f700e7e1613a7ef27fb862f2b49a727f90dcdb9f6d3d130d8a2a1eccf7",
@@ -128,7 +126,7 @@
     "V2_storage_sha256": "a7c1bc8cdd842935a998dcf8269f6c94c56976f79f9cdf79c5a04175f930b740",
     "storage_read": "ReadSensorCalibration gets serialized data through storage server; not a hardware getter",
     "storage_write": "SetAdjustment/Standard/Pro update cached typed configuration and serialized calibration file",
-    "state": "The raw JSON-to-native application and hardware GET routes are traced below. The saved Standard/26-level Pro state-to-raw conversion and physical readback are still unresolved."
+    "state": "The saved typed configuration is distinct from hardware state. Exact product182 FeatureImpl methods convert it to raw JSON commands, while strict known-length native GETs read effective records."
   },
   "secondary_comparison": {
     "repository": "han1548772930/razer_ui",
@@ -217,20 +215,225 @@
       ],
       "limitation": "This route reaches the zero-length size-inquiry branch, so its returned JSON is not evidence of effective hardware configuration readback."
     },
-    "implementation_boundary": "Wire-level raw getters are traced; exact 26-level mode/index conversion, unknown-field preservation and physical write/readback remain unverified."
+    "implementation_boundary": "Exact product182 conversion and B6 raw getters are traced. B6 exposes writable calibration only after all three strict known-length GETs decode a supported active state. Physical calibration behavior is untested."
   },
   "high_level_application_boundary": {
-    "no_calibration_enable": true,
-    "unresolved": "Exact product182 Standard/26-level Pro UI values -> raw state, lift mode, lift height and configuration values are not established.",
-    "frontend": "The product182 renderer has smartTracking UI values and constraints but no ProximitySensor, LiftHeight or 3950 transport calls. Its smart-only save action posts smartTracking to mwBroadcastChannel; host-side conversion is outside that renderer.",
-    "secondary_reference": "Products 170/204/226/45066 remain comparison evidence only; do not substitute their conversion for product182.",
-    "static_implementation_now": "Raw report shapes and validation facts can be used for static codecs; they do not authorize enabling semantic calibration writes."
+    "exact_conversion_static_proven": true,
+    "implementation_scope": "B6 only in this implementation phase, gated by successful exact GET. Exact B7 native selectors/report shapes are now statically proved; B7 enablement remains explicitly deferred.",
+    "frontend": "The renderer saves one-based smartTracking levels. Host conversion is implemented by the exact product182 LitaT1FeatureImpl/LitaT1DongleFeatureImpl methods below.",
+    "secondary_reference": "Other-product secondary mappings are comparison only; this conversion is now independently established from the retained official product182 component.",
+    "static_implementation_now": "Typed Standard and Asymmetric level validation, explicit-length raw GET/SET codecs and simulated guarded transactions are implementable from primary facts."
   },
   "analysis_retention": {
     "current_OEM_application": "Razer Synapse product182 / DeathAdder V3 Pro",
     "downloaded_payloads_retained": true,
-    "reason": "Analysis is still pending for the exact high-level 26-level conversion; retain current downloaded payloads until this application is finished.",
+    "reason": "Retained current application artifacts support deferred B7 integration and remaining physical acceptance work.",
     "cleanup_performed": false,
     "new_other_OEM_payload_downloads_during_this_analysis": 0
+  },
+  "primary_application_conversion": {
+    "file": "Configurator.182_0.dll",
+    "sha256": "ee5540e087ae7b0ebf73fa4e370f8a1cb98c9992f6e5667ec32ded4b2731a1ed",
+    "transport_identity": {
+      "wired": {
+        "class": "Configurator.LitaT1.LitaT1DeviceInstance",
+        "get_Product_ID_RVA": "0x2291",
+        "product_id": 182,
+        "get_IsWireless_RVA": "0x2298",
+        "wireless": false
+      },
+      "dongle": {
+        "class": "Configurator.LitaT1.LitaT1DongleDeviceInstance",
+        "get_Product_ID_RVA": "0x22A5",
+        "product_id": 183,
+        "get_Base_Product_ID_RVA": "0x2291",
+        "base_product_id": 182,
+        "get_IsWireless_RVA": "0x229B",
+        "wireless": true
+      }
+    },
+    "feature_association": {
+      "wired_constructor": {
+        "RVA": "0x4E3C",
+        "new_smart3950_IL_offset": "0x28C",
+        "store_feature_IL_offset": "0x291"
+      },
+      "dongle_constructor": {
+        "RVA": "0x25C0",
+        "new_smart3950_IL_offset": "0x1E8",
+        "store_feature_IL_offset": "0x1ED"
+      },
+      "feature": "Configurator.Features.SensorCal_SmartFeature3950"
+    },
+    "application_methods": {
+      "wired": {
+        "Set_RVA": "0x5B0C",
+        "SetAdjustmentMode_RVA": "0x5B78",
+        "SetStandardAdjustment_RVA": "0x5BE0",
+        "SetProAdjustment_RVA": "0x5C4C",
+        "Save_RVA": "0x5CCD"
+      },
+      "dongle": {
+        "Set_RVA": "0x33F8",
+        "SetAdjustmentMode_RVA": "0x3464",
+        "SetStandardAdjustment_RVA": "0x34CC",
+        "SetProAdjustment_RVA": "0x3538",
+        "Save_RVA": "0x35B9"
+      }
+    },
+    "mode_selection": "Both Set methods select Standard for AdjustmentMode=1 and Pro for AdjustmentMode=2; each adjustment method updates and persists its typed cache before native commands.",
+    "standard": {
+      "levels": [
+        1,
+        2,
+        3
+      ],
+      "native_sequence": [
+        {
+          "state": 0
+        },
+        {
+          "host_status_notification": false
+        },
+        {
+          "mode": 1,
+          "height": "distance-1"
+        }
+      ],
+      "conversion_IL_offsets": [
+        "0x2B: false State argument",
+        "0x3B: false notification argument",
+        "0x4B: mode 1",
+        "0x4D: TrackingDistance getter",
+        "0x53: subtract 1",
+        "0x54: LiftSetting call"
+      ],
+      "inactive_configuration": "The Standard apply path does not write Configuration."
+    },
+    "pro": {
+      "lift_levels": {
+        "min": 2,
+        "max": 26
+      },
+      "landing_levels": {
+        "min": 1,
+        "max": 25
+      },
+      "constraint": "landing < lift",
+      "native_sequence": [
+        {
+          "state": 1
+        },
+        {
+          "host_status_notification": true
+        },
+        {
+          "mode": 4,
+          "height": 0
+        },
+        {
+          "configuration": [
+            "lift-1",
+            "landing-1"
+          ]
+        }
+      ],
+      "conversion_IL_offsets": [
+        "0x2B: true State argument",
+        "0x3B: true notification argument",
+        "0x4B/0x4C: mode 4 and height 0",
+        "0x4D: LiftSetting call",
+        "0x5D/0x63: LiftOffDistance minus 1",
+        "0x65/0x6B: LandingDistance minus 1",
+        "0x6C: Configuration call"
+      ]
+    },
+    "boolean_to_raw": {
+      "managed_state_method_RVA": "0xC490",
+      "native_JSON_setter_VA": "0x10054F20",
+      "native_number_conversion_VA": "0x1000B6B0",
+      "native_wrapper_VA": "0x10046510",
+      "native_SET_VA": "0x10030F90",
+      "result": "JSON Boolean is accepted by the native numeric converter; its low byte is written directly as raw state 0/1."
+    },
+    "units": "One-based logical levels; no millimetre conversion inferred."
+  },
+  "status_notification_boundary": {
+    "source_file": "RzCtl_00B6.dll",
+    "sha256": "caffd8cf48986e3559aca551d9069a36563b77c01e3061373d8b5a4ee223c217",
+    "JSON_handler_VA": "0x10055DA0",
+    "proximity_wrapper_VA": "0x10046540",
+    "calibration_registration_VA": "0x100563D0",
+    "event_subfeature_lookup": "0x401",
+    "input_hook_registration_VA": "0x1001F920",
+    "input_hook_device_event_VA": "0x1001E320",
+    "thread_lifecycle_VA": "0x1001EE00",
+    "thread_thunk_VA": "0x1001FC10",
+    "notification_worker_VA": "0x1001E5E0",
+    "enable_device_event_IOCTL": "0x8888303C",
+    "enable_argument_bytes": 4,
+    "read_notification_IOCTL": "0x88883018",
+    "conclusion": "This path subscribes to status observation through the OEM driver and OS listener. No additional explicit 0B calibration report appears on the traced subscription/start/worker path.",
+    "implementation": "The native calibration codecs do not implement the OEM filter-driver status subscription.",
+    "limitation": "The kernel implementation behind these IOCTLs was not inspected; this trace does not claim zero kernel side effects or prove notification subscription is required for calibration activation."
+  },
+  "B7_native_research": {
+    "file": "RzCtl_00B7.dll",
+    "sha256": "a9eb216514f15d8b51db7ffeeffba28b905024d5522863353810a6ae559ceb28",
+    "source": "PID00b7MW_v24.0.0.051509.exe nested in the same retained official product182 archive",
+    "new_OEM_download": false,
+    "static_report_shapes_verified": true,
+    "calibration_enabled": false,
+    "enablement_status": "Deferred until the B6 validation baseline is committed and B7 integration is explicitly coordinated.",
+    "selector_proof": {
+      "factory_VA": "0x10029CB0",
+      "constructor_VA": "0x1004BD50",
+      "arguments": [
+        4,
+        0
+      ],
+      "constructor_fields": "Input4 is stored at object+0x40, input0 at object+0x41; report wrappers pass+0x41 then+0x40.",
+      "wire_selectors": [
+        0,
+        4
+      ]
+    },
+    "proximity_vtable_VA": "0x10075B1C",
+    "controller_vtable_VA": "0x10073420",
+    "native_reports": {
+      "State": {
+        "set_function_VA": "0x10033FA0",
+        "get_function_VA": "0x1002F520",
+        "set": "0B/03",
+        "get": "0B/83",
+        "size": 3
+      },
+      "LiftSetting": {
+        "set_function_VA": "0x10033E80",
+        "get_function_VA": "0x1002F350",
+        "set": "0B/0B",
+        "get": "0B/8B",
+        "size": 4
+      },
+      "Configuration": {
+        "set_function_VA": "0x10033D20",
+        "get_function_VA": "0x1002F0B0",
+        "set": "0B/05",
+        "get": "0B/85",
+        "size": "2+n; explicit n=2 gives the same four-byte selectors/data record",
+        "maximum_data_bytes": 20,
+        "zero_length_get": "No hardware dispatch; returns status 0x57 and required length 22."
+      }
+    },
+    "dispatch": {
+      "get_VA": "0x1002C5A0",
+      "get_read_bit": "0x80",
+      "set_VA": "0x10030DB0",
+      "set_ack": 1,
+      "set_transaction_override": 0
+    },
+    "conversion_source": "The same official Configurator.182_0.dll LitaT1DongleFeatureImpl methods recorded above independently establish one-based Standard/Pro conversion for internal wireless product183/base182.",
+    "physical_tested": false,
+    "OEM_code_executed": false
   }
 }

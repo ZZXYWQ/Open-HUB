@@ -8,6 +8,7 @@
 //! * [`demo`] — simulated devices.
 
 pub mod demo;
+pub mod calibration;
 pub mod device;
 pub mod error;
 pub mod keys;
@@ -21,5 +22,6 @@ pub use device::{
     Capabilities, Device, DeviceDescriptor, DeviceEvent, DeviceState, Driver, Setting,
 };
 pub use error::{Error, Result};
+pub use calibration::{SensorCalibration, SensorCalibrationCaps};
 pub use manager::{DeviceManager, ScanIssue, ScanReport};
 pub use transport::{HidBackend, HidInterfaceInfo, HidTransport};

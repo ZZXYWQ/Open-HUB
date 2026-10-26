@@ -1,0 +1,90 @@
+{
+  "status": "Partial static primary-source facts; no proven direct native Fn3 to independent host-input bridge",
+  "inspected_on": "2026-10-26",
+  "scope": {
+    "official_frontend_product": 182,
+    "native_middleware_product": "1532:00B6",
+    "target_code_executed": false,
+    "hardware_observed": false,
+    "host_macro_enablement_changed": false,
+    "receiver_00B7_event_identity_verified": false
+  },
+  "sources": {
+    "macro_editor": {
+      "url": "https://apps.razer.com/synapse/products/182/ui/static/js/MapMacro.d52af0e1.chunk.js",
+      "utf8_bytes": 9368,
+      "sha256": "48e48e062944288e9e97935b8bdf119dcb8979580876691fe5cea252d322e4c6",
+      "location": "line 1, webpack module 2508; getMappingData at character 2921, saveMapping at character 3170",
+      "inspection": "Official same-product chunk retrieved as text and never evaluated"
+    },
+    "main_frontend": {
+      "url": "https://apps.razer.com/synapse/products/182/ui/static/js/main.998a1822.js",
+      "sha256": "c5f739f700e7e1613a7ef27fb862f2b49a727f90dcdb9f6d3d130d8a2a1eccf7"
+    },
+    "native_B6": {
+      "retained_artifact": "research-next-brands/razer-official-182-mw-unpacked/RzCtl_00B6.dll",
+      "sha256": "caffd8cf48986e3559aca551d9069a36563b77c01e3061373d8b5a4ee223c217"
+    },
+    "mapping_base": {
+      "retained_artifact": "research-next-brands/razer-official-182-module-unpacked/$APPDATA/Razer/Synapse3/Service/Staging/Devices/LitaT1/Bin/RSy3_MappingBaseV2M.dll",
+      "sha256": "cc5efd5bb6fad74462f38c4998c88e9042e80651a16ba1faf57c5606c9153b2b",
+      "mvid": "b9d94079-39ac-459a-b65f-85b1b638e5ff"
+    },
+    "mapping_types": {
+      "retained_artifact": "research-next-brands/razer-official-shared-selected/$APPDATA/Razer/Synapse3/Service/Staging/Bin/Framework/Resolver.Device/Resolver.Device.MappingTypes/RSy3_MappingTypesM.dll",
+      "sha256": "885e5044cf82983666648a8fdbc8f360abd39e7f4f640f71875050765796f226"
+    },
+    "common_macro": {
+      "archive_member": "$APPDATA/Razer/Synapse3/Service/Staging/Bin/CommonModules/Macro/Common.Macro/Common.Macro.dll",
+      "sha256": "ea8ce773103e858eeda53de956c4e1e4a43deba47f83e70d1eb9527a14d99bb3",
+      "inspection": "Selectively extracted from the already retained shared Razer module; read as PE/CLI bytes"
+    }
+  },
+  "proven_logical_mapping": {
+    "editor": "saveMapping produces one selected-input/current-layer macroGroup mapping with macro name, GUID, playback option and repeat count. It does not allocate a reserved F13-F24 keyboard trigger.",
+    "wheel_policy": "The official editor removes ContinuousToggle and ContinuousHeld playback choices for ScrollUp and ScrollDown. MappingTypes ConvertMapping also rejects its toggle/held codes for ordinary mouse inputs 9 and 10.",
+    "managed_conversion": "RSy3_MappingTypesM.CMapTypeM::ConvertMapping token 0x06000207, RVA 0x11638, converts MacroGroup playback and repeat fields into sRSy3Mapping_Macro. MacroGroup GUID conversion precedes MappingV2_SetMacro in MappingBaseV2::SetMapping token 0x0600019a, RVA 0x92244.",
+    "native_conversion": "MappingV2_SetMacro wrapper 0x100459D0 calls 0x100490A0. Macro mapping conversion through 0x1004E7A0 and 0x10063D40 produces an internal middleware mapping group 2 containing the 16-byte GUID, playback subfunction and repeat count.",
+    "internal_playback_codes": {
+      "Once_or_NTimes": 1,
+      "ContinuousHeld": 2,
+      "ContinuousToggle": 3,
+      "Sequence": 5
+    },
+    "boundary": "These are internal middleware structures and codes, not HID report IDs or the seven-byte native Fn3/4/5 action encoding. No direct equivalence is asserted."
+  },
+  "proven_host_playback": {
+    "B6_engine": "RzCtl_00B6 contains MacroEngine and MacroWork. MacroWork::Init at 0x10043DB0 obtains Mapping feature 0x402 and retrieves macro info/data by GUID through 0x4030003 and 0x4030004. MacroEngine entry 0x100453A0 resolves work by GUID and dispatches to MacroWork start entry 0x10045480.",
+    "text_command_callback": "MappingBaseV2::MappingCallbackFn token 0x060001b5, RVA 0x94458, handles event 90 by looking up a GUID in MacroEventDictionary. Its ExecuteMacroEvent branch constructs only macro step type 4 Text or type 5 Command. Common.MacroLib.MacroManager::ExecuteMacroEvent token 0x06000071 then sends text or executes the command.",
+    "callback_limit": "ExecuteMacroEvent is a host-only macro-step playback callback. Its name is not evidence of a physical button trigger, its release edge, or an input-report payload.",
+    "mapping_context": "MappingBase callback registration retains per-device sDeviceInst context. Feature 0x4020001 callback handling at 0x1008BB30 checks a nonzero mapping context against its current context before forwarding. This does not establish independent Windows RawInput identity."
+  },
+  "proven_B6_driver_notification_path": {
+    "input_hook_enable": "0x1001EEE0 issues IOCTL 0x88883034 with a four-byte enable value; 0x1001F5C0 similarly uses 0x88883038 for input notification.",
+    "device_event_enable": "CInputHook::DeviceEvent at 0x1001E320 manages a subscription count, starts the listener when enabled and issues IOCTL 0x8888303C with a four-byte boolean.",
+    "listener_lifecycle": "0x1001EE00 only creates/signals/closes Windows events and a thread, with a bounded stop wait. Thread thunk 0x1001FC10 calls vtable offset 0x68; CInputHook vtable 0x10060F60 resolves that slot to 0x1001E5E0.",
+    "notification_read": "DriverNotificationThread at 0x1001E5E0 issues overlapped IOCTL 0x88883018 with a 0x130-byte output buffer and dispatches DriverNotify at 0x1001E720. That decoder distinguishes driver notification classes 1, 2, 4 and 8. It is not a direct HID report-4/report-5 parser.",
+    "device_event_boundary": "The reviewed user-mode subscription/start/worker path contains no explicit calibration 0B feature-report setter. Kernel behavior behind the IOCTLs was not inspected; neither zero kernel side effects nor calibration activation dependence is established."
+  },
+  "unresolved_before_any_bridge_implementation": [
+    "Exact relation between native Fn3/4/5 macro assignments, stored macro IDs, the GUID-based host engine and physical input notifications",
+    "Exact B6 HID report-4/report-5 payload layout and press/release/layer semantics",
+    "A standalone event source that works without OEM code or the Razer device driver",
+    "Control-to-input physical identity proof, including simultaneous B6 devices, removal and path reuse",
+    "Per-mouse identity behind B7 shared receiver and multipairing"
+  ],
+  "private_reproduction_outputs": [
+    "outputs/100-model-development/razer-macro-base-cil.json",
+    "outputs/100-model-development/razer-macro-common-cil.json",
+    "outputs/100-model-development/razer-macro-types-cil.json",
+    "outputs/100-model-development/ghidra-razer-macro-set.json",
+    "outputs/100-model-development/ghidra-razer-macro-convert.json",
+    "outputs/100-model-development/ghidra-razer-macro-event-route.json",
+    "outputs/100-model-development/ghidra-razer-macro-b6-inputpath.json",
+    "outputs/100-model-development/ghidra-razer-macro-b6-drivernotify.json",
+    "outputs/100-model-development/ghidra-razer-macro-b6-engine.json",
+    "outputs/100-model-development/ghidra-razer-calibration-deviceevent-subscribe.json",
+    "outputs/100-model-development/ghidra-razer-calibration-notify-thread.json",
+    "outputs/100-model-development/razer-macro-rtti.json"
+  ]
+}

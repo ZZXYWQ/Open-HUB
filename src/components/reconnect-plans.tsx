@@ -19,6 +19,7 @@ function settingLabel(s:MultiSetting,plan:MultiPlan){
  if('ReportRate'in s)return `目标回报率：${s.ReportRate} Hz`;
  if('LiftOff'in s)return `抬升高度：原生档位 ${s.LiftOff+1}`;
  if('AngleSnapping'in s)return `直线修正：${s.AngleSnapping?'开启':'关闭'}`;
+ if('SensorCalibration'in s){const c=s.SensorCalibration;return 'Standard'in c?`传感器校准：普通 · 等级 ${c.Standard.distance}`:`传感器校准：非对称 · 抬起 ${c.Asymmetric.lift} / 落下 ${c.Asymmetric.landing}`;}
  if('Tuning'in s){const labels:Record<string,string>={debounce_ms:'按键消抖',motion_sync:'Motion Sync',angle_snapping:'直线修正',ripple_control:'波纹修正',led_idle_seconds:'闲置熄灯时间',sensor_sleep_enabled:'自定义传感器休眠',sensor_sleep_seconds:'传感器休眠时间',lift_off_microns:'抬升高度'};return Object.entries(s.Tuning).map(([k,v])=>`${labels[k]??k}：${typeof v==='boolean'?(v?'开启':'关闭'):k==='lift_off_microns'?Number(v)/1000+' mm':v+(k==='debounce_ms'?' ms':' 秒')}`).join('；');}
  if('Button'in s){const a=s.Button.action;let action:string;
   if(typeof a==='string')action=a==='Default'?'默认动作':a==='Hypershift'?'按住 Hypershift':'禁用';

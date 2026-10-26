@@ -72,6 +72,7 @@ impl DemoDevice {
             }
             Setting::GameMode(_) if !c.game_mode => return Err(Error::Unsupported("game mode")),
             Setting::VendorProfile{..}=>return Err(Error::Unsupported("native profile schema")),
+            Setting::SensorCalibration(v)=>v.validate(c.calibration.as_ref().ok_or(Error::Unsupported("sensor calibration"))?)?,
             Setting::Tuning(t)=>t.validate(c.tuning.as_ref().ok_or(Error::Unsupported("mouse performance"))?)?,
             _ => {}
         }
@@ -258,6 +259,7 @@ fn logitech_mouse() -> DemoDevice {
         game_mode: false,
         tuning:None,
         vendor_profile:None,
+        calibration:None,
     };
     let mut lighting = BTreeMap::new();
     lighting.insert(
@@ -354,6 +356,7 @@ fn razer_keyboard() -> DemoDevice {
         game_mode: true,
         tuning:None,
         vendor_profile:None,
+        calibration:None,
     };
     let mut lighting = BTreeMap::new();
     lighting.insert(
@@ -465,6 +468,7 @@ fn corsair_mouse() -> DemoDevice {
         game_mode: false,
         tuning:None,
         vendor_profile:None,
+        calibration:None,
     };
     let mut lighting = BTreeMap::new();
     lighting.insert(

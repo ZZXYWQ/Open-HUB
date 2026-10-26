@@ -62,6 +62,8 @@ pub struct Capabilities {
     pub tuning: Option<crate::tuning::TuningCaps>,
     #[serde(default,skip_serializing_if="Option::is_none")]
     pub vendor_profile: Option<String>,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub calibration: Option<crate::SensorCalibrationCaps>,
 }
 
 /// Current values of everything in [`Capabilities`]. Drivers fill what they
@@ -86,6 +88,8 @@ pub struct DeviceState {
     pub tuning: Option<crate::tuning::MouseTuning>,
     #[serde(default,skip_serializing_if="Option::is_none")]
     pub vendor_profile: Option<serde_json::Value>,
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub calibration: Option<crate::SensorCalibration>,
 }
 
 /// A single change to apply to a device. Profiles are lists of these.
@@ -114,6 +118,7 @@ pub enum Setting {
     /// Strict driver-owned schema for a complete native profile. Unsupported
     /// drivers must reject this; never a raw USB command passthrough.
     VendorProfile {schema:String,data:serde_json::Value},
+    SensorCalibration(crate::SensorCalibration),
 }
 
 impl Setting {
@@ -131,6 +136,7 @@ impl Setting {
             Setting::GameMode(_) => "Game mode",
             Setting::Tuning(_) => "Mouse performance",
             Setting::VendorProfile{..} => "Complete native profile",
+            Setting::SensorCalibration(_) => "Sensor calibration",
         }
     }
 
@@ -165,6 +171,7 @@ impl Setting {
             Setting::GameMode(b) => s.game_mode = Some(*b),
             Setting::Tuning(patch)=>patch.merge(s.tuning.get_or_insert_with(Default::default)),
             Setting::VendorProfile{data,..}=>s.vendor_profile=Some(data.clone()),
+            Setting::SensorCalibration(value)=>s.calibration=Some(*value),
         }
     }
 }

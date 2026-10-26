@@ -23,6 +23,7 @@ pub mod models;
 mod report;
 mod power;
 mod dav3pro_dpi;
+mod dav3pro_calibration;
 pub mod dav3pro_buttons;
 #[cfg(any(test, feature = "simulation"))]
 mod simulation;
@@ -37,6 +38,7 @@ mod testutil;
 
 pub use commands::{PollProto, Store, WaveCodes};
 pub use device::RazerDevice;
+pub use dav3pro_calibration::{calibration_caps, validate_sensor_calibration};
 pub use keymap::KeyMatrix;
 pub use link::{Settle, Timing};
 pub use models::{MODELS, Model};
