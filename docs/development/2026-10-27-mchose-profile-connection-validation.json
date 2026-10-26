@@ -1,0 +1,53 @@
+{
+  "date_local": "2026-10-27",
+  "base_commit": "e24b61a",
+  "scope": "all native MCHOSE manual profile connection preflight; no new models",
+  "accepted_complete_models": 0,
+  "release_version": "0.3.7",
+  "installer_built_published_or_installed": false,
+  "validation": {
+    "default_native_passed": 688,
+    "default_native_failed": 0,
+    "default_native_ignored": 53,
+    "new_default_tests": 1,
+    "new_explicit_replay_tests": 1,
+    "legacy_and_generic_UI_requests": 10,
+    "legacy_and_generic_native_preflight_accepted": 8,
+    "legacy_and_generic_native_preflight_rejected": 2,
+    "full_Plan_UI_native_transaction_replay": "passed",
+    "Logitech_per_mouse_UI_and_native_preflight_storage_replay": "passed",
+    "typescript": "passed",
+    "vite": "passed",
+    "development_build": "passed",
+    "physical_HID_access": false,
+    "OEM_execution": false,
+    "OS_input_injection": false,
+    "new_dependencies": 0,
+    "new_product_images": 0,
+    "javascript_bytes": 785915,
+    "javascript_delta_bytes": 69
+  },
+  "limits": [
+    "New legacy/generic UI replay covers native preflight and storage, not hardware command playback",
+    "Generation identifies opened transport, not continuously paired RF unit",
+    "Actual tray menu was not operated; production menu action serializer and resulting stale guard were tested",
+    "MagDock lighting session/restore, full receipt and model acceptance remain pending"
+  ],
+  "source_sha256": {
+    "src-tauri/src/main.rs": "4c2baf791f0935eb3f3941783851331fe64c7c2e08dde45870a88e6dbe42339d",
+    "src-tauri/src/mchose_target.rs": "05bf0571830edd6b26079ba071a8262c98698b4bb535b0db9dc462cadfd56df7",
+    "src-tauri/src/mhub_full_wire_tests.rs": "f4afd3a6f64561bac5bb53eaa6a3fc4db299cd7bea39017c682ce69140e0074c",
+    "src-tauri/src/mhub_transaction.rs": "f0addddd760537dc69bd51645b622afb76760fc77cae100aecadbab8e183cdda",
+    "src-tauri/src/profile_routing_tests.rs": "e1da061458ca873feba799f1fc8f9932d353efd6ac9bc85a7aea45f7446f6834",
+    "src-tauri/src/tray.rs": "f247735062954732b8ddd5ddf71013c1f249b360e0f2ab186bb64d396b4d2d62",
+    "src/components/app-header.tsx": "7af32ef57775eedd1b27440a90a90dc6e96e0075942ec80a2c5ffa6bf19d1e95",
+    "src/components/profiles-page.tsx": "62c9d3f155f53a3efc953ef8db05959c4ed27354958f23512a4ab994bd8cf1ad",
+    "src/lib/brands.ts": "8f79fbff861f0e6ca02d60c2a076183fd7586c32b6550a27be70629f66e5ec46",
+    "scripts/test-native-profile-routing-ui.cjs": "bab723bad8c330729780a357cc4d445d22c154c073ef652eab76ae912e0fa3af",
+    "scripts/test-mchose-all-profile-connections-ui.cjs": "537e346c41708912e8ee59066b2c4dbd28b0670ac3fb15170eb5e31e1343fc47"
+  },
+  "capture_sha256": {
+    "..\\outputs\\100-model-development\\mchose-all-profile-connections\\activation-requests.json": "549d16bb02480f0999b5fa8e1fcc3e7e04177472a6492f55ec04e568b35fc03d",
+    "..\\outputs\\100-model-development\\mchose-all-profile-connections\\report.json": "cb1c38a1c11c569432a055feb695745fdb608419bad94c304ccf95ea12a4768f"
+  }
+}

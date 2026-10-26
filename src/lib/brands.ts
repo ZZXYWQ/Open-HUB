@@ -21,6 +21,11 @@ export function matchesDevice(p:{target_vendor?:number|null;target_model?:number
 export function ownedProfileMatches(p:import('./api').Profile,d:import('./api').DeviceSummary,view:import('./api').ProfilesView){
  const owner=view.profile_owners?.[p.id];return matchesDevice(p,d)&&(!owner||owner===d.profile_key);
 }
+/** Native MCHOSE profiles, including generic DPI and board references, need
+ * the transport generation captured by the user's selection. */
+export function needsProfileConnection(d:{vendor_id:number;id:string}|null|undefined){
+ return d?.vendor_id===0x3837&&!d.id.startsWith('multi:')&&!d.id.startsWith('sino:');
+}
 export function activeDeviceProfile(view:import('./api').ProfilesView|null,d:import('./api').DeviceSummary|null|undefined){
  if(!view||!d?.profile_key)return null;const id=view.device_profiles?.[d.profile_key]?.active_id;
  return view.profiles.find(p=>p.id===id&&ownedProfileMatches(p,d,view))??null;

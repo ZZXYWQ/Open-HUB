@@ -429,7 +429,7 @@ fn activate_target_copy_context(app: &AppHandle, id: &str, reason: &'static str,
             let guard = manager(&devices)?;
             guard.as_ref().expect("manager initialised").with_device(&target.id, |d,t| {
                 if d.profile_key != target.observed_key { return Err(hidpp::Error::Other("设备在配置预览后发生变化，请重新选择；未写入配置".into())); }
-                if profile.mchose.is_some() {mhub_transaction::check_selected_connection(d,expected_connection)?;}
+                mchose_target::check_profile_connection(d,expected_connection)?;
                 if d.profile_key.starts_with("unit:") {
                     let current = d.call_unpadded(t, device::feature::DEVICE_INFO, 0, &[])?;
                     if profile_routing::logitech_unit(&current).as_ref() != Some(&d.profile_key) {

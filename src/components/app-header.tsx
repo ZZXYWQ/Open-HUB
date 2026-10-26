@@ -1,4 +1,4 @@
-import {ownedProfileMatches,activeDeviceProfile} from "@/lib/brands";
+import {ownedProfileMatches,activeDeviceProfile,needsProfileConnection} from "@/lib/brands";
 import { ArrowLeft, MonitorCog, RefreshCw } from "lucide-react";
 
 import { AppSettingsDialog } from "@/components/app-settings-dialog";
@@ -42,7 +42,7 @@ function ProfilePicker({ profiles, onActivate,device }: { profiles: ProfilesView
   const choices=device?profiles.profiles.filter(p=>ownedProfileMatches(p,device,profiles)):[];
   const active=activeDeviceProfile(profiles,device);
   return (
-    <Select value={active?.id??""} onValueChange={id=>onActivate(id,device?.id,false,choices.find(p=>p.id===id)?.mchose?device?.connection_key:undefined)}>
+    <Select value={active?.id??""} onValueChange={id=>onActivate(id,device?.id,false,needsProfileConnection(device)?device?.connection_key:undefined)}>
       <SelectTrigger className="h-[42px] max-w-72 gap-2.5 border-0 bg-card px-4 text-sm font-bold dark:bg-card dark:hover:bg-secondary" aria-label="Active profile">
         <MonitorCog className="size-5 text-foreground" />
         <span className="text-muted-foreground">Profile:</span>
@@ -50,7 +50,7 @@ function ProfilePicker({ profiles, onActivate,device }: { profiles: ProfilesView
       </SelectTrigger>
       <SelectContent position="popper" align="end" className="max-h-80">
         {choices.map((p) => (
-          <SelectItem key={p.id} value={p.id} disabled={Boolean(p.mchose&&!device?.connection_key)}>
+          <SelectItem key={p.id} value={p.id} disabled={needsProfileConnection(device)&&!device?.connection_key}>
             {p.name}
           </SelectItem>
         ))}

@@ -598,12 +598,12 @@ fn selected_connection_cannot_be_omitted_or_replaced_by_latest_device_metadata()
     let rig = Rig::new();
     let mut device = crate::mchose_target::simulated_device("mchose-A");
     for token in [None, Some(""), Some("connection:mchose-A:old")] {
-        assert!(crate::mhub_transaction::check_selected_connection(&device, token).is_err());
+        assert!(crate::mchose_target::check_profile_connection(&device, token).is_err());
     }
-    crate::mhub_transaction::check_selected_connection(&device, Some("connection:mchose-A:1"))
+    crate::mchose_target::check_profile_connection(&device, Some("connection:mchose-A:1"))
         .unwrap();
     device.connection_key = "connection:mchose-A:2".into();
-    assert!(crate::mhub_transaction::check_selected_connection(
+    assert!(crate::mchose_target::check_profile_connection(
         &device,
         Some("connection:mchose-A:1")
     )
@@ -691,7 +691,7 @@ fn actual_full_profile_ui_requests_replay_connection_guard_routing_store_and_tra
         let old_store = serde_json::to_value(&store).unwrap();
         let before = rig.mouse.lock().unwrap().requests.len();
         let other_before = other.mouse.lock().unwrap().requests.len();
-        let check = crate::mhub_transaction::check_selected_connection(
+        let check = crate::mchose_target::check_profile_connection(
             &device,
             request.args.expected_connection.as_deref(),
         );
@@ -765,4 +765,200 @@ fn actual_oem_controls_editor_profiles_replay_standalone_modifiers_consumer_and_
     let expected=[vec![0x16,1,4],vec![0x11,4,0]].into_iter().chain((224..=231).map(|usage|vec![0x11,usage,0])).chain([vec![0x14,183,0],vec![0x14,111,0],vec![0x14,112,0],vec![0x13,1,4],vec![0x12,1,0]]).collect::<Vec<_>>();assert_eq!(profiles.len(),expected.len());
     let a=Rig::new();let b=Rig::new();let device=crate::mchose_target::simulated_device("oem-editor-A");
     for (profile,binding)in profiles.iter().zip(expected){crate::profile_transfer::validate(profile).unwrap();let mut reference=plan();reference.buttons[1]=binding.clone();assert_eq!(profile.mchose,Some(reference));assert!(crate::profiles::apply_mchose_profile(profile,&device,&a.t).is_empty());assert_eq!(a.t.hardware_state().unwrap().buttons[1],binding);assert!(b.mouse.lock().unwrap().requests.is_empty());}
+}
+
+#[test]
+fn all_native_mchose_profile_shapes_and_tray_actions_require_the_original_connection() {
+    let rig = Rig::new();
+    let other = Rig::new();
+    let device = crate::mchose_target::simulated_device("mchose-A");
+    let peer = crate::profile_routing::Endpoint {
+        id: device.id.clone(),
+        name: device.name.clone(),
+        key: device.profile_key.clone(),
+        observed_key: device.profile_key.clone(),
+        connection_key: Some(device.connection_key.clone()),
+        vendor: device.vendor_id,
+        models: device.model_ids.clone(),
+        firmware: device.firmware_name.clone(),
+        route: crate::profile_routing::Route::Native,
+    };
+    let generic = crate::profiles::Profile::desktop();
+    let mut board = generic.clone();
+    board.id = "legacy-board".into();
+    board.mchose_board = Some(1);
+    board.target_vendor = Some(crate::mchose::VID);
+    board.levels.clear();
+    board.report_rate_hz = None;
+    for profile in [generic, board, to_profile(plan()).unwrap()] {
+        let mut store = crate::profiles::ProfileStore::default();
+        store.upsert(profile.clone());
+        let before = serde_json::to_value(&store).unwrap();
+        let (action, enabled) = crate::tray::profile_action(&peer, &profile.id);
+        assert!(enabled);
+        let (tray_id, tray_profile, tray_connection): (String, String, Option<String>) =
+            serde_json::from_str(action.strip_prefix("mchose-device-profile:").unwrap()).unwrap();
+        assert_eq!(tray_id, device.id);
+        assert_eq!(tray_profile, profile.id);
+        assert_eq!(
+            tray_connection.as_deref(),
+            Some(device.connection_key.as_str())
+        );
+        crate::mchose_target::check_profile_connection(&device, tray_connection.as_deref())
+            .unwrap();
+        for missing in [None, Some(String::new())] {
+            let mut unbound = peer.clone();
+            unbound.connection_key = missing;
+            assert!(!crate::tray::profile_action(&unbound, &profile.id).1);
+        }
+        // The manager has freshly resolved the same path and same observed owner,
+        // so routing alone still succeeds. Only the captured generation rejects it.
+        let mut reconnected = crate::mchose_target::simulated_device(&device.id);
+        reconnected.connection_key.push_str(":reopened");
+        let mut fresh_peer = peer.clone();
+        fresh_peer.connection_key = Some(reconnected.connection_key.clone());
+        for stale in [
+            None,
+            Some(""),
+            Some(device.connection_key.as_str()),
+            Some("connection:mchose-B:1"),
+        ] {
+            let prepared = crate::profile_routing::prepare(
+                &store,
+                &[fresh_peer.clone()],
+                &profile.id,
+                Some(&device.id),
+                false,
+                true,
+            )
+            .unwrap();
+            assert_eq!(prepared.target.observed_key, reconnected.profile_key);
+            assert!(crate::mchose_target::check_profile_connection(&reconnected, stale).is_err());
+            assert_eq!(serde_json::to_value(&store).unwrap(), before);
+            assert!(rig.mouse.lock().unwrap().requests.is_empty());
+            assert!(other.mouse.lock().unwrap().requests.is_empty());
+            assert!(!rig.directory.exists());
+        }
+        crate::mchose_target::check_profile_connection(
+            &reconnected,
+            Some(&reconnected.connection_key),
+        )
+        .unwrap();
+    }
+    let mut logitech = device;
+    logitech.vendor_id = 0x046d;
+    logitech.connection_key.clear();
+    crate::mchose_target::check_profile_connection(&logitech, None).unwrap();
+    let mut logi_peer = peer;
+    logi_peer.vendor = 0x046d;
+    logi_peer.connection_key = None;
+    let (action, enabled) = crate::tray::profile_action(&logi_peer, "desktop");
+    assert!(enabled);
+    let pair: (String, String) =
+        serde_json::from_str(action.strip_prefix("device-profile:").unwrap()).unwrap();
+    assert_eq!(pair.1, "desktop");
+}
+
+#[test]
+#[ignore = "requires actual built UI requests via OPEN_HUB_MCHOSE_ALL_PROFILE_UI_CAPTURE"]
+fn actual_legacy_and_generic_profile_ui_requests_replay_native_connection_preflight() {
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase", deny_unknown_fields)]
+    struct Args {
+        id: String,
+        device_id: Option<String>,
+        #[serde(default)]
+        as_copy: bool,
+        expected_connection: Option<String>,
+    }
+    #[derive(serde::Deserialize)]
+    struct Request {
+        args: Args,
+        server_generation: u8,
+        expected_success: bool,
+    }
+    #[derive(serde::Deserialize)]
+    struct Capture {
+        kind: String,
+        profile: crate::profiles::Profile,
+        requests: Vec<Request>,
+    }
+    let bytes =
+        std::fs::read(std::env::var("OPEN_HUB_MCHOSE_ALL_PROFILE_UI_CAPTURE").unwrap()).unwrap();
+    assert!(bytes.len() < 128 * 1024);
+    let captures: Vec<Capture> = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(captures.len(), 2);
+    let mut accepted = 0;
+    let mut rejected = 0;
+    for capture in captures {
+        assert!(capture.profile.mchose.is_none());
+        match capture.kind.as_str() {
+            "board" => {
+                assert_eq!(capture.profile.id, "mchose-template");
+                assert_eq!(capture.profile.mchose_board, Some(1));
+            }
+            "generic" => {
+                assert_eq!(capture.profile.id, "desktop");
+                assert!(capture.profile.target_vendor.is_none());
+                assert!(capture.profile.mchose_board.is_none());
+                assert!(!capture.profile.levels.is_empty());
+            }
+            _ => panic!("unexpected source shape"),
+        }
+        assert_eq!(capture.requests.len(), 5);
+        let mut store = crate::profiles::ProfileStore::default();
+        store.upsert(capture.profile.clone());
+        let rig = Rig::new();
+        for request in capture.requests {
+            assert_eq!(request.args.id, capture.profile.id);
+            assert!(!request.args.as_copy);
+            let selected = request.args.device_id.as_deref().unwrap();
+            assert!(["mchose-A", "mchose-B"].contains(&selected));
+            let mut device = crate::mchose_target::simulated_device(selected);
+            device.connection_key = format!("connection:{selected}:{}", request.server_generation);
+            // Keep observed owner constant to isolate the generation race.
+            let peer = crate::profile_routing::Endpoint {
+                id: device.id.clone(),
+                name: device.name.clone(),
+                key: device.profile_key.clone(),
+                observed_key: device.profile_key.clone(),
+                connection_key: Some(device.connection_key.clone()),
+                vendor: device.vendor_id,
+                models: device.model_ids.clone(),
+                firmware: device.firmware_name.clone(),
+                route: crate::profile_routing::Route::Native,
+            };
+            let prepared = crate::profile_routing::prepare(
+                &store,
+                &[peer],
+                &request.args.id,
+                Some(selected),
+                false,
+                true,
+            )
+            .unwrap();
+            let before = serde_json::to_value(&store).unwrap();
+            let check = crate::mchose_target::check_profile_connection(
+                &device,
+                request.args.expected_connection.as_deref(),
+            );
+            assert_eq!(check.is_ok(), request.expected_success);
+            if check.is_err() {
+                rejected += 1;
+                assert_eq!(serde_json::to_value(&store).unwrap(), before);
+            } else {
+                // This replay covers production preflight and private-copy storage;
+                // generic/legacy hardware command playback is not claimed here.
+                let mut updated = prepared.updated;
+                updated
+                    .select_for(&prepared.target, &prepared.profile.id)
+                    .unwrap();
+                store = updated;
+                accepted += 1;
+            }
+            assert!(rig.mouse.lock().unwrap().requests.is_empty());
+            assert!(!rig.directory.exists());
+        }
+    }
+    assert_eq!((accepted, rejected), (8, 2));
 }

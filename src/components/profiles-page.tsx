@@ -15,7 +15,7 @@ import {VendorProfileImport} from '@/components/vendor-profile-import';
 import {SinoNewProfile} from "@/components/sino-new-profile";
 import {SinoProfileEditor} from "@/components/sino-panel";
 import {api} from "@/lib/api";
-import {brandName,profileVendor,matchesDevice} from "@/lib/brands";
+import {brandName,profileVendor,matchesDevice,needsProfileConnection} from "@/lib/brands";
 import {save} from "@tauri-apps/plugin-dialog";
 import {ProfileImportDialog} from "@/components/profile-import-dialog";
 import {toast} from "sonner";
@@ -153,7 +153,7 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
               {needsTarget&&<label className="text-xs text-muted-foreground">应用到哪只鼠标<select aria-label={`配置 ${p.name} 目标鼠标`} className="mt-1 w-full rounded border bg-background p-2 text-sm" value={target} onChange={e=>setTargets({...targets,[p.id]:e.target.value})}><option value="">请选择目标鼠标</option>{candidates.map((d,i)=><option key={d.id} value={d.id}>{i+1}. {d.name} · {d.id.replace(/:board:\d+$/,'').split(':').at(-1)?.slice(-48)}</option>)}</select><span>仅应用到所选鼠标。导入的模板会生成独立副本。</span></label>}
               {asCopy&&<p className="text-xs text-muted-foreground">将保留原配置，为所选鼠标创建独立副本。</p>}
               <div className="mt-1 flex items-center gap-1">
-                <Button size="sm" disabled={!available||needsTarget&&!target||Boolean(p.mchose&&!selected?.connection_key)} title={available?"应用到匹配品牌与型号的鼠标":"请先连接匹配的鼠标；未适配品牌无法应用参数"} variant={active ? "secondary" : "default"} onClick={() => onActivate(p.id,target||undefined,asCopy,p.mchose?selected?.connection_key:undefined)}>
+                <Button size="sm" disabled={!available||needsTarget&&!target||needsProfileConnection(selected)&&!selected?.connection_key} title={available?"应用到匹配品牌与型号的鼠标":"请先连接匹配的鼠标；未适配品牌无法应用参数"} variant={active ? "secondary" : "default"} onClick={() => onActivate(p.id,target||undefined,asCopy,needsProfileConnection(selected)?selected?.connection_key:undefined)}>
                   <Play /> {!available?"未连接匹配鼠标":asCopy?"复制并应用":active ? "重新应用" : "应用配置"}
                 </Button>
                 <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setEditing(p)} aria-label={`Edit ${p.name}`}>

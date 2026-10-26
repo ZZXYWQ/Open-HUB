@@ -74,8 +74,17 @@ pub fn read_hardware(
     })
 }
 
-// Manual generic IPC has no read context. Saved profiles use separate fresh
-// device routing and native Device setters, which this restriction does not alter.
+/// All native profile shapes share this guard before the dispatcher does I/O.
+/// Generic DPI and legacy board profiles must not bypass the captured connection.
+pub fn check_profile_connection(device: &Device, expected: Option<&str>) -> Result<()> {
+    if device.vendor_id == mchose::VID {
+        read_context(device, expected.unwrap_or(""))?;
+    }
+    Ok(())
+}
+
+// Direct generic IPC has no read context. Saved profiles are checked separately
+// by check_profile_connection in the native activation dispatcher.
 pub fn reject_unbound_write(device: &Device) -> Result<()> {
     if device.vendor_id == mchose::VID {
         return Err(changed());

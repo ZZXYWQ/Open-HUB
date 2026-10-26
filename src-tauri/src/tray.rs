@@ -14,6 +14,18 @@ use crate::{lock_store, update_store, ProfilesState};
 
 const TRAY_ID: &str = "main";
 
+/// Capture the menu connection for every native MCHOSE profile. An old menu
+/// must not obtain a fresh token when clicked after a reconnect.
+pub(crate) fn profile_action(device: &crate::profile_routing::Endpoint, profile_id: &str) -> (String, bool) {
+    if device.route == crate::profile_routing::Route::Native && device.vendor == crate::mchose::VID {
+        let payload = serde_json::to_string(&(device.id.as_str(), profile_id, device.connection_key.as_deref())).expect("connection tuple serializes");
+        (format!("mchose-device-profile:{payload}"), device.connection_key.as_ref().is_some_and(|s| !s.is_empty()))
+    } else {
+        let payload = serde_json::to_string(&(device.id.as_str(), profile_id)).expect("string pair serializes");
+        (format!("device-profile:{payload}"), true)
+    }
+}
+
 #[derive(Clone)]
 pub struct DeviceBattery {
     pub id: String,
@@ -128,13 +140,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
                 let label = format!("{}. {} · {}",i+1,device.name,active.map(|p|p.name.as_str()).unwrap_or("未分配配置"));
                 let submenu = Submenu::with_id(app,format!("device-profiles:{i}"),label,true)?;
                 for p in store.profiles.iter().filter(|p| device.matches(p) && store.profile_owners.get(&p.id).is_none_or(|owner| owner == &device.key)) {
-                    let (action,enabled)=if p.mchose.is_some() {
-                        let payload=serde_json::to_string(&(device.id.as_str(),p.id.as_str(),device.connection_key.as_deref())).expect("connection tuple serializes");
-                        (format!("mchose-device-profile:{payload}"),device.connection_key.as_ref().is_some_and(|s|!s.is_empty()))
-                    }else{
-                        let payload=serde_json::to_string(&(device.id.as_str(),p.id.as_str())).expect("string pair serializes");
-                        (format!("device-profile:{payload}"),true)
-                    };
+                    let (action,enabled)=profile_action(device,&p.id);
                     submenu.append(&CheckMenuItem::with_id(app,action,&p.name,enabled,active.is_some_and(|a|a.id==p.id),None::<&str>)?)?;
                 }
                 menu.append(&submenu)?;

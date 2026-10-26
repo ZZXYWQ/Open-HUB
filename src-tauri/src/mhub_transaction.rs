@@ -55,12 +55,6 @@ fn require_macro(t: &Transport, slot: u8, expected: Option<&MouseMacro>) -> Resu
     Ok(())
 }
 
-/// Do not replace a stale UI/tray selection with a newly resolved connection.
-pub fn check_selected_connection(device: &Device, expected: Option<&str>) -> Result<()> {
-    crate::mchose_target::read_context(device, expected.unwrap_or(""))?;
-    Ok(())
-}
-
 /// The manager lock must remain held across this call. The Target is verified
 /// before identity GET, backup or SET. A transport generation is not an RF unit id.
 pub fn apply(

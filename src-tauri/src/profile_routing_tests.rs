@@ -360,7 +360,7 @@ fn fixture() -> (ProfileStore, Vec<crate::DeviceSummary>) {
     s.upsert(mchose);
     for unit in ["A", "B"] {
         devices.push(crate::DeviceSummary {
-            connection_key: None,
+            connection_key: Some(format!("connection:mchose-{unit}:1")),
             vendor_id: 0x3837,
             id: format!("mchose-{unit}"),
             profile_key: format!("session:mchose-{unit}"),
@@ -415,6 +415,12 @@ fn replay_profile_routing_ui_through_production_preflight_and_private_storage() 
                     profile,
                     mut updated,
                 } = prepare(&store, &peers, id, selected, as_copy, true).unwrap();
+                if target.vendor == crate::mchose::VID {
+                    let device = crate::mchose_target::simulated_device(&target.id);
+                    crate::mchose_target::check_profile_connection(&device, a["expectedConnection"].as_str()).unwrap();
+                } else {
+                    assert!(a.get("expectedConnection").is_none());
+                }
                 // The real dispatcher receives just one endpoint; record it rather
                 // than opening a HID handle. Commit the production store transition.
                 touched.push(target.id.clone());
