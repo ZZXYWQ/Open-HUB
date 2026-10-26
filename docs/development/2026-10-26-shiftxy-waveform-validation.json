@@ -1,0 +1,104 @@
+{
+  "date": "2026-10-26",
+  "status": "development_only",
+  "full_accepted_distinct_models": 0,
+  "counts_are_not_mouse_acceptance": true,
+  "implemented": {
+    "DeathAdder_V3_Pro": [
+      "Independent XY native clutch in both layers, separately traced exact B6 and B7 serializer",
+      "Legacy uniform Shift JSON/wire and equal-axis native decode preserved",
+      "Explicit independent source intent retained through Synapse4 preview, editing, save/load and native simulated replay",
+      "Other mouse templates reject ShiftXY; wheel directions retain existing action restrictions"
+    ],
+    "Logitech_8070": [
+      "Explicit breathing waveform0..6 with actual native period/reserved-byte preservation",
+      "Legacy Breathing preserves opaque original waveform; only explicit form choice uses additive action",
+      "Current connection/zone comparison, write/readback and conditional recovery unchanged"
+    ],
+    "MCHOSE": [
+      "Async continuation and deferred file-dialog operations cancelled after leaving target;10grouped headless checks"
+    ]
+  },
+  "validation": {
+    "application_default_tests_passed": 602,
+    "explicit_saved_UI_config_native_cross_tests_passed": 40,
+    "core_driver_unit_tests_passed": 375,
+    "core_doctests_passed": 1,
+    "headless_UI_suites_passed": 52,
+    "memory_transport_development_exe_cases_passed": 38,
+    "Synapse_import_tests_including_two_UI_replays_passed": 25,
+    "native_Logitech_lighting_focused_default_tests_passed": 23,
+    "waveform_actual_UI_requests_replayed": 8,
+    "DA_exact_transports": 2,
+    "DA_distinct_mouse_models": 1,
+    "typescript": "passed",
+    "vite": "passed",
+    "development_exe_build": "passed",
+    "git_diff_check": "passed"
+  },
+  "primary_source": {
+    "DA_XY": "razer-dav3pro-shiftxy-static-facts.json",
+    "Logitech_waveform": {
+      "url": "https://github.com/pwr-Solaar/Solaar/blob/e7304c4c451cc9bb4f206a914844525e67856a28/lib/logitech_receiver/hidpp20.py",
+      "sha256": "b6dfbd88bba8dcbf6b3eb2de5ea1345c2b02f56a67e23799a1b2a5c7f635aaa7",
+      "symbols": [
+        "LedFormChoices",
+        "LEDEffects[0x0A]"
+      ],
+      "form_values": {
+        "0": "Default",
+        "1": "Sine",
+        "2": "Square",
+        "3": "Triangle",
+        "4": "Sawtooth",
+        "5": "Shark_fin",
+        "6": "Exponential"
+      },
+      "parameter_offset": 5,
+      "zone_SET_packet_offset": 7,
+      "use": "interop facts; no source copied or executed"
+    }
+  },
+  "proof_limits": [
+    "Primary static serializers/protocol plus authored memory transport and actual built UI; no newly tested physical mouse",
+    "DA host macro event delivery/Fn3-Fn4 assignment relation and B7 paired-mouse identity remain gaps",
+    "DA exported device-level sleep/low-power/calibration context remains unresolved and blocked",
+    "No configurable DA RGB exists; no invented native RGB controls",
+    "Logitech8071 software-control ownership, other original effects and physical waveform/brightness/timing behavior remain gaps",
+    "This does not constitute100 full models or a full-brand claim"
+  ],
+  "frontend": {
+    "javascript_bytes": 753858,
+    "javascript_gzip9_bytes": 227058,
+    "new_runtime_dependencies": 0
+  },
+  "source_hashes_are_local_working_tree_bytes": true,
+  "source_sha256": {
+    "src-tauri/vendor/gearwise/crates/gearwise-core/src/model.rs": "ac3d65bbd0f007e4528288587d4dd86d4ccd1e6345732338b9bbfb8a71b5d98c",
+    "src-tauri/vendor/gearwise/crates/gearwise-razer/src/dav3pro_buttons.rs": "8a3f7976e2d56085963d76ec5ee29a78a113cd4e5b3703d2106002e72b55c124",
+    "src-tauri/src/dav3pro_models.rs": "aa3f48f429c420359bbda9650025f877deeabf3b22d847b7a021fd307ccbc09a",
+    "src-tauri/src/synapse_dav3pro.rs": "85046d310d64cf162914133e655cc25a3a0aa05e695baebd2fcc9dbb4ca63a5c",
+    "src-tauri/src/synapse_dav3pro_import_tests.rs": "33e619ab1869affe99ee2be44ffe4530b5bf087af7a8aeba7166c99a30d690e4",
+    "src-tauri/src/native_logitech_lighting.rs": "118cc90eeda37e25ec91e3faa470d4100364ac9da12a3e6e1034349f3d37ce2d",
+    "src-tauri/src/native_logitech_lighting_tests.rs": "715f2b641e213d5805bb3739e21c9381ee90b6b9f17895a58f71ba43fed77193",
+    "src/components/multi-panel.tsx": "f03147a9ac54db6e3ed610880df16edc245fe561bcf880d253885b78d0277768",
+    "src/components/reconnect-plans.tsx": "d23c408ecc0794aa98e7acb1344bcba45012b2e6ce0618e02d174ce812775b5b",
+    "src/lib/multi.ts": "7e5bca4600e061572f7b6b2e4b7084571a79717729270efb6f4cdc3cd8e122d2",
+    "src/components/logitech-lighting.tsx": "9100086e993c6445d5cc695e87667a58070fd9c8b00c0551caff98580f153ec4",
+    "src/lib/logitech-lighting.ts": "7a3e69bed4aa5bc3dc9abb1b8d901d96ddca3645ded7d8e01c43e116416d12cf",
+    "scripts/test-dav3pro-shiftxy-ui.cjs": "a30e5685cbb98f6e24ec7645f034f8d1dd1feb36b496132ef2633a01100cc018",
+    "scripts/test-logitech-waveform-ui.cjs": "11858f0a971c81183b3eb2d5395dd2056605d0031c35612040ded3866e30c586"
+  },
+  "development_exe_sha256": "67998dea77d08e0836a18fa3e3c8dcd82f708b07f75e99aace18337b5ec3b1f2",
+  "installed_0_3_7_exe_sha256_unchanged": "e77fc588993d0a7f2d1c1cd12313610731d5b3ecec293ba2c7d7f5e397ea06b0",
+  "release_version_unchanged": "0.3.7",
+  "installer_created": false,
+  "release_published": false,
+  "OEM_code_executed": false,
+  "another_OEM_application_downloaded": false,
+  "code_checkpoints": {
+    "MCHOSE_target_lifetime": "517424f",
+    "DA_independent_XY": "d0a6ccf",
+    "Logitech_native_waveforms": "fb79f52"
+  }
+}

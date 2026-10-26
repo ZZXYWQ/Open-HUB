@@ -14,10 +14,17 @@
     "member": "Drivers/x64/RzDev_00b6.sys",
     "member_bytes": 63200,
     "member_sha256": "cd01cb4fd7706a225c5a0f5cd0e0ca95e25e9fdfec12d85e31ec95246c04d34b",
-    "inspection": "7-Zip streamed the retained member into memory; own PE and HID short-item parsers inspected bytes without loading a driver or writing extracted binaries",
+    "inspection": "Only the recorded SYS was selectively extracted into an isolated research scratch and parsed by Ghidra plus own PE/HID parsers; no OEM code was executed or dynamically loaded",
     "PE": "One x64 PE, preferred image base 0x140000000; .rdata file offset 0x8000 maps to RVA 0x9000",
-    "imports": ["ntoskrnl.exe", "WppRecorder.sys", "WDFLDR.SYS"],
-    "interesting_strings": ["RzDevCreateVirtualHidDevice", "CRzDevice::IoInternalDeviceControl"],
+    "imports": [
+      "ntoskrnl.exe",
+      "WppRecorder.sys",
+      "WDFLDR.SYS"
+    ],
+    "interesting_strings": [
+      "RzDevCreateVirtualHidDevice",
+      "CRzDevice::IoInternalDeviceControl"
+    ],
     "embedded_HID_candidates": [
       {
         "kind": "Keyboard",
@@ -47,14 +54,20 @@
         "collections": "25-byte Consumer collection with report ID 1 and 16 input bits; 29-byte System Control collection with report ID 2 and 8 input bits"
       }
     ],
-    "candidate_boundary": "Adjacent HID headers declare report lengths 63/58/54. Array callers were not traced, so these remain embedded descriptor candidates. The virtual-HID string is a next-step locator, not proof of how the arrays are used. None supplies the missing physical report-4/report-5 layout."
+    "candidate_boundary": "Static references now bind these blocks to virtual HID devices: creation routine 0x140005FA4 assigns them to virtual contexts, whose descriptor dispatch serves the same pointers. These are not the missing physical USB descriptor bytes."
   },
   "retained_named_keys": {
-    "members": ["Devices/LitaT1/Bin/kbddef.dat", "Devices/LitaT1_24G/Bin/kbddef.dat"],
+    "members": [
+      "Devices/LitaT1/Bin/kbddef.dat",
+      "Devices/LitaT1_24G/Bin/kbddef.dat"
+    ],
     "relative_to": "research-next-brands/razer-official-182-module-unpacked/$APPDATA/Razer/Synapse3/Service/Staging",
     "identical_sha256": "44bde1e2c3e9021608f7e706dd08c815c68896b7143920b471c6e9b1b546b1de",
     "bytes_each": 60382,
-    "UTF16_label_offsets": {"F13": 19688, "F24": 21602},
+    "UTF16_label_offsets": {
+      "F13": 19688,
+      "F24": 21602
+    },
     "limit": "Named key data and the logical DefaultMappings.xml/Mappings.xml assignments do not establish a physical HID descriptor, event bytes or standalone delivery"
   },
   "public_primary_observations": [
@@ -74,10 +87,125 @@
     }
   ],
   "bounded_next_independent_proof": [
-    "Trace static references to the three embedded descriptor blocks and the RzDevCreateVirtualHidDevice locator. Establish whether internal HID dispatch serves these arrays only for virtual devices, before using any item as evidence about firmware.",
-    "Trace the actual USB input-completion path separately from virtual injection and the already-proven 0x88883018 driver notification decoder. Require an exact report-4/report-5 parser and a native Fn3/4 action-to-event relation; a GUID host-engine call alone is insufficient.",
-    "For a narrower Fn2 reserved-key bridge, obtain an independent exact-B6 descriptor and press/release capture under a documented OEM-filter-free configuration. Retain control/keyboard physical association and two-unit ambiguity evidence; existing key labels and a successful feature SET cannot substitute for input delivery.",
-    "Keep B7 separately blocked until a source can be tied to the paired mouse rather than the shared receiver; neither its container nor its larger MI01 descriptor establishes that identity."
+    "Bind a native Fn3/Fn4 assignment operand to the report4/8 code byte or report5/9 payload through the exact B6 middleware/controller setter; the previously reviewed GUID-based host mapping structure is not the seven-byte hardware action.",
+    "Establish an independent user-mode event collection and its actual physical descriptor. A filter-driver decoder and its class callbacks do not prove that an application can receive equivalent events without OEM filters.",
+    "For the narrower Fn2 reserved-key bridge, retain an exact-B6 descriptor and press/release capture under a documented OEM-filter-free configuration, with control/keyboard physical association and two-unit ambiguity evidence.",
+    "Keep B7 separately blocked until event source identity is tied to the paired mouse rather than the shared receiver."
   ],
-  "conclusion": "The retained application provides a concrete, bounded kernel-driver static target, but the inspected evidence does not yet prove standalone Fn3/4 events or authorize a B6/B7 macro bridge."
+  "conclusion": "Embedded descriptors are positively virtual, while the separate USB-completion path positively decodes report4/8 active-code transitions and forwards opaque report5/9 fields. Native Fn3/Fn4 assignment linkage, standalone event access and physical identity remain unproven; no B6/B7 macro bridge is authorized.",
+  "verified_virtual_descriptor_route": {
+    "creation": "0x140005FA4 (RVA 0x5FA4), identified by its RzDevCreateVirtualHidDevice string references and RZVIRTUAL VID/PID/MI/collection identity construction",
+    "selection": "Type 1 uses mouse block 0x1400093D8; type 2 uses keyboard block 0x140009388; type 8 uses consumer/system block 0x140009428. It stores the HID descriptor pointer at context+0x20 and report descriptor pointer at +0x28.",
+    "queue": "Creation registers 0x140006B90; IOCTL 0xB0003 goes to HID-descriptor helper 0x140006F5C, 0xB0007 to report-descriptor helper 0x14000703C. These copy the context pointers using the declared descriptor lengths.",
+    "registry_gate": "Device start 0x1400027D0 reads Virtual_Kbd/Virtual_Mou/Virtual_Con (including per-product variants) before requesting virtual device creation."
+  },
+  "verified_USB_completion_route": {
+    "internal_dispatch": "0x140003270 (RVA 0x3270) recognizes IOCTL 0x220003, inspects the attached URB, and registers completion 0x140003A90 when URB function is 9.",
+    "completion": "0x140003A90 checks successful URB status and passes TransferBuffer and TransferBufferLength (URB offsets 0x28 and 0x24) through device-object method offset 0x40.",
+    "exact_object_binding": "Constructor 0x1400046FC sets device operations table 0x140009238. Table+0x40 is 0x140003CB0; completion instruction 0x140003B30 selects method+0x40. The earlier adjacent driver operations table starts at 0x140009228 and must not be used as this device table.",
+    "decoder": "0x140003CB0 (RVA 0x3CB0) requires live controller/device fields, a nonnull transfer buffer and total length 1..64. The MPos forwarding path, when active, takes precedence over the report-specific branches.",
+    "limit": "This is a kernel USB-transfer completion path, separate from the virtual descriptor queue. It does not itself establish a user-mode openable collection, Windows RawInput delivery, or operation without OEM filters."
+  },
+  "verified_report4_8": {
+    "report_ids": [
+      4,
+      8
+    ],
+    "gate": "Device flag 0x10 (DkmKeyDevice) and a registered keyboard callback are required; retained history is a 64-byte per-device array at context+0x62C.",
+    "layout": "Byte 0 selects report 4 or 8. Subsequent bytes are the active code list; the new-code pass stops on zero. The decoder compares current codes with retained previous codes, emits releases for removed codes and presses for added codes, then replaces history with the payload after byte 0.",
+    "output": "The callback records have KEYBOARD_INPUT_DATA-compatible fields: MakeCode is the code byte, Flags is 1 on release and 0 on press. UnitId is 0 for report 4 and 0xABCD for report 8.",
+    "limits": [
+      "The code byte is not proved to be a USB keyboard usage, native button ID, stored macro ID, GUID index or native Fn3/Fn4 operand.",
+      "Unit marker 0xABCD is not proved to mean Hypershift or a paired physical mouse.",
+      "No hardware capture or standalone user-mode receive path was observed."
+    ],
+    "authored_algorithm_examples": [
+      {
+        "previous": [
+          "A"
+        ],
+        "current": [
+          "A",
+          "B"
+        ],
+        "emits": [
+          "press B"
+        ]
+      },
+      {
+        "previous": [
+          "A",
+          "B"
+        ],
+        "current": [
+          "B"
+        ],
+        "emits": [
+          "release A"
+        ]
+      },
+      {
+        "previous": [
+          "B"
+        ],
+        "current": [
+          "B"
+        ],
+        "emits": []
+      },
+      {
+        "previous": [
+          "B"
+        ],
+        "current": [],
+        "emits": [
+          "release B"
+        ]
+      }
+    ],
+    "example_boundary": "Symbolic authored reasoning for valid unique active-code lists; these are not captured packets, assigned hardware codes or executable tests."
+  },
+  "report5_9_boundary": {
+    "report_ids": [
+      5,
+      9
+    ],
+    "gate": "Device flag 0x8 (DkmMouseDevice) and a registered mouse callback are required.",
+    "proven_behavior": "0x140003CB0 packages fixed-width transfer fields into a MOUSE_INPUT_DATA-compatible envelope with a vendor marker 0x10000000 in its Buttons word. Report 9 uses UnitId 0xABCD; report 5 uses UnitId 0.",
+    "unresolved": "The payload fields are opaque here. No macro ID, GUID, press/release meaning, layer meaning or strict standalone packet-shape contract is inferred from these copies."
+  },
+  "exact_interface_context": {
+    "INF_member": "Drivers/x64/Lower/RzDevU_00b6_Dkm.inf",
+    "INF_sha256": "a880022de96351f6386dde341e4c1acdc618d9d2accd123564088851aa3bb6c4",
+    "INF_locations": "Lines 31-33 match USB VID1532 PID00B6/PID00B7 MI01; lines 49-51 install RzDev_00b6 as lower filter and enable DkmKeyDevice/DkmMouseDevice.",
+    "flag_initialization": "0x1400027D0 reads DkmMouseDevice and DkmKeyDevice at strings 0x140008590/0x1400085B0, setting device flags 0x8/0x10 respectively.",
+    "limit": "The driver applies to both listed interfaces, but neither this shared decoder nor its unit marker separates paired mice behind B7 or proves firmware event generation for a given assignment."
+  },
+  "Microsoft_structure_references": [
+    "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/usbioctl/ni-usbioctl-ioctl_internal_usb_submit_urb",
+    "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/usb/ns-usb-_urb_bulk_or_interrupt_transfer",
+    "https://learn.microsoft.com/en-us/windows/win32/api/ntddkbd/ns-ntddkbd-keyboard_input_data",
+    "https://learn.microsoft.com/en-us/windows/win32/api/ntddmou/ns-ntddmou-mouse_input_data"
+  ],
+  "private_reproduction_outputs": [
+    "outputs/100-model-development/razer-b6-kernel-static/initial-xrefs.json",
+    "outputs/100-model-development/razer-b6-kernel-static/virtual-and-internal.json",
+    "outputs/100-model-development/razer-b6-kernel-static/input-completion.json",
+    "outputs/100-model-development/razer-b6-kernel-static/completion-instructions.json",
+    "outputs/100-model-development/razer-b6-kernel-static/physical-dispatch-owner.json",
+    "outputs/100-model-development/razer-b6-kernel-static/device-start.json",
+    "outputs/100-model-development/razer-b6-kernel-static/b6-button-setter-xrefs.json",
+    "outputs/100-model-development/razer-b6-kernel-static/b6-mapping-assignment.json",
+    "outputs/100-model-development/razer-b6-kernel-static/b6-assignment-preprocess.json"
+  ],
+  "assignment_link_boundary": {
+    "native_B6": {
+      "retained_artifact": "research-next-brands/razer-official-182-mw-unpacked/RzCtl_00B6.dll",
+      "sha256": "caffd8cf48986e3559aca551d9069a36563b77c01e3061373d8b5a4ee223c217"
+    },
+    "checked_driver_mapping_route": "CMapping method 0x100275A0 first calls its preprocessor 0x10021050, then registers a 0x6C mapping record and owner context through feature 0x4010001. Preprocessor 0x10021050 queries the old mapping via 0x10021800, can stop old macro work via feature 0x403, and removes the old input mapping via feature 0x4010002. These checked methods do not produce a seven-byte firmware macro action.",
+    "separate_firmware_setter": "0x1002E2D0 copies seven supplied action bytes into the ten-byte 02/0C assignment record and dispatches it with acknowledgement enabled. This generic wrapper does not interpret Fn3/Fn4 or map an action operand to an event code. Its observed static references are controller table slots 0x10062080 and 0x10064050.",
+    "prior_shared_converter": "The previously reviewed MappingBase converter 0x10063D40 belongs to RSy3_MappingBaseV2M.dll SHA256 cc5efd5bb6fad74462f38c4998c88e9042e80651a16ba1faf57c5606c9153b2b. It builds an internal group-2 GUID/playback/repeat record; this is not evidence for the seven-byte firmware action.",
+    "bounded_exclusion": "The reviewed kernel parser and checked user-mode host-mapping registration chain do not supply the missing Fn3/Fn4 assignment-to-report/code relationship. This is a limit of the inspected paths, not a claim that no such relationship exists elsewhere."
+  }
 }

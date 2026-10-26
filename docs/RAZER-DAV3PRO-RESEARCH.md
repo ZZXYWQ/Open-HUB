@@ -69,3 +69,7 @@ Hypershift 后续增量使用独立原生层选择器：普通层为 0，第二�
 
 
 软件宏继续保持关闭。现有Basilisk的单次/切换桥接不能直接按品牌复制：B6缺少键盘RawInput与真实鼠标身份关联证据，现有Razer序列号路径还需补齐跨应用/启动/恢复的生命周期核验；触发键必须核对新鲜完整两层表，原本为Hypershift的目标也需要成对日志或提前拒绝。B7多配对接收器继续单独阻断，十二个软件触发键和物理左键范围也不能伪装为十六条记录完整宏支持。[准备条件与拒绝测试清单](development/razer-dav3pro-host-macro-readiness.json)。
+
+后续校准已按B6/B7各自原厂原生实现接通等级与双阈值，不以毫米猜测等级；严格读取、所有权和有条件恢复及实际UI方案回放已覆盖。Synapse4的已证明子集改为保留原始来源并严格转换，稀疏按键不补默认值、未知字段不丢弃，设备级省电/校准在导出中的覆盖规则仍未确认。
+
+独立X/Y狙击DPI后续增量已分别核对B6/B7原生serializer与来源桥；增加明确的ShiftXY动作、两层对应UI和完整来源/存储/生产驱动回放，旧等轴Shift保持兼容，其他型号不自动开放。软件宏的实际事件来源、Fn3/Fn4分配到事件码的关系与接收器逐鼠标身份仍有缺口。[独立XY静态证据](development/razer-dav3pro-shiftxy-static-facts.json)与[本轮验证](development/2026-10-26-shiftxy-waveform-validation.json)分别记录范围。

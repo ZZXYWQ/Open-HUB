@@ -15,7 +15,11 @@
 
 </div>
 
-正在开发 [100 款鼠标完整适配目标](docs/100-MODEL-ACCEPTANCE.md)。开发中的[罗技原生板载按键](docs/LOGITECH-ONBOARD-BINDINGS.md)、性能控制与 X11 原生方案见 [进度及缺口](docs/development/2026-10-26-performance-x11.md)；尚未达到完整验收，不会据此生成中间安装包，当前下载仍为上方 0.3.7 实验版。 新增开发中的 [Sensei Ten 原生控制与 GG 导入](docs/SENSEI-TEN.md)，包括五档 CPI、八键和双区灯效；模拟验证与实物缺口分开记录。 [Rival 600 的七键、八灯区和抬升配置](docs/RIVAL600.md) 也在该开发分支，未生成新安装包。 [DeathAdder V3 Pro 的 DPI、回报率及原生省电](docs/RAZER-DAV3PRO-RESEARCH.md) 也已通过公开报文回放与对应 UI 测试，八个输入的完整已知两层记录、保留普通左键的条件改绑和原厂 Hypershift 联动也已接通；宏、校准和完整功能仍未完成。 开发分支也修复了[电脑与底座的独立灯光控制](docs/LIGHTING-INDEPENDENT-OUTPUTS.md)，尚未生成新安装包。
+正在开发 [100 款鼠标完整适配目标](docs/100-MODEL-ACCEPTANCE.md)。当前下载仍为上方 **0.3.7 实验版**，不包含后续开发增量；达到完整验收目标后再生成新的安装包。
+
+开发分支已接入[罗技原生板载按键](docs/LOGITECH-ONBOARD-BINDINGS.md)、[性能与 X11 方案](docs/development/2026-10-26-performance-x11.md)、[Sensei Ten 五档八键与双区灯效](docs/SENSEI-TEN.md)、[Rival 600 七键八灯区与抬升](docs/RIVAL600.md)。[DeathAdder V3 Pro](docs/RAZER-DAV3PRO-RESEARCH.md) 已接通五档 XY DPI、回报率、省电、已知十六条双层按键、Hypershift、传感器校准与独立 XY 狙击 DPI；支持的 Synapse 4 子集可以预览、编辑、保存及回放验证，未知功能仍保留并阻止不完整导入。
+
+最近增量补充[罗技原生呼吸波形](docs/LOGITECH-NATIVE-LIGHTING.md)、[电脑与底座独立灯光](docs/LIGHTING-INDEPENDENT-OUTPUTS.md)及[迈从界面离开目标后的异步隔离](docs/development/2026-10-26-mchose-target-lifetime-validation.json)。[开发验证记录](docs/development/2026-10-26-shiftxy-waveform-validation.json)区分原厂静态证据、协议模拟、实际界面测试与缺少的实机覆盖；软件宏来源及完整型号验收继续推进。
 
 > [!WARNING]
 > **这仅是一个实验性版本，不是稳定版。** 多数新增鼠标只有生产驱动与模拟设备测试，没有对应实机验证，不能认定整个品牌兼容。连接方式、USB ID、固件和功能边界均会影响支持情况。应用前请先保留原配置，只对明确列出的型号进行测试。
