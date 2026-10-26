@@ -171,8 +171,8 @@ impl Engine {
                     } else {
                         render(&config, clock.elapsed().as_secs_f32(), level)
                     };
-                    if config.dock {
-                        dock.stream_frame(&pixels)?;
+                    if let Some(lease) = dock_before.as_ref() {
+                        dock.stream_frame(lease, &pixels)?;
                     }
                     if let Some(c) = rgb.as_mut() {
                         c.frame(&devices, &pixels)?;
@@ -465,7 +465,7 @@ pub fn hardware_test() -> R<serde_json::Value> {
     })();
     let _ = engine.stop();
     if dock.view()?.light != before {
-        dock.stream_restore(&before)?;
+        return Err("底座未恢复到测试前状态；不向重新连接或已改变的底座自动写入".into());
     }
     result?;
     Ok(

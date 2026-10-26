@@ -1,0 +1,57 @@
+{
+  "date_local": "2026-10-27",
+  "base_commit": "d739a2b",
+  "scope": "MagDock source-based native I/O simulation, raw mode/sync preservation and running stream connection leases",
+  "release_version": "0.3.7",
+  "accepted_complete_models": 0,
+  "installer_built_published_or_installed": false,
+  "validation": {
+    "default_native_passed": 702,
+    "default_native_failed": 0,
+    "default_native_ignored": 53,
+    "new_default_native_tests": 14,
+    "dock_default_native_tests": 17,
+    "independent_PC_dock_built_UI_checks": 19,
+    "source_modes_simulated": 6,
+    "RGB_pixels_order_checked": 12,
+    "actual_native_static_Engine_thread": "frames and restore passed over production memory Session",
+    "backup_create_new_write_and_sync_all": "production path used in temporary-directory tests",
+    "typescript": "passed",
+    "vite": "passed",
+    "non_test_development_build": "passed",
+    "new_dependencies": 0,
+    "new_product_images": 0,
+    "physical_HID_access": false,
+    "actual_audio_meter_started": false,
+    "actual_screen_sampling": false,
+    "OS_input_injection": false,
+    "OEM_execution": false,
+    "javascript_bytes": 785944,
+    "javascript_delta_from_profile_connection_commit": 29,
+    "javascript_sha256": "cabb035e21c2da2e667800e42c42d28aef9bec452f7af9da5a8cf1754e0ba693",
+    "css_sha256": "9ad84aa7c17a1e32262b84ae2206e71d6a9250335a97daa912b9356bd7e72416",
+    "dev_EXE_sha256": "db6e3abf859b25153bb09fd4f89cf393c2db61cf86488ab169c2946aba73b06e"
+  },
+  "limits": [
+    "Native REPLY is authored from source offsets, not a physical firmware capture",
+    "Current tests verify known field round trips and frame order, not physical LED output, timing or firmware acceptance",
+    "Source default WebHID data length63 versus existing HIDAPI report length65 including ID remains a physical descriptor/capture gap",
+    "Manual dock IPC/start still needs UI-captured connection binding; this increment binds already-started workers",
+    "Multiple matching docks are rejected until explicit selection UI exists",
+    "Actual music/audio and screen sampling, complete backup/restore UX and model acceptance remain pending",
+    "Independent dock capability does not establish mouse-body RGB"
+  ],
+  "source_sha256": {
+    "src-tauri/src/magdock.rs": "3277b737760635ba6e3077e9ea88a8f4da724e54f3bc9e18793f1d811f667cf1",
+    "src-tauri/src/magdock_protocol_tests.rs": "57340fad64c7c4cf3bcecdaf051516356431770827c0a08d108f432e1ef36a35",
+    "src-tauri/src/effects.rs": "49d6f88e4a15b3639ade56f554616ecc4dfefa400afc29ef2f2f8acb9cc838e5",
+    "src/components/lighting-panel.tsx": "56d601db366884e63221d88289a88c150d139f591094edfeeaceec6ba892fd57",
+    "scripts/test-lighting-independent-outputs-ui.cjs": "f488277684b76df27be119bd4a7c038b5ee05eaf46939118e56411353d34998c",
+    "docs/development/magdock-static-protocol-facts.json": "b97244fa955bb733483707879db67da10c5feb360e841e6627c460a1f4acbc91"
+  },
+  "evidence_sha256": {
+    "..\\outputs\\100-model-development\\lighting-independent-outputs-ui\\report.json": "9e7ded42656727b8fc521c5e8315a74fa57affff14aa6086d2d995daf8a7ad1f",
+    "..\\outputs\\100-model-development\\2026-10-27-magdock-all-native.log": "d2ab5e5f93b6dcd06ad40aa362ee2471f8806c74015e3cd588ce9d3d29114bd0",
+    "..\\outputs\\100-model-development\\2026-10-27-magdock-build.log": "9af1c73dc304c2191edd6cf4c05a623f479f2c00cec71c7007e2674c7091c5ba"
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "format": "open-hub-magdock-static-facts/1",
+  "source": {
+    "url": "https://www.mchose.com.cn/assets/purify.es-BufdR6vO.js",
+    "sha256": "c3e91c2828283cbcb8edb24474b45d64b2526bcbed0a2740919a0deef7ad61bc",
+    "analysis": "Inert UTF-8 text slices from the installed Brotli cache; no OEM code execution"
+  },
+  "identity": {
+    "vendor": 14391,
+    "product": 4114,
+    "product_name": "MCHOSE MagDock",
+    "report_id": 0,
+    "utf16_offset": 1255474
+  },
+  "framing": {
+    "Ff_offset": 643002,
+    "U7_offset": 643282,
+    "Sh_offset": 642844,
+    "data_start": [
+      170
+    ],
+    "header_after_start": [
+      "cmd",
+      "cmdType",
+      "frameSeq",
+      "totalFrame",
+      "paramLen"
+    ],
+    "request_type": 0,
+    "response_type": 2,
+    "payload_offset_without_report_id": 6,
+    "source_default_report_data_len": 63,
+    "native_existing_output_report_bytes_including_id": 65,
+    "padding_limit": "Source default 63-byte WebHID data and existing 65-byte HIDAPI output have not been reconciled with a physical HID descriptor/capture; no exact full-report physical compatibility claim"
+  },
+  "read": {
+    "command": 7,
+    "function": "Afe",
+    "utf16_offset": 1255688,
+    "payload_offsets": {
+      "enabled": 0,
+      "mode": 1,
+      "mode_count": 2,
+      "speed": 3,
+      "brightness": 4,
+      "sync": 5,
+      "red": 6,
+      "green": 7,
+      "blue": 8,
+      "sleep_switch_read_only": 9,
+      "sleep_time_read_only": 10,
+      "firmware_le_low": 12,
+      "firmware_le_high": 13,
+      "direction": 29
+    },
+    "separate_mode_and_sync": true,
+    "firmware_note": "UI firmware string is a local display; source uses its own zero-pad/special-version formatting"
+  },
+  "write": {
+    "command": 39,
+    "function": "Ofe",
+    "utf16_offset": 1256321,
+    "args": [
+      "enabled",
+      "mode",
+      "mode_count",
+      "speed",
+      "brightness",
+      "sync",
+      "red",
+      "green",
+      "blue",
+      "direction"
+    ],
+    "default_mode_count": 5
+  },
+  "stream": {
+    "command": 41,
+    "function": "f_e/M",
+    "text_span_start": 644500,
+    "colors": "flattened RGB triples in array order",
+    "original_music_groups": [
+      [
+        5
+      ],
+      [
+        4,
+        6
+      ],
+      [
+        3,
+        7
+      ],
+      [
+        2,
+        8
+      ],
+      [
+        1,
+        9
+      ],
+      [
+        0,
+        10
+      ],
+      [
+        11
+      ]
+    ],
+    "sample_interval_ms": 50
+  },
+  "modes": {
+    "static": 0,
+    "breath": 1,
+    "shiningBrightly": 2,
+    "loop": 3,
+    "goFlow": 4,
+    "music": 5
+  },
+  "limits": [
+    "Separate dock, not mouse-body lighting evidence",
+    "Music visibility has original conditional predicate; physical/host behavior not certified",
+    "No firmware, OTA, pairing or sleep setter ported",
+    "REPLY in native tests is independently authored from source offsets, not a physical capture",
+    "Six simulated modes verify report/known-field round trips, not actual LED animation or firmware acceptance"
+  ]
+}

@@ -13,11 +13,12 @@ assert(end>start);
   await page.addInitScript({content:`(()=>{${base.slice(start,end)}})()`});
   await page.addInitScript(()=>{
    const delayedDock=new URL(location.href).searchParams.has('delayedDock');
+   const rawSync=new URL(location.href).searchParams.has('rawSync');
    localStorage.setItem('lighting-auto-mouse',String(delayedDock));
    localStorage.setItem('lighting-dock-excluded',String(!delayedDock));
    const pc={id:2,key:'ViewSonic|Monitor|serial-C',name:'XG270QG',vendor:'ViewSonic',kind:20,leds:12,direct:true};
    const config={kind:'gradient',style:0,color:[12,34,56],palette:[[12,34,56],[78,90,123]],brightness:.6,speed:1.5,gain:2,dock:false,rgb:[{id:pc.id,key:pc.key}]};
-   const factory={enabled:true,mode:4,mode_count:6,speed:1,brightness:1,sync:false,color:[200,40,10],direction:1};
+   const factory={enabled:true,mode:rawSync?0:4,mode_count:6,speed:1,brightness:1,sync:rawSync,color:[200,40,10],direction:1};
    const clone=v=>JSON.parse(JSON.stringify(v));
    const qa=window.__independentQa={
     generation:17,dockReads:0,rejectMusic:false,attached:!delayedDock,
@@ -218,6 +219,17 @@ assert(end>start);
   await panel.getByRole('button',{name:'开始同步',exact:true}).click();
   await panel.getByRole('button',{name:'应用并重新同步',exact:true}).waitFor();
   await assertPc(18);
+  // The source keeps base mode and synchronization independently. Present music
+  // while retaining the raw mode in the draft until an explicit user edit.
+  await page.goto('http://127.0.0.1:1431/?rawSync=1');
+  await page.getByRole('button',{name:'灯光同步',exact:true}).click();
+  await dock.waitFor();await assertPc();
+  assert.equal(await dock.getByRole('combobox',{name:'原厂灯效模式',exact:true}).inputValue(),'5');
+  await dock.getByRole('slider',{name:'底座律动灵敏度',exact:true}).waitFor();
+  await dock.getByRole('button',{name:'应用到底座',exact:true}).click();
+  await dockStatus.filter({hasText:'底座音乐律动运行中'}).waitFor();
+  const rawRequest=await page.evaluate(()=>window.__qaCalls.filter(c=>c.cmd==='magdock_music').at(-1));
+  assert.equal(rawRequest.args.enabled,true);assert.equal(rawRequest.args.light.mode,0);assert.equal(rawRequest.args.light.sync,true);await assertPc();
   assert.deepEqual(errors,[]);
   fs.writeFileSync(path.join(out,'report.json'),JSON.stringify({passed:true,hardware_accessed:false,backend:'stateful IPC simulation',checks:[
    'running PC-only session loads its exact target and parameters',
@@ -237,8 +249,9 @@ assert(end>start);
    'old running dock status cannot overwrite successful stop',
    'old stopped dock status cannot overwrite successful start',
    'delayed dock attach is detected while PC runs without auto-selecting',
-   '12-second discovery and PC stop preserve the dock color draft'
+   '12-second discovery and PC stop preserve the dock color draft',
+   'raw base mode0 plus sync1 presents music and routes to music without silently changing the draft mode'
   ],pageErrors:errors},null,2));
-  console.log('18 independent PC/dock lighting UI checks passed (stateful IPC simulation, no hardware)');
+  console.log('19 independent PC/dock lighting UI checks passed (stateful IPC simulation, no hardware)');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
