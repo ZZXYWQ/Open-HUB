@@ -304,11 +304,11 @@ fn open_mhub(app:AppHandle)->Result<(),String>{
 #[tauri::command(async)]
 fn magdock_state(c:State<magdock::Controller>)->Result<magdock::View,String>{c.view()}
 #[tauri::command(async)]
-fn magdock_apply(c:State<magdock::Controller>,engine:State<effects::Engine>,light:magdock::Light)->Result<magdock::View,String>{light.validate()?;engine.route(||{engine.stop_for_dock()?;c.apply(light)})}
+fn magdock_apply(c:State<magdock::Controller>,engine:State<effects::Engine>,light:magdock::Light,expected_connection:String)->Result<magdock::View,String>{light.validate()?;c.with_selected_connection(&engine,&expected_connection,||c.apply(light,&expected_connection))}
 #[tauri::command(async)]
-fn magdock_music(c:State<magdock::Controller>,engine:State<effects::Engine>,enabled:bool,light:magdock::Light,gain:f32)->Result<magdock::View,String>{if enabled{light.validate()?;if !gain.is_finite()||!(0.5..=8.0).contains(&gain){return Err("律动灵敏度应为 0.5–8".into())}}engine.route(||if enabled{engine.stop_for_dock()?;c.music(light,gain)}else{c.stop()?;c.view()})}
+fn magdock_music(c:State<magdock::Controller>,engine:State<effects::Engine>,enabled:bool,light:magdock::Light,gain:f32,expected_connection:String)->Result<magdock::View,String>{if enabled{light.validate()?;if !gain.is_finite()||!(0.5..=8.0).contains(&gain){return Err("律动灵敏度应为 0.5–8".into())}}if enabled{c.with_selected_connection(&engine,&expected_connection,||c.music(light,gain,&expected_connection))}else{engine.route(||c.stop_selected(&expected_connection))}}
 #[tauri::command(async)]
-fn magdock_reset(c:State<magdock::Controller>,engine:State<effects::Engine>)->Result<magdock::View,String>{engine.route(||{engine.stop_for_dock()?;c.reset()})}
+fn magdock_reset(c:State<magdock::Controller>,engine:State<effects::Engine>,expected_connection:String)->Result<magdock::View,String>{c.with_selected_connection(&engine,&expected_connection,||c.reset(&expected_connection))}
 
 
 #[tauri::command(async)]
@@ -318,7 +318,7 @@ async fn rgb_devices(app:tauri::AppHandle)->Result<Vec<rgb::Device>,String>{
 #[tauri::command(async)]
 fn effects_status(engine:State<effects::Engine>)->Result<effects::Status,String>{engine.status()}
 #[tauri::command(async)]
-fn effects_start(engine:State<effects::Engine>,dock:State<magdock::Controller>,config:effects::Config)->Result<effects::Status,String>{config.validate()?;engine.route(||{if config.dock{dock.stop()?;}engine.start(config,dock.inner().clone())})}
+fn effects_start(engine:State<effects::Engine>,dock:State<magdock::Controller>,config:effects::Config,expected_dock_connection:Option<String>)->Result<effects::Status,String>{engine.start_selected(config,dock.inner().clone(),expected_dock_connection.as_deref())}
 #[tauri::command(async)]
 fn effects_stop(engine:State<effects::Engine>)->Result<effects::Status,String>{engine.route(||engine.stop())}
 
@@ -972,7 +972,7 @@ fn main() {
     if std::env::args().any(|a|a=="--lighting-probe"){let result=(||->Result<serde_json::Value,String>{let rgb=rgb::Client::connect()?.devices;let screen=screen::sample()?;let meter=audio_meter::Meter::open()?;Ok(serde_json::json!({"rgb":rgb,"screen":screen,"audio_peak":meter.peak()?}))})();match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;}
 
     if std::env::args().any(|a|a=="--magdock-probe"||a=="--magdock-self-test"||a=="--magdock-music-test") {
-        let c=magdock::Controller::default();let result=if std::env::args().any(|a|a=="--magdock-self-test"){c.self_test()}else if std::env::args().any(|a|a=="--magdock-music-test"){( c.view()).and_then(|v|{c.music(v.light,2.0)?;std::thread::sleep(std::time::Duration::from_secs(3));let during=c.view()?;c.stop()?;Ok(serde_json::json!({"during":during,"after":c.view()?}))})}else{c.view().and_then(|v|serde_json::to_value(v).map_err(|e|e.to_string()))};match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;
+        let c=magdock::Controller::default();let result=if std::env::args().any(|a|a=="--magdock-self-test"){c.self_test()}else if std::env::args().any(|a|a=="--magdock-music-test"){( c.view()).and_then(|v|{c.music(v.light,2.0,&v.connection_key)?;std::thread::sleep(std::time::Duration::from_secs(3));let during=c.view()?;c.stop()?;Ok(serde_json::json!({"during":during,"after":c.view()?}))})}else{c.view().and_then(|v|serde_json::to_value(v).map_err(|e|e.to_string()))};match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;
     }
     if std::env::args().any(|a|a=="--mchose-hardware-probe"||a=="--mchose-hardware-self-test") {
         let test=std::env::args().any(|a|a=="--mchose-hardware-self-test");

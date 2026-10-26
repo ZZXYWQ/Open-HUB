@@ -24,7 +24,7 @@ assert(end>start);
     generation:17,dockReads:0,rejectMusic:false,attached:!delayedDock,
     holdNextStatus:false,holdNextDock:false,heldStatus:[],heldDock:[],
     status:{running:true,kind:config.kind,level:.12,pixels:Array(12).fill([12,34,56]),error:null,config:clone(config)},
-    dock:{firmware:'1.0',music_running:false,audio_level:0,music_error:null,light:clone(factory)},
+    dock:{connection_key:'magdock:A:1',firmware:'1.0',music_running:false,audio_level:0,music_error:null,light:clone(factory)},
     before:clone(factory),initialConfig:clone(config)
    };
    const interval=window.setInterval.bind(window),discovery=[];
@@ -41,6 +41,8 @@ assert(end>start);
    window.__TAURI_INTERNALS__.invoke=async(cmd,a={})=>{
     if(!['rgb_devices','magdock_state','magdock_music','magdock_apply','magdock_reset','effects_status','effects_start','effects_stop'].includes(cmd))return old(cmd,a);
     window.__qaCalls.push({cmd,args:clone(a)});
+    if(['magdock_music','magdock_apply','magdock_reset'].includes(cmd)&&a.expectedConnection!==qa.dock.connection_key)throw Error('Missing selected dock connection');
+    if(cmd==='effects_start'&&a.config.dock&&a.expectedDockConnection!==qa.dock.connection_key)throw Error('Missing selected effects dock connection');
     switch(cmd){
      case'rgb_devices':return[pc];
      case'magdock_state':{

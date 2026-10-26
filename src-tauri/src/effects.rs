@@ -98,8 +98,17 @@ impl Engine {
         }
         self.status()
     }
-    pub fn start(&self, config: Config, dock: crate::magdock::Controller) -> R<Status> {
+    pub fn start_selected(&self, config: Config, dock: crate::magdock::Controller, expected: Option<&str>) -> R<Status> {
         config.validate()?;
+        self.route(|| {
+            if config.dock {dock.check_connection(expected.unwrap_or(""))?; dock.stop_selected(expected.unwrap_or(""))?;}
+            self.start(config, dock, expected)
+        })
+    }
+    pub fn start(&self, config: Config, dock: crate::magdock::Controller, expected: Option<&str>) -> R<Status> {
+        config.validate()?;
+        if config.dock {dock.check_connection(expected.unwrap_or(""))?;}
+        let dock_connection = expected.unwrap_or("").to_owned();
         self.stop()?;
         let mut worker = self.worker.lock().map_err(|_| "灯光线程锁定失败")?;
         let stop = Arc::new(AtomicBool::new(false));
@@ -137,7 +146,7 @@ impl Engine {
                     rgb = Some(c);
                 }
                 if config.dock {
-                    dock_before = Some(dock.stream_begin()?);
+                    dock_before = Some(dock.stream_begin(&dock_connection)?);
                 }
                 if let Some(c) = rgb.as_mut() {
                     c.begin(&devices)?;
@@ -365,7 +374,9 @@ pub fn hardware_test() -> R<serde_json::Value> {
     let rgb_server=crate::rgb::Server::default();rgb_server.scan()?;
     let engine = Engine::default();
     let dock = crate::magdock::Controller::default();
-    let before = dock.view()?.light;
+    let before_view = dock.view()?;
+    let connection = before_view.connection_key;
+    let before = before_view.light;
     let rgb_before = crate::rgb::Client::connect()?.devices;
     let ids: Vec<crate::rgb::Target> = rgb_before
         .iter()
@@ -392,7 +403,7 @@ pub fn hardware_test() -> R<serde_json::Value> {
             "static", "rainbow", "gradient", "breathe", "comet", "twinkle", "screen", "music",
         ] {
             config.kind = kind.into();
-            engine.start(config.clone(), dock.clone())?;
+            engine.start(config.clone(), dock.clone(), Some(&connection))?;
             std::thread::sleep(Duration::from_millis(650));
             let running = engine.status()?;
             if !running.running {
@@ -439,7 +450,7 @@ pub fn hardware_test() -> R<serde_json::Value> {
         config.kind = "music".into();
         for style in 1..6 {
             config.style = style;
-            engine.start(config.clone(), dock.clone())?;
+            engine.start(config.clone(), dock.clone(), Some(&connection))?;
             std::thread::sleep(Duration::from_millis(250));
             if !engine.status()?.running {
                 return Err("音乐风格异常退出".into());
@@ -453,7 +464,7 @@ pub fn hardware_test() -> R<serde_json::Value> {
         if !ids.is_empty() {
             config.dock = false;
             config.kind = "screen".into();
-            engine.start(config.clone(), dock.clone())?;
+            engine.start(config.clone(), dock.clone(), Some(&connection))?;
             std::thread::sleep(Duration::from_millis(500));
             if dock.view()?.light != before {
                 return Err("仅电脑同步意外修改了底座".into());

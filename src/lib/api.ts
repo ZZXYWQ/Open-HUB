@@ -250,7 +250,7 @@ export const DESKTOP_ID = "desktop";
 export const REPORT_RATES_HZ = [125, 250, 500, 1000, 2000, 4000, 8000];
 
 export interface DockLight{enabled:boolean;mode:number;mode_count:number;speed:number;brightness:number;sync:boolean;color:number[];direction:number}
-export interface DockView{light:DockLight;firmware:string;music_running:boolean;audio_level:number;music_error:string|null}
+export interface DockView{connection_key:string;light:DockLight;firmware:string;music_running:boolean;audio_level:number;music_error:string|null}
 export interface RgbDevice{id:number;key:string;name:string;vendor:string;kind:number;leds:number;direct:boolean}
 export interface EffectConfig{kind:string;style:number;color:number[];palette:number[][];brightness:number;speed:number;gain:number;dock:boolean;rgb:{id:number;key:string}[]}
 export interface EffectStatus{running:boolean;kind:string;level:number;pixels:number[][];error:string|null;config:EffectConfig|null}
@@ -263,10 +263,10 @@ export const api = {
  commitProfileImport:(profiles:Profile[])=>invoke<ProfilesView>('commit_profile_import',{profiles}),
  exportProfilePack:(path:string,profiles:Profile[])=>invoke<void>('export_profile_pack',{path,profiles}),
  dockState:()=>invoke<DockView>('magdock_state'),
- dockApply:(light:DockLight)=>invoke<DockView>('magdock_apply',{light}),
- dockReset:()=>invoke<DockView>('magdock_reset'),
+ dockApply:(light:DockLight,expectedConnection:string)=>invoke<DockView>('magdock_apply',{light,expectedConnection}),
+ dockReset:(expectedConnection:string)=>invoke<DockView>('magdock_reset',{expectedConnection}),
  rgbDevices:()=>invoke<RgbDevice[]>('rgb_devices'),
- effectsStart:(config:EffectConfig)=>invoke<EffectStatus>('effects_start',{config}),
+ effectsStart:(config:EffectConfig,expectedDockConnection?:string)=>invoke<EffectStatus>('effects_start',{config,...(config.dock&&expectedDockConnection?{expectedDockConnection}:{})}),
  effectsStop:()=>invoke<EffectStatus>('effects_stop'),
  effectsStatus:()=>invoke<EffectStatus>('effects_status'),
  effectsPreset:(path:string,config:EffectConfig,targetKeys:string[]=[])=>invoke<void>('effects_preset',{path,config,targetKeys}),

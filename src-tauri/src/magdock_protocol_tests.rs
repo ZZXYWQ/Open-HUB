@@ -59,6 +59,10 @@ impl DockIo for Memory {
                 }
             }
             41 => assert_eq!(bytes[6], 36),
+            42 => {
+                assert_eq!(bytes[6], 0);
+                w.body = REPLY[6..].to_vec();
+            }
             _ => panic!("unexpected native dock command"),
         }
         Ok(bytes.len())
@@ -328,7 +332,7 @@ fn backup_directory(controller: &Controller) -> std::path::PathBuf {
 fn production_stream_begin_backs_up_before_set_and_normal_restore_uses_its_lease() {
     let (controller, wire) = controller("dock-A:1");
     let dir = backup_directory(&controller);
-    let lease = controller.stream_begin().unwrap();
+    let lease = controller.stream_begin("dock-A:1").unwrap();
     assert_eq!(lease.connection, "dock-A:1");
     assert_eq!(lease.before, before());
     let files = std::fs::read_dir(&dir)
@@ -352,7 +356,7 @@ fn failed_stream_backup_prevents_all_setting_and_color_writes() {
     let (controller, wire) = controller("dock-A:1");
     let dir = backup_directory(&controller);
     std::fs::write(&dir, b"authored backup path conflict").unwrap();
-    assert!(controller.stream_begin().is_err());
+    assert!(controller.stream_begin("dock-A:1").is_err());
     assert_eq!(commands(&wire), [7]);
     std::fs::remove_file(dir).unwrap();
 }
@@ -363,9 +367,9 @@ fn controller_unconfirmed_apply_keeps_backup_and_never_issues_a_blind_restore() 
     wire.lock().unwrap().ignore_set = true;
     let mut change = before();
     change.color = [1, 2, 3];
-    let error = controller.apply(change).err().unwrap();
+    let error = controller.apply(change, "dock-A:1").err().unwrap();
     assert!(error.contains("已保留写入前备份"));
-    assert_eq!(commands(&wire), [7, 39, 7]);
+    assert_eq!(commands(&wire), [7, 7, 39, 7]);
     assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
     assert!(controller.inner.session.lock().unwrap().is_none());
     std::fs::remove_dir_all(dir).unwrap();
@@ -386,7 +390,12 @@ fn actual_static_effect_worker_sends_frames_and_restores_through_its_native_leas
         dock: true,
         rgb: vec![],
     };
-    assert!(engine.start(config, controller).unwrap().running);
+    assert!(
+        engine
+            .start(config, controller, Some("dock-A:1"))
+            .unwrap()
+            .running
+    );
     let until = Instant::now() + Duration::from_secs(1);
     while !commands(&wire).contains(&41) {
         assert!(Instant::now() < until);
@@ -405,4 +414,299 @@ fn actual_static_effect_worker_sends_frames_and_restores_through_its_native_leas
     assert_eq!(w.writes.iter().filter(|b| b[2] == 39).count(), 2);
     drop(w);
     std::fs::remove_dir_all(dir).unwrap();
+}
+
+fn effect_config() -> crate::effects::Config {
+    crate::effects::Config {
+        kind: "static".into(),
+        style: 0,
+        color: [30, 90, 70],
+        palette: vec![[1, 2, 3], [4, 5, 6]],
+        brightness: 1.0,
+        speed: 1.0,
+        gain: 2.0,
+        dock: true,
+        rgb: vec![],
+    }
+}
+struct ConstantMeter;
+impl PeakMeter for ConstantMeter {
+    fn peak(&self) -> R<f32> {
+        Ok(1.0)
+    }
+}
+#[test]
+fn manual_and_effect_requests_require_the_ui_connection_before_any_io_or_backup() {
+    let (controller, wire) = controller("dock-B:2");
+    let dir = backup_directory(&controller);
+    let engine = crate::effects::Engine::default();
+    for expected in ["", "dock-A:1", "dock-B:1"] {
+        assert!(controller
+            .with_selected_connection(&engine, expected, || controller.apply(before(), expected))
+            .is_err());
+        assert!(controller
+            .with_selected_connection(&engine, expected, || controller.reset(expected))
+            .is_err());
+        assert!(controller
+            .with_selected_connection(&engine, expected, || controller.music_with_meter(
+                before(),
+                2.0,
+                expected,
+                || Ok(ConstantMeter)
+            ))
+            .is_err());
+        assert!(controller.stop_selected(expected).is_err());
+        assert!(controller.stream_begin(expected).is_err());
+        assert!(engine
+            .start_selected(effect_config(), controller.clone(), Some(expected))
+            .is_err());
+    }
+    assert!(engine
+        .start_selected(effect_config(), controller.clone(), None)
+        .is_err());
+    assert!(commands(&wire).is_empty());
+    assert!(!dir.exists());
+    assert!(controller.inner.session.lock().unwrap().is_some());
+}
+#[test]
+fn stale_manual_requests_do_not_stop_or_replace_an_active_native_effect_worker() {
+    let (controller, wire) = controller("dock-B:2");
+    let dir = backup_directory(&controller);
+    let engine = crate::effects::Engine::default();
+    engine
+        .start_selected(effect_config(), controller.clone(), Some("dock-B:2"))
+        .unwrap();
+    for expected in ["", "dock-A:1"] {
+        assert!(controller
+            .with_selected_connection(&engine, expected, || controller.reset(expected))
+            .is_err());
+        assert!(engine
+            .start_selected(effect_config(), controller.clone(), Some(expected))
+            .is_err());
+        assert!(engine.status().unwrap().running);
+        assert_eq!(commands(&wire).iter().filter(|c| **c == 39).count(), 1);
+    }
+    assert!(engine.stop().unwrap().error.is_none());
+    assert_eq!(wire.lock().unwrap().body, REPLY[6..]);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+#[test]
+fn normal_manual_apply_and_reset_return_the_same_connection_without_unbound_reopen() {
+    let (controller, wire) = controller("dock-A:1");
+    let dir = backup_directory(&controller);
+    let engine = crate::effects::Engine::default();
+    let preview = controller.view().unwrap();
+    assert_eq!(preview.connection_key, "dock-A:1");
+    wire.lock().unwrap().writes.clear();
+    let mut changed = before();
+    changed.color = [5, 100, 230];
+    let result = controller
+        .with_selected_connection(&engine, &preview.connection_key, || {
+            controller.apply(changed.clone(), &preview.connection_key)
+        })
+        .unwrap();
+    assert_eq!(result.light, changed);
+    assert_eq!(result.connection_key, preview.connection_key);
+    assert_eq!(commands(&wire), [7, 7, 39, 7]);
+    let result = controller
+        .with_selected_connection(&engine, &preview.connection_key, || {
+            controller.reset(&preview.connection_key)
+        })
+        .unwrap();
+    assert_eq!(result.light, before());
+    assert_eq!(result.connection_key, preview.connection_key);
+    assert_eq!(commands(&wire), [7, 7, 39, 7, 7, 7, 42, 7]);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+#[test]
+fn a_new_connection_view_does_not_inherit_old_music_error_meter_or_running_state() {
+    let (controller, _wire) = controller("dock-B:2");
+    *controller.inner.music_connection.lock().unwrap() = Some("dock-A:1".into());
+    controller.inner.running.store(true, Ordering::SeqCst);
+    controller
+        .inner
+        .level
+        .store(0.75f32.to_bits(), Ordering::SeqCst);
+    *controller.inner.error.lock().unwrap() = Some("old A error".into());
+    let view = controller.view_selected("dock-B:2").unwrap();
+    assert!(!view.music_running);
+    assert_eq!(view.audio_level, 0.0);
+    assert!(view.music_error.is_none());
+}
+#[test]
+fn production_music_worker_uses_simulated_levels_then_restores_the_selected_connection() {
+    let (controller, wire) = controller("dock-A:1");
+    let dir = backup_directory(&controller);
+    let view = controller
+        .music_with_meter(before(), 2.0, "dock-A:1", || Ok(ConstantMeter))
+        .unwrap();
+    assert!(view.music_running);
+    assert_eq!(view.connection_key, "dock-A:1");
+    let until = Instant::now() + Duration::from_secs(1);
+    while !commands(&wire).contains(&41) {
+        assert!(Instant::now() < until);
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    let stopped = controller.stop_selected("dock-A:1").unwrap();
+    assert!(!stopped.music_running);
+    assert_eq!(stopped.light, before());
+    let w = wire.lock().unwrap();
+    let expected = [11, 22, 34].repeat(12); // brightness3: source scale0.66
+    for frame in w.writes.iter().filter(|b| b[2] == 41) {
+        assert_eq!(&frame[7..43], &expected);
+    }
+    assert_eq!(w.body, REPLY[6..]);
+    drop(w);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+#[ignore = "requires explicit OPEN_HUB_MAGDOCK_SELECTED_UI_FIXTURE path"]
+fn export_selected_dock_ui_fixture() {
+    let (a, _) = controller("dock-A:1");
+    let (b, wire) = controller("dock-B:1");
+    let mut light = before();
+    light.mode = 1;
+    light.color = [20, 40, 60];
+    set_body(&wire, &light);
+    let value =
+        serde_json::json!({"a":a.view().unwrap(),"b":b.view().unwrap(),"effect":effect_config()});
+    std::fs::write(
+        std::env::var("OPEN_HUB_MAGDOCK_SELECTED_UI_FIXTURE").unwrap(),
+        serde_json::to_vec_pretty(&value).unwrap(),
+    )
+    .unwrap();
+}
+#[test]
+#[ignore = "requires actual built UI capture via OPEN_HUB_MAGDOCK_SELECTED_UI_REQUESTS"]
+fn actual_dock_ui_requests_replay_selected_native_controller_and_effect_workers() {
+    #[derive(serde::Deserialize)]
+    struct Request {
+        cmd: String,
+        args: serde_json::Value,
+        server_connection: String,
+        expected_success: bool,
+    }
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase", deny_unknown_fields)]
+    struct DockArgs {
+        expected_connection: String,
+        light: Option<Light>,
+        enabled: Option<bool>,
+        gain: Option<f32>,
+    }
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase", deny_unknown_fields)]
+    struct EffectArgs {
+        config: crate::effects::Config,
+        expected_dock_connection: Option<String>,
+    }
+    let requests: Vec<Request> = serde_json::from_slice(
+        &std::fs::read(std::env::var("OPEN_HUB_MAGDOCK_SELECTED_UI_REQUESTS").unwrap()).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(requests.len(), 8);
+    let (controller, first) = controller("dock-A:1");
+    let engine = crate::effects::Engine::default();
+    let mut key = "dock-A:1".to_owned();
+    let mut wires = vec![first.clone()];
+    let mut directories = vec![backup_directory(&controller)];
+    let mut accepted = 0;
+    let mut rejected = 0;
+    for request in requests {
+        if request.server_connection != key {
+            assert!(!engine.status().unwrap().running);
+            controller.stop().unwrap();
+            let (replacement, wire) = session(&request.server_connection);
+            let mut light = before();
+            light.mode = 1;
+            light.color = [20, 40, 60];
+            set_body(&wire, &light);
+            directories.push(replacement.backup_dir.clone().unwrap());
+            *controller.inner.session.lock().unwrap() = Some(replacement);
+            wires.push(wire);
+            key = request.server_connection.clone();
+        }
+        let wire = wires.last().unwrap();
+        let before_count = commands(wire).len();
+        let result: R<()> = if request.cmd == "effects_start" {
+            let args: EffectArgs = serde_json::from_value(request.args).unwrap();
+            assert_eq!(args.config.kind, "static");
+            assert!(args.config.dock);
+            assert!(args.config.rgb.is_empty());
+            engine
+                .start_selected(
+                    args.config,
+                    controller.clone(),
+                    args.expected_dock_connection.as_deref(),
+                )
+                .map(|_| ())
+        } else {
+            let args: DockArgs = serde_json::from_value(request.args).unwrap();
+            match request.cmd.as_str() {
+                "magdock_apply" => {
+                    let light = args.light.unwrap();
+                    controller
+                        .with_selected_connection(&engine, &args.expected_connection, || {
+                            controller.apply(light.clone(), &args.expected_connection)
+                        })
+                        .map(|v| {
+                            assert_eq!(v.light, light);
+                            assert_eq!(v.connection_key, key);
+                        })
+                }
+                "magdock_reset" => controller
+                    .with_selected_connection(&engine, &args.expected_connection, || {
+                        controller.reset(&args.expected_connection)
+                    })
+                    .map(|v| assert_eq!(v.connection_key, key)),
+                "magdock_music" => {
+                    if args.enabled.unwrap() {
+                        controller
+                            .with_selected_connection(&engine, &args.expected_connection, || {
+                                controller.music_with_meter(
+                                    args.light.unwrap(),
+                                    args.gain.unwrap(),
+                                    &args.expected_connection,
+                                    || Ok(ConstantMeter),
+                                )
+                            })
+                            .map(|v| {
+                                assert!(v.music_running);
+                                assert_eq!(v.connection_key, key);
+                            })
+                    } else {
+                        controller
+                            .stop_selected(&args.expected_connection)
+                            .map(|v| {
+                                assert!(!v.music_running);
+                                assert_eq!(v.connection_key, key);
+                            })
+                    }
+                }
+                _ => panic!("unexpected UI command"),
+            }
+        };
+        assert_eq!(
+            result.is_ok(),
+            request.expected_success,
+            "{}: {result:?}",
+            request.cmd
+        );
+        if result.is_ok() {
+            accepted += 1;
+        } else {
+            rejected += 1;
+            assert_eq!(commands(wire).len(), before_count);
+        }
+    }
+    assert_eq!((accepted, rejected), (6, 2));
+    assert!(engine.status().unwrap().running);
+    assert!(engine.stop().unwrap().error.is_none());
+    controller.stop().unwrap();
+    for dir in directories {
+        if dir.exists() {
+            std::fs::remove_dir_all(dir).unwrap();
+        }
+    }
 }

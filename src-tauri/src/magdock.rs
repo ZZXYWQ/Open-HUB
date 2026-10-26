@@ -48,11 +48,20 @@ impl Light {
 }
 #[derive(Serialize)]
 pub struct View {
+    pub connection_key: String,
     pub light: Light,
     pub firmware: String,
     pub music_running: bool,
     pub audio_level: f32,
     pub music_error: Option<String>,
+}
+trait PeakMeter {
+    fn peak(&self) -> R<f32>;
+}
+impl PeakMeter for crate::audio_meter::Meter {
+    fn peak(&self) -> R<f32> {
+        crate::audio_meter::Meter::peak(self)
+    }
 }
 trait DockIo: Send {
     fn write(&self, bytes: &[u8]) -> R<usize>;
@@ -202,6 +211,7 @@ impl Session {
 struct Inner {
     session: Mutex<Option<Session>>,
     running: AtomicBool,
+    music_connection: Mutex<Option<String>>,
     level: AtomicU32,
     error: Mutex<Option<String>>,
 }
@@ -262,15 +272,60 @@ fn backup_to(dir: &std::path::Path, light: &Light) -> R<()> {
 }
 
 impl Controller {
-    pub fn view(&self) -> R<View> {
-        let (l, firmware) = self.inner.access(|s| s.read())?;
-        Ok(View {
-            light: l,
+    fn make_view(&self, connection: String, light: Light, firmware: String) -> View {
+        let owns_music = self
+            .inner
+            .music_connection
+            .lock()
+            .ok()
+            .is_some_and(|c| c.as_deref() == Some(connection.as_str()));
+        View {
+            connection_key: connection,
+            light,
             firmware,
-            music_running: self.inner.running.load(Ordering::SeqCst),
-            audio_level: f32::from_bits(self.inner.level.load(Ordering::SeqCst)),
-            music_error: self.inner.error.lock().ok().and_then(|e| e.clone()),
+            music_running: owns_music && self.inner.running.load(Ordering::SeqCst),
+            audio_level: if owns_music {
+                f32::from_bits(self.inner.level.load(Ordering::SeqCst))
+            } else {
+                0.0
+            },
+            music_error: if owns_music {
+                self.inner.error.lock().ok().and_then(|e| e.clone())
+            } else {
+                None
+            },
+        }
+    }
+    pub fn view(&self) -> R<View> {
+        let (connection, (light, firmware)) = self
+            .inner
+            .access(|s| Ok((s.connection.clone(), s.read()?)))?;
+        Ok(self.make_view(connection, light, firmware))
+    }
+    pub fn view_selected(&self, expected: &str) -> R<View> {
+        let (light, firmware) = self.inner.access_bound(expected, |s| s.read())?;
+        Ok(self.make_view(expected.into(), light, firmware))
+    }
+    pub fn check_connection(&self, expected: &str) -> R<()> {
+        self.inner.access_bound(expected, |_| Ok(()))
+    }
+    /// Validate the caller's preview before stopping any shared dock effect.
+    pub fn with_selected_connection<T>(
+        &self,
+        engine: &crate::effects::Engine,
+        expected: &str,
+        action: impl FnOnce() -> R<T>,
+    ) -> R<T> {
+        engine.route(|| {
+            self.check_connection(expected)?;
+            engine.stop_for_dock()?;
+            action()
         })
+    }
+    pub fn stop_selected(&self, expected: &str) -> R<View> {
+        self.check_connection(expected)?;
+        self.stop()?;
+        self.view_selected(expected)
     }
     pub fn stop(&self) -> R<()> {
         let mut w = self.worker.lock().map_err(|_| "音乐线程锁定失败")?;
@@ -280,38 +335,54 @@ impl Controller {
         }
         Ok(())
     }
-    pub fn apply(&self, l: Light) -> R<View> {
+    pub fn apply(&self, l: Light, expected: &str) -> R<View> {
         l.validate()?;
+        self.check_connection(expected)?;
         self.stop()?;
-        self.inner.access(|s| {
+        let (light, firmware) = self.inner.access_bound(expected, |s| {
             let (before, _) = s.read()?;
             s.backup(&before)?;
+            if s.read()?.0 != before {
+                return Err("底座状态在备份期间已改变，请重新读取".into());
+            }
             s.apply(&l)
-                .map_err(|e| format!("{e}；可能部分生效，已保留写入前备份；未自动覆盖设备状态"))?;
-            Ok(())
+                .map_err(|e| format!("{e}；可能部分生效，已保留写入前备份；未自动覆盖设备状态"))
         })?;
-        self.view()
+        Ok(self.make_view(expected.into(), light, firmware))
     }
-    pub fn reset(&self) -> R<View> {
+    pub fn reset(&self, expected: &str) -> R<View> {
+        self.check_connection(expected)?;
         self.stop()?;
-        self.inner.access(|s| {
+        let (light, firmware) = self.inner.access_bound(expected, |s| {
             let (before, _) = s.read()?;
             s.backup(&before)?;
+            if s.read()?.0 != before {
+                return Err("底座状态在备份期间已改变，请重新读取".into());
+            }
             s.send(42, &[])?;
-            std::thread::sleep(Duration::from_millis(100));
-            s.read()?;
-            Ok(())
+            s.io.settle(Duration::from_millis(100));
+            s.read()
         })?;
-        self.view()
+        Ok(self.make_view(expected.into(), light, firmware))
     }
-    pub fn music(&self, mut l: Light, gain: f32) -> R<View> {
+    pub fn music(&self, l: Light, gain: f32, expected: &str) -> R<View> {
+        self.music_with_meter(l, gain, expected, crate::audio_meter::Meter::open)
+    }
+    fn music_with_meter<M: PeakMeter + 'static>(
+        &self,
+        mut l: Light,
+        gain: f32,
+        expected: &str,
+        open: impl FnOnce() -> R<M> + Send + 'static,
+    ) -> R<View> {
         l.validate()?;
         if !gain.is_finite() || !(0.5..=8.0).contains(&gain) {
             return Err("律动灵敏度应为 0.5–8".into());
         }
+        self.check_connection(expected)?;
         self.stop()?;
         let mut worker = self.worker.lock().map_err(|_| "音乐线程锁定失败")?;
-        let (connection, before) = self.inner.access(|s| {
+        let (connection, before) = self.inner.access_bound(expected, |s| {
             let before = s.read()?.0;
             s.backup(&before)?;
             Ok((s.connection.clone(), before))
@@ -319,13 +390,18 @@ impl Controller {
         l.mode = 5;
         l.sync = true;
         l.enabled = true;
+        *self
+            .inner
+            .music_connection
+            .lock()
+            .map_err(|_| "底座律动连接锁定失败")? = Some(connection.clone());
         let inner = self.inner.clone();
         let stop = Arc::new(AtomicBool::new(false));
         let signal = stop.clone();
         let (tx, rx) = std::sync::mpsc::sync_channel(1);
         let handle = std::thread::spawn(move || {
             let result = (|| -> R<()> {
-                let meter = crate::audio_meter::Meter::open()?;
+                let meter = open()?;
                 inner.access_bound(&connection, |s| {
                     if s.read()?.0 != before {
                         return Err("底座状态在律动启动前已改变，请重新读取".into());
@@ -366,7 +442,7 @@ impl Controller {
         *worker = Some(Worker { stop, handle });
         drop(worker);
         match rx.recv_timeout(Duration::from_secs(5)) {
-            Ok(Ok(())) => self.view(),
+            Ok(Ok(())) => self.view_selected(expected),
             Ok(Err(e)) => {
                 self.stop()?;
                 Err(e)
@@ -377,9 +453,10 @@ impl Controller {
             }
         }
     }
-    pub fn stream_begin(&self) -> R<StreamLease> {
+    pub fn stream_begin(&self, expected: &str) -> R<StreamLease> {
+        self.check_connection(expected)?;
         self.stop()?;
-        self.inner.access(|s| {
+        self.inner.access_bound(expected, |s| {
             let before = s.read()?.0;
             s.backup(&before)?;
             if s.read()?.0 != before {
