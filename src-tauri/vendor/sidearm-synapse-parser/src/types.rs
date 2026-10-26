@@ -19,6 +19,12 @@ pub enum SourceKind {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParsedSynapseProfiles {
+    /// Internal original-source evidence. Never sent in a preview response.
+    /// Model-specific converters must use this instead of lossy legacy DTOs.
+    #[serde(skip)]
+    pub raw_source: Option<std::sync::Arc<crate::raw_source::RawSource>>,
+    #[serde(skip)]
+    pub raw_source_error: Option<String>,
     #[serde(default)]
     pub device:Option<SourceDevice>,
     pub source_kind: SourceKind,
@@ -54,6 +60,9 @@ pub struct ParsedBinding {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub enum ParsedAction {
+    /// Display-only label for an application-owned exact-model converter.
+    /// This variant carries no executable command or source action payload.
+    ModelAction { description: String },
     Shortcut {
         key: String,
         #[serde(default)]
@@ -121,6 +130,7 @@ pub(crate) fn format_chord(
 /// default name in the import preview. Shared by the v3 and v4 parsers (canon).
 pub fn default_label_for(control_id: &str, action: &ParsedAction) -> String {
     match action {
+        ParsedAction::ModelAction { description } => description.clone(),
         ParsedAction::Shortcut {
             key,
             ctrl,

@@ -198,6 +198,8 @@ pub fn parse_synapse_v3_reader<R: Read + std::io::Seek>(
     }
 
     Ok(ParsedSynapseProfiles {
+        raw_source: None,
+        raw_source_error: None,
         device:None,
         source_kind: SourceKind::SynapseV3Zip,
         source_path,

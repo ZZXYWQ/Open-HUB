@@ -10,6 +10,10 @@ use gearwise_core::{
 };
 use serde::Serialize;
 use sidearm_synapse_parser::types::{ParsedAction, ParsedProfile, ParsedSynapseProfiles};
+#[path = "synapse_dav3pro.rs"]
+mod dav3pro;
+#[path = "synapse_source_hash.rs"]
+mod source_hash;
 #[derive(Serialize)]
 pub struct Candidate {
     pub guid: String,
@@ -25,7 +29,10 @@ pub struct Prepared {
     pub conversion_error: Option<String>,
 }
 pub fn prepare(path: &std::path::Path) -> Result<Prepared, String> {
-    let parsed = sidearm_synapse_parser::preview(path)?;
+    let parsed = match dav3pro::preview_exact_v4(path)? {
+        Some(parsed) => parsed,
+        None => sidearm_synapse_parser::preview(path)?,
+    };
     let (candidates, conversion_error) = match convert(&parsed) {
         Ok(c) => (c, None),
         Err(e) => (vec![], Some(e)),
@@ -42,15 +49,11 @@ pub fn convert(parsed: &ParsedSynapseProfiles) -> Result<Vec<Candidate>, String>
         .as_ref()
         .ok_or_else(|| match parsed.source_kind {
             sidearm_synapse_parser::types::SourceKind::SynapseV3Zip =>
-                "Synapse 3 ZIP 解析器尚未保留 DeviceInfo 型号、DPI/回报率及完整原厂动作块，不能保存设备方案或套用 Naga 按键布局",
+                "Synapse 3 DeviceInfo 精确型号导出结构尚未核实；DPI/回报率及完整原厂动作块已内部保留，确认身份前不能保存设备方案或套用 Naga 按键布局",
             _ => "导出文件未提供可验证的鼠标型号，不能自动套用 Naga 按键布局",
         })?;
     if device.vendor == 0x1532 && matches!(device.product, 0x00b6 | 0x00b7) {
-        // The source parser's DKM names are Naga-specific. In the official 182
-        // defaults DKM_M_03/04 alias Button4/5, and DKM_SB_03 is the bottom DPI
-        // button. Its DTO also omits unknown feature/output fields. Native DA
-        // action support therefore does not yet make this a lossless importer.
-        return Err("DeathAdder V3 Pro (1532:00B6/00B7) 原厂配置转换尚未接通：需要保留精确型号、底部 DPI/侧键别名、完整 XY 档位与活动档、连接对应回报率及所有原厂动作/功能块；当前解析结果不能无损表达，不能套用 Naga 布局或静默丢弃字段".into());
+        return dav3pro::convert(parsed,device.product);
     }
     if (device.vendor, device.product) != (0x1532, 0x00b4) {
         return Err("此 Synapse 按键布局目前仅适配 Naga V2 HyperSpeed (1532:00B4)".into());
@@ -155,6 +158,7 @@ fn candidate(source: &ParsedProfile, source_issues: &[String]) -> Candidate {
         let result = (|| -> Result<(), String> {
             let id = button(&binding.control_id)?;
             let action = match &binding.action {
+                ParsedAction::ModelAction { .. } => return Err("精确型号的原生动作预览不能通过 Naga 转换器执行".into()),
                 ParsedAction::Shortcut {
                     key,
                     ctrl,

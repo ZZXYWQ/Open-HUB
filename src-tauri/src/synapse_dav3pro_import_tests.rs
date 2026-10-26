@@ -1,4 +1,4 @@
-//! Parser-entry regressions for the still-disabled exact-model importer.
+//! Parser-entry regressions for the strict exact-model importer.
 //! All exports below are authored synthetic inputs, not captured DA exports.
 //! Model-specific XML token facts were read statically from official module182;
 //! no OEM program, DLL, or JavaScript is executed by these tests.
@@ -51,35 +51,255 @@ fn base64(bytes: &[u8]) -> String {
 fn v4(product: u16, payload: Value) -> ExportFile {
     let raw = json!({"productId": product, "category": "MOUSE",
         "deviceName": "DeathAdder V3 Pro", "profiles": [{"name": "Synthetic DA import",
-            "payload": base64(&serde_json::to_vec(&payload).unwrap())}], "macros": []});
+            "payload": base64(&serde_json::to_vec(&payload).unwrap()),
+            "hash": source_hash::profile_hash(&payload).unwrap()}], "macros": []});
     ExportFile::new("synapse4", &serde_json::to_vec(&raw).unwrap())
 }
 fn payload() -> Value {
     json!({"guid": "synthetic-da", "name": "Synthetic DA import",
-        "dpi": {"x": 1600, "y": 2400},
-        "dpiStages": {"enable": true, "active": 2, "stages": [
-            {"x": 400,"y": 800}, {"x": 800,"y": 1200}, {"x": 1600,"y": 2400},
-            {"x": 3200,"y": 4800}, {"x": 15000,"y": 30000}]},
+        "dpi": {"x": 1600, "y": 2400,"independent":true},
+        "dpiStages": {"enable": true, "active": 3, "count":5,"stages": [
+            {"x": 400,"y": 800,"independent":true,"visible":true,"index":0}, {"x": 800,"y": 1200,"independent":true,"visible":true,"index":1}, {"x": 1600,"y": 2400,"independent":true,"visible":true,"index":2},
+            {"x": 3200,"y": 4800,"independent":true,"visible":true,"index":3}, {"x": 15000,"y": 30000,"independent":true,"visible":true,"index":4}]},
         "pollingRate": 1000, "pollingRateWireless": 500,
-        "mappings": [{"inputType": "MouseInput", "inputID": "RightClick",
-            "outputType": "keyboardGroup", "keyboardGroup": {"key": "KEY_C", "modifiers": ["KEY_RIGHT_ALT"]}}]})
+        "mappings": canonical_mappings()})
+}
+
+fn canonical_mappings() -> Vec<Value> {
+    let mut rows = vec![];
+    for layer in [false, true] {
+        for (input, assignment) in [
+            ("RightClick", "Menu"),
+            ("LeftClick", "Click"),
+            ("ScrollButton", "ScrollClick"),
+            ("Button4", "Previous"),
+            ("Button5", "Next"),
+            ("ScrollUp", "ScrollUp"),
+            ("ScrollDown", "ScrollDown"),
+        ] {
+            rows.push(if input == "RightClick" && !layer {
+                mapping(
+                    input,
+                    layer,
+                    "keyboardGroup",
+                    Some(json!({"key":"KEY_C","modifiers":["KEY_RIGHT_ALT"]})),
+                )
+            } else {
+                mapping(
+                    input,
+                    layer,
+                    "mouseGroup",
+                    Some(json!({"mouseAssignment":assignment})),
+                )
+            });
+        }
+        rows.push(mapping(
+            "DKM_SB_03",
+            layer,
+            "sensitivityGroup",
+            Some(json!({"sensitivityAssignment":"DPI_CycleUp"})),
+        ));
+    }
+    rows
 }
 
 #[test]
-fn dav3pro_exact_transports_are_refused_after_real_v4_file_parsing() {
+fn dav3pro_exact_transports_parse_persist_and_execute_native_stage_and_binding_profiles() {
+    let mut exported = vec![];
     for product in [0x00b6, 0x00b7] {
         let file = v4(product, payload());
         let prepared = prepare(&file.0).unwrap();
+        assert_eq!(prepared.parsed.profiles[0].bindings.len(), 16);
+        assert!(prepared.parsed.profiles[0]
+            .bindings
+            .iter()
+            .all(|b| matches!(b.action, ParsedAction::ModelAction { .. })));
+        exported.push(serde_json::to_value(&prepared).unwrap());
         assert_eq!(prepared.parsed.device.as_ref().unwrap().product, product);
-        let performance = prepared.parsed.profiles[0].performance.as_ref().unwrap();
-        assert_eq!(performance.stages.len(), 5);
-        assert_eq!(performance.active, Some(2));
-        assert_eq!(performance.stages[4].y, 30000);
-        assert!(prepared.candidates.is_empty());
-        let reason = prepared.conversion_error.as_deref().unwrap();
-        assert!(reason.contains("DeathAdder V3 Pro") && reason.contains("不能无损表达"));
-        // There is deliberately no executable Profile to persist or simulate.
+        assert!(prepared.conversion_error.is_none());
+        let profile = prepared.candidates[0]
+            .profile
+            .as_ref()
+            .unwrap_or_else(|| panic!("{:?}", prepared.candidates[0].issues));
+        assert_eq!(profile.target_model, Some(product));
+        assert_eq!(profile.active_level, 2);
+        assert_eq!(profile.levels.len(), 5);
+        assert_eq!(profile.levels[4].y, Some(30000));
+        assert_eq!(
+            profile.report_rate_hz,
+            Some(if product == 0xb6 { 1000 } else { 500 })
+        );
+        let mut store = crate::profiles::ProfileStore::default();
+        crate::profile_transfer::merge(&mut store, vec![profile.clone()]).unwrap();
+        let path = std::env::temp_dir().join(format!(
+            "dav3pro-import-store-{}.json",
+            crate::profiles::new_id()
+        ));
+        store.save(&path).unwrap();
+        let loaded = crate::profiles::ProfileStore::load(&path);
+        std::fs::remove_file(path).unwrap();
+        let plan = loaded.get(&profile.id).unwrap().multi.as_ref().unwrap();
+        assert_eq!(
+            plan.settings
+                .iter()
+                .filter(|s| matches!(s, Setting::Button { .. }))
+                .count(),
+            16
+        );
+        let report = crate::multibrand::simulate(plan).unwrap();
+        assert_eq!(report["hardware_tested"], false);
+        let (mut device, _) = gearwise_razer::simulated_dav3pro(product).unwrap();
+        device.read_state().unwrap();
+        for setting in &plan.settings {
+            device.apply(setting).unwrap();
+        }
+        let state = device.read_state().unwrap();
+        assert_eq!(state.dpi.as_ref().unwrap().active, 2);
+        assert_eq!(state.dpi.as_ref().unwrap().stages[4].y, 30000);
+        for setting in &plan.settings {
+            if let Setting::Button { id, action } = setting {
+                assert_eq!(
+                    gearwise_razer::dav3pro_buttons::encode(*id, action).unwrap(),
+                    gearwise_razer::dav3pro_buttons::encode(*id, &state.buttons[id]).unwrap()
+                );
+            }
+        }
+        assert!(state.lighting.is_empty());
+        assert!(plan.macros.is_empty());
+        assert!(!profile.targets(0x046d, &[product]));
+        assert!(!profile.targets(0x1532, &[if product == 0xb6 { 0xb7 } else { 0xb6 }]));
     }
+    if let Some(path) = std::env::var_os("OPEN_HUB_DAV3PRO_IMPORT_PREPARED") {
+        let path = std::path::PathBuf::from(path);
+        std::fs::write(&path, serde_json::to_vec_pretty(&exported).unwrap()).unwrap();
+        let mut blocked = vec![];
+        let mut sparse = payload();
+        sparse["mappings"] = json!([mapping("RightClick", false, "disableGroup", None)]);
+        blocked.push(prepare(&v4(0xb6, sparse).0).unwrap());
+        let mut unknown = payload();
+        unknown["unknownOEMFeature"] = json!({"enabled":true});
+        blocked.push(prepare(&v4(0xb7, unknown).0).unwrap());
+        let source = payload();
+        let outer = json!({"productId":0xb6,"category":"MOUSE","deviceName":"DeathAdder V3 Pro","profiles":[{"name":"Bad checksum source","payload":base64(&serde_json::to_vec(&source).unwrap()),"hash":"00000000000000000000000000000000"}],"macros":[]});
+        blocked.push(
+            prepare(&ExportFile::new("synapse4", &serde_json::to_vec(&outer).unwrap()).0).unwrap(),
+        );
+        let mut macro_source = outer;
+        macro_source["productId"] = json!(0xb7);
+        macro_source["profiles"][0]["name"] = json!("Unimplemented OEM macro source");
+        macro_source["profiles"][0]["hash"] = json!(source_hash::profile_hash(&source).unwrap());
+        macro_source["macros"] = json!([{"name":"Synthetic preserved macro","payload":base64(br#"{"guid":"m","macroEvents":[{"Type":99,"vendorEvent":{"bytes":[1,2,3]}}]}"#),"hash":"unverified"}]);
+        blocked.push(
+            prepare(&ExportFile::new("synapse4", &serde_json::to_vec(&macro_source).unwrap()).0)
+                .unwrap(),
+        );
+        assert!(blocked.iter().all(|p| !p.candidates.is_empty()
+            && p.candidates
+                .iter()
+                .all(|c| c.profile.is_none() && !c.issues.is_empty())));
+        std::fs::write(
+            path.parent()
+                .unwrap()
+                .join("dav3pro-import-blocked-prepared.json"),
+            serde_json::to_vec_pretty(&blocked).unwrap(),
+        )
+        .unwrap();
+    }
+}
+
+#[test]
+#[ignore = "requires saved profiles from the current exact DA import UI"]
+fn browser_imported_dav3pro_profiles_roundtrip_store_then_execute_native_codec() {
+    use std::collections::{BTreeMap, BTreeSet};
+    let mut profiles: Vec<Profile> = serde_json::from_slice(
+        &std::fs::read(std::env::var_os("OPEN_HUB_DAV3PRO_IMPORT_UI_PROFILES").unwrap()).unwrap(),
+    )
+    .unwrap();
+    assert!(profiles.len() >= 2);
+    for profile in &mut profiles {
+        profile.id = crate::profiles::new_id();
+    }
+    let mut store = crate::profiles::ProfileStore::default();
+    crate::profile_transfer::merge(&mut store, profiles.clone()).unwrap();
+    let file = ExportFile::new("json", b"");
+    store.save(&file.0).unwrap();
+    let loaded = crate::profiles::ProfileStore::load(&file.0);
+    let mut transports = BTreeSet::new();
+    for profile in profiles {
+        let profile = loaded.get(&profile.id).unwrap();
+        let plan = profile.multi.as_ref().unwrap();
+        assert_eq!(plan.vendor, 0x1532);
+        assert!([0xb6, 0xb7].contains(&plan.product));
+        transports.insert(plan.product);
+        assert_eq!(profile.target_vendor, Some(plan.vendor));
+        assert_eq!(profile.target_model, Some(plan.product));
+        assert!(!profile.targets(0x046d, &[plan.product]));
+        assert!(!profile.targets(0x1532, &[if plan.product == 0xb6 { 0xb7 } else { 0xb6 }]));
+        assert!(plan.source.is_none() && plan.macros.is_empty());
+        crate::multibrand::validate(plan).unwrap();
+        let expected = converted(plan.product, payload());
+        let expected_plan = expected.multi.as_ref().unwrap();
+        assert_eq!(profile.levels, expected.levels);
+        assert_eq!(profile.active_level, 2);
+        assert_eq!(profile.report_rate_hz, expected.report_rate_hz);
+        let source_buttons = |plan: &Plan| {
+            plan.settings
+                .iter()
+                .filter_map(|s| {
+                    if let Setting::Button { id, action } = s {
+                        Some((*id, action.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<BTreeMap<_, _>>()
+        };
+        let desired = source_buttons(plan);
+        assert_eq!(desired.len(), 16);
+        assert_eq!(desired, source_buttons(expected_plan));
+        assert_eq!(
+            plan.settings.len(),
+            18,
+            "no hidden or duplicate source settings"
+        );
+        for expected in &expected_plan.settings {
+            if matches!(expected, Setting::Dpi(_) | Setting::ReportRate(_)) {
+                assert!(plan.settings.contains(expected));
+            }
+        }
+        let simulation = crate::multibrand::simulate(plan).unwrap();
+        assert_eq!(simulation["hardware_tested"], false);
+        assert_eq!(simulation["software_macros"], json!([]));
+        let (mut device, _) = gearwise_razer::simulated_dav3pro(plan.product).unwrap();
+        let before = device.read_state().unwrap();
+        for setting in &plan.settings {
+            device.apply(setting).unwrap();
+        }
+        let actual = device.read_state().unwrap();
+        let expected_dpi = plan
+            .settings
+            .iter()
+            .find_map(|s| {
+                if let Setting::Dpi(d) = s {
+                    Some(d)
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+        assert_eq!(actual.dpi.as_ref(), Some(expected_dpi));
+        assert_eq!(actual.report_rate, profile.report_rate_hz.map(|r| r as u16));
+        for (id, action) in desired {
+            assert_eq!(
+                gearwise_razer::dav3pro_buttons::encode(id, &action).unwrap(),
+                gearwise_razer::dav3pro_buttons::encode(id, &actual.buttons[&id]).unwrap()
+            );
+        }
+        assert!(actual.lighting.is_empty());
+        assert_eq!(actual.tuning, before.tuning);
+        assert_eq!(actual.calibration, before.calibration);
+    }
+    assert_eq!(transports, BTreeSet::from([0xb6, 0xb7]));
 }
 
 #[test]
@@ -92,13 +312,26 @@ fn dav3pro_v4_unknown_feature_and_nested_action_options_cannot_be_imported() {
         source["mappings"][0]["keyboardGroup"]["repeatWhilePressed"] = json!(true);
         let file = v4(product, source);
         let prepared = prepare(&file.0).unwrap();
-        let binding = &prepared.parsed.profiles[0].bindings[0];
-        // This proves why merely enabling product IDs on the old converter is
-        // unsafe: the upstream DTO has already discarded the extra option.
-        assert!(binding.raw_mapping.as_ref().unwrap()["keyboardGroup"]
-            .get("repeatWhilePressed")
+        assert!(prepared.candidates[0].profile.is_none());
+        assert!(!prepared.candidates[0].issues.is_empty());
+        let sidearm_synapse_parser::raw_source::RawSource::V4 { profiles, .. } =
+            prepared.parsed.raw_source.as_deref().unwrap()
+        else {
+            panic!()
+        };
+        assert_eq!(
+            profiles[0].decoded.as_ref().unwrap().value["mappings"][0]["keyboardGroup"]
+                ["repeatWhilePressed"],
+            true
+        );
+        assert_eq!(
+            profiles[0].decoded.as_ref().unwrap().value["unimplementedFeature"]["enabled"],
+            true
+        );
+        assert!(serde_json::to_value(&prepared.parsed)
+            .unwrap()
+            .get("rawSource")
             .is_none());
-        assert!(prepared.candidates.is_empty() && prepared.conversion_error.is_some());
     }
 }
 
@@ -112,20 +345,465 @@ fn dav3pro_v4_legacy_aliases_must_not_become_naga_thumb_slots() {
     ]);
     let file = v4(0x00b6, source);
     let prepared = prepare(&file.0).unwrap();
-    assert_eq!(
-        prepared.parsed.profiles[0].bindings[0].control_id,
-        "thumb_03"
-    );
-    assert_eq!(
-        prepared.parsed.profiles[0].bindings[1].control_id,
-        "thumb_04"
-    );
-    assert!(prepared
-        .parsed
-        .warnings
+    assert!(prepared.candidates[0].profile.is_none());
+    assert!(prepared.candidates[0]
+        .issues
         .iter()
-        .any(|w| w.code == "unmappable_input_id" && w.message.contains("DKM_SB_03")));
-    assert!(prepared.candidates.is_empty() && prepared.conversion_error.is_some());
+        .any(|e| e.contains("DKM 兼容记录")));
+    assert!(prepared.parsed.raw_source.is_some());
+}
+
+#[test]
+fn dav3pro_v4_sparse_export_never_invents_or_overwrites_omitted_hardware_bindings() {
+    for product in [0xb6, 0xb7] {
+        let mut source = payload();
+        source["mappings"] = json!([mapping(
+            "RightClick",
+            false,
+            "mouseGroup",
+            Some(json!({"mouseAssignment":"Next"}))
+        )]);
+        let file = v4(product, source.clone());
+        let prepared = prepare(&file.0).unwrap();
+        assert_eq!(prepared.parsed.profiles[0].bindings.len(), 1);
+        assert!(prepared.candidates[0].profile.is_none());
+        assert!(prepared.candidates[0]
+            .issues
+            .iter()
+            .any(|e| e.contains("缺少明确来源") && e.contains("稀疏导出")));
+        let sidearm_synapse_parser::raw_source::RawSource::V4 { profiles, .. } =
+            prepared.parsed.raw_source.as_deref().unwrap()
+        else {
+            panic!()
+        };
+        assert_eq!(profiles[0].decoded.as_ref().unwrap().value, source);
+    }
+}
+
+fn mapping(input: &str, layer: bool, output: &str, group: Option<Value>) -> Value {
+    let mut value = json!({"inputType":if input.starts_with("DKM_"){"DKMInput"}else{"MouseInput"},
+        "inputID":input,"isHyperShift":layer,"outputType":output});
+    if let Some(group) = group {
+        value[output] = group;
+    }
+    value
+}
+fn converted(product: u16, mut source: Value) -> Profile {
+    // Author a complete explicit source; the production converter must not
+    // invent records when a sparse export omits a canonical input.
+    let mut rows = canonical_mappings();
+    for row in source["mappings"].as_array().unwrap() {
+        if let Some(index) = rows.iter().position(|r| {
+            r["inputType"] == row["inputType"]
+                && r["inputID"] == row["inputID"]
+                && r["isHyperShift"] == row["isHyperShift"]
+        }) {
+            rows[index] = row.clone();
+        } else {
+            rows.push(row.clone());
+        }
+    }
+    source["mappings"] = json!(rows);
+    let file = v4(product, source);
+    let prepared = prepare(&file.0).unwrap();
+    assert!(
+        prepared.conversion_error.is_none(),
+        "{:?}",
+        prepared.conversion_error
+    );
+    prepared.candidates[0]
+        .profile
+        .clone()
+        .unwrap_or_else(|| panic!("{:?}", prepared.candidates[0].issues))
+}
+
+#[test]
+fn dav3pro_v4_known_actions_layers_and_paired_hypershift_execute_without_host_macros() {
+    for product in [0xb6, 0xb7] {
+        let mut source = payload();
+        source["mappings"] = json!([
+            mapping(
+                "RightClick",
+                false,
+                "keyboardGroup",
+                Some(
+                    json!({"keyGroup":2,"key":"KEY_F24","modifiers":["KEY_LEFT_CTRL","KEY_RIGHT_ALT"]})
+                )
+            ),
+            mapping(
+                "ScrollButton",
+                false,
+                "multimediaGroup",
+                Some(json!({"multimediaAssignment":"Play"}))
+            ),
+            mapping("Button4", false, "hyperShiftGroup", None),
+            mapping("Button4", true, "hyperShiftGroup", None),
+            mapping(
+                "Button5",
+                false,
+                "mouseGroup",
+                Some(json!({"mouseAssignment":"Previous"}))
+            ),
+            mapping(
+                "DKM_M_04",
+                false,
+                "mouseGroup",
+                Some(json!({"mouseAssignment":"Previous"}))
+            ),
+            mapping(
+                "DKM_SB_03",
+                false,
+                "sensitivityGroup",
+                Some(json!({"sensitivityAssignment":"DPI_CycleDown"}))
+            ),
+            mapping(
+                "ScrollUp",
+                false,
+                "mouseGroup",
+                Some(json!({"mouseAssignment":"ScrollDown"}))
+            ),
+            mapping(
+                "LeftClick",
+                true,
+                "keyboardGroup",
+                Some(json!({"key":"KEY_YEN","modifiers":["KEY_RIGHT_WINDOWS"]}))
+            ),
+            mapping(
+                "RightClick",
+                true,
+                "sensitivityGroup",
+                Some(
+                    json!({"sensitivityAssignment":"DPI_Clutch","x":2400,"y":2400,"independent":false})
+                )
+            ),
+            mapping("Button5", true, "disableGroup", None)
+        ]);
+        let profile = converted(product, source);
+        let plan = profile.multi.as_ref().unwrap();
+        assert!(plan.macros.is_empty());
+        assert!(plan.settings.contains(&Setting::Button {
+            id: 2,
+            action: ButtonAction::Key {
+                usage: 0x73,
+                mods: Modifiers(65)
+            }
+        }));
+        assert!(plan.settings.contains(&Setting::Button {
+            id: 257,
+            action: ButtonAction::Key {
+                usage: 0x89,
+                mods: Modifiers(128)
+            }
+        }));
+        assert!(plan.settings.contains(&Setting::Button {
+            id: 96,
+            action: ButtonAction::Dpi(gearwise_core::model::DpiFunction::CycleDown)
+        }));
+        assert!(plan.settings.contains(&Setting::Button {
+            id: 4,
+            action: ButtonAction::Hypershift
+        }));
+        assert!(plan.settings.contains(&Setting::Button {
+            id: 260,
+            action: ButtonAction::Hypershift
+        }));
+        let report = crate::multibrand::simulate(plan).unwrap();
+        assert_eq!(report["hardware_tested"], false);
+        assert_eq!(report["software_macros"], json!([]));
+        let (mut device, _) = gearwise_razer::simulated_dav3pro(product).unwrap();
+        device.read_state().unwrap();
+        for setting in &plan.settings {
+            device.apply(setting).unwrap();
+        }
+        let actual = device.read_state().unwrap();
+        for setting in &plan.settings {
+            if let Setting::Button { id, action } = setting {
+                assert_eq!(
+                    gearwise_razer::dav3pro_buttons::encode(*id, action).unwrap(),
+                    gearwise_razer::dav3pro_buttons::encode(*id, &actual.buttons[id]).unwrap()
+                );
+            }
+        }
+        assert_eq!(actual.buttons[&4], ButtonAction::Hypershift);
+        assert_eq!(actual.buttons[&260], ButtonAction::Hypershift);
+    }
+}
+
+#[test]
+fn dav3pro_v4_all_seven_proved_media_and_sensitivity_actions_roundtrip_on_both_transports() {
+    let mut actions = vec![];
+    for name in [
+        "NextTrack",
+        "PrevTrack",
+        "MediaStop",
+        "Play",
+        "MuteVolume",
+        "VolumeUp",
+        "VolumeDown",
+    ] {
+        actions.push(("multimediaGroup", json!({"multimediaAssignment":name})));
+    }
+    for name in ["DPI_Up", "DPI_Down", "DPI_CycleUp", "DPI_CycleDown"] {
+        actions.push(("sensitivityGroup", json!({"sensitivityAssignment":name})));
+    }
+    for product in [0xb6, 0xb7] {
+        for (output, group) in &actions {
+            let mut source = payload();
+            source["mappings"] = json!([
+                mapping("RightClick", false, output, Some(group.clone())),
+                mapping("RightClick", true, output, Some(group.clone()))
+            ]);
+            let profile = converted(product, source);
+            assert_eq!(
+                crate::multibrand::simulate(profile.multi.as_ref().unwrap()).unwrap()
+                    ["hardware_tested"],
+                false
+            );
+        }
+    }
+}
+
+#[test]
+fn dav3pro_v4_hidden_reordered_inconsistent_or_disabled_stage_tables_are_blocked() {
+    for product in [0xb6, 0xb7] {
+        let mut source = payload();
+        source["dpi"]["x"] = json!(1601);
+        source["dpiStages"]["stages"][2]["x"] = json!(1601);
+        let result = prepare(&v4(product, source).0).unwrap();
+        assert!(result.candidates[0].profile.is_none());
+        assert!(result.candidates[0].issues[0].contains("50 DPI"));
+    }
+    for (key, value) in [
+        ("active", json!(0)),
+        ("active", json!(6)),
+        ("count", json!(4)),
+        ("enable", json!(false)),
+    ] {
+        let mut source = payload();
+        source["dpiStages"][key] = value;
+        let file = v4(0xb6, source);
+        let result = prepare(&file.0).unwrap();
+        assert!(result.candidates[0].profile.is_none());
+        assert!(result.candidates[0].issues[0].contains("dpiStages"));
+    }
+    for (field, value) in [
+        ("visible", json!(false)),
+        ("index", json!(4)),
+        ("independent", json!(false)),
+        ("unknownStageFlag", json!(true)),
+    ] {
+        let mut source = payload();
+        source["dpiStages"]["stages"][0][field] = value;
+        assert!(prepare(&v4(0xb7, source).0).unwrap().candidates[0]
+            .profile
+            .is_none());
+    }
+    let mut source = payload();
+    source["dpi"]["x"] = json!(800);
+    assert!(prepare(&v4(0xb6, source).0).unwrap().candidates[0]
+        .profile
+        .is_none());
+}
+
+#[test]
+fn dav3pro_v4_unknown_action_options_and_unsafe_control_combinations_are_never_disabled() {
+    let cases = [
+        mapping(
+            "RightClick",
+            false,
+            "keyboardGroup",
+            Some(json!({"key":"KEY_C","modifiers":[],"repeatWhilePressed":true})),
+        ),
+        mapping(
+            "RightClick",
+            false,
+            "macroGroup",
+            Some(json!({"guid":"m","macroPlaybackOption":"WhilePressed","repeatCount":9})),
+        ),
+        mapping(
+            "RightClick",
+            false,
+            "textBlockGroup",
+            Some(json!({"text":"blocked text"})),
+        ),
+        mapping(
+            "RightClick",
+            false,
+            "unknownOEMGroup",
+            Some(json!({"nativeBytes":[3,1,2]})),
+        ),
+        mapping(
+            "ScrollUp",
+            false,
+            "sensitivityGroup",
+            Some(json!({"sensitivityAssignment":"DPI_Up"})),
+        ),
+        mapping(
+            "RightClick",
+            false,
+            "sensitivityGroup",
+            Some(json!({"sensitivityAssignment":"DPI_Clutch","x":800,"y":1600,"independent":true})),
+        ),
+        mapping("Button4", false, "hyperShiftGroup", None),
+        mapping("LeftClick", false, "disableGroup", None),
+    ];
+    for product in [0xb6, 0xb7] {
+        for action in &cases {
+            let mut source = payload();
+            let rows = source["mappings"].as_array_mut().unwrap();
+            let index = rows
+                .iter()
+                .position(|r| {
+                    r["inputType"] == action["inputType"]
+                        && r["inputID"] == action["inputID"]
+                        && r["isHyperShift"] == action["isHyperShift"]
+                })
+                .unwrap();
+            rows[index] = action.clone();
+            let file = v4(product, source.clone());
+            let result = prepare(&file.0).unwrap();
+            assert!(result.candidates[0].profile.is_none());
+            assert!(!result.candidates[0].issues.is_empty());
+            if action["outputType"] == "hyperShiftGroup" {
+                assert!(result.candidates[0]
+                    .issues
+                    .iter()
+                    .any(|e| e.contains("Hypershift 必须保留原厂两层成对记录")));
+            }
+            if action["inputID"] == "LeftClick" {
+                assert!(result.candidates[0]
+                    .issues
+                    .iter()
+                    .any(|e| e.contains("普通层没有直接左键")));
+            }
+            let sidearm_synapse_parser::raw_source::RawSource::V4 { profiles, .. } =
+                result.parsed.raw_source.as_deref().unwrap()
+            else {
+                panic!()
+            };
+            assert_eq!(profiles[0].decoded.as_ref().unwrap().value, source);
+        }
+    }
+    let mut source = payload();
+    source["mappings"] = json!([
+        mapping("RightClick", false, "disableGroup", None),
+        mapping("RightClick", false, "disableGroup", None)
+    ]);
+    assert!(prepare(&v4(0xb6, source).0).unwrap().candidates[0].issues[0].contains("重复"));
+}
+
+#[test]
+fn dav3pro_v4_authored_lighting_and_calibration_blocks_are_retained_and_refused() {
+    // These deliberately unsupported field names are authored negative data,
+    // not a claim that this is an established OEM export feature schema.
+    for product in [0xb6, 0xb7] {
+        for (nested, key) in [
+            (false, "lighting"),
+            (false, "calibration"),
+            (true, "lighting"),
+            (true, "calibration"),
+        ] {
+            let mut source = payload();
+            if nested {
+                source["mappings"][0]["keyboardGroup"][key] = json!({"unknownSourceOption":true});
+            } else {
+                source[key] = if key == "lighting" {
+                    json!({"effect":"static","color":[1,2,3],"brightness":50,"speed":3})
+                } else {
+                    json!({"mode":"asymmetric","lift":13,"landing":12})
+                };
+            }
+            let file = v4(product, source.clone());
+            let original = std::fs::read(&file.0).unwrap();
+            let result = prepare(&file.0).unwrap();
+            let expected = if nested {
+                format!("/keyboardGroup/{key}")
+            } else {
+                format!("/payload/{key}")
+            };
+            assert!(result.candidates[0].profile.is_none());
+            assert!(
+                result.candidates[0]
+                    .issues
+                    .iter()
+                    .any(|e| e.contains(&expected)),
+                "{:?}",
+                result.candidates[0].issues
+            );
+            let sidearm_synapse_parser::raw_source::RawSource::V4 { profiles, .. } =
+                result.parsed.raw_source.as_deref().unwrap()
+            else {
+                panic!()
+            };
+            assert_eq!(profiles[0].decoded.as_ref().unwrap().value, source);
+            assert_eq!(std::fs::read(&file.0).unwrap(), original);
+        }
+    }
+}
+
+#[test]
+fn dav3pro_v4_macros_and_unknown_json_are_retained_without_frontend_raw_leak() {
+    let source = payload();
+    let outer = json!({"productId":0xb7,"category":"MOUSE","deviceName":"DeathAdder V3 Pro",
+        "profiles":[{"name":"macro source","payload":base64(&serde_json::to_vec(&source).unwrap()),"hash":source_hash::profile_hash(&source).unwrap()}],
+        "macros":[{"name":"retained OEM macro","payload":base64(br#"{"guid":"m","macroEvents":[{"Type":99,"vendorEvent":{"bytes":[1,2,3]}}]}"#),"hash":"unverified"}]});
+    let file = ExportFile::new("synapse4", &serde_json::to_vec(&outer).unwrap());
+    let result = prepare(&file.0).unwrap();
+    assert!(result.candidates[0].profile.is_none());
+    assert!(result.candidates[0]
+        .issues
+        .iter()
+        .any(|e| e.contains("/macros")));
+    let sidearm_synapse_parser::raw_source::RawSource::V4 { macros, .. } =
+        result.parsed.raw_source.as_deref().unwrap()
+    else {
+        panic!()
+    };
+    assert_eq!(
+        macros[0].decoded.as_ref().unwrap().value["macroEvents"][0]["vendorEvent"]["bytes"],
+        json!([1, 2, 3])
+    );
+    let wire = serde_json::to_string(&result).unwrap();
+    assert!(!wire.contains("vendorEvent") && !wire.contains("raw_source"));
+}
+
+#[test]
+fn dav3pro_v4_checksum_duplicate_fields_and_missing_transport_rate_cannot_bypass_source_validation()
+{
+    let empty = ExportFile::new(
+        "synapse4",
+        br#"{"productId":182,"category":"MOUSE","profiles":[],"macros":[]}"#,
+    );
+    let result = prepare(&empty.0).unwrap();
+    assert!(result.candidates.is_empty());
+    assert!(result.conversion_error.unwrap().contains("/profiles"));
+    let mut source = payload();
+    source
+        .as_object_mut()
+        .unwrap()
+        .remove("pollingRateWireless");
+    assert!(
+        prepare(&v4(0xb7, source).0).unwrap().candidates[0].issues[0]
+            .contains("pollingRateWireless")
+    );
+    let source = payload();
+    let mut outer = json!({"productId":0xb6,"category":"MOUSE","profiles":[{"name":"bad hash","payload":base64(&serde_json::to_vec(&source).unwrap()),"hash":"00000000000000000000000000000000"}],"macros":[]});
+    let file = ExportFile::new("synapse4", &serde_json::to_vec(&outer).unwrap());
+    assert!(prepare(&file.0).unwrap().candidates[0].issues[0].contains("hash"));
+    let duplicate =
+        serde_json::to_string(&source)
+            .unwrap()
+            .replacen('{', "{\"shadow\":1,\"shadow\":2,", 1);
+    outer["profiles"][0]["payload"] = json!(base64(duplicate.as_bytes()));
+    let file = ExportFile::new("synapse4", &serde_json::to_vec(&outer).unwrap());
+    let original = std::fs::read(&file.0).unwrap();
+    let result = prepare(&file.0).unwrap();
+    assert!(result.candidates[0].profile.is_none());
+    assert!(result.candidates[0]
+        .issues
+        .iter()
+        .any(|e| e.contains("duplicate JSON key")));
+    assert_eq!(std::fs::read(&file.0).unwrap(), original);
 }
 
 // Minimal stored ZIP writer for synthetic v3 source tests, with correct CRCs
@@ -236,6 +914,20 @@ fn dav3pro_v3_zip_parser_entry_exposes_missing_identity_features_and_action_bloc
         assert!(matches!(binding.action, ParsedAction::Disabled));
         assert!(binding.raw_mapping.is_none());
     }
+    let sidearm_synapse_parser::raw_source::RawSource::V3 { entries } =
+        prepared.parsed.raw_source.as_deref().unwrap()
+    else {
+        panic!()
+    };
+    let original = entries
+        .iter()
+        .find(|e| e.path == "Features/p/mappings.xml")
+        .unwrap();
+    assert_eq!(original.bytes, mappings.as_bytes());
+    assert!(entries.iter().any(|e| e.path == "Features/p/stages.xml"));
+    assert!(!serde_json::to_string(&prepared.parsed)
+        .unwrap()
+        .contains("UnknownOEMGroup"));
     assert!(prepared.candidates.is_empty());
     let reason = prepared.conversion_error.unwrap();
     assert!(

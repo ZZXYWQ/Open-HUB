@@ -312,6 +312,8 @@ pub fn parse_synapse_v4_str(
     }
 
     Ok(ParsedSynapseProfiles {
+        raw_source: None,
+        raw_source_error: None,
         device: if outer.category.eq_ignore_ascii_case("MOUSE"){outer.product_id.map(|product|super::types::SourceDevice{vendor:0x1532,product,name:outer.device_name.clone()})}else{None},
         source_kind: SourceKind::SynapseV4,
         source_path,
