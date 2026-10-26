@@ -8,6 +8,7 @@ use std::sync::{
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 type R<T> = Result<T, String>;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct Light {
     pub enabled: bool,
     pub mode: u8,
@@ -172,6 +173,10 @@ impl Session {
         Ok(())
     }
     fn read(&self) -> R<(Light, String)> {
+        let (light, firmware, _) = self.read_with_report()?;
+        Ok((light, firmware))
+    }
+    fn read_with_report(&self) -> R<(Light, String, Vec<u8>)> {
         let mut b = [0u8; 65];
         let mut drained = false;
         for _ in 0..32 {
@@ -191,7 +196,7 @@ impl Session {
                 return Err("底座报文长度错误".into());
             }
             if let Some(state) = parse_reply(&b[..n])? {
-                return Ok(state);
+                return Ok((state.0, state.1, b[..n].to_vec()));
             }
         }
         Err("底座读取超时，请关闭 M HUB 后重试".into())
@@ -336,11 +341,22 @@ impl Controller {
         Ok(())
     }
     pub fn apply(&self, l: Light, expected: &str) -> R<View> {
+        self.apply_reviewed(l, expected, None)
+    }
+    pub(crate) fn apply_reviewed(
+        &self,
+        l: Light,
+        expected: &str,
+        reviewed: Option<(&Light, &str)>,
+    ) -> R<View> {
         l.validate()?;
         self.check_connection(expected)?;
         self.stop()?;
         let (light, firmware) = self.inner.access_bound(expected, |s| {
-            let (before, _) = s.read()?;
+            let (before, firmware) = s.read()?;
+            if reviewed.is_some_and(|(state, fw)| state != &before || fw != firmware) {
+                return Err("底座状态在预览后已改变，请重新选择备份".into());
+            }
             s.backup(&before)?;
             if s.read()?.0 != before {
                 return Err("底座状态在备份期间已改变，请重新读取".into());
@@ -532,6 +548,17 @@ fn restore_light(inner: &Inner, connection: &str, expected: &Light, before: &Lig
     })
 }
 
+/// Diagnostic read only: open one exact MagDock interface and issue GET7.
+/// Raw response is opt-in; normal views do not expose or persist it.
+pub fn readonly_report() -> R<serde_json::Value> {
+    let session = Session::open()?;
+    let (light, firmware, response) = session.read_with_report()?;
+    Ok(serde_json::json!({
+        "format":"open-hub-magdock-readonly-report/1", "requested_command":7,
+        "settings_commands_sent":false, "native_request_bytes_including_id":65,
+        "response_bytes":response, "light":light, "firmware":firmware,
+    }))
+}
 fn music_colors(level: f32, color: [u8; 3], brightness: u8) -> [u8; 36] {
     let groups: [&[usize]; 7] = [&[5], &[4, 6], &[3, 7], &[2, 8], &[1, 9], &[0, 10], &[11]];
     let mut out = [0; 36];

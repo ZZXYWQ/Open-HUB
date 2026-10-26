@@ -91,6 +91,9 @@ impl Engine {
     }
     /// Release an effect session only if that session controls the dock.
     /// A dock-only edit must leave an independent PC RGB session running.
+    pub fn controls_dock(&self) -> R<bool> {
+        Ok(self.worker.lock().map_err(|_| "灯光线程锁定失败")?.as_ref().is_some_and(|w| w.owns_dock && !w.handle.is_finished()))
+    }
     pub fn stop_for_dock(&self) -> R<Status> {
         let mut worker = self.worker.lock().map_err(|_| "灯光线程锁定失败")?;
         if worker.as_ref().is_some_and(|w| w.owns_dock) {

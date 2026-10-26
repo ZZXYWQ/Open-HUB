@@ -34,6 +34,7 @@ mod mchose;
 mod mchose_config;
 mod mchose_target;
 mod magdock;
+mod magdock_backup;
 mod audio_meter;
 mod rgb;
 mod screen;
@@ -309,6 +310,13 @@ fn magdock_apply(c:State<magdock::Controller>,engine:State<effects::Engine>,ligh
 fn magdock_music(c:State<magdock::Controller>,engine:State<effects::Engine>,enabled:bool,light:magdock::Light,gain:f32,expected_connection:String)->Result<magdock::View,String>{if enabled{light.validate()?;if !gain.is_finite()||!(0.5..=8.0).contains(&gain){return Err("律动灵敏度应为 0.5–8".into())}}if enabled{c.with_selected_connection(&engine,&expected_connection,||c.music(light,gain,&expected_connection))}else{engine.route(||c.stop_selected(&expected_connection))}}
 #[tauri::command(async)]
 fn magdock_reset(c:State<magdock::Controller>,engine:State<effects::Engine>,expected_connection:String)->Result<magdock::View,String>{c.with_selected_connection(&engine,&expected_connection,||c.reset(&expected_connection))}
+#[tauri::command(async)]
+fn magdock_export(c:State<magdock::Controller>,engine:State<effects::Engine>,path:String,expected_connection:String)->Result<(),String>{magdock_backup::export(&c,&engine,std::path::Path::new(&path),&expected_connection)}
+#[tauri::command(async)]
+fn magdock_restore_preview(c:State<magdock::Controller>,engine:State<effects::Engine>,path:String,expected_connection:String)->Result<magdock_backup::Preview,String>{magdock_backup::preview(&c,&engine,std::path::Path::new(&path),&expected_connection)}
+#[tauri::command(async)]
+fn magdock_restore(c:State<magdock::Controller>,engine:State<effects::Engine>,path:String,selection:magdock_backup::Selection)->Result<magdock::View,String>{magdock_backup::restore(&c,&engine,std::path::Path::new(&path),&selection)}
+
 
 
 #[tauri::command(async)]
@@ -971,6 +979,9 @@ fn main() {
 
     if std::env::args().any(|a|a=="--lighting-probe"){let result=(||->Result<serde_json::Value,String>{let rgb=rgb::Client::connect()?.devices;let screen=screen::sample()?;let meter=audio_meter::Meter::open()?;Ok(serde_json::json!({"rgb":rgb,"screen":screen,"audio_peak":meter.peak()?}))})();match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;}
 
+    if std::env::args().any(|a|a=="--magdock-readonly-report") {
+        match magdock::readonly_report(){Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;
+    }
     if std::env::args().any(|a|a=="--magdock-probe"||a=="--magdock-self-test"||a=="--magdock-music-test") {
         let c=magdock::Controller::default();let result=if std::env::args().any(|a|a=="--magdock-self-test"){c.self_test()}else if std::env::args().any(|a|a=="--magdock-music-test"){( c.view()).and_then(|v|{c.music(v.light,2.0,&v.connection_key)?;std::thread::sleep(std::time::Duration::from_secs(3));let during=c.view()?;c.stop()?;Ok(serde_json::json!({"during":during,"after":c.view()?}))})}else{c.view().and_then(|v|serde_json::to_value(v).map_err(|e|e.to_string()))};match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;
     }
@@ -1142,6 +1153,9 @@ fn main() {
             magdock_apply,
             magdock_music,
             magdock_reset,
+            magdock_export,
+            magdock_restore_preview,
+            magdock_restore,
             mchose_hardware,
             mchose_macro,
             mchose_macro_file,

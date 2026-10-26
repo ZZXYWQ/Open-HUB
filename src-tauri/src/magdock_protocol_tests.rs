@@ -710,3 +710,286 @@ fn actual_dock_ui_requests_replay_selected_native_controller_and_effect_workers(
         }
     }
 }
+
+#[test]
+fn physically_observed_get_response_decodes_without_invented_padding_or_mode_count() {
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../tests/fixtures/magdock-observed-readonly.json"
+    ))
+    .unwrap();
+    let raw: Vec<u8> = serde_json::from_value(fixture["response_bytes"].clone()).unwrap();
+    assert_eq!(raw.len(), 64);
+    assert_eq!(&raw[..6], &[170, 7, 2, 0, 0, 30]);
+    let (light, firmware) = parse_reply(&raw).unwrap().unwrap();
+    assert_eq!(light.mode, 4);
+    assert_eq!(light.mode_count, 6);
+    assert_eq!(light.color, [255, 0, 0]);
+    assert_eq!(light.direction, 1);
+    assert_eq!(firmware, "0.3");
+    assert_eq!(serde_json::to_value(light).unwrap(), fixture["light"]);
+    assert_eq!(fixture["requested_command"], 7);
+    assert_eq!(fixture["settings_commands_sent"], false);
+}
+
+fn write_light_backup(path: &std::path::Path, light: &Light, firmware: &str) {
+    let backup = crate::magdock_backup::Backup {
+        format: "open-hub-magdock-light/1".into(),
+        vendor: 0x3837,
+        product: 0x1012,
+        firmware: firmware.into(),
+        light: light.clone(),
+    };
+    std::fs::write(path, serde_json::to_vec_pretty(&backup).unwrap()).unwrap();
+}
+#[test]
+fn light_backup_export_preview_and_restore_use_native_io_and_preserve_unwritten_fields() {
+    let (controller, wire) = controller("dock-A:1");
+    let dir = backup_directory(&controller);
+    std::fs::create_dir_all(&dir).unwrap();
+    let engine = crate::effects::Engine::default();
+    let file = dir.join("export.json");
+    crate::magdock_backup::export(&controller, &engine, &file, "dock-A:1").unwrap();
+    assert_eq!(commands(&wire), [7]);
+    let doc: serde_json::Value = serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
+    assert_eq!(doc["format"], "open-hub-magdock-light/1");
+    assert_eq!(doc["firmware"], "2.9");
+    assert!(!std::fs::read_to_string(&file).unwrap().contains("dock-A:1"));
+    let mut desired = before();
+    desired.color = [90, 20, 200];
+    desired.mode = 1;
+    desired.speed = 4;
+    write_light_backup(&file, &desired, "2.9");
+    let preview = crate::magdock_backup::preview(&controller, &engine, &file, "dock-A:1").unwrap();
+    assert_eq!(preview.light, desired);
+    assert_eq!(preview.selection.expected_light, before());
+    assert!(!commands(&wire).contains(&39));
+    let result =
+        crate::magdock_backup::restore(&controller, &engine, &file, &preview.selection).unwrap();
+    assert_eq!(result.light, desired);
+    assert_eq!(result.connection_key, "dock-A:1");
+    assert_eq!(commands(&wire), [7, 7, 7, 7, 7, 39, 7]);
+    assert_eq!(wire.lock().unwrap().body[9..14], REPLY[15..20]);
+    let automatic = std::fs::read_dir(&dir)
+        .unwrap()
+        .filter_map(|e| {
+            let p = e.unwrap().path();
+            p.file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .starts_with("magdock-")
+                .then_some(p)
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(automatic.len(), 1);
+    let original: Light = serde_json::from_slice(&std::fs::read(&automatic[0]).unwrap()).unwrap();
+    assert_eq!(original, before());
+    std::fs::remove_dir_all(dir).unwrap();
+}
+#[test]
+fn changed_backup_current_state_and_connection_prevent_restore_setting_writes() {
+    let (controller, wire) = controller("dock-A:1");
+    let dir = backup_directory(&controller);
+    std::fs::create_dir_all(&dir).unwrap();
+    let engine = crate::effects::Engine::default();
+    let file = dir.join("input.json");
+    write_light_backup(&file, &before(), "2.9");
+    let preview = crate::magdock_backup::preview(&controller, &engine, &file, "dock-A:1").unwrap();
+    wire.lock().unwrap().writes.clear();
+    let mut changed = before();
+    changed.color = [1, 2, 3];
+    write_light_backup(&file, &changed, "2.9");
+    assert!(
+        crate::magdock_backup::restore(&controller, &engine, &file, &preview.selection).is_err()
+    );
+    assert!(commands(&wire).is_empty());
+    write_light_backup(&file, &before(), "2.9");
+    set_body(&wire, &changed);
+    assert!(
+        crate::magdock_backup::restore(&controller, &engine, &file, &preview.selection).is_err()
+    );
+    assert_eq!(commands(&wire), [7]);
+    set_body(&wire, &before());
+    wire.lock().unwrap().writes.clear();
+    let (replacement, b) = session("dock-B:2");
+    *controller.inner.session.lock().unwrap() = Some(replacement);
+    assert!(
+        crate::magdock_backup::restore(&controller, &engine, &file, &preview.selection).is_err()
+    );
+    assert!(commands(&b).is_empty());
+    assert!(commands(&wire).is_empty());
+    std::fs::remove_dir_all(dir).unwrap();
+}
+#[test]
+fn backup_preview_refuses_other_firmware_and_active_dock_effects_without_stopping_them() {
+    let (controller, wire) = controller("dock-A:1");
+    let dir = backup_directory(&controller);
+    std::fs::create_dir_all(&dir).unwrap();
+    let engine = crate::effects::Engine::default();
+    let file = dir.join("input.json");
+    write_light_backup(&file, &before(), "0.3");
+    assert!(crate::magdock_backup::preview(&controller, &engine, &file, "dock-A:1").is_err());
+    assert!(!commands(&wire).contains(&39));
+    write_light_backup(&file, &before(), "2.9");
+    engine
+        .start_selected(effect_config(), controller.clone(), Some("dock-A:1"))
+        .unwrap();
+    let sets = commands(&wire).iter().filter(|v| **v == 39).count();
+    assert!(crate::magdock_backup::preview(&controller, &engine, &file, "dock-A:1").is_err());
+    assert!(engine.status().unwrap().running);
+    assert_eq!(commands(&wire).iter().filter(|v| **v == 39).count(), sets);
+    engine.stop().unwrap();
+    controller
+        .music_with_meter(before(), 2.0, "dock-A:1", || Ok(ConstantMeter))
+        .unwrap();
+    assert!(crate::magdock_backup::preview(&controller, &engine, &file, "dock-A:1").is_err());
+    assert!(controller.view_selected("dock-A:1").unwrap().music_running);
+    controller.stop_selected("dock-A:1").unwrap();
+    std::fs::remove_dir_all(dir).unwrap();
+}
+#[test]
+fn old_automatic_plain_light_backup_can_preview_and_restore_with_explicit_target() {
+    let (controller, _) = controller("dock-A:1");
+    let dir = backup_directory(&controller);
+    std::fs::create_dir_all(&dir).unwrap();
+    let engine = crate::effects::Engine::default();
+    let file = dir.join("old.json");
+    let mut desired = before();
+    desired.brightness = 4;
+    std::fs::write(&file, serde_json::to_vec(&desired).unwrap()).unwrap();
+    let preview = crate::magdock_backup::preview(&controller, &engine, &file, "dock-A:1").unwrap();
+    assert!(preview.legacy);
+    assert!(preview.source_firmware.is_none());
+    assert_eq!(
+        crate::magdock_backup::restore(&controller, &engine, &file, &preview.selection)
+            .unwrap()
+            .light,
+        desired
+    );
+    std::fs::remove_dir_all(dir).unwrap();
+}
+#[test]
+#[ignore = "requires explicit OPEN_HUB_MAGDOCK_BACKUP_UI_FIXTURE path"]
+fn export_dock_backup_native_ui_fixture() {
+    let (controller, _) = controller("dock-A:1");
+    let dir = backup_directory(&controller);
+    std::fs::create_dir_all(&dir).unwrap();
+    let engine = crate::effects::Engine::default();
+    let file = dir.join("input.json");
+    let mut desired = before();
+    desired.color = [150, 20, 220];
+    desired.mode = 1;
+    desired.speed = 4;
+    desired.brightness = 4;
+    desired.direction = 0;
+    write_light_backup(&file, &desired, "2.9");
+    let preview = crate::magdock_backup::preview(&controller, &engine, &file, "dock-A:1").unwrap();
+    let source: serde_json::Value = serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
+    let legacy_file = dir.join("legacy.json");
+    std::fs::write(&legacy_file, serde_json::to_vec(&desired).unwrap()).unwrap();
+    let legacy_preview =
+        crate::magdock_backup::preview(&controller, &engine, &legacy_file, "dock-A:1").unwrap();
+    let doc = serde_json::json!({"view":controller.view_selected("dock-A:1").unwrap(),"preview":preview,"source":source,"legacy_preview":legacy_preview});
+    std::fs::write(
+        std::env::var("OPEN_HUB_MAGDOCK_BACKUP_UI_FIXTURE").unwrap(),
+        serde_json::to_vec_pretty(&doc).unwrap(),
+    )
+    .unwrap();
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn finished_effect_handle_does_not_permanently_block_backup_after_reconnect() {
+    let (controller, wire) = controller("dock-A:1");
+    let dir = backup_directory(&controller);
+    let engine = crate::effects::Engine::default();
+    engine
+        .start_selected(effect_config(), controller.clone(), Some("dock-A:1"))
+        .unwrap();
+    wire.lock().unwrap().disconnect = true;
+    let until = Instant::now() + Duration::from_secs(2);
+    while engine.controls_dock().unwrap() {
+        assert!(Instant::now() < until);
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    let (replacement, b) = session("dock-B:2");
+    let fresh_dir = replacement.backup_dir.clone().unwrap();
+    *controller.inner.session.lock().unwrap() = Some(replacement);
+    let file = dir.join("fresh-export.json");
+    crate::magdock_backup::export(&controller, &engine, &file, "dock-B:2").unwrap();
+    assert_eq!(commands(&b), [7]);
+    assert!(file.exists());
+    engine.stop().unwrap();
+    std::fs::remove_dir_all(dir).unwrap();
+    assert!(!fresh_dir.exists());
+}
+#[test]
+#[ignore = "requires actual built UI calls via OPEN_HUB_MAGDOCK_BACKUP_UI_REQUESTS"]
+fn actual_backup_ui_requests_replay_native_export_preview_and_restore() {
+    let fixture: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(std::env::var("OPEN_HUB_MAGDOCK_BACKUP_UI_FIXTURE").unwrap()).unwrap(),
+    )
+    .unwrap();
+    let requests: Vec<serde_json::Value> = serde_json::from_slice(
+        &std::fs::read(std::env::var("OPEN_HUB_MAGDOCK_BACKUP_UI_REQUESTS").unwrap()).unwrap(),
+    )
+    .unwrap();
+    let source: crate::magdock_backup::Backup =
+        serde_json::from_value(fixture["source"].clone()).unwrap();
+    let (controller, wire) = controller("dock-A:1");
+    let dir = backup_directory(&controller);
+    std::fs::create_dir_all(&dir).unwrap();
+    let engine = crate::effects::Engine::default();
+    let input = dir.join("input.json");
+    std::fs::write(&input, serde_json::to_vec_pretty(&source).unwrap()).unwrap();
+    let legacy = dir.join("legacy.json");
+    std::fs::write(&legacy, serde_json::to_vec(&source.light).unwrap()).unwrap();
+    let mut exports = 0;
+    let mut previews = 0;
+    let mut restores = 0;
+    for request in requests {
+        let args = &request["args"];
+        match request["cmd"].as_str().unwrap() {
+            "magdock_export" => {
+                assert_eq!(args["expectedConnection"], "dock-A:1");
+                crate::magdock_backup::export(
+                    &controller,
+                    &engine,
+                    &dir.join("export.json"),
+                    args["expectedConnection"].as_str().unwrap(),
+                )
+                .unwrap();
+                exports += 1;
+            }
+            "magdock_restore_preview" => {
+                let path = if args["path"] == "legacy.json" {
+                    &legacy
+                } else {
+                    &input
+                };
+                let p = crate::magdock_backup::preview(
+                    &controller,
+                    &engine,
+                    path,
+                    args["expectedConnection"].as_str().unwrap(),
+                )
+                .unwrap();
+                assert_eq!(p.legacy, path == &legacy);
+                previews += 1;
+            }
+            "magdock_restore" => {
+                let selection: crate::magdock_backup::Selection =
+                    serde_json::from_value(args["selection"].clone()).unwrap();
+                let result =
+                    crate::magdock_backup::restore(&controller, &engine, &input, &selection)
+                        .unwrap();
+                assert_eq!(result.light, source.light);
+                restores += 1;
+            }
+            _ => panic!("unexpected backup UI command"),
+        }
+    }
+    assert_eq!((exports, previews, restores), (1, 4, 1));
+    assert_eq!(commands(&wire).iter().filter(|c| **c == 39).count(), 1);
+    std::fs::remove_dir_all(dir).unwrap();
+}

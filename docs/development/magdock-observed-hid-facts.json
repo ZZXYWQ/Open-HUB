@@ -1,0 +1,47 @@
+{
+  "date_local": "2026-10-27",
+  "family": "3837:1012 MCHOSE MagDock",
+  "usage_page": 65280,
+  "usage": 1,
+  "input_report_bytes_including_id": 65,
+  "output_report_bytes_including_id": 65,
+  "feature_report_bytes_including_id": 0,
+  "version_number": 3,
+  "physical_GET_command": 7,
+  "observed_response_bytes_returned_by_HIDAPI": 64,
+  "observed_response_prefix": [
+    170,
+    7,
+    2,
+    0,
+    0,
+    30
+  ],
+  "firmware_display": "0.3",
+  "observed_light": {
+    "brightness": 1,
+    "color": [
+      255,
+      0,
+      0
+    ],
+    "direction": 1,
+    "enabled": true,
+    "mode": 4,
+    "mode_count": 6,
+    "speed": 1,
+    "sync": false
+  },
+  "settings_commands_sent": false,
+  "methods": [
+    "Windows zero-access HID metadata queries",
+    "native --magdock-probe",
+    "native --magdock-readonly-report"
+  ],
+  "limits": [
+    "One attached dock and firmware; not all revisions",
+    "65-byte descriptor and GET exchange observed; SET39/stream41/reset42 have not been sent during this increment",
+    "Raw64 starts with AA and has no report-ID byte; this is the API-returned form, not a USB bus capture",
+    "Read-only response does not prove actual effect playback, mouse-body RGB or complete mouse acceptance"
+  ]
+}
