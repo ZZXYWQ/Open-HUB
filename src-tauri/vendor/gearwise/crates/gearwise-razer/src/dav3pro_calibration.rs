@@ -7,7 +7,7 @@ use gearwise_core::{Error, Result, SensorCalibration, SensorCalibrationCaps};
 
 /// Static model support; callers expose these bounds only after an exact GET.
 pub fn calibration_caps(product: u16) -> Option<SensorCalibrationCaps> {
-    (product == 0x00b6).then(|| SensorCalibrationCaps {
+    matches!(product, 0x00b6 | 0x00b7).then(|| SensorCalibrationCaps {
         standard_levels: vec![1, 2, 3],
         lift_levels: (2..=26).collect(),
         landing_levels: (1..=25).collect(),
@@ -192,12 +192,13 @@ mod tests {
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     enum Fault { None, Reject(usize), Busy(usize), Foreign(usize), Corrupt(usize), MalformedGet(usize), PersistentGet(usize), ForeignGet(usize), RestoreFailure }
     struct State { raw: Raw, writes: Vec<(u8, [u8; 2])>, requests: Vec<Report>, reads: usize, fault: Fault }
-    fn rig(raw: Raw, fault: Fault) -> (Link, Arc<Mutex<State>>) {
+    fn rig(product: u16, raw: Raw, fault: Fault) -> (Link, Arc<Mutex<State>>) {
         let state = Arc::new(Mutex::new(State { raw, writes: vec![], requests: vec![], reads: 0, fault }));
         let shared = state.clone();
         let io = MockTransport::new(move |op| {
             let MockOp::SetFeature(bytes) = op else { return MockReply::none(); };
             let req = Report::from_wire(bytes).unwrap();
+            assert_eq!(req.transaction_id, 0x1f, "exact B6/B7 transaction id");
             let mut state = shared.lock().unwrap();
             state.requests.push(req.clone());
             let field = match req.command & 0x7f {
@@ -233,11 +234,10 @@ mod tests {
             if corrupt { wire[89] ^= 1; }
             MockReply::feature(wire)
         });
-        (Link::new(Box::new(io), 31, Timing::new(Duration::ZERO, Duration::ZERO, 1)), state)
+        (Link::new(Box::new(io), crate::models::find(product).unwrap().transaction_id, Timing::new(Duration::ZERO, Duration::ZERO, 1)), state)
     }
 
-    #[test]
-    fn exact_primary_get_and_set_vectors_have_explicit_lengths_and_selectors() {
+    fn exact_primary_get_and_set_vectors_have_explicit_lengths_and_selectors(product: u16) {
         // Independent primary report shapes; no OEM executable or code runs.
         for (field, value, prefix, crc) in [
             (Field::State, None, vec![0,0,31,0,0,0,3,11,131,0,4,0], 0x8f),
@@ -251,13 +251,13 @@ mod tests {
             expected[..prefix.len()].copy_from_slice(&prefix);
             expected[89] = crc;
             let mut report = request(field, value);
-            report.transaction_id = 31;
+            report.transaction_id = crate::models::find(product).unwrap().transaction_id;
+            assert_eq!(report.transaction_id, 0x1f);
             assert_eq!(report.to_wire(), expected);
         }
     }
 
-    #[test]
-    fn explicit_levels_decode_without_treating_inactive_pair_as_active() {
+    fn explicit_levels_decode_without_treating_inactive_pair_as_active(product: u16) {
         for distance in 1..=3 {
             let value = SensorCalibration::Standard { distance };
             let mut raw = original().target(&value);
@@ -266,7 +266,7 @@ mod tests {
         }
         for lift in 2..=26 { for landing in 1..lift {
             let value = SensorCalibration::Asymmetric { lift, landing };
-            validate_sensor_calibration(0xb6, &value).unwrap();
+            validate_sensor_calibration(product, &value).unwrap();
             assert_eq!(original().target(&value).semantic().unwrap(), value);
         }}
         for raw in [Raw { state: 2, ..original() }, Raw { mode: [4,0], ..original() },
@@ -276,41 +276,38 @@ mod tests {
         }
     }
 
-    #[test]
-    fn unsupported_models_and_invalid_levels_do_zero_io() {
-        let (mut link, state) = rig(original(), Fault::None);
-        for product in [0xb7, 0xb4, 0xc0, 0, 0xffff] {
-            assert!(read(&mut link, product).is_err());
-            assert!(apply(&mut link, product, &SensorCalibration::Standard { distance: 2 }).is_err());
+    fn unsupported_models_and_invalid_levels_do_zero_io(product: u16) {
+        let (mut link, state) = rig(product, original(), Fault::None);
+        for unsupported in [0xb4, 0xc0, 0, 0xffff] {
+            assert!(read(&mut link, unsupported).is_err());
+            assert!(apply(&mut link, unsupported, &SensorCalibration::Standard { distance: 2 }).is_err());
         }
         for value in [SensorCalibration::Standard { distance: 0 }, SensorCalibration::Standard { distance: 4 },
             SensorCalibration::Asymmetric { lift: 1, landing: 1 }, SensorCalibration::Asymmetric { lift: 27, landing: 12 },
             SensorCalibration::Asymmetric { lift: 13, landing: 13 }] {
-            assert!(apply(&mut link, 0xb6, &value).is_err());
+            assert!(apply(&mut link, product, &value).is_err());
         }
         assert!(state.lock().unwrap().requests.is_empty());
     }
 
-    #[test]
-    fn fresh_get_and_each_partial_progress_verify_before_success() {
-        let (mut link, state) = rig(original(), Fault::None);
-        assert_eq!(read(&mut link, 0xb6).unwrap(), SensorCalibration::Standard { distance: 2 });
+    fn fresh_get_and_each_partial_progress_verify_before_success(product: u16) {
+        let (mut link, state) = rig(product, original(), Fault::None);
+        assert_eq!(read(&mut link, product).unwrap(), SensorCalibration::Standard { distance: 2 });
         let value = SensorCalibration::Asymmetric { lift: 26, landing: 25 };
-        apply(&mut link, 0xb6, &value).unwrap();
-        assert_eq!(read(&mut link, 0xb6).unwrap(), value);
+        apply(&mut link, product, &value).unwrap();
+        assert_eq!(read(&mut link, product).unwrap(), value);
         assert_eq!(state.lock().unwrap().writes, vec![(3,[1,0]),(11,[4,0]),(5,[25,24])]);
         state.lock().unwrap().raw.configuration = [0,0];
-        assert!(read(&mut link, 0xb6).is_err());
-        assert!(apply(&mut link, 0xb6, &SensorCalibration::Standard { distance: 3 }).is_err());
+        assert!(read(&mut link, product).is_err());
+        assert!(apply(&mut link, product, &SensorCalibration::Standard { distance: 3 }).is_err());
         assert_eq!(state.lock().unwrap().writes.len(), 3);
     }
 
-    #[test]
-    fn uncertain_set_is_not_replayed_and_only_owned_progress_is_restored() {
+    fn uncertain_set_is_not_replayed_and_only_owned_progress_is_restored(product: u16) {
         let value = SensorCalibration::Asymmetric { lift: 26, landing: 25 };
         for at in 1..=3 { for fault in [Fault::Reject(at), Fault::Busy(at), Fault::Corrupt(at)] {
-            let (mut link, state) = rig(original(), fault);
-            let error = apply(&mut link, 0xb6, &value).unwrap_err().to_string();
+            let (mut link, state) = rig(product, original(), fault);
+            let error = apply(&mut link, product, &value).unwrap_err().to_string();
             assert!(error.contains("not retried"));
             assert_eq!(state.lock().unwrap().raw, original(), "{fault:?}");
             let writes = &state.lock().unwrap().writes;
@@ -321,45 +318,42 @@ mod tests {
         }}
     }
 
-    #[test]
-    fn foreign_associated_record_stops_all_recovery_and_failed_restore_is_not_replayed() {
+    fn foreign_associated_record_stops_all_recovery_and_failed_restore_is_not_replayed(product: u16) {
         let value = SensorCalibration::Asymmetric { lift: 26, landing: 25 };
         for at in 1..=3 {
-            let (mut link, state) = rig(original(), Fault::Foreign(at));
-            let error = apply(&mut link, 0xb6, &value).unwrap_err().to_string();
+            let (mut link, state) = rig(product, original(), Fault::Foreign(at));
+            let error = apply(&mut link, product, &value).unwrap_err().to_string();
             assert!(error.contains("foreign calibration retained"));
             let state = state.lock().unwrap();
             assert_eq!(state.raw.configuration, [20,10]);
             assert_eq!(state.writes.len(), at);
         }
-        let (mut link, state) = rig(original(), Fault::RestoreFailure);
-        assert!(apply(&mut link, 0xb6, &value).is_err());
+        let (mut link, state) = rig(product, original(), Fault::RestoreFailure);
+        assert!(apply(&mut link, product, &value).is_err());
         assert_eq!(state.lock().unwrap().writes.len(), 3);
     }
 
-    #[test]
-    fn malformed_original_midway_and_final_gets_never_leave_unverified_success() {
+    fn malformed_original_midway_and_final_gets_never_leave_unverified_success(product: u16) {
         let value = SensorCalibration::Asymmetric { lift: 26, landing: 25 };
         for at in [1,7,22] {
-            let (mut link, state) = rig(original(), Fault::MalformedGet(at));
-            assert!(apply(&mut link, 0xb6, &value).is_err());
+            let (mut link, state) = rig(product, original(), Fault::MalformedGet(at));
+            assert!(apply(&mut link, product, &value).is_err());
             let state = state.lock().unwrap();
             assert_eq!(state.raw, original());
             if at == 1 { assert!(state.writes.is_empty()); }
         }
-        let (mut link, state) = rig(original(), Fault::ForeignGet(4));
-        assert!(apply(&mut link, 0xb6, &value).is_err());
+        let (mut link, state) = rig(product, original(), Fault::ForeignGet(4));
+        assert!(apply(&mut link, product, &value).is_err());
         let state = state.lock().unwrap();
         assert!(state.writes.is_empty());
         assert_eq!(state.raw.configuration, [20,10]);
     }
 
-    #[test]
-    fn final_get_failure_without_recovery_evidence_and_final_foreign_config_never_trigger_blind_restore() {
+    fn final_get_failure_without_recovery_evidence_and_final_foreign_config_never_trigger_blind_restore(product: u16) {
         let value = SensorCalibration::Asymmetric { lift: 26, landing: 25 };
         for fault in [Fault::PersistentGet(22), Fault::ForeignGet(22)] {
-            let (mut link, state) = rig(original(), fault);
-            assert!(apply(&mut link, 0xb6, &value).is_err());
+            let (mut link, state) = rig(product, original(), fault);
+            assert!(apply(&mut link, product, &value).is_err());
             let state = state.lock().unwrap();
             assert_eq!(state.writes.len(), 3);
             assert_eq!(state.raw.state, 1);
@@ -368,17 +362,44 @@ mod tests {
         }
     }
 
-    #[test]
-    fn noop_and_unknown_initial_records_issue_no_set() {
-        let (mut link, state) = rig(original(), Fault::None);
-        apply(&mut link, 0xb6, &SensorCalibration::Standard { distance: 2 }).unwrap();
+    fn noop_and_unknown_initial_records_issue_no_set(product: u16) {
+        let (mut link, state) = rig(product, original(), Fault::None);
+        apply(&mut link, product, &SensorCalibration::Standard { distance: 2 }).unwrap();
         assert!(state.lock().unwrap().writes.is_empty());
         for raw in [Raw { state: 3, ..original() }, Raw { mode: [4,0], ..original() },
             Raw { configuration: [26,0], ..original() }, Raw { state:1, mode:[4,0], configuration:[0,0] }] {
-            let (mut link, state) = rig(raw, Fault::None);
-            assert!(apply(&mut link, 0xb6, &SensorCalibration::Standard { distance: 1 }).is_err());
+            let (mut link, state) = rig(product, raw, Fault::None);
+            assert!(apply(&mut link, product, &SensorCalibration::Standard { distance: 1 }).is_err());
             assert!(state.lock().unwrap().writes.is_empty());
             assert_eq!(state.lock().unwrap().raw, raw);
         }
     }
+
+    // Each transport gets independent test instances and fresh simulated state.
+    macro_rules! transport_cases {
+        ($module:ident, $product:expr) => {
+            mod $module {
+                #[test]
+                fn exact_primary_get_and_set_vectors_have_explicit_lengths_and_selectors() { super::exact_primary_get_and_set_vectors_have_explicit_lengths_and_selectors($product); }
+                #[test]
+                fn explicit_levels_decode_without_treating_inactive_pair_as_active() { super::explicit_levels_decode_without_treating_inactive_pair_as_active($product); }
+                #[test]
+                fn unsupported_models_and_invalid_levels_do_zero_io() { super::unsupported_models_and_invalid_levels_do_zero_io($product); }
+                #[test]
+                fn fresh_get_and_each_partial_progress_verify_before_success() { super::fresh_get_and_each_partial_progress_verify_before_success($product); }
+                #[test]
+                fn uncertain_set_is_not_replayed_and_only_owned_progress_is_restored() { super::uncertain_set_is_not_replayed_and_only_owned_progress_is_restored($product); }
+                #[test]
+                fn foreign_associated_record_stops_all_recovery_and_failed_restore_is_not_replayed() { super::foreign_associated_record_stops_all_recovery_and_failed_restore_is_not_replayed($product); }
+                #[test]
+                fn malformed_original_midway_and_final_gets_never_leave_unverified_success() { super::malformed_original_midway_and_final_gets_never_leave_unverified_success($product); }
+                #[test]
+                fn final_get_failure_without_recovery_evidence_and_final_foreign_config_never_trigger_blind_restore() { super::final_get_failure_without_recovery_evidence_and_final_foreign_config_never_trigger_blind_restore($product); }
+                #[test]
+                fn noop_and_unknown_initial_records_issue_no_set() { super::noop_and_unknown_initial_records_issue_no_set($product); }
+            }
+        };
+    }
+    transport_cases!(wired_b6, 0x00b6);
+    transport_cases!(wireless_b7, 0x00b7);
 }

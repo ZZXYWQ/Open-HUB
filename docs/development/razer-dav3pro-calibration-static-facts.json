@@ -1,5 +1,5 @@
 {
-  "status": "Exact product182 Standard/26-level Pro conversion statically proved; B6 implementation requires successful strict hardware GET before writable capability.",
+  "status": "Exact product182 Standard/26-level Pro conversion and independent B6/B7 native report shapes statically proved; writable calibration requires successful strict hardware GET.",
   "source": "official product182 component already downloaded; static PE/CLI and x86 native inspection only",
   "RzCtl_00B6_sha256": "caffd8cf48986e3559aca551d9069a36563b77c01e3061373d8b5a4ee223c217",
   "RSy3_SurfaceCalBaseM_sha256": "c7c21bbaed93524d7a80e99b29e114ff93e03211124d1c74ca1e0800019bebe7",
@@ -70,7 +70,6 @@
   },
   "remaining": [
     "Physical effective calibration apply/readback on supported hardware; current report vectors and transaction tests are static or simulated.",
-    "B7 integration enablement and regression validation are deferred; its exact native selectors and report shapes are now independently established.",
     "Kernel behavior behind the OEM status-notification IOCTLs is outside this static user-mode trace."
   ],
   "physical_tested": false,
@@ -219,7 +218,7 @@
   },
   "high_level_application_boundary": {
     "exact_conversion_static_proven": true,
-    "implementation_scope": "B6 only in this implementation phase, gated by successful exact GET. Exact B7 native selectors/report shapes are now statically proved; B7 enablement remains explicitly deferred.",
+    "implementation_scope": "B6 and B7 static experimental support, each gated by successful exact GET. No physical calibration validation is claimed.",
     "frontend": "The renderer saves one-based smartTracking levels. Host conversion is implemented by the exact product182 LitaT1FeatureImpl/LitaT1DongleFeatureImpl methods below.",
     "secondary_reference": "Other-product secondary mappings are comparison only; this conversion is now independently established from the retained official product182 component.",
     "static_implementation_now": "Typed Standard and Asymmetric level validation, explicit-length raw GET/SET codecs and simulated guarded transactions are implementable from primary facts."
@@ -227,7 +226,7 @@
   "analysis_retention": {
     "current_OEM_application": "Razer Synapse product182 / DeathAdder V3 Pro",
     "downloaded_payloads_retained": true,
-    "reason": "Retained current application artifacts support deferred B7 integration and remaining physical acceptance work.",
+    "reason": "Retained current application artifacts support implementation validation and remaining physical acceptance work.",
     "cleanup_performed": false,
     "new_other_OEM_payload_downloads_during_this_analysis": 0
   },
@@ -383,8 +382,8 @@
     "source": "PID00b7MW_v24.0.0.051509.exe nested in the same retained official product182 archive",
     "new_OEM_download": false,
     "static_report_shapes_verified": true,
-    "calibration_enabled": false,
-    "enablement_status": "Deferred until the B6 validation baseline is committed and B7 integration is explicitly coordinated.",
+    "calibration_enabled": true,
+    "enablement_status": "Enabled as static experimental support after independent exact-component report proof; physical-device calibration remains untested.",
     "selector_proof": {
       "factory_VA": "0x10029CB0",
       "constructor_VA": "0x1004BD50",

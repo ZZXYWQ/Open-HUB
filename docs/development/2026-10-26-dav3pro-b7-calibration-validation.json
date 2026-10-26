@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-26",
+  "source_parent_revision": "812ded4",
+  "scope": "Enable exact1532:00B7 DeathAdder V3 Pro receiver calibration using independent same-application primary evidence; same distinct mouse as00B6, not another model",
+  "full_compatibility": false,
+  "hardware_tested": false,
+  "new_fully_accepted_models": 0,
+  "change": "Static calibration capability gate now includes exactly00B6 and00B7. No protocol algorithm, generic Razer allowlist or frontend code change.",
+  "primary_facts": "razer-dav3pro-calibration-static-facts.json B7_native_research; RzCtl_00B7 sha256a9eb216514f15d8b51db7ffeeffba28b905024d5522863353810a6ae559ceb28",
+  "verification": {
+    "application_default_tests_passed": 552,
+    "explicit_ui_profile_storage_and_native_cross_tests_passed": 37,
+    "razer_full_unit_tests_passed": 150,
+    "calibration_protocol_tests_included": 18,
+    "calibration_driver_boundary_tests_included": 7,
+    "other_core_and_driver_tests_unchanged_from_812ded4": 223,
+    "other_doc_tests_unchanged_from_812ded4": 1,
+    "UI": "Fresh native B6/B7 current/five-stage DTOs; calibration and power/button suites passed on existing verified production frontend build",
+    "calibration_ui_profiles_saved_store_reloaded_and_native_replayed": 4,
+    "calibration_ui_checks": [
+      "b6 Standard bounds, linked thresholds, saved native plan",
+      "b6 Asymmetric bounds, linked thresholds, saved native plan",
+      "b7 Standard bounds, linked thresholds, saved native plan",
+      "b7 Asymmetric bounds, linked thresholds, saved native plan",
+      "unreadable calibration adds no guessed defaults",
+      "two foreign identities neither expose nor silently save DA calibration"
+    ],
+    "memory_transport_development_exe_cases_passed": 38,
+    "separate_native_instances": "B6/B7 state mutation/read gates stay independent; DPI/rate/buttons/power/battery retained",
+    "closed_model_gates": "B5/B8/C2/C3/FFFF reject before backend open or native I/O; no SmoothTouch/HyperPolling identity inferred",
+    "independent_static_diff_review": "No blocking finding"
+  },
+  "lighting": "Both transports report no controllable mouse RGB zones; independent dock/PC lighting UI remains available. No RGB zone invented or lighting protocol widened.",
+  "artifacts": {
+    "development_exe_sha256": "767078606f9db50ff1969753514cdc33dd013662c72a94b479f6272ea3b6ff55",
+    "debug_exe_is_installer": false,
+    "debug_exe_ui_mode": "development URL; production frontend build verified separately in812ded4",
+    "installed_0_3_7_exe_sha256_unchanged": "e77fc588993d0a7f2d1c1cd12313610731d5b3ecec293ba2c7d7f5e397ea06b0",
+    "new_installer_release_tag_or_updater_feed": false
+  },
+  "remaining": [
+    "Physical calibration effective apply/readback and observation/notification acceptance on actual B6/B7 hardware",
+    "Complete original Synapse import and independent native host macro bridge remain unfinished",
+    "100 distinct fully compatible mouse models goal remains active; no installer generated early",
+    "Current same Razer application remains retained for unfinished analysis; no next OEM application downloaded"
+  ]
+}
