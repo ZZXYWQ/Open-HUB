@@ -196,3 +196,6 @@ fn horizontal_short_write_is_uncertain_and_not_resent() {
     assert!(d.apply(&setting(4, MouseButton::WheelLeft)).is_err());
     assert_eq!(sets(&log).len(), 1);
 }
+
+#[path="compx_vertical_tests.rs"]
+mod vertical;

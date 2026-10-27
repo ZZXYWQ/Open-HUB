@@ -277,7 +277,7 @@ fn dav3pro_click_transfer_is_compiled_before_primary_remap_and_rejects_clickless
 
 
 #[test]
-fn scroll_outputs_and_reverse_cycle_are_exact_deathadder_native_actions_without_host_input(){
+fn scroll_outputs_and_reverse_cycle_follow_exact_native_model_allowlists_without_host_input(){
     use gearwise_core::model::ScrollDirection;
     for v in templates().unwrap(){
         for action in [ButtonAction::Scroll(ScrollDirection::Up),ButtonAction::Scroll(ScrollDirection::Down),ButtonAction::Dpi(DpiFunction::CycleDown),ButtonAction::Dpi(DpiFunction::ShiftXY{x:800,y:1600})]{
@@ -287,6 +287,11 @@ fn scroll_outputs_and_reverse_cycle_are_exact_deathadder_native_actions_without_
                 validate(&p).unwrap();let compiled=compile(&p).unwrap();assert!(compiled.bindings.is_empty()&&compiled.input.keys.is_empty()&&compiled.dpi_actions.is_empty());assert!(!compiled.software_input);
                 let(mut d,_)=gearwise_razer::simulated_dav3pro(p.product).unwrap();for s in &compiled.settings{d.apply(s).unwrap();}assert_eq!(d.read_state().unwrap().buttons.get(&2),Some(&action));
                 assert_eq!(simulate(&p).unwrap()["hardware_tested"],false);
+            }else if matches!(action,ButtonAction::Scroll(_))&&crate::atk::vertical_scroll_supported(p.vendor,p.product){
+                // COMPX class11 now has its own pinned OEM evidence; this does not
+                // enable reverse DPI or independent clutches on those models.
+                validate(&p).unwrap();let compiled=compile(&p).unwrap();assert!(compiled.bindings.is_empty()&&!compiled.software_input);
+                let(mut d,_)=crate::atk::simulated(p.product).unwrap();for setting in &compiled.settings{d.apply(setting).unwrap();}assert_eq!(d.read_state().unwrap().buttons.get(&2),Some(&action));
             }else{assert!(validate(&p).is_err(),"new native action leaked to {}: {action:?}",v.descriptor.name);}
         }
     }

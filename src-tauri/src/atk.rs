@@ -40,6 +40,7 @@ pub fn validate_key(usage: u8, mods: gearwise_core::model::Modifiers) -> Result<
     native_macro::encode(&native_macro::keyboard(usage, mods)).map(|_| ())
 }
 pub fn horizontal_scroll_supported(v:u16,p:u16)->bool{model(v,p).is_some_and(|m|m.native_macros&&m.native_buttons&&matches!(m.brand.as_str(),"atk"|"vxe"|"vgn"))}
+pub fn vertical_scroll_supported(v:u16,p:u16)->bool{horizontal_scroll_supported(v,p)}
 pub fn is_pulsar(v:u16,p:u16)->bool{v==0x3554&&matches!(p,0xf507|0xf508)}
 pub fn validate_pulsar_key(usage:u8,mods:gearwise_core::model::Modifiers)->Result<()>{pulsar_shortcut::encode(usage,mods).map(|_|())}
 pub fn validate_media(usage:u16)->Result<()>{native_macro::validate_media(usage)}
@@ -171,6 +172,8 @@ fn button_bytes(action: &ButtonAction, id: u16) -> Result<[u8; 4]> {
     };
     let (c, v) = match action {
         ButtonAction::Disabled => (0, 0),
+        ButtonAction::Scroll(gearwise_core::model::ScrollDirection::Up) => (11,1),
+        ButtonAction::Scroll(gearwise_core::model::ScrollDirection::Down) => (11,2),
         ButtonAction::Mouse(MouseButton::WheelLeft) => (3,1),
         ButtonAction::Mouse(MouseButton::WheelRight) => (3,2),
         ButtonAction::Mouse(b) => (
@@ -440,9 +443,10 @@ impl Atk {
         native_macro::decode(slot, play, &raw)
     }
     fn read_action(&mut self, raw: &[u8]) -> Option<(ButtonAction, Option<Macro>)> {
-        if horizontal_scroll_supported(self.model.vendor,self.model.product)&&raw.len()==4&&sum(raw)==0x55&&raw[0]==3&&raw[2]==0{
-            let direction=match raw[1]{1=>MouseButton::WheelLeft,2=>MouseButton::WheelRight,_=>return None};
-            return Some((ButtonAction::Mouse(direction),None));
+        if horizontal_scroll_supported(self.model.vendor,self.model.product)&&raw.len()==4&&sum(raw)==0x55&&matches!(raw[0],3|11)&&raw[2]==0{
+            use gearwise_core::model::ScrollDirection;
+            let action=match (raw[0],raw[1]){(3,1)=>ButtonAction::Mouse(MouseButton::WheelLeft),(3,2)=>ButtonAction::Mouse(MouseButton::WheelRight),(11,1)=>ButtonAction::Scroll(ScrollDirection::Up),(11,2)=>ButtonAction::Scroll(ScrollDirection::Down),_=>return None};
+            return Some((action,None));
         }
         if let Some(action) = decode_button(raw) {
             return Some((action, None));
@@ -677,6 +681,9 @@ impl Device for Atk {
                     ));
                 }
                 match action {
+                    ButtonAction::Scroll(_) => {
+                        if !vertical_scroll_supported(self.model.vendor,self.model.product){return Err(Error::Unsupported("Exact COMPX vertical scroll binding"));}
+                    }
                     ButtonAction::Mouse(MouseButton::WheelLeft|MouseButton::WheelRight) => {
                         if !horizontal_scroll_supported(self.model.vendor,self.model.product){return Err(Error::Unsupported("Exact COMPX horizontal scroll binding"));}
                     }

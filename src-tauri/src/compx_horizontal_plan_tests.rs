@@ -117,3 +117,6 @@ fn browser_compx_horizontal_profiles_store_import_and_replay() {
         );
     }
 }
+
+#[path="compx_vertical_plan_tests.rs"]
+mod vertical;

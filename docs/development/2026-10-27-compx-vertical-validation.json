@@ -1,0 +1,161 @@
+{
+  "date": "2026-10-27",
+  "status": "development-only",
+  "accepted_models": 0,
+  "target_models": 100,
+  "new_models_added": 0,
+  "existing_distinct_models_extended": 8,
+  "positive_transports": 9,
+  "negative_transports": 3,
+  "default_native_tests": {
+    "passed": 826,
+    "failed": 0,
+    "ignored": 65,
+    "new_default_tests": 9
+  },
+  "explicit_ui_profile_cross_test": {
+    "passed": 1,
+    "profiles": 9,
+    "software_input": false
+  },
+  "ui": {
+    "native_DTO": true,
+    "mocked_IPC": true,
+    "physical_HID": false,
+    "OS_input": false,
+    "horizontal_regression": "passed"
+  },
+  "native_non_test_build": "passed",
+  "frontend_build": "passed",
+  "bundle": {
+    "javascript_bytes": 812381,
+    "previous_bytes": 812309,
+    "new_runtime_dependencies": 0
+  },
+  "installer_built": false,
+  "release_published": false,
+  "installed": false,
+  "limits": [
+    "physical scroll output not verified",
+    "macro scroll is a separate format and remains unsupported",
+    "other configuration-library references not verified",
+    "complete OEM functionality and UI acceptance still incomplete"
+  ],
+  "evidence": [
+    {
+      "path": "src-tauri/src/atk.rs",
+      "bytes": 72799,
+      "sha256": "e6061d0bc7e65f5cb63b447a5cd4774d74d53bf43b45c9c1b125bbc7e7a7d936"
+    },
+    {
+      "path": "src-tauri/src/multibrand.rs",
+      "bytes": 120129,
+      "sha256": "fa8c5f9b04867330255e06b3d5f58864318d50bf9703539f86a9c744c6ca1de8"
+    },
+    {
+      "path": "src-tauri/src/dav3pro_models.rs",
+      "bytes": 14781,
+      "sha256": "141b3b2d8acefefae1cdb40e54d2d00d85f2401943e0ed9a42762bee05927b73"
+    },
+    {
+      "path": "src-tauri/src/compx_vertical_tests.rs",
+      "bytes": 5122,
+      "sha256": "523256b3ddcc9db1c13f40859a18824e4e9b81df5ae13655ed574304b434c110"
+    },
+    {
+      "path": "src-tauri/src/compx_vertical_plan_tests.rs",
+      "bytes": 4193,
+      "sha256": "bbe8f1c312b390a7cc541e61e4f007bd545d98d81b9bb2f8904204a737f6d564"
+    },
+    {
+      "path": "src-tauri/src/compx_horizontal_tests.rs",
+      "bytes": 7176,
+      "sha256": "02d2cdc786a1904aa2f0a7ef8b32e537e34c309106b446af7389297d6b1703b5"
+    },
+    {
+      "path": "src-tauri/src/compx_horizontal_plan_tests.rs",
+      "bytes": 4400,
+      "sha256": "8faff83f9871970dc7e08a3c6ed7e2a82b56ac78ecbcae6cbb205086ca295825"
+    },
+    {
+      "path": "src/components/multi-panel.tsx",
+      "bytes": 27308,
+      "sha256": "1506e028261399e374d282a40e73d1daf676d4482678ecf582f3c71091d48819"
+    },
+    {
+      "path": "src/lib/compx.ts",
+      "bytes": 862,
+      "sha256": "39a6cf72643da2cf5f69bc506de40f57377c6d084bcc486b0b356a243f3c64ff"
+    },
+    {
+      "path": "scripts/check-compx-vertical-source.cjs",
+      "bytes": 1573,
+      "sha256": "2b49d1060349bbe0eef1f6f646a545a9b3bfd71eb15f5dd11b92481b7c5b3ed7"
+    },
+    {
+      "path": "scripts/test-compx-vertical-ui.cjs",
+      "bytes": 4632,
+      "sha256": "fd302719cf397aae43e2039547af7b3fa2dd32aa76403527b84ee249a8a6b54e"
+    },
+    {
+      "path": "docs/development/2026-10-27-compx-vertical-source.json",
+      "bytes": 992,
+      "sha256": "ce3307013ac4def8b7bdaebeb6ddd8ced9da0cdd1c69a97f9f81434ec075443f"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-vertical-focused.log",
+      "bytes": 8172,
+      "sha256": "44ce01bdd133dbcbfcbf96c7520a66045513a0c276e2b293132e6c2892ba8880"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-vertical-ui.log",
+      "bytes": 95,
+      "sha256": "f463d6bf79673db507bcb856a65fcebd4d45ffbed7d188170f277874cba7530a"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-vertical-horizontal-ui.log",
+      "bytes": 97,
+      "sha256": "456a0e60f282e01391fdb210ea12dcae5e5e2ccacf4d72e0bea784e41ad579e1"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-vertical-cross.log",
+      "bytes": 7032,
+      "sha256": "b79215003104e837eda309410955407f2016975f26b44fa7e8d0c362ce2b4e12"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-vertical-all-final.log",
+      "bytes": 103996,
+      "sha256": "fbf2ba9ae896ed3c5b4bfa4e6953f8ff5fb051270b6a54a2d2dc1339cd8eacfc"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-vertical-native-build.log",
+      "bytes": 6794,
+      "sha256": "d0aecb33eb63ae39aba4c8ade24a9b6584058d345f3489ec74cb1e120c5bb13a"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-vertical-frontend.log",
+      "bytes": 1211,
+      "sha256": "0f6763ddcb48ee7d6a039f25687e78f0be2aa68ff58b4e30c9b1bbf57749f27c"
+    },
+    {
+      "path": "../outputs/100-model-development/compx-vertical-native-views.json",
+      "bytes": 41777,
+      "sha256": "aec79d16897c3e71dd49105dd4e162fcc947f8f50b715693475e724e8deafcd2"
+    },
+    {
+      "path": "../outputs/100-model-development/compx-vertical-ui/report.json",
+      "bytes": 1131,
+      "sha256": "8dc3c68a6d9fb27a7d7c925ab3fc578525f12aebbcfdb67fe954703c3182af93"
+    },
+    {
+      "path": "../outputs/100-model-development/compx-vertical-ui/profiles.json",
+      "bytes": 27517,
+      "sha256": "9eac86f7343fee653ef2a178a4a34b44a7c66ccf907327cf70082df6314b6d0c"
+    },
+    {
+      "path": "../outputs/100-model-development/compx-horizontal-ui-vertical-regression/report.json",
+      "bytes": 1131,
+      "sha256": "8dc3c68a6d9fb27a7d7c925ab3fc578525f12aebbcfdb67fe954703c3182af93"
+    }
+  ]
+}

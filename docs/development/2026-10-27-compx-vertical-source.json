@@ -1,0 +1,45 @@
+{
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "source_sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "source_bytes": 5755795,
+  "analysis": "static text only; no OEM code execution or redistribution",
+  "offset_units": "UTF-16 code units",
+  "offsets": {
+    "class": 2043296,
+    "directions": 2044017,
+    "up_label": 2049396,
+    "down_label": 2049447,
+    "constructor": 2049604,
+    "type": 2049643,
+    "checksum": 2045575
+  },
+  "button_record": {
+    "length": 4,
+    "class": 11,
+    "directions": {
+      "up": 1,
+      "down": 2
+    },
+    "reserved": 0,
+    "wrapping_sum": 85
+  },
+  "golden_rows": {
+    "up": [
+      11,
+      1,
+      0,
+      73
+    ],
+    "down": [
+      11,
+      2,
+      0,
+      72
+    ]
+  },
+  "limits": [
+    "not a physical USB capture",
+    "vertical macro scroll timing is a separate unimplemented format",
+    "not evidence for Pulsar or all COMPX devices"
+  ]
+}
