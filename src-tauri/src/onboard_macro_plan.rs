@@ -12,15 +12,20 @@ fn groups(m:&Macro,sector_size:u16)->Result<Vec<Vec<u8>>>{
  if m.name.trim().is_empty(){return Err(fail("macro needs a name"));}
  if m.mode!=MacroMode::Once{return Err(fail("native repeat-mode layout is not enabled"));}
  if !(210..=4096).contains(&sector_size){return Err(fail("unsupported sector size"));}
- let mut out=Vec::new();
- for step in &m.steps{let item=match step{
+ let mut out=Vec::new();let mut held_modifiers=0u8;
+ for step in &m.steps{
+  if let MacroStep::KeyTap{mods,..}=step{if mods.0&held_modifiers!=0{return Err(fail("atomic shortcut overlaps an explicitly held modifier; release it or use separate key events"));}}
+  let item=match step{
+  MacroStep::KeyDown(k)|MacroStep::KeyUp(k) if (0xe0..=0xe7).contains(k)=>vec![if matches!(step,MacroStep::KeyDown(_)){0x43}else{0x44},1u8<<(*k-0xe0),0],
   MacroStep::KeyDown(k)|MacroStep::KeyUp(k) if (4..=0xa4).contains(k)=>vec![if matches!(step,MacroStep::KeyDown(_)){0x43}else{0x44},0,*k],
   MacroStep::KeyTap{usage,mods}=>vec![0x43,mods.0,*usage,0x44,mods.0,*usage],
   MacroStep::MouseDown(b)|MacroStep::MouseUp(b)=>{let mask=match b{MouseButton::Left=>1u16,MouseButton::Right=>2,MouseButton::Middle=>4,MouseButton::Back=>8,MouseButton::Forward=>16,_=>return Err(fail("native wheel/mouse operand is not verified"))};let bytes=mask.to_be_bytes();vec![if matches!(step,MacroStep::MouseDown(_)){0x41}else{0x42},bytes[0],bytes[1]]},
   MacroStep::Media(usage)=>{if !(1..=0x3ff).contains(usage){return Err(fail("unsupported consumer usage"));}let b=usage.to_be_bytes();vec![0x45,b[0],b[1],0x46,b[0],b[1]]},
   MacroStep::Delay(ms)=>{if *ms==0{vec![]}else{let b=u16::try_from(*ms).map_err(|_|fail("native delay overflow"))?.to_be_bytes();vec![0x40,b[0],b[1]]}},
-  _=>return Err(fail("standalone modifier holds, text and physical-wait are not compiled; use a reviewed atomic shortcut")),
- };if !item.is_empty(){out.push(item);}}
+  _=>return Err(fail("text and physical-wait are not compiled")),
+ };
+ match step{MacroStep::KeyDown(k) if (0xe0..=0xe7).contains(k)=>held_modifiers|=1<<(*k-0xe0),MacroStep::KeyUp(k) if (0xe0..=0xe7).contains(k)=>held_modifiers&=!(1<<(*k-0xe0)),_=>{}}
+ if !item.is_empty(){out.push(item);}}
  if out.is_empty(){return Err(fail("macro has no input or timed event"));}
  if out.iter().map(|v|v.len()/3).sum::<usize>()+1>crate::onboard_macros::MAX_STEPS{return Err(fail("native instruction budget exceeded"));}
  Ok(out)
@@ -160,7 +165,7 @@ pub fn plan(bank:&Bank,m:&Macro)->Result<Plan>{
  }
  #[test]fn unsupported_modes_unbalanced_events_text_and_capacity_never_truncate(){
   let mut m=action(vec![MacroStep::Media(0xe2)]);m.mode=MacroMode::Toggle;assert!(compile(&m,256).is_err());m.mode=MacroMode::WhileHeld;assert!(compile(&m,256).is_err());
-  for steps in [vec![MacroStep::KeyDown(4)],vec![MacroStep::Text("x".into())],vec![MacroStep::KeyDown(0xe0),MacroStep::KeyUp(0xe0)],vec![MacroStep::Delay(0)]]{assert!(compile(&action(steps),256).is_err());}
+  for steps in [vec![MacroStep::KeyDown(4)],vec![MacroStep::Text("x".into())],vec![MacroStep::KeyDown(0xe0),MacroStep::KeyUp(0xe1)],vec![MacroStep::Delay(0)]]{assert!(compile(&action(steps),256).is_err());}
  }
  #[test]fn disabled_slots_and_unadvertised_stored_records_protect_shared_macro_pages(){
   let bank=bank();assert!(bank.inventory.protected_sectors.contains(&3));assert_eq!(bank.inventory.references[0].button,16);assert_eq!(bank.inventory.references[0].layer,"GShift");assert_eq!(bank.inventory.erased_unreferenced,vec![4,5,6,7]);let p=plan(&bank,&action(vec![MacroStep::Media(0xe2)])).unwrap();assert_eq!(p.macro_sector,4);assert!(sector_crc_ok(&p.pages[&p.macro_sector]));assert_eq!(&p.pages[&p.macro_sector][..7],&[0x45,0,0xe2,0x46,0,0xe2,0xff]);
@@ -193,3 +198,7 @@ pub fn plan(bank:&Bank,m:&Macro)->Result<Plan>{
  }
 
 }
+
+#[cfg(test)]
+#[path="onboard_modifier_hold_tests.rs"]
+mod modifier_hold_tests;

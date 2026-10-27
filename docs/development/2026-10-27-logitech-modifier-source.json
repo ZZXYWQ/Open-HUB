@@ -1,0 +1,34 @@
+{
+  "repo": "cvuchener/hidpp",
+  "pin": "474ac10db5673da8f2f1c8911414d394c0eb6d12",
+  "path": "src/libhidpp/hidpp20/MacroFormat.cpp",
+  "git_blob_sha1": "3fd8b663e43e9ebe61c89b8e5330303c4440d958",
+  "file_sha256": "867c3ff5fa4073251cf7be3024e91293f738054644a66973ba20accda2c70928",
+  "method": "pinned open-source serializer inspection; no OEM or device execution",
+  "encoding": {
+    "modifier_press": [
+      "43",
+      "one modifier mask",
+      "00"
+    ],
+    "modifier_release": [
+      "44",
+      "one modifier mask",
+      "00"
+    ],
+    "plain_key_press": [
+      "43",
+      "00",
+      "usage"
+    ],
+    "plain_key_release": [
+      "44",
+      "00",
+      "usage"
+    ]
+  },
+  "interpretation": "dedicated modifier events map to the modifier operand with zero key; plain key events keep a zero modifier operand; masks are not synthesized as cumulative snapshots",
+  "policy": "reject atomic shortcut masks intersecting an explicitly held modifier; require balanced events before native communication",
+  "hardware_tested": false,
+  "new_model_admission": false
+}
