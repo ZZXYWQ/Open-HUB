@@ -47,6 +47,7 @@ mod steelseries;
 mod input_identity;
 mod onboard_macros;
 mod onboard_macro_plan;
+mod onboard_macro_archive;
 mod onboard_bindings;
 mod profiles;
 mod profile_routing;
@@ -660,6 +661,10 @@ fn read_onboard_macro(state:State<AppState>,id:String,selection:onboard_macros::
 #[derive(Serialize)]
 struct OnboardMacroWriteResult{report:onboard_macro_plan::Committed,backup_path:String,snapshot:Option<onboard::Snapshot>,refresh_note:Option<String>}
 #[tauri::command(async)]
+fn read_logitech_macro_file(path:String)->Result<gearwise_core::profile::Macro,String>{onboard_macro_archive::read(std::path::Path::new(&path))}
+#[tauri::command(async)]
+fn write_logitech_macro_file(path:String,definition:gearwise_core::profile::Macro)->Result<(),String>{onboard_macro_archive::write(std::path::Path::new(&path),definition)}
+#[tauri::command(async)]
 fn preview_onboard_macro(state:State<AppState>,id:String,request:onboard_macro_plan::Request)->Result<onboard_macro_plan::Preview,String>{
  let guard=manager(&state)?;guard.as_ref().expect("manager initialised").with_device(&id,|d,t|onboard_macro_plan::prepare(d,t,&request).map(|p|p.preview())).map_err(|e|e.to_string())
 }
@@ -1216,6 +1221,7 @@ fn main() {
             write_onboard_slot,
             write_onboard_bindings,
             read_onboard_macro,
+            read_logitech_macro_file,write_logitech_macro_file,
             preview_onboard_macro,
             write_onboard_macro,
             read_logitech_lighting,apply_logitech_lighting,

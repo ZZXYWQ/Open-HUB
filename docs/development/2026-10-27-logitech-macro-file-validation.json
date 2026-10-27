@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-27",
+  "scope": "portable logical native macro files; not OEM or raw firmware macro translation",
+  "new_default_tests": 7,
+  "main_tests": {
+    "passed": 971,
+    "failed": 0,
+    "ignored": 76
+  },
+  "explicit_bridges": {
+    "production_file_dto_emission": true,
+    "actual_UI_export_to_file_reload_and_native_commit_reader": true
+  },
+  "built_UI": {
+    "passed": true,
+    "checks": [
+      "import preserves chosen layer and physical target",
+      "complete name count modifier holds and events restored",
+      "import invalidates device preflight",
+      "file export preserves logical definition without device write",
+      "bad file retains draft and requires fresh preflight",
+      "explicit selected unit/connection retained on later hardware request",
+      "no global actions or browser errors"
+    ],
+    "IPC_mocked": true,
+    "production_file_DTO": true,
+    "selected_destination_preserved": {
+      "layer": "GShift",
+      "button": 2
+    },
+    "browser_errors": []
+  },
+  "source_format": "open-hub-logitech-native-macro/1",
+  "target_routing_fields_in_format": false,
+  "duplicate_unknown_or_routing_fields_refused": true,
+  "invalid_definitions_do_not_create_file": true,
+  "source_read_unchanged": true,
+  "existing_file_overwrite_refused": true,
+  "generic_profile_import_refused": true,
+  "regressions": [
+    "single-run composer",
+    "fixed-count composer",
+    "reconnection-preserved macro draft"
+  ],
+  "frontend_build": true,
+  "non_test_native_build": true,
+  "frontend_JS_bytes": 834655,
+  "previous_frontend_JS_bytes": 833074,
+  "frontend_JS_delta_bytes": 1581,
+  "new_runtime_dependencies": false,
+  "new_images": false,
+  "physical_IO": false,
+  "OS_input": false,
+  "OEM_download_or_execution": false,
+  "reclamation_implemented": false,
+  "reclamation_gap": "no verified runtime quiescence barrier for in-flight macros",
+  "remaining": [
+    "safe reclamation and dense allocation",
+    "existing firmware and OEM private macro conversion",
+    "full native profile pack and model/UI/firmware acceptance"
+  ],
+  "accepted_complete_models": 0,
+  "target_complete_models": 100,
+  "installer": false,
+  "release": false,
+  "installation": false,
+  "installed_version": "0.3.7"
+}

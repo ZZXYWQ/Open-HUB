@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-27",
+  "scope": "reclamation runtime-lifetime gate review; no erase implementation",
+  "pinned_sources": [
+    {
+      "repo": "cvuchener/hidpp",
+      "pin": "474ac10db5673da8f2f1c8911414d394c0eb6d12",
+      "path": "src/libhidpp/hidpp20/IOnboardProfiles.h",
+      "git_blob_sha1": "2a5c228ccf90d673d9dca0b3fe6a33af6aacde35",
+      "sha256": "2e2bfc1f88f5e3817901fa1da0e0750b56208bc02c86fc8054be4c6209690989"
+    },
+    {
+      "repo": "leodbc/g502x-onboard",
+      "pin": "cb2952849f82ae91664a610ca9e3e8ce7ee59d55",
+      "path": "docs/PROTOCOL.md",
+      "git_blob_sha1": "354324de489135d26028845c903fb20eb9009162",
+      "sha256": "216624b7331827491ed499b196c9fa2eae19bbe88b40aa96ffdfa41edb1cc25b"
+    }
+  ],
+  "retained_interface_functions": {
+    "GetDescription": 0,
+    "SetMode": 1,
+    "GetMode": 2,
+    "SetCurrentProfile": 3,
+    "GetCurrentProfile": 4,
+    "MemoryRead": 5,
+    "MemoryAddrWrite": 6,
+    "MemoryWrite": 7,
+    "MemoryWriteEnd": 8,
+    "GetCurrentDPIIndex": 11,
+    "SetCurrentDPIIndex": 12
+  },
+  "facts": [
+    "retained8100 interface documents mode/profile/memory APIs",
+    "Host mode documents generic button event behavior",
+    "retained external protocol documents shared global macro addresses"
+  ],
+  "not_proved": [
+    "whether mode switch terminates an already running macro",
+    "whether profile reload creates a macro execution quiescence barrier",
+    "whether a macro VM can continue reading old storage after its binding changes"
+  ],
+  "engineering_inference": "absence of current binding references alone cannot certify that an old in-flight macro has finished; design gate, not observed physical bug",
+  "policy": "do not erase old nonempty pages without proven runtime quiescence and full reference/ownership checks",
+  "automatic_reclamation_enabled": false,
+  "hardware_accessed": false,
+  "conclusion_limit": "does not claim firmware lacks a stop facility; retained interfaces do not prove one"
+}
