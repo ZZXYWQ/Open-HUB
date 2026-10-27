@@ -247,6 +247,17 @@ fn decode_button(p: &[u8]) -> Option<ButtonAction> {
     }
 }
 
+// The fixed OEM fb response defines bytes 6..10 as uniqueId. Keep the
+// complete four-byte value opaque (including 00/FF): no unproven global
+// uniqueness, validity filter, USB serial replacement or host-route authority.
+fn compx_unit_token(reply:&[u8])->Result<Option<[u8;4]>>{
+    match reply.len(){
+        2=>Ok(None), // Existing legacy model-only replies retain their scope.
+        10=>Ok(Some(reply[6..10].try_into().unwrap())),
+        _=>Err(Error::invalid("COMPX model identity reply length; expected legacy 2 or full 10 bytes")),
+    }
+}
+
 struct Atk {
     io: Box<dyn HidTransport>,
     desc: DeviceDescriptor,
@@ -255,6 +266,8 @@ struct Atk {
     mid: u8,
     model: &'static Model,
     profile:Option<u8>,
+    // Opaque OEM fb.uniqueId bytes; scoped to this open connection only.
+    unit_token:Option<[u8;4]>,
     definitions: HashMap<String, Macro>,
     read_macros: Vec<Macro>,
 }
@@ -316,6 +329,9 @@ impl Atk {
                 "ATK model/sensor identity changed or unknown; no settings written",
             ));
         }
+        if compx_unit_token(&r)? != self.unit_token {
+            return Err(Error::invalid("COMPX 鼠标身份已改变或身份回复不完整；请重新连接并读取，未继续写入或恢复"));
+        }
         // EEPROM rows are scoped to the currently selected firmware bank.
         // Pin its raw token; do not infer its display numbering or switch banks.
         let selected=self.exchange(0x0e,0,0)?;
@@ -340,7 +356,7 @@ impl Atk {
         }
         std::thread::sleep(Duration::from_millis(10));
         match self.read(address, next.len()) {
-            Ok(actual) if actual == next => Ok(()),
+            Ok(actual) if actual == next => {self.identify()?;Ok(())},
             _ => {
                 // Only this exact row is restored, and only after the model is rechecked.
                 if self.identify().is_ok() {
@@ -360,6 +376,7 @@ impl Atk {
             max,
             model,
             profile:None,
+            unit_token:None,
             definitions: HashMap::new(),
             read_macros: Vec::new(),
             desc: DeviceDescriptor {
@@ -432,6 +449,7 @@ impl Atk {
                 return Err(Error::invalid("COMPX unknown CID/MID for this USB model; no settings written"));
             }
             this.mid=identity[1];
+            this.unit_token=compx_unit_token(&identity)?;
         }
         this.refresh()?;
         if is_pulsar(this.model.vendor,this.model.product){this.desc.id=format!("{}:board:{}",this.desc.id,this.profile.ok_or(Error::invalid("Pulsar missing board identity"))?);}
@@ -1475,3 +1493,7 @@ mod profile_cycle_tests;
 #[cfg(test)]#[path="compx_profile_select_tests.rs"]mod profile_select_tests;
 
 #[cfg(test)]#[path="compx_repeat_tests.rs"]mod repeat_tests;
+
+#[cfg(test)]
+#[path="atk_identity_tests.rs"]
+mod identity_tests;

@@ -1,0 +1,24 @@
+{
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "source_sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "source_bytes": 5755795,
+  "analysis": "static text only, no OEM execution or redistribution",
+  "command": 16,
+  "CID_offset": 0,
+  "MID_offset": 1,
+  "opaque_unit_token_offsets": [
+    6,
+    7,
+    8,
+    9
+  ],
+  "oem_getter": "fb.uniqueId",
+  "getter_offset_utf16": 2054083,
+  "not_proven": [
+    "global uniqueness",
+    "permanent mouse serial across all firmware and transports",
+    "meaning of all-zero or all-FF values",
+    "legacy two-byte response carries any physical identity",
+    "safe persisted routing or host macro authorization"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-27",
+  "scope": "Pinned opaque OEM COMPX unit identity within an open connection",
+  "existing_connections": 9,
+  "distinct_partial_models": 8,
+  "main_tests": {
+    "passed": 994,
+    "failed": 0,
+    "ignored": 81
+  },
+  "new_default_tests": 8,
+  "source_audit": "passed pinned SHA and static getter offsets",
+  "built_UI_regression": {
+    "saved_profiles": 9,
+    "negative_models": 3,
+    "passed": true,
+    "mock_IPC": true
+  },
+  "explicit_production_replay": {
+    "profiles": 9,
+    "full_identity_execution": "passed",
+    "changed_identity_reapply": "zero EEPROM SET, passed"
+  },
+  "native_build": "passed",
+  "frontend_changed": false,
+  "new_runtime_dependencies": 0,
+  "hardware_tested": false,
+  "accepted_complete_models": 0,
+  "target": 100,
+  "installer_created": false,
+  "installed_release": "0.3.7",
+  "not_claimed": [
+    "permanent/global unique serial",
+    "legacy two-byte physical identity",
+    "portable owner routing",
+    "host macro authorization",
+    "atomic swap detection",
+    "complete mouse support"
+  ]
+}
