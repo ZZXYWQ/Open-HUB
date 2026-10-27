@@ -170,6 +170,7 @@ fn stages(v: &[u16]) -> Vec<DpiStage> {
 fn logitech_mouse() -> DemoDevice {
     use EffectKind::*;
     let caps = Capabilities {
+        dpi_color_stages:0,
         layout: None,
         dpi: Some(DpiCaps {
             min: 100,
@@ -336,6 +337,7 @@ fn razer_keyboard() -> DemoDevice {
         hotspot: None,
     });
     let caps = Capabilities {
+        dpi_color_stages:0,
         layout: None,
         dpi: None,
         report_rates: vec![125, 250, 500, 1000, 2000, 4000, 8000],
@@ -403,6 +405,7 @@ fn razer_keyboard() -> DemoDevice {
 fn corsair_mouse() -> DemoDevice {
     use EffectKind::*;
     let caps = Capabilities {
+        dpi_color_stages:0,
         layout: None,
         dpi: Some(DpiCaps {
             min: 100,

@@ -548,6 +548,7 @@ impl Device for RazerDevice {
     }
 
     fn apply(&mut self, setting: &Setting) -> Result<()> {
+        if matches!(setting,Setting::DpiColor{..}) {return Err(Error::Unsupported("DPI indicator color table"));}
         // Reject unsupported products before board/mode probes or other I/O.
         if let Setting::SensorCalibration(value) = setting {
             crate::dav3pro_calibration::validate_sensor_calibration(self.model.pid, value)?;
@@ -566,7 +567,7 @@ impl Device for RazerDevice {
             Setting::AngleSnapping(_) => return Err(Error::Unsupported("angle snapping")),
             Setting::Tuning(patch) if crate::power::supported(self.model.pid)=>{if let Err(e)=crate::power::apply(&mut self.link,self.model.pid,patch){self.state.tuning=None;return Err(e);}},
             Setting::SensorCalibration(value) => self.set_sensor_calibration(value)?,
-            Setting::VendorProfile{..} | Setting::Tuning(_) => return Err(Error::Unsupported("mouse performance")),
+            Setting::DpiColor{..} | Setting::VendorProfile{..} | Setting::Tuning(_) => return Err(Error::Unsupported("mouse performance")),
         }
         setting.apply_to(&mut self.state);
         Ok(())

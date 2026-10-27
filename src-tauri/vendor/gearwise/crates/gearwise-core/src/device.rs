@@ -38,6 +38,10 @@ impl DeviceDescriptor {
 /// UI hides the corresponding controls.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Capabilities {
+    /// Logical DPI indicator table capacity, not a count of physical LED zones.
+    #[serde(default,skip_serializing_if="is_zero_u8")]
+    pub dpi_color_stages:u8,
+
     pub dpi: Option<DpiCaps>,
     /// Supported polling rates in Hz, ascending.
     pub report_rates: Vec<u16>,
@@ -70,6 +74,10 @@ pub struct Capabilities {
 /// can read back; write-only settings report the last value applied.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct DeviceState {
+    /// Only stage colors actually read and verified by the device driver.
+    #[serde(default,skip_serializing_if="BTreeMap::is_empty")]
+    pub dpi_colors:BTreeMap<u8,Rgb>,
+
     pub dpi: Option<DpiState>,
     pub report_rate: Option<u16>,
     /// Keyed by zone id.
@@ -99,6 +107,7 @@ pub enum Setting {
     Dpi(DpiState),
     /// Switch the active stage only.
     DpiActiveStage(u8),
+    DpiColor {stage:u8,color:Rgb},
     ReportRate(u16),
     Lighting {
         zone: u8,
@@ -126,6 +135,7 @@ impl Setting {
         match self {
             Setting::Dpi(_) => "DPI stages",
             Setting::DpiActiveStage(_) => "Active DPI stage",
+            Setting::DpiColor{..}=>"DPI indicator color",
             Setting::ReportRate(_) => "Report rate",
             Setting::Lighting { .. } => "Lighting",
             Setting::PerKey(_) => "Per-key lighting",
@@ -153,6 +163,7 @@ impl Setting {
                     }
                 }
             }
+            Setting::DpiColor{stage,color}=>{s.dpi_colors.insert(*stage,*color);}
             Setting::ReportRate(r) => s.report_rate = Some(*r),
             Setting::Lighting { zone, state } => {
                 s.lighting.insert(*zone, *state);
@@ -255,3 +266,5 @@ pub trait Driver: Send + Sync {
         backend: &dyn HidBackend,
     ) -> Result<Vec<Box<dyn Device>>>;
 }
+
+fn is_zero_u8(value:&u8)->bool{*value==0}

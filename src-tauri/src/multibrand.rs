@@ -187,6 +187,8 @@ impl Service {
             let native=Plan{vendor:plan.vendor,product:plan.product,settings:compiled.settings.clone(),macros:vec![],source:None};
             validate_capabilities(&native,device.capabilities())?;
             let before=view(device.as_mut())?;
+            for setting in &compiled.settings {if let Setting::DpiColor{stage,..}=setting {if !before.state.dpi_colors.contains_key(stage){return Err("无法校验此档位的原始指示颜色；未应用配置".into());}}}
+
             if native_macros(plan.vendor,plan.product){device.set_macro_definitions(&plan.macros).map_err(|e|e.to_string())?;}
             if (plan.vendor,plan.product)==(0x1b1c,0x1b2e)&&plan.settings.iter().any(|s|matches!(s,Setting::ReportRate(rate) if before.state.report_rate!=Some(*rate))){
                 let message=rate_reconnect::begin(root,device.as_mut(),plan)?;manager.drop_device(raw_id(id));return Err(message);
@@ -381,6 +383,7 @@ pub fn validate(p: &Plan) -> Result<(), String> {
     for s in &p.settings {
         let k = match s {
             Setting::Dpi(_) => "dpi".into(),
+            Setting::DpiColor{stage,..}=>format!("dpi-color:{stage}"),
             Setting::ReportRate(_) => "rate".into(),
             Setting::Tuning(_) => "tuning".into(),
             Setting::SensorCalibration(_) => "sensor-calibration".into(),
@@ -392,6 +395,7 @@ pub fn validate(p: &Plan) -> Result<(), String> {
         if !seen.insert(k) {
             return Err("同一项设置不能重复".into());
         }
+        if let Setting::DpiColor{stage,..}=s {crate::atk::validate_palette(p.vendor,p.product,*stage).map_err(|e|e.to_string())?;continue;}
         if matches!(s,Setting::LiftOff(_)|Setting::AngleSnapping(_)){if crate::steelseries::supported(p.vendor,p.product){crate::steelseries::validate_setting(p.product,s)?;continue;}if (p.vendor,p.product)!=(0x1b1c,0x1b2e){return Err("此型号的原生抬升高度/直线修正尚未接通".into());}if matches!(s,Setting::LiftOff(v)if *v>=5){return Err("M65 PRO 抬升高度需要在五个原生档位内选择".into());}continue;}
         if let Setting::SensorCalibration(value)=s{if p.vendor!=0x1532{return Err("此具体型号尚未接入传感器校准".into());}gearwise_razer::validate_sensor_calibration(p.product,value).map_err(|e|e.to_string())?;continue;}
         if let Setting::Tuning(tuning)=s{if p.vendor==0x1532&&matches!(p.product,0x00b6|0x00b7){gearwise_razer::validate_power_patch(p.product,tuning).map_err(|e|e.to_string())?;}else{crate::atk::validate_tuning(p.vendor,p.product,tuning).map_err(|e|e.to_string())?;}continue;}
@@ -476,11 +480,20 @@ pub fn validate(p: &Plan) -> Result<(), String> {
             _ => unreachable!(),
         }
     }
+    if p.settings.iter().any(|s|matches!(s,Setting::DpiColor{..})) {
+        if let Some(Setting::Lighting{state,..})=p.settings.iter().find(|s|matches!(s,Setting::Lighting{zone:0,..})) {
+            if let gearwise_core::model::LightingEffect::Static{color}=state.effect {
+                let active=p.settings.iter().find_map(|s|if let Setting::Dpi(d)=s{Some(d.active)}else{None}).ok_or("色表与当前档颜色一起保存时需要明确 DPI 档位")?;
+                if p.settings.iter().any(|s|matches!(s,Setting::DpiColor{stage,color:entry}if *stage==active&&*entry!=color)) {return Err("当前档指示颜色与 DPI 色表冲突，请在编辑器中统一颜色".into());}
+            }
+        }
+    }
     Ok(())
 }
 fn validate_capabilities(p: &Plan, c: &Capabilities) -> Result<(), String> {
     for s in &p.settings {
         match s {
+            Setting::DpiColor{stage,..}if *stage>=c.dpi_color_stages=>return Err("此鼠标未报告这个 DPI 指示颜色档位".into()),
             Setting::LiftOff(v)if usize::from(*v)>=c.lift_off.len()=>return Err("抬升档位超出设备能力".into()),
             Setting::AngleSnapping(_)if !c.angle_snapping=>return Err("此设备未报告直线修正能力".into()),
             Setting::SensorCalibration(value)=>value.validate(c.calibration.as_ref().ok_or("此鼠标暂未完整读到校准能力")?).map_err(|e|e.to_string())?,
@@ -768,7 +781,7 @@ pub fn compile(plan:&Plan)->Result<Compiled,String>{
  if software_input{for (id,function) in [(6,DpiFunction::Up),(7,DpiFunction::Down),(8,DpiFunction::Shift(0))]{if !plan.settings.iter().any(|s|matches!(s,Setting::Button{id:b,action} if *b==id&&!matches!(action,ButtonAction::Default))){dpi_actions.insert(id,function);}}for id in dpi_actions.keys(){buttons.push(*id);}}
  if !keys.is_empty(){let reserved=keys.keys().map(|v|0x68+(*v-0x7c) as u8).collect::<Vec<_>>();for s in &plan.settings{if let Setting::Button{action:ButtonAction::Key{usage,..},..}=s{if reserved.contains(usage){return Err("普通快捷键与软件宏的 F13–F24 触发键冲突".into());}}}}
  // Indicator colours address the active DPI stage; establish that stage first.
- if crate::atk::supported(plan.vendor,plan.product){native.sort_by_key(|s|matches!(s,Setting::Lighting{..}));}
+ if crate::atk::supported(plan.vendor,plan.product){native.sort_by_key(|s|match s{Setting::Lighting{..}=>2,Setting::DpiColor{..}=>1,_=>0});}
  if plan.vendor==0x1532&&matches!(plan.product,0x00b6|0x00b7){
   let normal=gearwise_razer::dav3pro_buttons::BUTTONS;
   let left=|id,action:&ButtonAction|gearwise_razer::dav3pro_buttons::encode(id,action).ok()==Some([1,1,1,0,0,0,0]);
@@ -1101,3 +1114,7 @@ mod profile_activation_identity_tests {
 }
 
 #[cfg(test)]#[path="wired_input_tests.rs"]mod wired_input_tests;
+
+#[cfg(test)]
+#[path="compx_palette_plan_tests.rs"]
+mod compx_palette_plan_tests;

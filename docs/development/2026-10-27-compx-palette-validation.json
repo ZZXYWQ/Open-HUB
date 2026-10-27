@@ -1,0 +1,58 @@
+{
+  "date_local": "2026-10-27",
+  "base_commit": "3bbb42a74a73527ca7d8aae92f1d731e4dc3b3e9",
+  "scope": "Five existing exact COMPX USB models: eight DPI stage indicator colors, hardware snapshot import, per-stage UI and persisted plan replay",
+  "accepted_complete_models": 0,
+  "release_version": "0.3.7",
+  "installer_built_published_or_installed": false,
+  "new_hardware_access": false,
+  "new_oem_download_or_execution": false,
+  "new_runtime_dependencies": false,
+  "validation": {
+    "default_native_passed": 761,
+    "default_native_failed": 0,
+    "default_native_ignored": 61,
+    "new_default_tests": 15,
+    "explicit_native_saved_ui_plan_replay": 1,
+    "vendor_unit_tests": 327,
+    "headless_ui_suites": [
+      "compx-palette",
+      "compx-media",
+      "atk-import",
+      "compx-controls"
+    ],
+    "palette_ui_native_model_cases": 5,
+    "palette_ui_no_indicator_transport_cases": 4,
+    "frontend_build_passed": true,
+    "non_test_native_build_passed": true
+  },
+  "footprint": {
+    "frontend_js_bytes": 806295,
+    "previous_frontend_js_bytes": 802407,
+    "frontend_js_delta_bytes": 3888,
+    "installer_delta_not_measured": true
+  },
+  "limits": [
+    "Stateful EEPROM simulation and independently reconstructed source vectors, not physical mouse acceptance or captured USB",
+    "OEM uses paired eight-byte table records; native implementation uses existing single-row EEPROM transport and needs physical firmware validation",
+    "Global breathing/brightness/speed, cross-bank macro ownership, private OEM file parsers and full OEM feature parity remain incomplete",
+    "No changes to installed 0.3.7 or release artifacts"
+  ],
+  "source_sha256": {
+    "src-tauri/src/atk.rs": "c9354fb7a4f0172917f50cd6340f2a1aa4ec49eedab579729b5d8d37cdb94f2d",
+    "src-tauri/src/multibrand.rs": "a5e0257071e2f02cd3055b2acf409204ab329d64d9acedb2466afffb440ea415",
+    "src-tauri/src/session_plan.rs": "5358a722d9dbe82949eaaee080834ecadee7b11a4114d1d85b0e611ee6def877",
+    "src-tauri/vendor/gearwise/crates/gearwise-core/src/device.rs": "b0377ebb0df1776d0bcc2d485d3d1e1adfcc62148c48c85e816106a5d2f6f46d",
+    "src/lib/compx-models.json": "b981eaf866be4d680930e9ce3d4bcc5cd11526e2c4183c443b33629281671e50",
+    "src/lib/compx-palette.ts": "e4867c7427a47fc9d228be2adbb89accf8306d78ff69fb3403203318c06fed00",
+    "src/components/compx-palette.tsx": "92fe0c447b4e68bd07199ab028065abfe6eac0116a06db0bda197c4a1003d035",
+    "src/lib/multi.ts": "d1555fe206d308da1f30a3bc78b0029bddd63db64cc0cd8c0427c440ab84f3f1",
+    "src/components/multi-panel.tsx": "e840257b3a6fcc86c1fbc9d2c7b63cdf727ee33aab410183f8b1522d0399878e",
+    "src/components/atk-profile-import.tsx": "f27711552ff517c4729176098e0f73775d0bd62b59db8e9eff7e21055166d8fa",
+    "src/components/reconnect-plans.tsx": "924e32e0c92a83fdf261ee35afa9b2a7b3cca2a584944fc42dabc6e666f1540b",
+    "src-tauri/src/atk_palette_tests.rs": "c2cb328cc4685c5b485a8c0d6a73d7f7e00d960901673efd78a4b45c31285ab2",
+    "src-tauri/src/compx_palette_plan_tests.rs": "b1be8b117e99649ae66ad0386c18f743e3dee4ff87ab055e4ce9cbb531f0a52c",
+    "scripts/check-compx-palette-source.cjs": "3b44bc2cd62ae93c168fb5e61205c9430f131840349d939d0fb62d276106eb20",
+    "scripts/test-compx-palette-ui.cjs": "fb405e72066aab3a509d1eae03f6115d8b2372097b2a2c1d18fced2f9f2a8b9e"
+  }
+}

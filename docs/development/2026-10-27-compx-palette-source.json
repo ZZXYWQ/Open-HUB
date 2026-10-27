@@ -1,0 +1,80 @@
+{
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "source_sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "source_bytes": 5755795,
+  "analysis": "static text only; no OEM code execution or distribution",
+  "offset_units": "UTF-16 code units",
+  "source_offsets": {
+    "record": 2061234,
+    "paired_rows": 2063490,
+    "read_table": 2122758,
+    "write_table": 2109161
+  },
+  "row_bytes": 4,
+  "channel_order": [
+    "r",
+    "g",
+    "b",
+    "checksum"
+  ],
+  "row_wrapping_sum": 85,
+  "stage_addresses": [
+    44,
+    48,
+    52,
+    56,
+    60,
+    64,
+    68,
+    72
+  ],
+  "oem_batching": "four paired eight-byte table records",
+  "open_hub_write_scope": "single four-byte row; independently reconstructed source-derived encoding, not captured hardware proof",
+  "models": [
+    {
+      "name": "ATK X1 Pro Max · USB",
+      "vendor": 14139,
+      "product": 4119,
+      "mids": [
+        39
+      ]
+    },
+    {
+      "name": "VXE 蜻蜓 R1 · USB",
+      "vendor": 13652,
+      "product": 62863,
+      "mids": [
+        11,
+        12
+      ]
+    },
+    {
+      "name": "VXE 蜻蜓 R1 Pro · USB",
+      "vendor": 13652,
+      "product": 62860,
+      "mids": [
+        7,
+        8
+      ]
+    },
+    {
+      "name": "VGN 蜻蜓 F1 Pro · USB",
+      "vendor": 13652,
+      "product": 62722,
+      "mids": [
+        1,
+        2
+      ]
+    },
+    {
+      "name": "VGN 蜻蜓 F1 Pro Max · USB",
+      "vendor": 13652,
+      "product": 62726,
+      "mids": [
+        3,
+        4
+      ]
+    }
+  ],
+  "physical_hardware_tested": false
+}

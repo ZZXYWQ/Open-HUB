@@ -48,6 +48,7 @@ pub struct Model {
     pub vendor: u16, pub product: u16, pub mids: Vec<u8>, pub brand: String,
     pub name: String, pub max_dpi: u16, pub buttons: u16, pub indicator: bool,
     pub wireless: bool, pub rates: Vec<u16>,
+    #[serde(default)] pub dpi_color_stages:u8,
     pub min_dpi:u16,pub max_stages:u8,pub separate_xy:bool,pub native_macros:bool,pub native_buttons:bool,
 }
 pub fn models() -> &'static [Model] {
@@ -59,6 +60,9 @@ pub fn model(v: u16, p: u16) -> Option<&'static Model> {
     models().iter().find(|m| m.vendor == v && m.product == p)
 }
 pub fn supported(v: u16, p: u16) -> bool { model(v,p).is_some() }
+pub fn palette_stages(v:u16,p:u16)->u8 {model(v,p).filter(|m|m.indicator).map(|m|m.dpi_color_stages).unwrap_or(0)}
+pub fn validate_palette(v:u16,p:u16,stage:u8)->Result<()> {if stage>=palette_stages(v,p){Err(Error::Unsupported("Exact COMPX DPI color table"))}else{Ok(())}}
+
 fn identity(p: u16) -> Option<(u8, &'static str, u16)> {
     models().iter().find(|m|m.product==p).map(|m|(m.mids.first().copied().unwrap_or(0),m.name.as_str(),m.max_dpi))
 }
@@ -379,6 +383,7 @@ impl Atk {
                         hotspot: None,
                     })
                     .collect(),
+                dpi_color_stages:palette_stages(model.vendor,model.product),
                 lighting: if model.indicator {
                     vec![LightingZoneCaps {
                         id: 0,
@@ -598,6 +603,11 @@ impl Atk {
                 );
             }
         }
+        for stage in 0..self.caps.dpi_color_stages {
+            let row=self.read(44+u16::from(stage)*4,4)?;
+            if sum(&row)==0x55 {state.dpi_colors.insert(stage,Rgb{r:row[0],g:row[1],b:row[2]});}
+        }
+        if self.caps.dpi_color_stages>0 {self.identify()?;}
         if self.caps.tuning.is_some(){state.tuning=self.read_tuning().ok();}
         Ok(state)
     }
@@ -671,6 +681,7 @@ impl Device for Atk {
                     }
                 }
             }
+            Setting::DpiColor {stage,..}=>validate_palette(self.model.vendor,self.model.product,*stage)?,
             Setting::Lighting { zone: 0, state }
                 if self.model.indicator
                     && state.brightness == 100
@@ -724,6 +735,13 @@ impl Device for Atk {
                     return Err(Error::invalid("ATK unknown original action retained; native macro/shortcut is not overwritten"));
                 }
                 self.write_verified(96 + (id - 1) * 4, &button_bytes(action, *id)?)?;
+            }
+            Setting::DpiColor {stage,color}=>{
+                let address=44+u16::from(*stage)*4;
+                let current=self.read(address,4)?;
+                if sum(&current)!=0x55 {return Err(Error::invalid("COMPX original DPI color checksum; unknown row retained"));}
+                let next=[color.r,color.g,color.b,0x55u8.wrapping_sub(color.r).wrapping_sub(color.g).wrapping_sub(color.b)];
+                self.write_verified(address,&next)?;
             }
             Setting::Lighting { state, .. } => {
                 let mut row = self.read(76, 8)?;
@@ -1383,3 +1401,7 @@ mod dpi_limits_tests {
   for(product,id,usage)in[(0x1115,4,0x183),(0x1115,1,0xe2),(0xf507,4,0xe2),(0xf508,4,0xe2)]{let(mut d,log)=memory_device(product).unwrap();log.lock().unwrap().clear();assert!(d.apply(&Setting::Button{id,action:ButtonAction::Media(usage)}).is_err());assert!(log.lock().unwrap().is_empty());}
  }
 }
+
+#[cfg(test)]
+#[path="atk_palette_tests.rs"]
+mod compx_palette_tests;

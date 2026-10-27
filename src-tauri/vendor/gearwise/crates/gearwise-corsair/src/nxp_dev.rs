@@ -201,7 +201,7 @@ impl NxpDevice {
             Setting::Button { .. } => Err(Error::Unsupported("button remapping")),
             Setting::OnboardProfile(_) => Err(Error::Unsupported("onboard profiles")),
             Setting::GameMode(_) => Err(Error::Unsupported("game mode")),
-            Setting::SensorCalibration(_) | Setting::VendorProfile{..} | Setting::Tuning(_) => Err(Error::Unsupported("mouse performance")),
+            Setting::DpiColor{..} | Setting::SensorCalibration(_) | Setting::VendorProfile{..} | Setting::Tuning(_) => Err(Error::Unsupported("mouse performance")),
         }
     }
 
@@ -399,7 +399,7 @@ impl Device for NxpDevice {
             }
             Setting::Button { id,action } if self.desc.product_id==0x1b2e=>{let mut next=self.state.clone();setting.apply_to(&mut next);if matches!(action,gearwise_core::model::ButtonAction::Default){self.input_buttons.remove(id);}else{self.input_buttons.insert(*id);}if self.input_buttons.is_empty(){self.stop_software_actions()?;}else{self.write_mouse_input(&next)?;}self.state=next;return Ok(());}
             // Rejected by validate().
-            Setting::Button { .. } | Setting::OnboardProfile(_) | Setting::GameMode(_) | Setting::SensorCalibration(_) | Setting::VendorProfile{..} | Setting::Tuning(_) => {
+            Setting::Button { .. } | Setting::OnboardProfile(_) | Setting::GameMode(_) | Setting::DpiColor{..} | Setting::SensorCalibration(_) | Setting::VendorProfile{..} | Setting::Tuning(_) => {
                 return Err(Error::Unsupported("setting"));
             }
         }

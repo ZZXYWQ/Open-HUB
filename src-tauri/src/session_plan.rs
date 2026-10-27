@@ -48,6 +48,8 @@ impl Service {
   if plan.settings.iter().any(|s|matches!(s,Setting::LiftOff(_))){if let Some(lift)=out.state.lift_off{put(&mut plan.settings,Setting::LiftOff(lift));}}
   if plan.settings.iter().any(|s|matches!(s,Setting::AngleSnapping(_))){if let Some(angle)=out.state.angle_snapping{put(&mut plan.settings,Setting::AngleSnapping(angle));}}
   if plan.settings.iter().any(|s|matches!(s,Setting::SensorCalibration(_))){if let Some(value)=out.state.calibration{put(&mut plan.settings,Setting::SensorCalibration(value));}}
+  if out.capabilities.dpi_color_stages>0&&plan.settings.iter().any(|s|matches!(s,Setting::DpiColor{..})) {for setting in &mut plan.settings {if let Setting::Lighting{zone:0,state}=setting {if let Some(current)=out.state.lighting.get(&0){*state=*current;}}}}
+  for setting in &mut plan.settings {if let Setting::DpiColor{stage,color}=setting {if let Some(current)=out.state.dpi_colors.get(stage){*color=*current;}}}
   if let Some(live)=out.state.tuning.as_ref(){if let Some(Setting::Tuning(selected))=plan.settings.iter_mut().find(|s|matches!(s,Setting::Tuning(_))){selected.refresh_selected(live);}}
   let software_state=if !session.needs_software{"hardware"}else if plan.source.as_ref().is_some_and(|s|runtime.is_armed(s))&&cleanup.as_ref().is_some_and(|c|!c.cancelled.load(Ordering::Acquire)){"running"}else{"stopped"};
   out.session=Some(SessionView{hardware_save_attempted:session.save_attempted,plan,software_state,temporary_dpi});Ok(())

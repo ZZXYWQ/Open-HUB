@@ -31,6 +31,7 @@ function settingLabel(s:MultiSetting,plan:MultiPlan){
   else action=typeof a.Dpi==='string'?`DPI ${{Cycle:'循环档位',CycleDown:'反向循环档位',Up:'提高一档',Down:'降低一档'}[a.Dpi]}`:('ShiftXY'in a.Dpi?`按住狙击 DPI ${a.Dpi.ShiftXY.x} × ${a.Dpi.ShiftXY.y}`:`按住狙击 DPI ${a.Dpi.Shift}`);
   return `按键 ${s.Button.id}：${action}`;
  }
+ if('DpiColor'in s){const c=s.DpiColor.color;return `DPI 档位 ${s.DpiColor.stage+1} 指示颜色：RGB(${c.r}, ${c.g}, ${c.b})`;}
  const effect=s.Lighting.state.effect;
  const rgb=(color:{r:number;g:number;b:number})=>`RGB(${color.r}, ${color.g}, ${color.b})`;
  let description:string;
