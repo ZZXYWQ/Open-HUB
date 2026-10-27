@@ -80,9 +80,12 @@ fn profile_cycle_complete_vector_and_noop_use_no_macro_or_bank_set() {
 }
 #[test]
 fn profile_cycle_does_not_alias_direct_target_unknown_values_or_pulsar() {
+    let (mut known,_)=memory_device(0x1017).unwrap();
+    assert_eq!(known.read_action(&[9,161,0,171]).unwrap().0,ButtonAction::ProfileSelect(0));
+    assert_eq!(known.read_action(&[9,164,0,168]).unwrap().0,ButtonAction::ProfileSelect(3));
     for row in [
-        [9, 161, 0, 171],
-        [9, 164, 0, 168],
+        [9, 160, 0, 172],
+        [9, 165, 0, 167],
         [9, 0, 0, 76],
         [9, 255, 1, 76],
         [9, 255, 0, 0],
@@ -153,6 +156,7 @@ fn changed_bank_rejects_reads_and_all_setting_writes_without_retargeting() {
     assert!(d.read_state().is_err());
     for s in [
         cycle(4),
+        Setting::Button{id:4,action:ButtonAction::ProfileSelect(2)},
         Setting::ReportRate(500),
         Setting::DpiActiveStage(1),
     ] {

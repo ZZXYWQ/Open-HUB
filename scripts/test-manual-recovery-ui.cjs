@@ -1,5 +1,5 @@
 const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),assert=require('assert');
-const root=path.resolve('dist'),out=path.resolve('../manual-recovery-ui-qa');fs.mkdirSync(out,{recursive:true});
+const root=path.resolve('dist'),out=path.resolve(process.env.OPEN_HUB_MANUAL_RECOVERY_UI_OUT??'../manual-recovery-ui-qa');fs.mkdirSync(out,{recursive:true});
 const base=fs.readFileSync(path.join(__dirname,'test-synapse-import-ui.cjs'),'utf8'),marker='await page.addInitScript(()=>{';
 const start=base.indexOf(marker)+marker.length,end=base.indexOf('\n});await ',start);if(start<marker.length||end<start)throw Error('Shared fixture missing');
 (async()=>{const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-gpu']});try{

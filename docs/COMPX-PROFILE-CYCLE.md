@@ -33,3 +33,5 @@
 完整验收仍为 **0/100**。没有生成安装包、发布版本或安装新版。
 
 [静态事实](development/2026-10-27-compx-profile-cycle-source.json) · [验证记录](development/2026-10-27-compx-profile-cycle-validation.json)。
+
+后续更新：同一原厂源中的 [四个直达配置动作](COMPX-DIRECT-PROFILES.md) 已接通，161–164 现有独立解释，仍不与循环 255 混同。上文本批未开放直达的描述保留为该增量的历史范围。

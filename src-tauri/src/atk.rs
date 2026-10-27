@@ -177,6 +177,7 @@ fn button_bytes(action: &ButtonAction, id: u16) -> Result<[u8; 4]> {
     let (c, v) = match action {
         ButtonAction::Disabled => (0, 0),
         ButtonAction::ProfileCycle => (9,255),
+        ButtonAction::ProfileSelect(index) if index<4 => (9,161+index),
         ButtonAction::Scroll(gearwise_core::model::ScrollDirection::Up) => (11,1),
         ButtonAction::Scroll(gearwise_core::model::ScrollDirection::Down) => (11,2),
         ButtonAction::Mouse(MouseButton::WheelLeft) => (3,1),
@@ -458,6 +459,7 @@ impl Atk {
     }
     fn read_action(&mut self, raw: &[u8]) -> Option<(ButtonAction, Option<Macro>)> {
         if profile_cycle_supported(self.model.vendor,self.model.product)&&raw==[9,255,0,77]{return Some((ButtonAction::ProfileCycle,None));}
+        if profile_cycle_supported(self.model.vendor,self.model.product)&&raw.len()==4&&sum(raw)==0x55&&raw[0]==9&&raw[2]==0&&(161..=164).contains(&raw[1]){return Some((ButtonAction::ProfileSelect(raw[1]-161),None));}
         if horizontal_scroll_supported(self.model.vendor,self.model.product)&&raw.len()==4&&sum(raw)==0x55&&matches!(raw[0],3|11)&&raw[2]==0{
             use gearwise_core::model::ScrollDirection;
             let action=match (raw[0],raw[1]){(3,1)=>ButtonAction::Mouse(MouseButton::WheelLeft),(3,2)=>ButtonAction::Mouse(MouseButton::WheelRight),(11,1)=>ButtonAction::Scroll(ScrollDirection::Up),(11,2)=>ButtonAction::Scroll(ScrollDirection::Down),_=>return None};
@@ -702,6 +704,9 @@ impl Device for Atk {
                     ));
                 }
                 match action {
+                    ButtonAction::ProfileSelect(index) => {
+                        if !profile_cycle_supported(self.model.vendor,self.model.product)||*index>=4{return Err(Error::Unsupported("Exact COMPX direct profile binding"));}
+                    }
                     ButtonAction::ProfileCycle => {
                         if !profile_cycle_supported(self.model.vendor,self.model.product){return Err(Error::Unsupported("Exact COMPX profile cycle binding"));}
                     }
@@ -1466,3 +1471,5 @@ mod horizontal_tests;
 #[cfg(test)]
 #[path="compx_profile_cycle_tests.rs"]
 mod profile_cycle_tests;
+
+#[cfg(test)]#[path="compx_profile_select_tests.rs"]mod profile_select_tests;

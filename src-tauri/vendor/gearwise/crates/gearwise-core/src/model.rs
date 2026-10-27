@@ -537,6 +537,8 @@ pub enum ButtonAction {
     Media(u16),
     Dpi(DpiFunction),
     ProfileCycle,
+    /// Select a zero-based native onboard slot, only for an exact verified driver.
+    ProfileSelect(u8),
     /// Hold the device-native secondary mapping layer (only advertised by exact drivers).
     Hypershift,
     /// Software macro by id; played back by the host while the app runs.
@@ -569,6 +571,7 @@ impl ButtonAction {
             ButtonAction::Dpi(DpiFunction::ShiftXY { x, y }) => format!("DPI shift ({x} × {y})"),
             ButtonAction::Dpi(DpiFunction::CycleDown) => "DPI cycle down".into(),
             ButtonAction::ProfileCycle => "Profile cycle".into(),
+            ButtonAction::ProfileSelect(index) => format!("Profile {}",u16::from(*index)+1),
             ButtonAction::Hypershift => "Hold Hypershift".into(),
             ButtonAction::Macro(id) => format!("Macro: {id}"),
             ButtonAction::Scroll(ScrollDirection::Up) => "Scroll up".into(),
@@ -637,6 +640,11 @@ mod button_action_serialization_tests {
         assert_eq!(ButtonAction::Dpi(DpiFunction::Cycle).label(), "DPI cycle");
     }
 
+    #[test]
+    fn direct_native_profile_selection_has_distinct_typed_json(){
+        for (index,label) in [(0,"Profile 1"),(3,"Profile 4")]{let action=ButtonAction::ProfileSelect(index);let value=json!({"ProfileSelect":index});assert_eq!(serde_json::to_value(&action).unwrap(),value);assert_eq!(serde_json::from_value::<ButtonAction>(value).unwrap(),action);assert_eq!(action.label(),label);}
+        for value in [json!({"ProfileSelect":-1}),json!({"ProfileSelect":256}),json!({"ProfileSelect":1.5}),json!({"ProfileSelect":"1"}),json!({"ProfileSelect":{"index":1}})]{assert!(serde_json::from_value::<ButtonAction>(value).is_err());}
+    }
     #[test]
     fn scoped_scroll_and_reverse_cycle_have_distinct_strict_json() {
         for (action, value, label) in [

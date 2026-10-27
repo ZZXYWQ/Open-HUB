@@ -1,0 +1,55 @@
+{
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "source_sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "source_bytes": 5755795,
+  "analysis": "static text only; no OEM execution or redistribution",
+  "offset_units": "UTF-16 code units",
+  "offsets": {
+    "profile_1": 4202860,
+    "profile_2": 4202923,
+    "profile_3": 4202986,
+    "profile_4": 4203049,
+    "class": 2043239,
+    "constructor": 2049235,
+    "cycle": 4203112,
+    "checksum": 2045575
+  },
+  "zero_based_plan_to_wire": [
+    161,
+    162,
+    163,
+    164
+  ],
+  "golden_rows": [
+    [
+      9,
+      161,
+      0,
+      171
+    ],
+    [
+      9,
+      162,
+      0,
+      170
+    ],
+    [
+      9,
+      163,
+      0,
+      169
+    ],
+    [
+      9,
+      164,
+      0,
+      168
+    ]
+  ],
+  "cycle_value_is_separate": 255,
+  "limits": [
+    "button assignment, not direct host-triggered bank selection",
+    "active-bank GET token numbering remains separate",
+    "no physical press or persistence proof"
+  ]
+}

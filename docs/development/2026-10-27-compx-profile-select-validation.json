@@ -1,0 +1,198 @@
+{
+  "date": "2026-10-27",
+  "status": "development-only",
+  "accepted_models": 0,
+  "target_models": 100,
+  "new_models_added": 0,
+  "existing_distinct_models_extended": 8,
+  "positive_transports": 9,
+  "negative_ui_transports": 3,
+  "default_application_tests": {
+    "passed": 848,
+    "failed": 0,
+    "ignored": 67,
+    "new_default_tests": 7
+  },
+  "dependency_tests": {
+    "unit_passed": 357,
+    "doctest_passed": 1,
+    "core_serialization_new_tests": 1
+  },
+  "explicit_ui_profile_cross_test": {
+    "passed": 1,
+    "profiles": 9,
+    "targets_per_profile": 4
+  },
+  "ui": {
+    "native_DTO": true,
+    "mocked_IPC": true,
+    "physical_HID": false,
+    "OS_input": false,
+    "manual_recovery_regression_checks": 13,
+    "reconnect_regression_checks": 20
+  },
+  "native_non_test_build": "passed",
+  "frontend_build": "passed",
+  "bundle": {
+    "javascript_bytes": 814506,
+    "previous_bytes": 813725,
+    "new_runtime_dependencies": 0
+  },
+  "installer_built": false,
+  "release_published": false,
+  "installed": false,
+  "limits": [
+    "no physical direct profile press or power retention test",
+    "current-bank token semantics separate from target indices",
+    "no GUI-triggered immediate bank selection",
+    "shared cross-library macro references unresolved",
+    "complete OEM functions and UI acceptance incomplete"
+  ],
+  "evidence": [
+    {
+      "path": "src-tauri/src/atk.rs",
+      "bytes": 75156,
+      "sha256": "a53863e0e9e859487b04bf6638f7cbe5111c23a2d6bde6a60250aff5a5372cfd"
+    },
+    {
+      "path": "src-tauri/src/multibrand.rs",
+      "bytes": 120854,
+      "sha256": "abc7f3e40e48516a528a998860682b2202c46df5ceb63233cc34bb83e4efb5a4"
+    },
+    {
+      "path": "src-tauri/src/compx_profile_cycle_tests.rs",
+      "bytes": 7054,
+      "sha256": "d78b9a6b37e738e7981808e59aef85673929c98673df3dca0110c966300727d8"
+    },
+    {
+      "path": "src-tauri/src/compx_profile_select_tests.rs",
+      "bytes": 4376,
+      "sha256": "1a8ddb5a6faef5a49aa54c8413e7c903b5ff37502f932baebd0135c03d97f26e"
+    },
+    {
+      "path": "src-tauri/src/compx_profile_select_plan_tests.rs",
+      "bytes": 4007,
+      "sha256": "64f3b172783ce98756f8a5fee34cdd7bd9bd4e9ce7c42bff83578d9822b01e38"
+    },
+    {
+      "path": "src-tauri/vendor/gearwise/crates/gearwise-core/src/model.rs",
+      "bytes": 26991,
+      "sha256": "c35e29159b27df5d39ec4e6c4cc7c427287e9bad61e696f40e6d20b104c5713a"
+    },
+    {
+      "path": "src-tauri/vendor/gearwise/crates/gearwise-steelseries/src/buttons.rs",
+      "bytes": 11234,
+      "sha256": "4cc55f28c99f8b777f86c4917f7bcd90b2c437009c3308d00f192d681fa6460f"
+    },
+    {
+      "path": "src/components/multi-panel.tsx",
+      "bytes": 28083,
+      "sha256": "5b41714c900693b93f7c6c0b35db9e06d54e469a386f3eea5d383cfc9120c3de"
+    },
+    {
+      "path": "src/components/multi-recovery.tsx",
+      "bytes": 6819,
+      "sha256": "65656ba93ac614e5fda5c1cb42ab62cf4cdf4f77df5f2c420fb9456ab225645a"
+    },
+    {
+      "path": "src/components/reconnect-plans.tsx",
+      "bytes": 14307,
+      "sha256": "8ed9c018f7c394dd7e4854b225f36e8f14f099a6f7e736e476c8a2a8195ff3ab"
+    },
+    {
+      "path": "src/lib/multi.ts",
+      "bytes": 8487,
+      "sha256": "1de92ec966b3986798bdba286726d4ae9d92645a85563c59751a79a03ef57808"
+    },
+    {
+      "path": "scripts/check-compx-profile-select-source.cjs",
+      "bytes": 1524,
+      "sha256": "9b386299aa60493816d2bd9f318f9cbacd5c3b33395223df8823d37b52a37804"
+    },
+    {
+      "path": "scripts/test-compx-profile-select-ui.cjs",
+      "bytes": 3646,
+      "sha256": "b86080e5f0d700df346baf992125b139f5f4e648ed655d914bdf8b7f1a045760"
+    },
+    {
+      "path": "scripts/test-manual-recovery-ui.cjs",
+      "bytes": 7599,
+      "sha256": "1ff3c26be2f35137d88866f33b6ac4a8101c87184973bbb2cc388c12e6679981"
+    },
+    {
+      "path": "scripts/test-reconnect-ui.cjs",
+      "bytes": 10475,
+      "sha256": "20bd89729d15179ae6d1ef53068df8e1a4cc9d68e8d785f03b59b89c4d35607d"
+    },
+    {
+      "path": "docs/development/2026-10-27-compx-profile-select-source.json",
+      "bytes": 1064,
+      "sha256": "ddbe41097c30cb7157653da22c468d5f02e47ffd6681eb263d4b3e1ba9a2f965"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-profile-select-all-final.log",
+      "bytes": 106740,
+      "sha256": "d85f3b43ce9f5cbd8e85389878ffaf53029b0ca2c41c031f3c2c29ac98cbd4c3"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-profile-select-cross.log",
+      "bytes": 7264,
+      "sha256": "bd0a33d9b61f4a11a2ce0316b4e2112c454f8921372cd1b72dd42ed0465d7906"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-profile-select-native-final-build.log",
+      "bytes": 6703,
+      "sha256": "f7dde9f1ca43880167642fbcca9bd352a073db5d7786cf899eb39d7f39c579f9"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-profile-select-frontend-verified.log",
+      "bytes": 1211,
+      "sha256": "ede1fc8eb42e83abfdd54e58ac23856afafd3c9ff3172aa854114a5f029bba7e"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-profile-select-vendor.log",
+      "bytes": 31491,
+      "sha256": "2f60dca126ac999433d298ec531634caaeb4ec3d3f17a271cf4620a19a7f1df1"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-profile-select-ui.log",
+      "bytes": 90,
+      "sha256": "eba29476fb97f74f5c8f85a4768c737a55d2ffd5e9d4b37369e06be0512935d1"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-profile-select-recovery-ui.log",
+      "bytes": 52,
+      "sha256": "64ba6c7780112e0fa03c93d08e9a558796e34999f9e1014d7ce3c73ef20d2031"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-profile-select-reconnect-ui.log",
+      "bytes": 46,
+      "sha256": "bed32c573d8622707c2710a8325370bde37e9172246e0ee526a79d555869c589"
+    },
+    {
+      "path": "../outputs/100-model-development/compx-profile-select-native-views.json",
+      "bytes": 42263,
+      "sha256": "4c60b0adac422ea125907743a82fa07db95f89112e73f16177ba4b600b7afccf"
+    },
+    {
+      "path": "../outputs/100-model-development/compx-profile-select-ui/profiles.json",
+      "bytes": 27562,
+      "sha256": "956369e45620bd5e6c6f25a49a8995305cc194b1380b1d93f5e3ab000542b605"
+    },
+    {
+      "path": "../outputs/100-model-development/compx-profile-select-ui/report.json",
+      "bytes": 1075,
+      "sha256": "e996d1a6b5a76a7b1952ea78111c21e713cdd399c173f23f63910bf4ccfbbd0f"
+    },
+    {
+      "path": "../outputs/100-model-development/manual-recovery-ui-profile-select/report.json",
+      "bytes": 539,
+      "sha256": "8d25df25ccf1d9c46c6034faf65c8d715af69e47f1a1b6d98819dd21a5b39f0e"
+    },
+    {
+      "path": "../outputs/100-model-development/reconnect-ui-profile-select/report.json",
+      "bytes": 880,
+      "sha256": "7661e2df3f361c837dd7021588f53fe004f5a52be80385ea7635a76454cf50e1"
+    }
+  ]
+}

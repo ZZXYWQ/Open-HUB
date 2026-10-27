@@ -9,7 +9,8 @@ interface RecoveryList {records:RecoveryItem[];errors:string[]}
 function describe(setting:MultiSetting){
  if(!('Button'in setting))return JSON.stringify(setting);
  const {id,action}=setting.Button;
- if(typeof action==='string')return `按键 ${id}：${action==='Default'?'默认动作':'禁用'}`;
+ if(typeof action==='string')return `按键 ${id}：${{Default:'默认动作',Disabled:'禁用',Hypershift:'按住 Hypershift',ProfileCycle:'循环板载配置'}[action]}`;
+ if('ProfileSelect'in action)return `按键 ${id}：切到板载配置 ${action.ProfileSelect+1}`;
  if('Key'in action){const name=KEY_NAMES.find(([k])=>k===action.Key.usage)?.[1]??`HID ${action.Key.usage}`;return `按键 ${id}：${name}（修饰键掩码 ${action.Key.mods}）`;}
  if('Mouse'in action)return `按键 ${id}：鼠标 ${action.Mouse}`;
  return `按键 ${id}：${JSON.stringify(action)}`;
