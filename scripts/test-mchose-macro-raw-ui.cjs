@@ -1,7 +1,7 @@
 // Built production React UI. Only IPC/file dialogs are simulated; no HID or OS input.
 const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),assert=require('assert');
 const source=fs.readFileSync(path.join(__dirname,'test-synapse-import-ui.cjs'),'utf8'),marker='await page.addInitScript(()=>{',start=source.indexOf(marker)+marker.length,end=source.indexOf('\n});await ',start);assert(end>start);
-const out=path.resolve('../outputs/100-model-development/mchose-macro-raw-ui');fs.mkdirSync(out,{recursive:true});
+const out=path.resolve(process.env.OPEN_HUB_MCHOSE_MACRO_RAW_UI_OUT??'../outputs/100-model-development/mchose-macro-raw-ui');fs.mkdirSync(out,{recursive:true});
 const hardware=JSON.parse(fs.readFileSync('src-tauri/tests/fixtures/mchose.json','utf8')).state;
 hardware.adaptive=[]; // Current A7 capability set, distinct from legacy diagnostic bytes.
 (async()=>{const browser=await chromium.launch({headless:true}),checks=[];try{

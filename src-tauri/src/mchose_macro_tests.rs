@@ -52,6 +52,9 @@ struct Mouse {
     staged: BTreeMap<u8, Vec<u8>>,
     writes: Vec<Vec<u8>>,
     ignore_commit: bool,
+    other_keys: Option<[Vec<Vec<u8>>;2]>,
+    binding_writes: Vec<Vec<u8>>,
+    change_reference_after_chunk: bool,
     fail_offset: Option<usize>,
 }
 impl Mouse {
@@ -72,7 +75,14 @@ impl Mouse {
                     self.state.raw_y.clone()
                 }
             }
-            1 => self.state.raw_buttons.clone(),
+            1 => if args[0]==self.state.profile {self.state.raw_buttons.clone()} else {self.other_keys.as_ref().map(|keys|keys[if args[0]<self.state.profile {args[0]}else{args[0]-1} as usize].concat()).unwrap_or_else(||self.state.raw_buttons.clone())},
+            0x0101 => {
+                assert_eq!(args[0],self.state.profile);
+                self.binding_writes.push(args.to_vec());
+                self.state.buttons[args[1] as usize]=args[3..].to_vec();
+                self.state.raw_buttons=self.state.buttons.concat();
+                vec![]
+            },
             9 => vec![self.state.lod],
             0x000a | 0x010a | 0x010b => panic!("unsupported A7 adaptive-rate command"),
             0x0901 => vec![0, 23],
@@ -99,6 +109,10 @@ impl Mouse {
                 assert_eq!(count, args.len() - 4);
                 assert!(count <= 19);
                 self.writes.push(args.to_vec());
+                if self.change_reference_after_chunk {
+                    self.change_reference_after_chunk=false;
+                    self.other_keys.as_mut().unwrap()[0][4]=vec![0x21,0,0];
+                }
                 if self.fail_offset == Some(offset) {
                     return Err(bad("authored chunk failure"));
                 }
@@ -142,6 +156,9 @@ impl Rig {
             staged: BTreeMap::new(),
             writes: vec![],
             ignore_commit: false,
+            other_keys: None,
+            binding_writes: vec![],
+            change_reference_after_chunk: false,
             fail_offset: None,
         }));
         let source = mouse.clone();
@@ -509,3 +526,6 @@ fn actual_ui_macro_save_export_import_replays_through_production_codec() {
         assert_eq!(record.raw, file.expected_raw);
     }
 }
+
+#[path="mchose_macro_scope_tests.rs"]
+mod scope;

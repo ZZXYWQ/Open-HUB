@@ -32,6 +32,7 @@ mod hidpp;
 mod manager;
 mod mchose;
 mod mchose_config;
+mod mchose_macro_scope;
 mod mchose_target;
 mod mchose_backup;
 mod magdock;
@@ -272,8 +273,15 @@ fn mchose_macro_file(path:String,slot:u8,name:String,mode:u8,events:Vec<mchose_c
 #[tauri::command(async)]
 fn mchose_apply(app:AppHandle,state:State<AppState>,id:String,expected_profile:u8,action:mchose_config::Action,target:mchose_target::Target)->Result<mchose_config::ApplyResult,String>{
     let result=with_mchose(&state,&id,&target,|t|{
-        let saved_macro=match &action{mchose_config::Action::Macro{slot,name,mode,events,raw}=>Some(mchose_config::macro_record(*slot,name,*mode,events,raw.as_deref())?),_=>None};
-        Ok(mchose_config::ApplyResult{state:t.apply_hardware_for(expected_profile,action)?,saved_macro,target:target.clone()})
+        let (hardware,saved_macro)=match action{
+            mchose_config::Action::Macro{slot,name,mode,events,raw}=>{
+                let record=mchose_config::macro_record(slot,&name,mode,&events,raw.as_deref())?;
+                let (hardware,saved)=mchose_macro_scope::save(t,expected_profile,record)?;
+                (hardware,Some(saved))
+            },
+            other=>(t.apply_hardware_for(expected_profile,other)?,None),
+        };
+        Ok(mchose_config::ApplyResult{state:hardware,saved_macro,target:target.clone()})
     })?;
     let _=app.emit("device-changed",id);Ok(result)
 }

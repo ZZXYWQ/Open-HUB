@@ -1,0 +1,140 @@
+{
+  "date": "2026-10-27",
+  "status": "development-only",
+  "accepted_models": 0,
+  "target_models": 100,
+  "default_native_tests": {
+    "passed": 807,
+    "failed": 0,
+    "ignored": 63,
+    "new_default_tests": 8
+  },
+  "explicit_ignored_replay": {
+    "passed": 1,
+    "failed": 0,
+    "actual_ui_actions": 10,
+    "file_exports": 2
+  },
+  "native_non_test_build": "passed",
+  "frontend_build": "passed",
+  "ui": {
+    "new_checks": 8,
+    "native_bridge_calls": 10,
+    "raw_macro_groups": 7,
+    "draft_groups": 11,
+    "physical_HID": false,
+    "OS_input": false
+  },
+  "bundle": {
+    "javascript_bytes": 812168,
+    "previous_bytes": 811551,
+    "new_runtime_dependencies": 0
+  },
+  "physical_macro_settings_written": false,
+  "installer_built": false,
+  "release_published": false,
+  "installed": false,
+  "limits": [
+    "native firmware macro staging and playback not physically verified",
+    "GET/SET is not atomic",
+    "no new RF unit serial identity",
+    "all-model acceptance remains incomplete"
+  ],
+  "evidence": [
+    {
+      "path": "src-tauri/src/mchose_macro_scope.rs",
+      "bytes": 4743,
+      "sha256": "cbd651b5799195648d21fae1df1456b9aa9a62bd0994204bc979d945f2e6677f"
+    },
+    {
+      "path": "src-tauri/src/mchose_macro_scope_tests.rs",
+      "bytes": 9412,
+      "sha256": "52c06a1ba62a20b5823c23cbb77517ca1d9f18e4cf6673d0ef2fc7a81a70c0c8"
+    },
+    {
+      "path": "src-tauri/src/mchose_macro_tests.rs",
+      "bytes": 19063,
+      "sha256": "88f2dc10717a3c182df3b0de10ba9cc7a965de3413d8a68a62dcef480cd6d16e"
+    },
+    {
+      "path": "src-tauri/src/main.rs",
+      "bytes": 74647,
+      "sha256": "e5b38d481351615713b239a54f72b77f1f96fd6ca0f562bafe320f0027fe2188"
+    },
+    {
+      "path": "src-tauri/src/mchose_config.rs",
+      "bytes": 43776,
+      "sha256": "58baf5122d8237186ab7ccb879abf25f697e630203ee582d28282609e3c3f417"
+    },
+    {
+      "path": "src/components/mchose-panel.tsx",
+      "bytes": 25282,
+      "sha256": "67a99634cd9f93f0a98ace8fcd5c70cf192b2b806bbd0235a5fe79ded33aa168"
+    },
+    {
+      "path": "scripts/test-mchose-macro-scope-ui.cjs",
+      "bytes": 7313,
+      "sha256": "ddf873cd4626c6901fb31a13f1b037f7076eb3f25cf369f7dbd47274bacfb3d6"
+    },
+    {
+      "path": "scripts/test-mchose-macro-raw-ui.cjs",
+      "bytes": 10870,
+      "sha256": "790043eb5534240ef32e986999204d19fada90ad9748575f21e74b059743193a"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-mchose-macro-cow-all.log",
+      "bytes": 101494,
+      "sha256": "64ee165ea6c563ad53e3a586bb8d3dba0d5b924481122f5c235aa6456463db82"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-mchose-macro-cow-native-build.log",
+      "bytes": 6795,
+      "sha256": "82c04595f8c4fa98a8e2c39991124b658b250799020f914483d5ffe32e6f4d60"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-mchose-macro-cow-frontend-final.log",
+      "bytes": 1211,
+      "sha256": "5c48ee1d0553728300fe21fac2d91e5dba40b6ea8c0bc52ace5d40541aa71e95"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-mchose-macro-cow-ui-final.log",
+      "bytes": 63,
+      "sha256": "6e14cfa417a7ecae9f740b28519c2486a4b6418c03669738e47dced0d96d60b3"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-mchose-macro-cow-raw-ui.log",
+      "bytes": 92,
+      "sha256": "c9d4278437c158f67740fd5b3c1609034200643d009697a79b6bee0dbdb1073d"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-mchose-macro-cow-drafts-ui.log",
+      "bytes": 51,
+      "sha256": "a8cef8672425483f30864661d6f93d5eb4cbd0cfc9f641489c7107ed223190dc"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-mchose-macro-cow-raw-native-replay.log",
+      "bytes": 7021,
+      "sha256": "09eb583ff0e8f67cb5ffec532fca0728ca9426b4325fad54b4daec2e08448f6d"
+    },
+    {
+      "path": "../outputs/100-model-development/mchose-macro-scope-ui-v2/report.json",
+      "bytes": 696,
+      "sha256": "04af67d672a2d36d75f93b7a6997bcbef0da205449696dfe4a85f2ad0bc230a7"
+    },
+    {
+      "path": "../outputs/100-model-development/mchose-macro-scope-ui-v2/capture.json",
+      "bytes": 127275,
+      "sha256": "8277284251b745e84708daf6771b27ada79d6b587da8d7dc80a69e23bb8ef90b"
+    },
+    {
+      "path": "../outputs/100-model-development/mchose-macro-raw-ui-cow/report.json",
+      "bytes": 806,
+      "sha256": "f22255b62d818509fc3d6eba813176c9da8855426427afa06312548d381a3773"
+    },
+    {
+      "path": "../outputs/100-model-development/mchose-drafts-ui-cow/report.json",
+      "bytes": 1186,
+      "sha256": "f5a7be2c546fe70b4c2931a4618c226c07ff1fcf55d6d4817a53adc1667e53d4"
+    }
+  ]
+}

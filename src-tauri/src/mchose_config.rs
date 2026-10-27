@@ -805,6 +805,10 @@ impl Transport {
     /// cannot be stopped by the app's command mutex and must never retarget it.
     pub fn apply_hardware_for(&self, expected_board: u8, action: Action) -> Result<HardwareState> {
         profile(expected_board)?;
+        if let Action::Macro{slot,name,mode,events,raw}=&action{
+            let record=macro_record(*slot,name,*mode,events,raw.as_deref())?;
+            return crate::mchose_macro_scope::save(self,expected_board,record).map(|(state,_)|state);
+        }
         self.identity()?;
         let mut cfg = self.settings()?;
         if cfg[0] != expected_board {
