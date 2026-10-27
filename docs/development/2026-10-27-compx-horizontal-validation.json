@@ -1,0 +1,145 @@
+{
+  "date": "2026-10-27",
+  "status": "development-only",
+  "accepted_models": 0,
+  "target_models": 100,
+  "new_models_added": 0,
+  "existing_distinct_models_extended": 8,
+  "positive_transport_cases": 9,
+  "negative_transport_cases": 3,
+  "default_native_tests": {
+    "passed": 817,
+    "failed": 0,
+    "ignored": 64,
+    "new_default_tests": 10
+  },
+  "explicit_ui_profile_cross_test": {
+    "passed": 1,
+    "profiles": 9,
+    "host_input": false
+  },
+  "ui": {
+    "native_DTO": true,
+    "mocked_IPC": true,
+    "physical_HID": false,
+    "OS_input": false
+  },
+  "native_non_test_build": "passed",
+  "frontend_build": "passed",
+  "bundle": {
+    "javascript_bytes": 812309,
+    "previous_bytes": 812168,
+    "new_runtime_dependencies": 0
+  },
+  "installer_built": false,
+  "release_published": false,
+  "installed": false,
+  "limitations": [
+    "no physical horizontal input validation",
+    "no power cycle retention proof",
+    "other configuration-library ownership unverified",
+    "complete OEM controls and UI acceptance still incomplete"
+  ],
+  "evidence": [
+    {
+      "path": "src-tauri/src/atk.rs",
+      "bytes": 72102,
+      "sha256": "adb1e12468fb0961742aa57f5ba15d15dcd5c7c2e3e0a852427f6f6111ae38c8"
+    },
+    {
+      "path": "src-tauri/src/multibrand.rs",
+      "bytes": 119875,
+      "sha256": "d50f6f603430f7565b6568a6832444c008c7ca560ed823ace6775d616e35a293"
+    },
+    {
+      "path": "src-tauri/src/compx_horizontal_tests.rs",
+      "bytes": 6926,
+      "sha256": "c84f2ce3e8974085f4b884e53e36aa371043bd64e39aca4ceef56385fe40b9ca"
+    },
+    {
+      "path": "src-tauri/src/compx_horizontal_plan_tests.rs",
+      "bytes": 4343,
+      "sha256": "1d77a7f6cd57e802fa48c11f10dd346c523ab4293d6fa4e13b4dca5fc170482b"
+    },
+    {
+      "path": "src/lib/compx.ts",
+      "bytes": 768,
+      "sha256": "e03e50abf82c1b03ad9a8b0e9eaf8dd45c6a6419fd410443c3c002e6ba31b4c7"
+    },
+    {
+      "path": "src/components/multi-panel.tsx",
+      "bytes": 27190,
+      "sha256": "8fbcc9b3301cd85f31d73055c3f98cf385e802e10da2416eefe8b58ff198362a"
+    },
+    {
+      "path": "scripts/check-compx-horizontal-source.cjs",
+      "bytes": 1522,
+      "sha256": "f7a3c746d4bc03e0a5a794698ed459ee670580ccc3c9a772bb1a010b73217a76"
+    },
+    {
+      "path": "scripts/test-compx-horizontal-ui.cjs",
+      "bytes": 4236,
+      "sha256": "0a66b210df0e1f6930f499210cb778587f9edd5dd549cd84e4fcd332b0b158f0"
+    },
+    {
+      "path": "docs/development/2026-10-27-compx-horizontal-source.json",
+      "bytes": 948,
+      "sha256": "c12f9f11a2ea0b1a4b229c50c7b6157b855bcfed18b511e884c0a4ff02e5924d"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-horizontal-targeted-final.log",
+      "bytes": 8250,
+      "sha256": "cedeb87d3e984a07057cd41877651d762c912d41e0ea3b4dcc206c800e3161c3"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-horizontal-fixtures.log",
+      "bytes": 7092,
+      "sha256": "7f023f7371980ab37fd7eab86eb35ad4fc8160087449c7cd03a0b6529f60a122"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-horizontal-ui-final.log",
+      "bytes": 97,
+      "sha256": "456a0e60f282e01391fdb210ea12dcae5e5e2ccacf4d72e0bea784e41ad579e1"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-horizontal-cross.log",
+      "bytes": 7024,
+      "sha256": "d8d32f44d73ad9e8fb7cf81ad44569f21ecb05459236385fabc64c5899461864"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-horizontal-all.log",
+      "bytes": 102737,
+      "sha256": "d3e7a25d682770f20fa2268233f1b041460a0867398b8f7ffb99f03702aeca07"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-horizontal-native-build.log",
+      "bytes": 6795,
+      "sha256": "f45f793d3cfa26376f9bfa765917792b0cd3a86953cb1cee45b6c1bccebfc20d"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-horizontal-frontend.log",
+      "bytes": 1211,
+      "sha256": "c13ea0d7447057c53b3a46125fe850a30c002b09aaea72f97a59df6ab4d1acb2"
+    },
+    {
+      "path": "../outputs/100-model-development/compx-horizontal-ui-final/profiles.json",
+      "bytes": 27598,
+      "sha256": "908040db1699eb8174589e9dc8387160f4f9a96360153df803666ad4c2a38b03"
+    },
+    {
+      "path": "../outputs/100-model-development/compx-horizontal-ui-final/report.json",
+      "bytes": 1131,
+      "sha256": "8dc3c68a6d9fb27a7d7c925ab3fc578525f12aebbcfdb67fe954703c3182af93"
+    },
+    {
+      "path": "../outputs/100-model-development/compx-horizontal-native-views.json",
+      "bytes": 41813,
+      "sha256": "e482e08445c89fc0bd7d4fb619db94f85879f8c2dcfd5498ecb3a08f77b03fcc"
+    },
+    {
+      "path": "../outputs/100-model-development/compx-horizontal-negative-views.json",
+      "bytes": 9692,
+      "sha256": "8aa430e99b8f9e42c092b3c61c5e69396901ac1acfb9697ca274f0d40ca54e37"
+    }
+  ]
+}

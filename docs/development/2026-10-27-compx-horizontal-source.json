@@ -1,0 +1,43 @@
+{
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "source_sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "source_bytes": 5755795,
+  "analysis": "static text; no OEM execution or redistribution",
+  "offset_units": "UTF-16 code units",
+  "offsets": {
+    "class": 2043047,
+    "left": 2043672,
+    "constructor": 2048040,
+    "type": 2048079,
+    "checksum": 2045575
+  },
+  "button_record": {
+    "length": 4,
+    "class": 3,
+    "directions": {
+      "left": 1,
+      "right": 2
+    },
+    "reserved": 0,
+    "wrapping_sum": 85
+  },
+  "golden_rows": {
+    "left": [
+      3,
+      1,
+      0,
+      81
+    ],
+    "right": [
+      3,
+      2,
+      0,
+      80
+    ]
+  },
+  "limits": [
+    "no physical USB capture or scroll behavior observed",
+    "not evidence for Pulsar or other COMPX variants",
+    "other configuration library references remain unverified"
+  ]
+}

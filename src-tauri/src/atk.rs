@@ -39,6 +39,7 @@ pub fn validate_dpi(d: &DpiState, product: u16) -> Result<()> {
 pub fn validate_key(usage: u8, mods: gearwise_core::model::Modifiers) -> Result<()> {
     native_macro::encode(&native_macro::keyboard(usage, mods)).map(|_| ())
 }
+pub fn horizontal_scroll_supported(v:u16,p:u16)->bool{model(v,p).is_some_and(|m|m.native_macros&&m.native_buttons&&matches!(m.brand.as_str(),"atk"|"vxe"|"vgn"))}
 pub fn is_pulsar(v:u16,p:u16)->bool{v==0x3554&&matches!(p,0xf507|0xf508)}
 pub fn validate_pulsar_key(usage:u8,mods:gearwise_core::model::Modifiers)->Result<()>{pulsar_shortcut::encode(usage,mods).map(|_|())}
 pub fn validate_media(usage:u16)->Result<()>{native_macro::validate_media(usage)}
@@ -170,6 +171,8 @@ fn button_bytes(action: &ButtonAction, id: u16) -> Result<[u8; 4]> {
     };
     let (c, v) = match action {
         ButtonAction::Disabled => (0, 0),
+        ButtonAction::Mouse(MouseButton::WheelLeft) => (3,1),
+        ButtonAction::Mouse(MouseButton::WheelRight) => (3,2),
         ButtonAction::Mouse(b) => (
             1,
             match b {
@@ -437,6 +440,10 @@ impl Atk {
         native_macro::decode(slot, play, &raw)
     }
     fn read_action(&mut self, raw: &[u8]) -> Option<(ButtonAction, Option<Macro>)> {
+        if horizontal_scroll_supported(self.model.vendor,self.model.product)&&raw.len()==4&&sum(raw)==0x55&&raw[0]==3&&raw[2]==0{
+            let direction=match raw[1]{1=>MouseButton::WheelLeft,2=>MouseButton::WheelRight,_=>return None};
+            return Some((ButtonAction::Mouse(direction),None));
+        }
         if let Some(action) = decode_button(raw) {
             return Some((action, None));
         }
@@ -670,6 +677,9 @@ impl Device for Atk {
                     ));
                 }
                 match action {
+                    ButtonAction::Mouse(MouseButton::WheelLeft|MouseButton::WheelRight) => {
+                        if !horizontal_scroll_supported(self.model.vendor,self.model.product){return Err(Error::Unsupported("Exact COMPX horizontal scroll binding"));}
+                    }
                     ButtonAction::Key { usage, mods } => {
                         if is_pulsar(self.model.vendor,self.model.product){validate_pulsar_key(*usage,*mods)?;}else{native_macro::encode(&native_macro::keyboard(*usage, *mods))?;}
                     }
@@ -1417,3 +1427,7 @@ mod compx_palette_tests;
 #[cfg(test)]
 #[path="atk_indicator_tests.rs"]
 mod compx_indicator_tests;
+
+#[cfg(test)]
+#[path="compx_horizontal_tests.rs"]
+mod horizontal_tests;
