@@ -8,6 +8,7 @@ use gearwise_core::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Source {
     /// File-side profile ID. Does not choose a hardware page or mouse.
     pub profile_id: i64,
@@ -81,7 +82,7 @@ fn value(fields: &BTreeMap<String, String>, key: &str, max: u32) -> Result<u32> 
     }
     Ok(n)
 }
-fn convert(profile_id: i64, fields: BTreeMap<String, String>) -> Result<Source> {
+pub(super) fn convert(profile_id: i64, fields: BTreeMap<String, String>) -> Result<Source> {
     if profile_id <= 0 || profile_id > i32::MAX as i64 {
         return Err(invalid("OEM source profile ID"));
     }

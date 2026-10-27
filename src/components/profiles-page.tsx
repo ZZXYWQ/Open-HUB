@@ -1,3 +1,4 @@
+import {Sc620SourcePreview} from '@/components/sc620-source-preview';
 import {MhubProfileImport} from "@/components/mhub-profile-import";
 import {MchoseProfileEditor} from "@/components/mchose-profile-editor";
 import {mchoseRateHz} from "@/lib/mchose-plan";
@@ -52,13 +53,14 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
   const [multiNew,setMultiNew]=useState(false);
   const [synapsePreview,setSynapsePreview]=useState(false);
   const [mhubImport,setMhubImport]=useState(false);
+  const [sc620Preview,setSc620Preview]=useState(false);
   const [icueImport,setIcueImport]=useState(false);
   const [ggImport,setGgImport]=useState(false);
   const [editing, setEditing] = useState<Profile | null>(null);
   const brandKey=(p:Profile)=>p.sino?'sino:'+p.sino.model.brand:p.multi&&compxModel(p.multi.vendor,p.multi.product)?'compx:'+compxModel(p.multi.vendor,p.multi.product)!.brand:String(profileVendor(p));
   const brandLabel=(v:string)=>v.startsWith('sino:')?v.slice(5):v.startsWith('compx:')?compxBrand(v.slice(6)):brandName(v==='null'?null:Number(v));
   const [importChooser,setImportChooser]=useState(false);
-  const chooseImport=(source:string,models:SinoModel[])=>{setImportChooser(false);setImportModels(models);if(source==='mhub')setMhubImport(true);else if(source==='synapse')setSynapsePreview(true);else if(source==='icue')setIcueImport(true);else if(source==='gg')setGgImport(true);else if(isLegacyBrand(source)||source==='atk'||source==='vxe'||source==='vgn'||source==='hyperx'||source==='pulsar')setAtkImport(source);else setImportSource(source);};
+  const chooseImport=(source:string,models:SinoModel[])=>{setImportChooser(false);setImportModels(models);if(source==='sc620')setSc620Preview(true);else if(source==='mhub')setMhubImport(true);else if(source==='synapse')setSynapsePreview(true);else if(source==='icue')setIcueImport(true);else if(source==='gg')setGgImport(true);else if(isLegacyBrand(source)||source==='atk'||source==='vxe'||source==='vgn'||source==='hyperx'||source==='pulsar')setAtkImport(source);else setImportSource(source);};
   const [atkImport,setAtkImport]=useState<BoardImportBrand|null>(null);
   const [importModels,setImportModels]=useState<SinoModel[]>([]);
   const [importSource,setImportSource]=useState<string|null>(null),[vendor,setVendor]=useState('all');
@@ -183,6 +185,7 @@ export function ProfilesPage({ view, devices, importing, onAutoSwitch, onActivat
       </Dialog>
       <ProfileImportDialog key={importSource??'closed'} devices={devices} models={importModels} source={importSource} onClose={()=>setImportSource(null)} onDone={()=>toast.success('配置已导入，可按品牌查看并手动应用')}/>
       {atkImport&&<AtkProfileImport brand={atkImport} devices={devices} onClose={()=>setAtkImport(null)} onSave={onSave}/>}
+      {sc620Preview&&<Sc620SourcePreview onClose={()=>setSc620Preview(false)}/>}
       {synapsePreview&&<SynapsePreview onClose={()=>setSynapsePreview(false)}/>}
       {mhubImport&&<MhubProfileImport onClose={()=>setMhubImport(false)} onSave={onSave}/>}
       {icueImport&&<VendorProfileImport kind="icue" onClose={()=>setIcueImport(false)} onSave={onSave}/>}

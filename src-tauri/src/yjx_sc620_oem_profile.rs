@@ -11,6 +11,7 @@ use super::{
 use gearwise_core::Result;
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct KeyRow {
     pub id: i64,
     pub profile: i64,
@@ -25,6 +26,7 @@ pub struct KeyRow {
     pub description: String,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Source {
     pub settings: oem_config::Source,
     pub keys: Vec<KeyRow>,
@@ -37,7 +39,7 @@ pub struct Prepared {
     pub reports: Vec<[u8; 65]>,
 }
 /// OEM control IDs map to EEPROM records, not proven physical button labels.
-fn record(code: i64) -> Result<u8> {
+pub(super) fn record(code: i64) -> Result<u8> {
     match code {
         1..=3 | 6..=11 => Ok((code - 1) as u8),
         4 => Ok(4),
@@ -45,7 +47,7 @@ fn record(code: i64) -> Result<u8> {
         _ => Err(invalid("unverified OEM control ID")),
     }
 }
-fn basic(row: &KeyRow) -> Result<Action> {
+pub(super) fn basic(row: &KeyRow) -> Result<Action> {
     let action = match row.kind {
         1 => Action::Mouse(Mouse::Left),
         2 => Action::Mouse(Mouse::Middle),
@@ -151,15 +153,12 @@ fn basic(row: &KeyRow) -> Result<Action> {
 pub fn read(path: &std::path::Path, profile: i64) -> Result<Source> {
     let c = open_source(path)?;
     let tx = db(c.unchecked_transaction())?;
-    let settings = oem_config::parse(&tx, profile)?;
-    let macros = oem_library::parse(&tx)?;
-    let keys = read_keys(&tx, profile)?;
+    let source=parse(&tx,profile)?;
     db(tx.commit())?;
-    Ok(Source {
-        settings,
-        keys,
-        macros,
-    })
+    Ok(source)
+}
+pub(super) fn parse(c:&rusqlite::Connection,profile:i64)->Result<Source>{
+    Ok(Source{settings:oem_config::parse(c,profile)?,macros:oem_library::parse(c)?,keys:read_keys(c,profile)?})
 }
 fn read_keys(c: &rusqlite::Connection, profile: i64) -> Result<Vec<KeyRow>> {
     schema(

@@ -277,3 +277,6 @@ pub mod bindings;
 #[cfg(test)]
 #[path = "yjx_sc620_tests.rs"]
 mod tests;
+
+#[path="yjx_sc620_source_preview.rs"]
+pub mod source_preview;

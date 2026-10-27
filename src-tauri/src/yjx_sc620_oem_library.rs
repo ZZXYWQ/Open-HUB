@@ -5,6 +5,7 @@ use gearwise_core::Result;
 use rusqlite::{Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Event {
     pub record_id: i64,
     pub kind: i64,
@@ -14,6 +15,7 @@ pub struct Event {
     pub delay_raw: i64,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Macro {
     pub id: i64,
     pub name: String,
