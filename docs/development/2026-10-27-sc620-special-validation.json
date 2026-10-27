@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-27",
+  "scope": "SC620 static special native buttons and OEM joint conversion; unregistered driver",
+  "new_default_tests": 6,
+  "targeted_sc620": {
+    "passed": 97,
+    "failed": 0
+  },
+  "main_tests": {
+    "passed": 934,
+    "failed": 0,
+    "ignored": 68
+  },
+  "non_test_native_build": true,
+  "source_audit": {
+    "script": "scripts/check-sc620-special-source.py",
+    "exact_instruction_checks": 69,
+    "hash_pinned_language_files": 2,
+    "passed": true,
+    "OEM_execution": false
+  },
+  "cases": {
+    "complete_independent_reports": 31,
+    "dpi_rate_fire_actions": 7,
+    "disabled_source_controls": 11,
+    "shortcuts": 13
+  },
+  "fixture": "src-tauri/tests/fixtures/yjx-sc620/oem-special-actions.json",
+  "fixture_sha256": "3d2351f3a83a3d985aa12c96533964c818a970164b568476af0b25421167303a",
+  "fixture_kind": "independent synthetic complete65-byte reports; no hardware capture",
+  "source_read_unchanged": true,
+  "native_unselected_records_preserved": true,
+  "source24_meaning": "Disabled; original control-specific hint retained, not restore",
+  "dpi_cycle_encodings_remain_distinct": true,
+  "unknown_native_actions_preserved": true,
+  "unknown_source_actions_block_whole_plan": true,
+  "physical_IO": false,
+  "OS_input": false,
+  "new_runtime_dependencies": false,
+  "new_frontend_resources": false,
+  "cleanup": {
+    "validated_absolute_targets": true,
+    "preserved": "download and static extraction metadata only",
+    "OEM_execution": false,
+    "remaining_oem_payload_files": 0,
+    "removed_files": 5
+  },
+  "remaining": [
+    "custom AIM and unverified source actions",
+    "per-model/per-unit admission and physical placement",
+    "firmware execution/timing/readback/recovery and last-primary guard",
+    "UI"
+  ],
+  "accepted_complete_models": 0,
+  "target_complete_models": 100,
+  "installer": false,
+  "release": false,
+  "installation": false,
+  "installed_version": "0.3.7"
+}

@@ -188,7 +188,7 @@ fn missing_macro_and_unsupported_actions_layers_and_controls_refuse_whole_plan()
     let s = File::new().source();
     for (field, value) in [
         ("kind", 10),
-        ("kind", 24),
+        ("kind", 13),
         ("kind", 26),
         ("kind", 27),
         ("layer", 1),
@@ -316,4 +316,147 @@ fn unconverted_settings_and_incomplete_snapshots_cannot_produce_partial_plan() {
     let mut bad = ps;
     bad.swap(0, 1);
     assert!(s.prepare(&image(), &bad, &empty()).is_err());
+}
+
+fn special_facts() -> serde_json::Value {
+    serde_json::from_str(include_str!(
+        "../tests/fixtures/yjx-sc620/oem-special-actions.json"
+    ))
+    .unwrap()
+}
+#[test]
+fn dpi_polling_fire_disabled_and_shortcut_cases_roundtrip_native_and_typed_json() {
+    let facts = special_facts();
+    for case in facts["cases"].as_array().unwrap() {
+        let a: Action = serde_json::from_value(case["action"].clone()).unwrap();
+        let raw: [u8; 4] = hex(case["raw_hex"].as_str().unwrap()).try_into().unwrap();
+        assert_eq!(a.encode().unwrap(), raw, "{}", case["name"]);
+        assert_eq!(Action::decode(raw), Some(a.clone()));
+        let roundtrip: Action = serde_json::from_str(&serde_json::to_string(&a).unwrap()).unwrap();
+        assert_eq!(roundtrip, a);
+    }
+}
+#[test]
+fn thirty_one_sqlite_cases_compile_complete_reports_without_touching_other_records() {
+    let f = File::new();
+    f.sql("DELETE FROM t_key_macro_data WHERE profile=7;INSERT INTO t_key_macro_data VALUES(1,7,0,6,0,'retained layout',15,0,0,0,'retained description');");
+    let ps = pages();
+    let config = f.source().settings.prepare(&image()).unwrap();
+    let before = ps.clone();
+    for case in special_facts()["cases"].as_array().unwrap() {
+        f.sql(&format!(
+            "UPDATE t_key_macro_data SET key_code={},macro_type={},macro_value={} WHERE key_id=1",
+            case["key_code"], case["kind"], case["value"]
+        ));
+        let bytes = std::fs::read(&f.path).unwrap();
+        let s = f.source();
+        assert_eq!(s.keys[0].layout_description, "retained layout");
+        let plan = s.prepare(&config, &ps, &empty()).unwrap();
+        assert_eq!(plan.edits.len(), 1);
+        assert_eq!(plan.reports.len(), 1, "{}", case["name"]);
+        assert_eq!(
+            plan.reports[0].to_vec(),
+            hex(case["windows_report_hex"].as_str().unwrap()),
+            "{}",
+            case["name"]
+        );
+        assert_eq!(plan.library, empty());
+        assert_eq!(plan.config, config);
+        assert_eq!(std::fs::read(&f.path).unwrap(), bytes);
+    }
+    assert_eq!(ps, before);
+    assert_eq!(std::fs::read_dir(&f.root).unwrap().count(), 1);
+}
+#[test]
+fn extended_and_legacy_dpi_cycle_keep_distinct_original_encodings() {
+    assert_eq!(Action::DpiCycle.encode().unwrap(), [33, 85, 0, 0]);
+    assert_eq!(Action::DpiLoop.encode().unwrap(), [240, 1, 3, 0]);
+    assert_ne!(Action::DpiCycle, Action::DpiLoop);
+    let mut row = File::new().source().keys[0].clone();
+    row.kind = 9;
+    assert_eq!(basic(&row).unwrap(), Action::DpiCycle);
+    row.kind = 17;
+    assert_eq!(basic(&row).unwrap(), Action::DpiLoop);
+}
+#[test]
+fn disabled_control_hints_follow_source_ids_before_four_five_record_swap() {
+    let facts = special_facts();
+    let mut row = File::new().source().keys[0].clone();
+    row.kind = 24;
+    for c in facts["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|c| c["kind"] == 24)
+    {
+        row.key_code = c["key_code"].as_i64().unwrap();
+        assert_eq!(
+            basic(&row).unwrap().encode().unwrap().to_vec(),
+            hex(c["raw_hex"].as_str().unwrap())
+        );
+    }
+    row.key_code = 4;
+    assert_eq!(record(4).unwrap(), 4);
+    assert_eq!(basic(&row).unwrap().encode().unwrap(), [0, 16, 0, 0]);
+    row.key_code = 5;
+    assert_eq!(record(5).unwrap(), 3);
+    assert_eq!(basic(&row).unwrap().encode().unwrap(), [0, 8, 0, 0]);
+    for code in [-1, 0, 12, 256] {
+        row.key_code = code;
+        assert!(basic(&row).is_err());
+    }
+}
+#[test]
+fn unknown_native_modes_disabled_hints_and_source_shortcuts_are_never_coerced() {
+    for raw in [
+        [240, 0, 1, 0],
+        [240, 1, 0, 0],
+        [240, 1, 4, 0],
+        [240, 2, 3, 1],
+        [0, 3, 0, 0],
+        [0, 1, 1, 0],
+        [0, 33, 170, 1],
+        [33, 98, 0, 0],
+        [33, 170, 0, 0],
+    ] {
+        assert_eq!(Action::decode(raw), None);
+    }
+    for value in [
+        r#"{"Disabled":"Unknown"}"#,
+        r#"{"Disabled":[0,1,0,0]}"#,
+        r#"{"ReportRateLoop":{"rate":8000}}"#,
+    ] {
+        assert!(serde_json::from_str::<Action>(value).is_err());
+    }
+    let mut s = File::new().source();
+    s.keys[0].kind = 26;
+    for id in [-1, 0, 14, 256, i64::MAX] {
+        s.keys[0].value = id;
+        assert!(s.prepare(&image(), &pages(), &empty()).is_err());
+    }
+    for kind in [10, 12, 13, 14, 18, 27] {
+        s.keys[0].kind = kind;
+        assert!(s.prepare(&image(), &pages(), &empty()).is_err());
+    }
+}
+#[test]
+fn special_actions_still_require_exact_preimage_and_cannot_write_sixth_page() {
+    for case in special_facts()["cases"].as_array().unwrap() {
+        let a: Action = serde_json::from_value(case["action"].clone()).unwrap();
+        let edit = BasicChange {
+            record: 5,
+            expected: [32, 1, 0, 0],
+            action: a,
+        };
+        assert!(page(5).patch(&[edit.clone()]).is_err());
+        let bad = BasicChange {
+            expected: [99; 4],
+            ..edit.clone()
+        };
+        assert!(page(2).patch(&[bad]).is_err());
+        let next = page(2).patch(&[edit]).unwrap();
+        for i in (0..11).filter(|i| *i != 5) {
+            assert_eq!(next.record(i).unwrap(), page(2).record(i).unwrap());
+        }
+    }
 }

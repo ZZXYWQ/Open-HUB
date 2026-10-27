@@ -1,6 +1,6 @@
 //! Strict joint OEM settings/buttons/macros compiler. No live device admission.
 use super::{
-    bindings::{Action, Image as Page, Media, Mouse},
+    bindings::{Action, DisableHint, Image as Page, Media, Mouse},
     invalid,
     library_plan::{self, Edit, Target},
     macros::Image as Library,
@@ -56,6 +56,65 @@ fn basic(row: &KeyRow) -> Result<Action> {
         7 => Action::WheelUp,
         8 => Action::WheelDown,
         9 => Action::DpiCycle,
+        11 => Action::Fire,
+        15 => Action::DpiIncrease,
+        16 => Action::DpiDecrease,
+        17 => Action::DpiLoop,
+        19 => Action::ReportRateIncrease,
+        20 => Action::ReportRateDecrease,
+        21 => Action::ReportRateLoop,
+        24 => Action::Disabled(match row.key_code {
+            1 => DisableHint::Left,
+            2 => DisableHint::Right,
+            3 => DisableHint::Middle,
+            4 => DisableHint::Forward,
+            5 => DisableHint::Back,
+            7 => DisableHint::WheelUp,
+            8 => DisableHint::WheelDown,
+            9 => DisableHint::LegacyDpi,
+            6 | 10 | 11 => DisableHint::Unspecified,
+            _ => return Err(invalid("unverified disabled control ID")),
+        }),
+        26 => match row.value {
+            1 => Action::Media(Media::ScreenBrightnessUp),
+            2 => Action::Media(Media::ScreenBrightnessDown),
+            3 => Action::Media(Media::Calculator),
+            4 => Action::Key {
+                usage: 8,
+                modifiers: 8,
+            },
+            5 => Action::Key {
+                usage: 7,
+                modifiers: 8,
+            },
+            6 => Action::Media(Media::BrowserHome),
+            7 => Action::Media(Media::Mail),
+            8 => Action::Key {
+                usage: 0x3e,
+                modifiers: 0,
+            },
+            9 => Action::Key {
+                usage: 0x2b,
+                modifiers: 4,
+            },
+            10 => Action::Key {
+                usage: 0x46,
+                modifiers: 8,
+            },
+            11 => Action::Key {
+                usage: 6,
+                modifiers: 1,
+            },
+            12 => Action::Key {
+                usage: 0x19,
+                modifiers: 1,
+            },
+            13 => Action::Key {
+                usage: 0x1b,
+                modifiers: 1,
+            },
+            _ => return Err(invalid("unknown OEM shortcut ID")),
+        },
         22 => {
             let modifiers = u8::try_from(row.value2).map_err(|_| invalid("OEM key modifiers"))?;
             if (0xe0..=0xe7).contains(&row.value) {

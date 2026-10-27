@@ -1,0 +1,349 @@
+{
+  "source_program_sha256": "cd947c856d287042bfa75e2617ee0488f9d29c9be532588a6cedfd8e3faf7514",
+  "disassembly_sha256": "d23dcf6f35566d990945fac89482cb06c541be1c845d85643a76c676ca305a54",
+  "language_sha256": {
+    "1033": "004ba916b47f3e4ecfbcf966c9cb4a19076b37c89dc3ed6e811f68b68f1a26df",
+    "2052": "ad93fe8358b694ee6c1180564d805c4d1f9677d8dcbd2d4c906852291d493ee8"
+  },
+  "method": "hash-pinned original bytes, exact instruction operands, source menu IDs and bilingual labels; no OEM execution",
+  "checks": {
+    "0x41114a": {
+      "bytes": "83 f8 18",
+      "instruction": "cmp\teax, 0x18"
+    },
+    "0x411153": {
+      "bytes": "c7 06 00 00 00 00",
+      "instruction": "mov\tdword ptr [esi], 0x0"
+    },
+    "0x411159": {
+      "bytes": "8b 47 0c",
+      "instruction": "mov\teax, dword ptr [edi + 0xc]"
+    },
+    "0x411161": {
+      "bytes": "88 46 01",
+      "instruction": "mov\tbyte ptr [esi + 0x1], al"
+    },
+    "0x41116e": {
+      "bytes": "88 46 01",
+      "instruction": "mov\tbyte ptr [esi + 0x1], al"
+    },
+    "0x41117b": {
+      "bytes": "c6 46 01 04",
+      "instruction": "mov\tbyte ptr [esi + 0x1], 0x4"
+    },
+    "0x411189": {
+      "bytes": "c6 46 01 08",
+      "instruction": "mov\tbyte ptr [esi + 0x1], 0x8"
+    },
+    "0x411197": {
+      "bytes": "c6 46 01 10",
+      "instruction": "mov\tbyte ptr [esi + 0x1], 0x10"
+    },
+    "0x4111a5": {
+      "bytes": "66 c7 46 01 38 01",
+      "instruction": "mov\tword ptr [esi + 0x1], 0x138"
+    },
+    "0x4111b5": {
+      "bytes": "66 c7 46 01 38 ff",
+      "instruction": "mov\tword ptr [esi + 0x1], 0xff38"
+    },
+    "0x4111c9": {
+      "bytes": "66 c7 46 01 21 aa",
+      "instruction": "mov\tword ptr [esi + 0x1], 0xaa21"
+    },
+    "0x4113a3": {
+      "bytes": "83 f8 0b",
+      "instruction": "cmp\teax, 0xb"
+    },
+    "0x4113a8": {
+      "bytes": "66 c7 06 21 61",
+      "instruction": "mov\tword ptr [esi], 0x6121"
+    },
+    "0x4120a0": {
+      "bytes": "6a 0b",
+      "instruction": "push\t0xb"
+    },
+    "0x4120b2": {
+      "bytes": "68 9c 00 00 00",
+      "instruction": "push\t0x9c"
+    },
+    "0x4113c9": {
+      "bytes": "83 f8 0f",
+      "instruction": "cmp\teax, 0xf"
+    },
+    "0x4113ce": {
+      "bytes": "66 c7 06 f0 01",
+      "instruction": "mov\tword ptr [esi], 0x1f0"
+    },
+    "0x4113d3": {
+      "bytes": "c6 46 02 01",
+      "instruction": "mov\tbyte ptr [esi + 0x2], 0x1"
+    },
+    "0x4113dc": {
+      "bytes": "83 f8 10",
+      "instruction": "cmp\teax, 0x10"
+    },
+    "0x4113e1": {
+      "bytes": "66 c7 06 f0 01",
+      "instruction": "mov\tword ptr [esi], 0x1f0"
+    },
+    "0x4113e6": {
+      "bytes": "c6 46 02 02",
+      "instruction": "mov\tbyte ptr [esi + 0x2], 0x2"
+    },
+    "0x4113ef": {
+      "bytes": "83 f8 11",
+      "instruction": "cmp\teax, 0x11"
+    },
+    "0x4113f4": {
+      "bytes": "66 c7 06 f0 01",
+      "instruction": "mov\tword ptr [esi], 0x1f0"
+    },
+    "0x4113f9": {
+      "bytes": "c6 46 02 03",
+      "instruction": "mov\tbyte ptr [esi + 0x2], 0x3"
+    },
+    "0x411402": {
+      "bytes": "83 f8 13",
+      "instruction": "cmp\teax, 0x13"
+    },
+    "0x411407": {
+      "bytes": "66 c7 06 f0 02",
+      "instruction": "mov\tword ptr [esi], 0x2f0"
+    },
+    "0x41140c": {
+      "bytes": "c6 46 02 01",
+      "instruction": "mov\tbyte ptr [esi + 0x2], 0x1"
+    },
+    "0x411415": {
+      "bytes": "83 f8 14",
+      "instruction": "cmp\teax, 0x14"
+    },
+    "0x41141a": {
+      "bytes": "66 c7 06 f0 02",
+      "instruction": "mov\tword ptr [esi], 0x2f0"
+    },
+    "0x41141f": {
+      "bytes": "c6 46 02 02",
+      "instruction": "mov\tbyte ptr [esi + 0x2], 0x2"
+    },
+    "0x411428": {
+      "bytes": "83 f8 15",
+      "instruction": "cmp\teax, 0x15"
+    },
+    "0x41142d": {
+      "bytes": "66 c7 06 f0 02",
+      "instruction": "mov\tword ptr [esi], 0x2f0"
+    },
+    "0x411432": {
+      "bytes": "c6 46 02 03",
+      "instruction": "mov\tbyte ptr [esi + 0x2], 0x3"
+    },
+    "0x4120c4": {
+      "bytes": "6a 0f",
+      "instruction": "push\t0xf"
+    },
+    "0x4120d6": {
+      "bytes": "68 96 00 00 00",
+      "instruction": "push\t0x96"
+    },
+    "0x4120e8": {
+      "bytes": "6a 10",
+      "instruction": "push\t0x10"
+    },
+    "0x4120fa": {
+      "bytes": "68 97 00 00 00",
+      "instruction": "push\t0x97"
+    },
+    "0x41210c": {
+      "bytes": "6a 11",
+      "instruction": "push\t0x11"
+    },
+    "0x41211e": {
+      "bytes": "68 98 00 00 00",
+      "instruction": "push\t0x98"
+    },
+    "0x412130": {
+      "bytes": "6a 13",
+      "instruction": "push\t0x13"
+    },
+    "0x412142": {
+      "bytes": "68 99 00 00 00",
+      "instruction": "push\t0x99"
+    },
+    "0x412154": {
+      "bytes": "6a 14",
+      "instruction": "push\t0x14"
+    },
+    "0x412166": {
+      "bytes": "68 9a 00 00 00",
+      "instruction": "push\t0x9a"
+    },
+    "0x412178": {
+      "bytes": "6a 15",
+      "instruction": "push\t0x15"
+    },
+    "0x41218a": {
+      "bytes": "68 9b 00 00 00",
+      "instruction": "push\t0x9b"
+    },
+    "0x4121e4": {
+      "bytes": "6a 18",
+      "instruction": "push\t0x18"
+    },
+    "0x4121f6": {
+      "bytes": "68 a2 00 00 00",
+      "instruction": "push\t0xa2"
+    },
+    "0x4114bc": {
+      "bytes": "83 f8 1a",
+      "instruction": "cmp\teax, 0x1a"
+    },
+    "0x4114d0": {
+      "bytes": "66 c7 06 30 6f",
+      "instruction": "mov\tword ptr [esi], 0x6f30"
+    },
+    "0x4114e3": {
+      "bytes": "66 c7 06 30 70",
+      "instruction": "mov\tword ptr [esi], 0x7030"
+    },
+    "0x4114f6": {
+      "bytes": "66 c7 06 30 92",
+      "instruction": "mov\tword ptr [esi], 0x9230"
+    },
+    "0x4114fb": {
+      "bytes": "c6 46 02 01",
+      "instruction": "mov\tbyte ptr [esi + 0x2], 0x1"
+    },
+    "0x411509": {
+      "bytes": "66 c7 06 10 08",
+      "instruction": "mov\tword ptr [esi], 0x810"
+    },
+    "0x41150e": {
+      "bytes": "c6 46 02 08",
+      "instruction": "mov\tbyte ptr [esi + 0x2], 0x8"
+    },
+    "0x41151c": {
+      "bytes": "66 c7 06 30 23",
+      "instruction": "mov\tword ptr [esi], 0x2330"
+    },
+    "0x411521": {
+      "bytes": "c6 46 02 02",
+      "instruction": "mov\tbyte ptr [esi + 0x2], 0x2"
+    },
+    "0x41152f": {
+      "bytes": "66 c7 06 30 8a",
+      "instruction": "mov\tword ptr [esi], 0x8a30"
+    },
+    "0x411534": {
+      "bytes": "c6 46 02 01",
+      "instruction": "mov\tbyte ptr [esi + 0x2], 0x1"
+    },
+    "0x41153f": {
+      "bytes": "66 c7 06 10 00",
+      "instruction": "mov\tword ptr [esi], 0x10"
+    },
+    "0x411544": {
+      "bytes": "c6 46 02 3e",
+      "instruction": "mov\tbyte ptr [esi + 0x2], 0x3e"
+    },
+    "0x41154f": {
+      "bytes": "66 c7 06 10 08",
+      "instruction": "mov\tword ptr [esi], 0x810"
+    },
+    "0x411554": {
+      "bytes": "c6 46 02 07",
+      "instruction": "mov\tbyte ptr [esi + 0x2], 0x7"
+    },
+    "0x41155f": {
+      "bytes": "66 c7 06 10 08",
+      "instruction": "mov\tword ptr [esi], 0x810"
+    },
+    "0x411564": {
+      "bytes": "c6 46 02 46",
+      "instruction": "mov\tbyte ptr [esi + 0x2], 0x46"
+    },
+    "0x41156f": {
+      "bytes": "66 c7 06 10 04",
+      "instruction": "mov\tword ptr [esi], 0x410"
+    },
+    "0x411574": {
+      "bytes": "c6 46 02 2b",
+      "instruction": "mov\tbyte ptr [esi + 0x2], 0x2b"
+    },
+    "0x41157f": {
+      "bytes": "66 c7 46 01 01 06",
+      "instruction": "mov\tword ptr [esi + 0x1], 0x601"
+    },
+    "0x41158c": {
+      "bytes": "66 c7 46 01 01 19",
+      "instruction": "mov\tword ptr [esi + 0x1], 0x1901"
+    },
+    "0x411599": {
+      "bytes": "66 c7 46 01 01 1b",
+      "instruction": "mov\tword ptr [esi + 0x1], 0x1b01"
+    }
+  },
+  "labels": {
+    "1033": {
+      "31": "Copy",
+      "32": "Paste",
+      "36": "Cut",
+      "150": "DPI +",
+      "151": "DPI -",
+      "152": "DPI Loop",
+      "153": "Report Rate +",
+      "154": "Report Rate -",
+      "155": "Report Rate Loop",
+      "156": "Fire Key",
+      "162": "Disabled",
+      "185": "Screen Brightness +",
+      "186": "Screen Brightness -",
+      "187": "Launch Calculator",
+      "188": "My Desktop",
+      "189": "My Computer",
+      "190": "Open Homepage",
+      "191": "Mail",
+      "192": "Refresh (F5)",
+      "193": "Switch Applications",
+      "194": "Screenshot"
+    },
+    "2052": {
+      "31": "复制",
+      "32": "粘贴",
+      "36": "剪切",
+      "150": "DPI +",
+      "151": "DPI -",
+      "152": "DPI Loop",
+      "153": "回报率 +",
+      "154": "回报率 -",
+      "155": "回报率 Loop",
+      "156": "火力键",
+      "162": "禁用",
+      "185": "屏幕亮度增加",
+      "186": "屏幕亮度减少",
+      "187": "启动计算器",
+      "188": "我的桌面",
+      "189": "我的电脑",
+      "190": "打开主页",
+      "191": "邮件",
+      "192": "刷新(F5)",
+      "193": "切换应用程序",
+      "194": "截屏"
+    }
+  },
+  "correction": "source24 is Disabled, not restore; its original-control hint bytes are retained before source4/5 record remapping",
+  "distinct_dpi_loops": {
+    "source9": "21 55 00 00",
+    "source17": "f0 01 03 00"
+  },
+  "source26": "13 explicit source shortcut IDs to original HID records; unknown IDs refused",
+  "still_missing": [
+    "actual firmware execution and timing",
+    "custom AIM source27",
+    "unlabelled legacy source10/12 and unsupported actions",
+    "identity, physical mapping, recovery and UI"
+  ],
+  "hardware_tested": false,
+  "live_writer": false
+}

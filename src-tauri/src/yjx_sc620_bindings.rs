@@ -22,6 +22,11 @@ pub enum Media {
     VolumeDown,
     Mute,
     Player,
+    ScreenBrightnessUp,
+    ScreenBrightnessDown,
+    Calculator,
+    BrowserHome,
+    Mail,
 }
 impl Media {
     fn usage(self) -> u16 {
@@ -34,6 +39,40 @@ impl Media {
             Self::VolumeDown => 0xea,
             Self::Mute => 0xe2,
             Self::Player => 0x183,
+            Self::ScreenBrightnessUp => 0x6f,
+            Self::ScreenBrightnessDown => 0x70,
+            Self::Calculator => 0x192,
+            Self::BrowserHome => 0x223,
+            Self::Mail => 0x18a,
+        }
+    }
+}
+/// Original disabled records retain a control-specific hint. These are not
+/// programmable raw bytes and do not establish physical button placement.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DisableHint {
+    Unspecified,
+    Left,
+    Right,
+    Middle,
+    Forward,
+    Back,
+    WheelUp,
+    WheelDown,
+    LegacyDpi,
+}
+impl DisableHint {
+    fn bytes(self) -> [u8; 4] {
+        match self {
+            Self::Unspecified => [0, 0, 0, 0],
+            Self::Left => [0, 1, 0, 0],
+            Self::Right => [0, 2, 0, 0],
+            Self::Middle => [0, 4, 0, 0],
+            Self::Forward => [0, 16, 0, 0],
+            Self::Back => [0, 8, 0, 0],
+            Self::WheelUp => [0, 56, 1, 0],
+            Self::WheelDown => [0, 56, 255, 0],
+            Self::LegacyDpi => [0, 33, 170, 0],
         }
     }
 }
@@ -127,6 +166,14 @@ pub enum Action {
     WheelUp,
     WheelDown,
     DpiCycle,
+    DpiIncrease,
+    DpiDecrease,
+    DpiLoop,
+    ReportRateIncrease,
+    ReportRateDecrease,
+    ReportRateLoop,
+    Fire,
+    Disabled(DisableHint),
     Key { usage: u8, modifiers: u8 },
     Media(Media),
 }
@@ -149,6 +196,14 @@ impl Action {
             Self::WheelUp => [0x21, 0x38, 1, 0],
             Self::WheelDown => [0x21, 0x38, 0xff, 0],
             Self::DpiCycle => [0x21, 0x55, 0, 0],
+            Self::DpiIncrease => [0xf0, 1, 1, 0],
+            Self::DpiDecrease => [0xf0, 1, 2, 0],
+            Self::DpiLoop => [0xf0, 1, 3, 0],
+            Self::ReportRateIncrease => [0xf0, 2, 1, 0],
+            Self::ReportRateDecrease => [0xf0, 2, 2, 0],
+            Self::ReportRateLoop => [0xf0, 2, 3, 0],
+            Self::Fire => [0x21, 0x61, 0, 0],
+            Self::Disabled(hint) => hint.bytes(),
             Self::Key { usage, modifiers }
                 if (4..=0xa4).contains(&usage) || (usage == 0 && modifiers != 0) =>
             {
@@ -174,6 +229,22 @@ impl Action {
             Self::WheelUp,
             Self::WheelDown,
             Self::DpiCycle,
+            Self::DpiIncrease,
+            Self::DpiDecrease,
+            Self::DpiLoop,
+            Self::ReportRateIncrease,
+            Self::ReportRateDecrease,
+            Self::ReportRateLoop,
+            Self::Fire,
+            Self::Disabled(DisableHint::Unspecified),
+            Self::Disabled(DisableHint::Left),
+            Self::Disabled(DisableHint::Right),
+            Self::Disabled(DisableHint::Middle),
+            Self::Disabled(DisableHint::Forward),
+            Self::Disabled(DisableHint::Back),
+            Self::Disabled(DisableHint::WheelUp),
+            Self::Disabled(DisableHint::WheelDown),
+            Self::Disabled(DisableHint::LegacyDpi),
             Self::Media(Media::PlayPause),
             Self::Media(Media::Stop),
             Self::Media(Media::Previous),
@@ -182,6 +253,11 @@ impl Action {
             Self::Media(Media::VolumeDown),
             Self::Media(Media::Mute),
             Self::Media(Media::Player),
+            Self::Media(Media::ScreenBrightnessUp),
+            Self::Media(Media::ScreenBrightnessDown),
+            Self::Media(Media::Calculator),
+            Self::Media(Media::BrowserHome),
+            Self::Media(Media::Mail),
         ];
         if let Some(action) = known.into_iter().find(|a| a.encode().ok() == Some(bytes)) {
             return Some(action);
@@ -334,7 +410,11 @@ mod tests {
                 assert_eq!(after.record(i).unwrap(), old.record(i).unwrap());
             }
         }
-        for i in [5, 8, 9, 10] {
+        assert_eq!(
+            Action::decode(old.record(9).unwrap()),
+            Some(Action::ReportRateLoop)
+        );
+        for i in [5, 8, 10] {
             assert_eq!(Action::decode(old.record(i).unwrap()), None);
         }
     }
