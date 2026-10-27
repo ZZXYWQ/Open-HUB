@@ -139,8 +139,11 @@ impl LightMode {
         })
     }
 }
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ConfigPatch {
+    pub report_rate_hz: Option<u16>,
+    pub debounce_ms: Option<u8>,
     pub light: Option<LightMode>,
     /// Zero-based stage; firmware stores 1..6.
     pub active: Option<u8>,
@@ -163,6 +166,8 @@ impl ConfigImage {
         validate_dpi(&image.dpi())?;
         Ok(image)
     }
+    pub fn report_rate_hz(&self)->Option<u16>{match self.bytes[2]{1=>Some(125),2=>Some(250),3=>Some(500),4=>Some(1000),_=>None}}
+    pub fn debounce_ms(&self)->Option<u8>{(self.bytes[43]<=20).then_some(self.bytes[43])}
     pub fn light(&self) -> Option<LightMode> {
         LightMode::from_byte(self.bytes[1])
     }
@@ -191,7 +196,11 @@ impl ConfigImage {
         if let Some(dpi) = changes.dpi {
             validate_dpi(&dpi)?;
         }
+        if let Some(rate)=changes.report_rate_hz{if !matches!(rate,125|250|500|1000){return Err(invalid("unverified SC620 report rate"));}}
+        if changes.debounce_ms.is_some_and(|ms|ms>20){return Err(invalid("SC620 debounce must be0..20ms"));}
         let mut next = self.clone();
+        if let Some(rate)=changes.report_rate_hz{next.bytes[2]=match rate{125=>1,250=>2,500=>3,1000=>4,_=>unreachable!()};}
+        if let Some(ms)=changes.debounce_ms{next.bytes[43]=ms;}
         if let Some(light) = changes.light {
             next.bytes[1] = light as u8;
         }
@@ -233,6 +242,8 @@ fn validate_dpi(dpi: &[u16; 6]) -> Result<()> {
 pub mod macros;
 #[path = "yjx_sc620_oem_compile.rs"]
 pub mod oem_compile;
+#[path = "yjx_sc620_oem_config.rs"]
+pub mod oem_config;
 #[path = "yjx_sc620_oem_library.rs"]
 pub mod oem_library;
 #[path = "yjx_sc620_library_plan.rs"]

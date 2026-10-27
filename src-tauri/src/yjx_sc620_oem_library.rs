@@ -24,22 +24,23 @@ pub struct Macro {
     pub delay_time: i64,
     pub events: Vec<Event>,
 }
-fn db<T>(r: rusqlite::Result<T>) -> Result<T> {
-    r.map_err(|e| invalid(&format!("OEM macro database: {e}")))
+pub(super) fn db<T>(r: rusqlite::Result<T>) -> Result<T> {
+    r.map_err(|e| invalid(&format!("OEM database: {e}")))
 }
-fn schema(c: &Connection, table: &str, expected: &[(&str, &str, i64)]) -> Result<()> {
+pub(super) fn schema(c: &Connection, table: &str, expected: &[(&str, &str, i64)]) -> Result<()> {
     let kind: String = db(c.query_row(
         "SELECT type FROM sqlite_schema WHERE name=?1",
         [table],
         |r| r.get(0),
     ))?;
     if kind != "table" {
-        return Err(invalid("OEM macro source is not a plain table"));
+        return Err(invalid("OEM source is not a plain table"));
     }
     let sql = match table {
         "t_macro_data" => "PRAGMA table_info(t_macro_data)",
         "t_macrorecord" => "PRAGMA table_info(t_macrorecord)",
-        _ => return Err(invalid("unexpected macro table")),
+        "t_configdata" => "PRAGMA table_info(t_configdata)",
+        _ => return Err(invalid("unexpected OEM table")),
     };
     let mut stmt = db(c.prepare(sql))?;
     let rows = db(stmt.query_map([], |r| {
@@ -56,21 +57,25 @@ fn schema(c: &Connection, table: &str, expected: &[(&str, &str, i64)]) -> Result
         .collect::<Vec<_>>();
     if actual != expected {
         return Err(invalid(
-            "OEM macro table layout differs from verified schema",
+            "OEM table layout differs from verified schema",
         ));
     }
     Ok(())
 }
-pub fn read(path: &std::path::Path) -> Result<Vec<Macro>> {
+pub(super) fn open_source(path: &std::path::Path) -> Result<Connection> {
     let meta = std::fs::metadata(path).map_err(|e| invalid(&e.to_string()))?;
     if !meta.is_file() || meta.len() > 8 * 1024 * 1024 {
-        return Err(invalid("OEM macro database size/type"));
+        return Err(invalid("OEM database size/type"));
     }
     let c = db(Connection::open_with_flags(
         path,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
     ))?;
     db(c.execute_batch("PRAGMA query_only=ON; PRAGMA trusted_schema=OFF;"))?;
+    Ok(c)
+}
+pub fn read(path: &std::path::Path) -> Result<Vec<Macro>> {
+    let c = open_source(path)?;
     let tx = db(c.unchecked_transaction())?;
     let result = parse(&tx)?;
     db(tx.commit())?;

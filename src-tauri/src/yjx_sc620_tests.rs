@@ -77,6 +77,7 @@ fn complete_output_matches_reconstructed_oem_vector_and_preserves_untouched_fiel
         active: Some(p["active"].as_u64().unwrap() as u8),
         dpi: Some(serde_json::from_value(p["dpi"].clone()).unwrap()),
         colors: Some(serde_json::from_value(p["colors"].clone()).unwrap()),
+        ..ConfigPatch::default()
     };
     let before = image();
     let after = before.patch(&changes).unwrap();

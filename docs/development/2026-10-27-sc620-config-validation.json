@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-27",
+  "scope": "SC620 native report-rate/debounce fields and explicit-file OEM settings subset; not full config import",
+  "new_default_tests": 10,
+  "targeted_sc620": {
+    "passed": 71,
+    "failed": 0,
+    "log": "2026-10-27-sc620-config-tests.log"
+  },
+  "main_tests": {
+    "passed": 908,
+    "failed": 0,
+    "ignored": 68,
+    "log": "2026-10-27-sc620-config-all.log"
+  },
+  "native_non_test_build": true,
+  "source_audit": {
+    "passed": true,
+    "script": "scripts/check-sc620-config-source.py",
+    "original_program_instruction_data_and_language_bytes_checked": true,
+    "OEM_execution": false
+  },
+  "native_parameter_combinations": 84,
+  "converted_source_keys": 16,
+  "fixture": {
+    "file": "src-tauri/tests/fixtures/yjx-sc620/oem-config.sqlite3",
+    "bytes": 12288,
+    "sha256": "01ddc249ca2a953ebd51e58d5cf82ec3e98d5ad978c48030a584df7ef48d70b7",
+    "kind": "independent synthetic Python SQLite source plus static full-report vector, not OEM export",
+    "packaged_runtime_resource": false
+  },
+  "source_file_unchanged": true,
+  "source_directory_file_count_unchanged": true,
+  "file_profile_is_hardware_target": false,
+  "unconverted_source_fields": "preserved and block preparation",
+  "physical_IO": false,
+  "OS_input": false,
+  "UI": false,
+  "new_dependencies": false,
+  "new_frontend_resources": false,
+  "cleanup": {
+    "remaining_oem_payload_files": 0,
+    "preserved": "static facts and extraction metadata only",
+    "removed_files": 5,
+    "OEM_execution": false
+  },
+  "remaining": [
+    "model and per-mouse identity",
+    "other OEM performance fields and full source/profile/button/macro conversion",
+    "hardware writes/readback/recovery",
+    "UI and physical behavior validation"
+  ],
+  "accepted_complete_models": 0,
+  "target_complete_models": 100,
+  "installer": false,
+  "release": false,
+  "installation": false
+}

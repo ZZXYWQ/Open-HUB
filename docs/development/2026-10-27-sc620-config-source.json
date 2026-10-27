@@ -1,0 +1,260 @@
+{
+  "source_archive": "https://aulastar.com/mouse/",
+  "program_sha256": "cd947c856d287042bfa75e2617ee0488f9d29c9be532588a6cedfd8e3faf7514",
+  "retained_disassembly_sha256": "d23dcf6f35566d990945fac89482cb06c541be1c845d85643a76c676ca305a54",
+  "method": "pinned original program instruction/data bytes and language resource, no OEM execution",
+  "reviewed_instructions": {
+    "42e100": {
+      "bytes": "6a 72",
+      "instruction": "push\t0x72"
+    },
+    "42e138": {
+      "bytes": "68 24 c9 54 00",
+      "instruction": "push\t0x54c924"
+    },
+    "42e15b": {
+      "bytes": "89 b0 1c 04 00 00",
+      "instruction": "mov\tdword ptr [eax + 0x41c], esi"
+    },
+    "42e165": {
+      "bytes": "6a 73",
+      "instruction": "push\t0x73"
+    },
+    "42e193": {
+      "bytes": "68 54 c9 54 00",
+      "instruction": "push\t0x54c954"
+    },
+    "42e1b6": {
+      "bytes": "89 b0 20 04 00 00",
+      "instruction": "mov\tdword ptr [eax + 0x420], esi"
+    },
+    "42e1c0": {
+      "bytes": "6a 74",
+      "instruction": "push\t0x74"
+    },
+    "42e1ee": {
+      "bytes": "68 48 c9 54 00",
+      "instruction": "push\t0x54c948"
+    },
+    "42e204": {
+      "bytes": "89 b0 24 04 00 00",
+      "instruction": "mov\tdword ptr [eax + 0x424], esi"
+    },
+    "42e21b": {
+      "bytes": "6a 75",
+      "instruction": "push\t0x75"
+    },
+    "42e249": {
+      "bytes": "68 70 c9 54 00",
+      "instruction": "push\t0x54c970"
+    },
+    "42e26c": {
+      "bytes": "89 b0 28 04 00 00",
+      "instruction": "mov\tdword ptr [eax + 0x428], esi"
+    },
+    "419fc2": {
+      "bytes": "83 f8 72",
+      "instruction": "cmp\teax, 0x72"
+    },
+    "419fc7": {
+      "bytes": "68 0c 95 54 00",
+      "instruction": "push\t0x54950c"
+    },
+    "419fce": {
+      "bytes": "83 f8 73",
+      "instruction": "cmp\teax, 0x73"
+    },
+    "419fd3": {
+      "bytes": "68 bc 94 54 00",
+      "instruction": "push\t0x5494bc"
+    },
+    "419fda": {
+      "bytes": "83 f8 74",
+      "instruction": "cmp\teax, 0x74"
+    },
+    "419fdf": {
+      "bytes": "68 9c 94 54 00",
+      "instruction": "push\t0x54949c"
+    },
+    "419fe6": {
+      "bytes": "83 f8 75",
+      "instruction": "cmp\teax, 0x75"
+    },
+    "419feb": {
+      "bytes": "68 b8 94 54 00",
+      "instruction": "push\t0x5494b8"
+    },
+    "41a021": {
+      "bytes": "68 a0 94 54 00",
+      "instruction": "push\t0x5494a0"
+    },
+    "42aa22": {
+      "bytes": "68 a0 94 54 00",
+      "instruction": "push\t0x5494a0"
+    },
+    "42aa51": {
+      "bytes": "88 45 aa",
+      "instruction": "mov\tbyte ptr [ebp - 0x56], al"
+    },
+    "41a0f4": {
+      "bytes": "85 f6",
+      "instruction": "test\tesi, esi"
+    },
+    "41a0f8": {
+      "bytes": "33 f6",
+      "instruction": "xor\tesi, esi"
+    },
+    "41a0fc": {
+      "bytes": "b8 14 00 00 00",
+      "instruction": "mov\teax, 0x14"
+    },
+    "41a103": {
+      "bytes": "0f 4f f0",
+      "instruction": "cmovg\tesi, eax"
+    },
+    "41a15a": {
+      "bytes": "68 c0 94 54 00",
+      "instruction": "push\t0x5494c0"
+    },
+    "42afa6": {
+      "bytes": "68 c0 94 54 00",
+      "instruction": "push\t0x5494c0"
+    },
+    "42afd5": {
+      "bytes": "88 45 d3",
+      "instruction": "mov\tbyte ptr [ebp - 0x2d], al"
+    }
+  },
+  "report_rate_mapping": [
+    {
+      "code": 1,
+      "hz": 125,
+      "control_id": "0x72"
+    },
+    {
+      "code": 2,
+      "hz": 250,
+      "control_id": "0x73"
+    },
+    {
+      "code": 3,
+      "hz": 500,
+      "control_id": "0x74"
+    },
+    {
+      "code": 4,
+      "hz": 1000,
+      "control_id": "0x75"
+    }
+  ],
+  "report_rate_payload_offset": 2,
+  "debounce": {
+    "key": "button_respondtime",
+    "payload_offset": 43,
+    "editor_min": 0,
+    "editor_max": 20,
+    "label": "按键延迟响应(毫秒)",
+    "physical_timing_measured": false
+  },
+  "config_table_columns": [
+    "config_id",
+    "profile",
+    "key",
+    "value"
+  ],
+  "writer_source_keys": {
+    "42a9da": {
+      "address": "0x549464",
+      "name": "light_mode"
+    },
+    "42aa22": {
+      "address": "0x5494a0",
+      "name": "report_rate"
+    },
+    "42aa64": {
+      "address": "0x549584",
+      "name": "dpi_flag"
+    },
+    "42aaa7": {
+      "address": "0x549598",
+      "name": "dpi_index"
+    },
+    "42aaeb": {
+      "address": "0x5495c8",
+      "name": "dpi_group0_value"
+    },
+    "42ab3e": {
+      "address": "0x5495f8",
+      "name": "dpi_group1_value"
+    },
+    "42ab91": {
+      "address": "0x549628",
+      "name": "dpi_group2_value"
+    },
+    "42abe4": {
+      "address": "0x549658",
+      "name": "dpi_group3_value"
+    },
+    "42ac37": {
+      "address": "0x549688",
+      "name": "dpi_group4_value"
+    },
+    "42ac8a": {
+      "address": "0x5496b8",
+      "name": "dpi_group5_value"
+    },
+    "42acdd": {
+      "address": "0x5496dc",
+      "name": "dpi_group0_rgb"
+    },
+    "42ad2d": {
+      "address": "0x5496fc",
+      "name": "dpi_group1_rgb"
+    },
+    "42ad7d": {
+      "address": "0x54971c",
+      "name": "dpi_group2_rgb"
+    },
+    "42adcd": {
+      "address": "0x54973c",
+      "name": "dpi_group3_rgb"
+    },
+    "42ae1d": {
+      "address": "0x54975c",
+      "name": "dpi_group4_rgb"
+    },
+    "42ae6d": {
+      "address": "0x54977c",
+      "name": "dpi_group5_rgb"
+    },
+    "42aebd": {
+      "address": "0x549530",
+      "name": "scroll_flag"
+    },
+    "42aeff": {
+      "address": "0x549510",
+      "name": "liftoff_height"
+    },
+    "42af41": {
+      "address": "0x5494f4",
+      "name": "sensor_flag"
+    },
+    "42afa6": {
+      "address": "0x5494c0",
+      "name": "button_respondtime"
+    },
+    "42afe8": {
+      "address": "0x549484",
+      "name": "sleep_light"
+    },
+    "42b02a": {
+      "address": "0x549548",
+      "name": "e-sports_flag"
+    }
+  },
+  "converted_keys": 16,
+  "unconverted_keys_policy": "preserve unknown fields and block whole-source preparation",
+  "identity": "no model-specific discriminator proved; shared VID/PID not registered",
+  "physical_IO": false,
+  "OEM_execution": false
+}
