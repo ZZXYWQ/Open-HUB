@@ -32,6 +32,7 @@ pub fn mode(m: MacroMode) -> u8 {
         MacroMode::Once => 1,
         MacroMode::WhileHeld => 254,
         MacroMode::Toggle => 253,
+        MacroMode::Repeat(count) => count,
     }
 }
 pub fn keyboard(usage: u8, mods: Modifiers) -> Macro {
@@ -133,6 +134,7 @@ pub fn decode(slot: u8, play: u8, data: &[u8]) -> Result<Macro> {
         1 => MacroMode::Once,
         254 => MacroMode::WhileHeld,
         253 => MacroMode::Toggle,
+        count @ 2..=252 => MacroMode::Repeat(count),
         _ => return Err(Error::Unsupported("ATK native macro repeat count")),
     };
     let mut steps = Vec::new();

@@ -43,15 +43,19 @@ pub enum MacroMode {
     WhileHeld,
     /// First press starts looping, second press stops.
     Toggle,
+    /// Repeat a finite number of complete plays. Native ranges are driver-specific.
+    Repeat(u8),
 }
 
 impl MacroMode {
+    /// Parameter-free presets; finite repeat is configured separately.
     pub const ALL: [MacroMode; 3] = [MacroMode::Once, MacroMode::WhileHeld, MacroMode::Toggle];
     pub fn name(self) -> &'static str {
         match self {
             MacroMode::Once => "Play once",
             MacroMode::WhileHeld => "Repeat while held",
             MacroMode::Toggle => "Toggle repeat",
+            MacroMode::Repeat(_) => "Repeat a fixed count",
         }
     }
 }
@@ -390,3 +394,5 @@ mod tests {
         assert_ne!(a, b);
     }
 }
+
+#[cfg(test)]mod finite_mode_json_tests{use super::*;#[test]fn finite_mode_keeps_existing_mode_json_and_has_an_explicit_count(){for (mode,json) in [(MacroMode::Once,serde_json::json!("Once")),(MacroMode::Repeat(3),serde_json::json!({"Repeat":3}))]{assert_eq!(serde_json::to_value(mode).unwrap(),json);assert_eq!(serde_json::from_value::<MacroMode>(json).unwrap(),mode);}for json in [serde_json::json!({"Repeat":-1}),serde_json::json!({"Repeat":256}),serde_json::json!({"Repeat":2.5}),serde_json::json!("Repeat")]{assert!(serde_json::from_value::<MacroMode>(json).is_err());}}}

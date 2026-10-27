@@ -1473,3 +1473,5 @@ mod horizontal_tests;
 mod profile_cycle_tests;
 
 #[cfg(test)]#[path="compx_profile_select_tests.rs"]mod profile_select_tests;
+
+#[cfg(test)]#[path="compx_repeat_tests.rs"]mod repeat_tests;

@@ -1134,3 +1134,5 @@ mod compx_horizontal_plan_tests;
 #[cfg(test)]#[path="compx_profile_cycle_plan_tests.rs"]mod compx_profile_cycle_plan_tests;
 
 #[cfg(test)]#[path="compx_profile_select_plan_tests.rs"]mod compx_profile_select_plan_tests;
+
+#[cfg(test)]#[path="compx_repeat_plan_tests.rs"]mod compx_repeat_plan_tests;

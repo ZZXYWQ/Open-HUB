@@ -25,6 +25,7 @@ pub struct Binding {
     pub action: Macro,
 }
 pub fn validate(m: &Macro) -> Result<(), String> {
+    if matches!(m.mode,MacroMode::Repeat(n) if !(2..=252).contains(&n)){return Err("固定重复次数为 2–252；只执行一次请选择单次播放".into());}
     if m.id.is_empty()
         || m.id.len() > 128
         || m.name.len() > 256

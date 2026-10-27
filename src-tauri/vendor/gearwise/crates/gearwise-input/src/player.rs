@@ -104,7 +104,8 @@ impl Playback {
 
     /// Run `steps` once, or repeatedly while the control signal stays `Run`.
     /// The first iteration always runs to completion.
-    fn run(&mut self, steps: &[MacroStep], looping: bool, gap: Duration) -> Result<(), Halt> {
+    fn run(&mut self, steps: &[MacroStep], looping: bool, gap: Duration, limit:Option<u8>) -> Result<(), Halt> {
+        let mut completed=0u16;
         loop {
             for step in steps {
                 if self.ctl.get() == Signal::Abort {
@@ -112,6 +113,7 @@ impl Playback {
                 }
                 self.step(step)?;
             }
+            if let Some(limit)=limit{completed+=1;if completed>=u16::from(limit){return Ok(());}}
             if !looping || self.ctl.get() != Signal::Run {
                 return Ok(());
             }
@@ -221,7 +223,8 @@ fn play(sink: SharedSink, ctl: Arc<Control>, mac: Macro) {
         ctl,
         held: Held::default(),
     };
-    let outcome = playback.run(&mac.steps, looping, gap);
+    let limit=match mac.mode{MacroMode::Repeat(count)=>Some(count),_=>None};
+    let outcome = playback.run(&mac.steps, looping, gap, limit);
     playback.release_all();
     if let Err(Halt::Failed(e)) = outcome {
         log::warn!("macro {:?} stopped: {e}", mac.name);
@@ -280,7 +283,7 @@ impl MacroPlayer {
             }
             return;
         }
-        if mac.steps.is_empty() {
+        if mac.steps.is_empty() || matches!(mac.mode,MacroMode::Repeat(0)) {
             return;
         }
 
@@ -639,3 +642,19 @@ mod tests {
 }
 
 
+
+#[cfg(test)]
+mod finite_repeat_tests{
+ use super::*;
+ use crate::testutil::{Event,Recorder};
+ // A 1ms condvar timeout is not an upper bound on Windows scheduling latency.
+ fn wait_done(p:&MacroPlayer){let end=std::time::Instant::now()+Duration::from_secs(10);while p.is_running("finite"){assert!(std::time::Instant::now()<end);thread::sleep(Duration::from_millis(1));}}
+ #[test]fn finite_count_stops_at_exact_total_and_does_not_hold_inputs(){for count in [1,2,3,252]{let rec=Recorder::default();let p=MacroPlayer::new(Arc::new(Mutex::new(rec.clone())));let mut m=Macro::new("finite");m.mode=MacroMode::Repeat(count);m.steps=vec![MacroStep::KeyDown(4),MacroStep::KeyUp(4)];let started=std::time::Instant::now();p.press(&m,"finite");wait_done(&p);println!("finite count {count}: {:?}",started.elapsed());let expected=(0..count).flat_map(|_|[Event::KeyDown(4),Event::KeyUp(4)]).collect::<Vec<_>>();assert_eq!(rec.events(),expected);p.stop_all();assert_eq!(rec.events(),expected);}}
+ #[test]fn zero_count_never_starts_an_unlimited_worker(){let rec=Recorder::default();let p=MacroPlayer::new(Arc::new(Mutex::new(rec.clone())));let mut m=Macro::new("finite");m.mode=MacroMode::Repeat(0);m.steps=vec![MacroStep::KeyDown(4)];p.press(&m,"finite");assert!(!p.is_running("finite"));assert!(rec.events().is_empty());}
+ #[test]fn aborting_finite_repeat_releases_held_keys_without_running_remaining_plays(){let rec=Recorder::default();let p=MacroPlayer::new(Arc::new(Mutex::new(rec.clone())));let mut m=Macro::new("finite");m.mode=MacroMode::Repeat(252);m.steps=vec![MacroStep::KeyDown(4),MacroStep::Delay(60000),MacroStep::KeyUp(4)];p.press(&m,"finite");let end=std::time::Instant::now()+Duration::from_secs(3);while rec.events().is_empty(){assert!(std::time::Instant::now()<end);thread::sleep(Duration::from_millis(1));}p.stop_all();assert_eq!(rec.events(),vec![Event::KeyDown(4),Event::KeyUp(4)]);assert!(!p.is_running("finite"));}
+}
+
+#[cfg(test)]mod finite_release_tests{
+ use super::*;use crate::testutil::{Recorder,Event};
+ #[test]fn finite_repeat_ignores_release_and_duplicate_press_until_count_finishes(){let rec=Recorder::default();let p=MacroPlayer::new(Arc::new(Mutex::new(rec.clone())));let mut m=Macro::new("finite");m.mode=MacroMode::Repeat(3);m.steps=vec![MacroStep::KeyDown(4),MacroStep::Delay(40),MacroStep::KeyUp(4)];p.press(&m,"finite");let end=std::time::Instant::now()+Duration::from_secs(3);while rec.events().is_empty(){assert!(std::time::Instant::now()<end);thread::sleep(Duration::from_millis(1));}p.release("finite");p.press(&m,"finite");while p.is_running("finite"){assert!(std::time::Instant::now()<end);thread::sleep(Duration::from_millis(1));}assert_eq!(rec.events(),(0..3).flat_map(|_|[Event::KeyDown(4),Event::KeyUp(4)]).collect::<Vec<_>>());}
+}

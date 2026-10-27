@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-27",
+  "scope": {
+    "distinct_existing_mice": 8,
+    "transport_records": 9,
+    "accepted_complete_models": 0,
+    "target_complete_models": 100
+  },
+  "main_tests": {
+    "passed": 853,
+    "failed": 0,
+    "ignored": 68,
+    "log": "2026-10-27-compx-repeat-all.log"
+  },
+  "vendor": {
+    "unit_passed": 362,
+    "doc_passed": 1,
+    "failed": 0,
+    "log": "2026-10-27-compx-repeat-vendor-final.log"
+  },
+  "ui": {
+    "editor_profiles": 27,
+    "brand_import_previews": 3,
+    "unsupported_models": 3,
+    "native_DTO": true,
+    "mocked_IPC": true,
+    "physical_HID": false,
+    "OS_input": false,
+    "log": "2026-10-27-compx-repeat-ui-final.log"
+  },
+  "production_profile_import_compile_replay": {
+    "passed": 1,
+    "profiles": 27,
+    "log": "2026-10-27-compx-repeat-cross-final.log"
+  },
+  "build": {
+    "frontend": true,
+    "native_non_test": true,
+    "frontend_js_bytes": 815154,
+    "previous_js_bytes": 814506,
+    "delta_bytes": 648
+  },
+  "initial_failures": {
+    "golden_checksum": "test expectation corrected from 0x04 to independently summed 0x56",
+    "player_wait": "3 second test wait expired for 252 plays; Windows scheduling observed 3.9684285 seconds; raised test wait to 10 seconds retaining exact events and idle assertions, production timing unchanged"
+  },
+  "limits": [
+    "count range 2..252 inferred from byte field and reserved modes, not a measured firmware limit",
+    "no physical finite playback, cancellation, power cycle, RF identity or bank ownership proof",
+    "no any-key-stop support",
+    "no new mouse or complete-model acceptance",
+    "no installer, release, or installation"
+  ]
+}
