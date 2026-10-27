@@ -556,8 +556,12 @@ fn browser_native_macro_composer_request_compiles_allocates_and_commits_in_produ
 }
 
 #[test]fn native_macro_can_replace_primary_left_only_when_another_normal_record_still_clicks_left(){
- let m=planning_memory();let d=unit_device(&m);{let mut state=m.0.lock().unwrap();let mut page=state.sectors[&1].clone();page[0x24..0x28].copy_from_slice(&[0x80,1,0,3]);state.sectors.insert(1,crc(page));}
- let mut request=macro_request(&d);request.selection.button=1;request.selection.expected=[0x80,1,0,1];let p=crate::onboard_macro_plan::prepare(&d,&m,&request).unwrap();let report=crate::onboard_macro_plan::commit(&d,&m,&p).unwrap();assert!(report.active_reloaded);assert_eq!(&m.0.lock().unwrap().sectors[&1][0x24..0x28],&[0x80,1,0,3]);
+ for mask in [1,3] {
+ let m=planning_memory();let d=unit_device(&m);{let mut state=m.0.lock().unwrap();let mut page=state.sectors[&1].clone();page[0x24..0x28].copy_from_slice(&[0x80,1,0,mask]);state.sectors.insert(1,crc(page));}
+ let before=m.0.lock().unwrap().sectors.clone();let mut request=macro_request(&d);request.selection.button=1;request.selection.expected=[0x80,1,0,1];
+ if mask==3 {assert!(crate::onboard_macro_plan::prepare(&d,&m,&request).is_err());assert_eq!(m.0.lock().unwrap().sectors,before);assert!(!m.0.lock().unwrap().calls.iter().any(|(function,_)|matches!(function,6|7|8)));}
+ else {let p=crate::onboard_macro_plan::prepare(&d,&m,&request).unwrap();let report=crate::onboard_macro_plan::commit(&d,&m,&p).unwrap();assert!(report.active_reloaded);assert_eq!(&m.0.lock().unwrap().sectors[&1][0x24..0x28],&[0x80,1,0,1]);}
+ }
 }
 
 fn long_macro_request(d:&Device)->crate::onboard_macro_plan::Request{let mut request=macro_request(d);request.definition.name="cross-page copy and media".into();request.definition.steps.extend((0..40).map(|_|gearwise_core::profile::MacroStep::KeyTap{usage:4,mods:gearwise_core::model::Modifiers(0)}));request}
@@ -689,3 +693,28 @@ fn portable_macro_archive_compiles_to_selected_destination_without_source_routin
 #[test]
 #[ignore="requires actual portable native macro UI import/export request"]
 fn browser_portable_macro_file_preserves_definition_and_explicit_destination(){let path=std::env::var_os("OPEN_HUB_NATIVE_MACRO_FILE_UI_RESULT").unwrap();let data:serde_json::Value=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();let exported:gearwise_core::profile::Macro=serde_json::from_value(data["exported"].clone()).unwrap();let mut request:crate::onboard_macro_plan::Request=serde_json::from_value(data["request"].clone()).unwrap();assert_eq!(request.definition,exported);assert_eq!(request.selection.layer,crate::onboard_bindings::Layer::GShift);assert_eq!(request.selection.button,2);let f=std::env::temp_dir().join(format!("logitech-ui-portable-{}.json",crate::profiles::new_id()));crate::onboard_macro_archive::write(&f,exported).unwrap();request.definition=crate::onboard_macro_archive::read(&f).unwrap();std::fs::remove_file(f).unwrap();let m=planning_memory();let d=unit_device(&m);let before=m.0.lock().unwrap().sectors.clone();let p=crate::onboard_macro_plan::prepare(&d,&m,&request).unwrap();crate::onboard_macro_plan::commit(&d,&m,&p).unwrap();let mut selection=request.selection;selection.expected=[0,5,0,0];let trace=crate::onboard_macros::read(&d,&m,&selection).unwrap();assert!(trace.complete);assert_eq!(trace.steps.len(),16);for chunk in trace.steps[..15].chunks(5){assert_eq!(chunk[0].bytes,[0x43,16,0]);assert_eq!(chunk[1].bytes,[0x43,0,4]);assert_eq!(chunk[2].bytes,[0x40,0,17]);assert_eq!(chunk[3].bytes,[0x44,0,4]);assert_eq!(chunk[4].bytes,[0x44,16,0]);}let now=m.0.lock().unwrap();for s in[0,2,3,4,6,7]{assert_eq!(now.sectors[&s],before[&s]);}for i in 0..254{if !(0x64..0x68).contains(&i){assert_eq!(now.sectors[&1][i],before[&1][i]);}}}
+
+
+fn mouse_mask_settings(m:&Memory)->Settings{
+    let mut s=settings(m);let b=m.0.lock().unwrap().sectors[&1].clone();
+    s.changes=vec![Change{button:4,layer:Layer::Normal,expected:b[0x2c..0x30].try_into().unwrap(),action:Action::Mouse(16)},Change{button:7,layer:Layer::Normal,expected:b[0x38..0x3c].try_into().unwrap(),action:Action::MouseChord(vec![2,8,16])},Change{button:4,layer:Layer::GShift,expected:b[0x6c..0x70].try_into().unwrap(),action:Action::MouseChord(vec![1,9,16])}];s
+}
+fn check_mouse_mask_transaction(m:&Memory,s:&Settings){
+    let before=m.0.lock().unwrap().sectors.clone();let report=device().write_slot_bindings(m,s).unwrap();assert!(!report.unchanged);
+    let (snapshot,_)=device().onboard_snapshot(m).unwrap();assert_eq!(snapshot.profiles[0].buttons[3].description,"Mouse button 16");assert_eq!(snapshot.profiles[0].buttons[6].description,"Mouse buttons 2 + 8 + 16");assert_eq!(snapshot.profiles[0].gshift_buttons[3].description,"Mouse buttons 1 + 9 + 16");
+    let now=m.0.lock().unwrap();let out=&now.sectors[&1];assert_eq!(&out[0x2c..0x30],&[128,1,128,0]);assert_eq!(&out[0x38..0x3c],&[128,1,128,130]);assert_eq!(&out[0x6c..0x70],&[128,1,129,1]);assert!(sector_crc_ok(out));
+    for n in 0..254{if !(0x2c..0x30).contains(&n)&&!(0x38..0x3c).contains(&n)&&!(0x6c..0x70).contains(&n){assert_eq!(out[n],before[&1][n]);}}
+    for (sector,bytes) in &before{if *sector!=1{assert_eq!(&now.sectors[sector],bytes);}}
+}
+#[test]
+fn native_mouse_output_masks_write_read_decode_and_preserve_other_records(){let m=memory();let s=mouse_mask_settings(&m);check_mouse_mask_transaction(&m,&s);}
+#[test]
+fn native_mouse_mask_binding_failures_restore_original_profile(){
+    for fault in [(6,1),(8,1)].into_iter().chain((1..=16).map(|n|(7,n))){let m=memory();let before=m.0.lock().unwrap().sectors.clone();let s=mouse_mask_settings(&m);m.0.lock().unwrap().fault=Some(fault);let error=device().write_slot_bindings(&m,&s).unwrap_err().to_string();assert!(error.contains("original sector restored and verified"),"{fault:?}: {error}");assert_eq!(m.0.lock().unwrap().sectors,before);}
+}
+#[test]
+#[ignore="exports production mouse mask DTOs for UI bridge"]
+fn native_mouse_mask_fixture_export(){let m=memory();let(snapshot,_)=device().onboard_snapshot(&m).unwrap();let s=mouse_mask_settings(&m);check_mouse_mask_transaction(&m,&s);let(after_snapshot,_)=device().onboard_snapshot(&m).unwrap();std::fs::write(std::env::var_os("OPEN_HUB_MOUSE_MASK_FIXTURE").unwrap(),serde_json::to_vec_pretty(&serde_json::json!({"snapshot":snapshot,"after_snapshot":after_snapshot})).unwrap()).unwrap();}
+#[test]
+#[ignore="requires actual built UI mouse output selection requests"]
+fn browser_mouse_output_masks_execute_native_transaction(){let s:Settings=serde_json::from_slice(&std::fs::read(std::env::var_os("OPEN_HUB_MOUSE_MASK_SETTINGS").unwrap()).unwrap()).unwrap();let m=memory();assert_eq!(s.changes,mouse_mask_settings(&m).changes);check_mouse_mask_transaction(&m,&s);}

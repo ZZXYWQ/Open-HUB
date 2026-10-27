@@ -227,7 +227,10 @@ pub fn decode_binding(raw: [u8; 4]) -> ButtonBinding {
             0x01 => {
                 let mask = u16::from_be_bytes([raw[2], raw[3]]);
                 let button = if mask == 0 { 0 } else { mask.trailing_zeros() + 1 };
-                ("mouse", format!("Mouse button {button}"))
+                ("mouse", if mask.count_ones() > 1 {
+                    let buttons = (1..=16).filter(|n| mask & (1 << (n - 1)) != 0).map(|n| n.to_string()).collect::<Vec<_>>();
+                    format!("Mouse buttons {}", buttons.join(" + "))
+                } else { format!("Mouse button {button}") })
             }
             0x02 => ("keyboard", format!("Key 0x{:02x} (modifiers 0x{:02x})", raw[3], raw[2])),
             0x03 => ("consumer", format!("Media key 0x{:04x}", u16::from_be_bytes([raw[2], raw[3]]))),

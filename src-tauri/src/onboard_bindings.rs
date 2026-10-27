@@ -28,6 +28,8 @@ pub enum Special {
 pub enum Action {
     Disabled,
     Mouse(u8),
+    /// Native 16-bit mouse-output mask, not a host/global input chord.
+    MouseChord(Vec<u8>),
     Key { usage: u8, modifiers: u8 },
     Consumer(u16),
     Special(Special),
@@ -50,6 +52,20 @@ pub fn encode(action: &Action, info: &Info) -> Result<[u8; 4], String> {
         Action::Mouse(button) if (1..=16).contains(button) => {
             let mask = (1u16 << (*button - 1)).to_be_bytes();
             [0x80, 1, mask[0], mask[1]]
+        }
+        Action::MouseChord(buttons) => {
+            if !(2..=16).contains(&buttons.len()) {
+                return Err(fail("select 2..16 distinct mouse output buttons"));
+            }
+            let mut mask = 0u16;
+            for button in buttons {
+                if !(1..=16).contains(button) || mask & (1 << (button - 1)) != 0 {
+                    return Err(fail("invalid or repeated mouse output button"));
+                }
+                mask |= 1 << (button - 1);
+            }
+            let bytes = mask.to_be_bytes();
+            [0x80, 1, bytes[0], bytes[1]]
         }
         Action::Key { usage, modifiers }
             if (4..=0xa4).contains(usage) || (*usage == 0 && *modifiers != 0) =>
@@ -137,7 +153,7 @@ pub struct Report {
 }
 pub fn has_normal_left_click(profile:&[u8],info:&Info)->bool{
  if info.button_count>16||profile.len()<0x20+usize::from(info.button_count)*4{return false;}
- (0..usize::from(info.button_count)).any(|i|{let at=0x20+4*i;profile[at]==0x80&&profile[at+1]==1&&u16::from_be_bytes([profile[at+2],profile[at+3]])&1!=0})
+ (0..usize::from(info.button_count)).any(|i|{let at=0x20+4*i;profile[at]==0x80&&profile[at+1]==1&&u16::from_be_bytes([profile[at+2],profile[at+3]])==1})
 }
 pub fn patch(original: &[u8], info: &Info, changes: &[Change]) -> Result<Vec<u8>, String> {
     validate_info(info)?;
@@ -315,6 +331,38 @@ mod tests {
         let mut corrupt = original.clone();
         corrupt[12] ^= 1;
         assert!(patch(&corrupt, &i, &[c]).is_err());
+    }
+}
+
+
+#[cfg(test)]
+mod mouse_output_tests {
+    use super::*;
+    fn info()->Info { Info { memory_model:1,profile_format:3,macro_format:1,profile_count:2,rom_profile_count:2,button_count:16,sector_count:8,sector_size:256,mechanical_layout:10,various_info:1,bindings_writable:true } }
+    fn sector()->Vec<u8>{let mut b=vec![0xff;256];b[0x20..0x24].copy_from_slice(&[128,1,0,1]);let c=crc_ccitt(&b[..254]);b[254..].copy_from_slice(&c.to_be_bytes());b}
+    fn change(b:&[u8],button:u8,layer:Layer,action:Action)->Change{let base=if layer==Layer::Normal{0x20}else{0x60};let at=base+4*usize::from(button-1);Change{button,layer,expected:b[at..at+4].try_into().unwrap(),action}}
+    #[test]
+    fn all_sixteen_mouse_outputs_and_combinations_have_exact_big_endian_masks(){
+        let i=info();for button in 1..=16 {let bytes=(1u16<<(button-1)).to_be_bytes();assert_eq!(encode(&Action::Mouse(button),&i).unwrap(),[128,1,bytes[0],bytes[1]]);}
+        for(buttons,raw)in[(vec![1,16],[128,1,128,1]),(vec![2,8,16],[128,1,128,130]),((1..=16).collect(),[128,1,255,255]),(vec![16,8,2],[128,1,128,130])]{assert_eq!(encode(&Action::MouseChord(buttons),&i).unwrap(),raw);}
+    }
+    #[test]
+    fn malformed_chords_reject_and_legacy_single_outputs_remain_supported(){
+        for buttons in[vec![],vec![1],vec![0,2],vec![2,17],vec![2,2],vec![1;17]]{assert!(encode(&Action::MouseChord(buttons),&info()).is_err());}
+        for json in[serde_json::json!({"MouseChord":[1,-1]}),serde_json::json!({"MouseChord":[1,256]}),serde_json::json!({"MouseChord":[1,"2"]})]{assert!(serde_json::from_value::<Action>(json).is_err());}
+        assert_eq!(serde_json::from_str::<Action>(r#"{"Mouse":16}"#).unwrap(),Action::Mouse(16));
+    }
+    #[test]
+    fn output_combinations_patch_only_selected_physical_records_and_crc(){
+        let b=sector();let out=patch(&b,&info(),&[change(&b,16,Layer::Normal,Action::MouseChord(vec![2,8,16])),change(&b,16,Layer::GShift,Action::Mouse(16))]).unwrap();
+        assert_eq!(&out[0x5c..0x60],&[128,1,128,130]);assert_eq!(&out[0x9c..0xa0],&[128,1,128,0]);assert!(sector_crc_ok(&out));
+        for n in 0..254{if !(0x5c..0x60).contains(&n)&&!(0x9c..0xa0).contains(&n){assert_eq!(out[n],b[n]);}}
+    }
+    #[test]
+    fn combined_left_output_cannot_replace_the_only_independent_left_click(){
+        let b=sector();assert!(patch(&b,&info(),&[change(&b,1,Layer::Normal,Action::MouseChord(vec![1,2]))]).is_err());
+        assert!(patch(&b,&info(),&[change(&b,1,Layer::Normal,Action::MouseChord(vec![1,2])),change(&b,2,Layer::GShift,Action::Mouse(1))]).is_err());
+        assert!(patch(&b,&info(),&[change(&b,1,Layer::Normal,Action::MouseChord(vec![1,2])),change(&b,16,Layer::Normal,Action::Mouse(1))]).is_ok());
     }
 }
 

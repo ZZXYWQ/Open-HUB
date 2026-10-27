@@ -223,7 +223,7 @@ export interface OnboardSnapshot {
   rom_profiles: OnboardProfile[];
 }
 
-export type OnboardBindingAction='Disabled'|{Mouse:number}|{Key:{usage:number;modifiers:number}}|{Consumer:number}|{Special:'WheelLeft'|'WheelRight'|'DpiUp'|'DpiDown'|'DpiCycle'|'DpiDefault'|'DpiShift'|'ProfileUp'|'ProfileDown'|'ProfileCycle'|'GShift'};
+export type OnboardBindingAction='Disabled'|{Mouse:number}|{MouseChord:number[]}|{Key:{usage:number;modifiers:number}}|{Consumer:number}|{Special:'WheelLeft'|'WheelRight'|'DpiUp'|'DpiDown'|'DpiCycle'|'DpiDefault'|'DpiShift'|'ProfileUp'|'ProfileDown'|'ProfileCycle'|'GShift'};
 export interface OnboardBindingChange {button:number;layer:'Normal'|'GShift';expected:number[];action:OnboardBindingAction}
 export interface OnboardBindingSettings {expected_device:string;expected_connection:string;slot:number;sector:number;changes:OnboardBindingChange[]}
 export interface OnboardBindingWriteResult {report:{slot:number;sector:number;bytes_changed:number;unchanged:boolean;active_reloaded:boolean;reload_note:string|null};backup_path:string;snapshot:OnboardSnapshot|null;refresh_note:string|null}

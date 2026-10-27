@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-27",
+  "scope": "Logitech native 8100 mouse output mask UI and typed combination action",
+  "main_tests": {
+    "passed": 981,
+    "failed": 0,
+    "ignored": 80
+  },
+  "new_default_tests": 6,
+  "explicit_bridges": {
+    "production_DTO_export": "passed",
+    "actual_UI_requests_production_transaction": "passed",
+    "changes": 3
+  },
+  "regressions": [
+    "native button editor UI",
+    "native macro composer UI",
+    "independent left versus combined left macro allocation"
+  ],
+  "failure_stages_tested": 18,
+  "main_js_bytes": 836835,
+  "js_delta_bytes": 1087,
+  "new_runtime_dependencies": 0,
+  "builds": {
+    "frontend": "passed",
+    "native": "passed"
+  },
+  "hardware_tested": false,
+  "accepted_complete_models": 0,
+  "target": 100,
+  "installer_created": false,
+  "installed_release": "0.3.7"
+}
