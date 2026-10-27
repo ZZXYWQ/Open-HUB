@@ -19,6 +19,7 @@ enum Fault {
     RefAfterFirstChunk,
     SettingsAfterMacroScan,
     IdentityAfterSettings,
+    DpiUpdatesHeaders,
     RefDuringRecheck,
 }
 struct Mouse {
@@ -195,6 +196,9 @@ impl Mouse {
                 )))
             }
         };
+        if self.fault==Some(Fault::DpiUpdatesHeaders)&&cmd==0x0103 {
+            for at in [1,2]{self.state.raw_settings[at]=(self.state.raw_settings[at]&0xf0)|(args[4]&15);}
+        }
         if self.fault == Some(Fault::SwitchAfterX) && cmd == 0x0103 && args[1] == 0 {
             self.fault = None;
             self.state.raw_settings[0] = 1;
@@ -1147,3 +1151,6 @@ fn rate_readback_success_followed_by_identity_failure_retains_backup_and_never_c
     let m=a.mouse.lock().unwrap();assert_eq!(set_records(&m).len(),1);assert_eq!(m.state.raw_settings[1]>>4,4);assert_eq!(m.state.raw_settings[2]>>4,3);
     assert_eq!(std::fs::read_dir(&a.directory).unwrap().count(),1);
 }
+
+#[path="mchose_backup_tests.rs"]
+mod backup;

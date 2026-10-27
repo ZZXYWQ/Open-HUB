@@ -33,6 +33,7 @@ mod manager;
 mod mchose;
 mod mchose_config;
 mod mchose_target;
+mod mchose_backup;
 mod magdock;
 mod magdock_backup;
 mod audio_meter;
@@ -284,15 +285,25 @@ fn mchose_export(state:State<AppState>,id:String,path:String,target:mchose_targe
     })
 }
 #[tauri::command(async)]
-fn mchose_restore(app:AppHandle,state:State<AppState>,id:String,path:String,target:mchose_target::Target)->Result<mchose_target::View,String>{
-    let result=with_mchose(&state,&id,&target,|t|{
-        let meta=std::fs::metadata(&path).map_err(|e|hidpp::Error::Other(e.to_string()))?;
-        if meta.len()>1024*1024{return Err(hidpp::Error::Other("备份文件过大".into()))}
-        let snapshot=serde_json::from_slice(&std::fs::read(path).map_err(|e|hidpp::Error::Other(e.to_string()))?).map_err(|e|hidpp::Error::Other(e.to_string()))?;
-        Ok(mchose_target::View{state:t.restore_snapshot(snapshot)?,target:target.clone()})
-    })?;
+fn mchose_restore_preview(state:State<AppState>,id:String,path:String,target:mchose_target::Target,expected_profile:u8)->Result<mchose_backup::Preview,String>{
+    let guard=manager(&state)?;
+    guard.as_ref().expect("manager initialised").with_device(&id,|d,t|{
+        let transport=t.mchose().ok_or_else(||hidpp::Error::Other("This is not a verified MCHOSE device".into()))?;
+        mchose_backup::preview(d,transport,std::path::Path::new(&path),&target,expected_profile)
+    }).map_err(|e|e.to_string())
+}
+#[tauri::command(async)]
+fn mchose_restore(app:AppHandle,state:State<AppState>,id:String,path:String,selection:mchose_backup::Selection)->Result<profiles::MchoseReceipt,String>{
+    let guard=manager(&state)?;
+    let result=guard.as_ref().expect("manager initialised").with_device(&id,|d,t|{
+        let transport=t.mchose().ok_or_else(||hidpp::Error::Other("This is not a verified MCHOSE device".into()))?;
+        let applied=mchose_backup::restore(d,transport,std::path::Path::new(&path),&selection)?;
+        Ok(profiles::MchoseReceipt{target:selection.target.clone(),device_name:d.name.clone(),applied})
+    }).map_err(|e|e.to_string())?;
+    drop(guard);
     let _=app.emit("device-changed",id);Ok(result)
 }
+
 #[tauri::command]
 fn open_mhub(app:AppHandle)->Result<(),String>{
     let root=std::env::var_os("ProgramFiles").ok_or("ProgramFiles is unavailable")?;
@@ -1173,6 +1184,7 @@ fn main() {
             mchose_macro_file,
             mchose_apply,
             mchose_export,
+            mchose_restore_preview,
             mchose_restore,
             open_mhub,
             get_profiles,

@@ -1,8 +1,9 @@
+import {MchoseBackupRestore} from '@/components/mchose-backup-restore';
 import {LightingPanel} from "@/components/lighting-panel";
 import {MchoseIdentity} from "@/components/mchose-art";
 import {MCHOSE_MACRO_MODES,MCHOSE_NEW_MACRO_MODE} from "@/lib/mchose-macros";
 import {useLayoutEffect,useRef,useState} from "react";
-import {open,save} from "@tauri-apps/plugin-dialog";
+import {save} from "@tauri-apps/plugin-dialog";
 import {toast} from "sonner";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
@@ -110,7 +111,7 @@ export function MchosePanel({id,connectionKey}:{id:string;connectionKey:string})
   editMacro(old=>{const events=[...old.macro.events,...(elapsed>5?[{kind:"delay"as const,code:0,down:false,delay_ms:elapsed}]:[]),{kind:"key"as const,code:scan,down,delay_ms:0}];return {...old,macro:{...old.macro,events},text:JSON.stringify(events,null,2)};});
  };
  const exportConfig=()=>hw&&run(async current=>{const path=await save({defaultPath:`A7-V3-板载${(hw?.profile??0)+1}.json`,filters:[{name:"配置备份",extensions:["json"]}]});if(path&&current())await api.mchoseExport(id,path,hw.target);},"备份已导出");
- const restoreConfig=()=>hw&&run(async current=>{const path=await open({multiple:false,filters:[{name:"配置备份",extensions:["json"]}]});if(typeof path==="string"&&current()){const value=await api.mchoseRestore(id,path,hw.target);if(current())adopt(value);}},"配置已恢复");
+
  if(!hw)return <PanelShell title="迈从控制中心"><PanelSection><Button disabled={busy||!connectionKey} onClick={()=>void reload()}>刷新设备</Button><p className="mt-3 text-sm">{error||"正在读取鼠标现有配置…"}</p></PanelSection></PanelShell>;
  const settingsApply=()=>apply({kind:"settings",sleep:hw.sleep,never_sleep:hw.never_sleep,left_debounce:hw.left_debounce,right_debounce:hw.right_debounce,sensor:hw.sensor,rotation:hw.rotation});
  const bindingOptions=BINDINGS.map(([label,b],i)=><option value={i} key={i}>{label}{JSON.stringify(hw.buttons[buttonIndex])===JSON.stringify(b)?"（当前）":""}</option>);
@@ -147,7 +148,7 @@ export function MchosePanel({id,connectionKey}:{id:string;connectionKey:string})
    </>}
    {page==="boards"&&<>
     <PanelSection title="板载配置名称"><div className="flex gap-2"><Input aria-label="板载名称" value={name} onChange={e=>setName(e.target.value)}/><Button onClick={()=>void apply({kind:"rename",name})}>重命名</Button></div></PanelSection>
-    <PanelSection title="本地备份和恢复" help="导出当前板载配置及鼠标内的全部宏。其他板载配置请分别切换后导出。恢复前会再次自动备份。"><div className="flex gap-2"><Button onClick={()=>void exportConfig()}>导出配置</Button><Button variant="outline" onClick={()=>void restoreConfig()}>从文件恢复</Button></div></PanelSection>
+    <PanelSection title="本地备份和恢复" help="导出当前板载配置及鼠标内的全部宏。其他板载配置请分别切换后导出。恢复前先预览本组变化，并再次自动备份。"><div className="flex gap-2"><Button onClick={()=>void exportConfig()}>导出配置</Button><MchoseBackupRestore id={id} hardware={hardware!} busy={busy} run={run} onRead={adopt} onRestored={value=>{adopt(value);setBoardDrafts(all=>{const next={...all};delete next[value.profile];return next;});setMacroDrafts(all=>Object.fromEntries(Object.entries(all).filter(([slot])=>!value.uploaded_macros.includes(Number(slot)))));}}/></div></PanelSection>
     <PanelSection title="设备维护"><dl className="grid grid-cols-2 gap-2 text-sm"><dt>鼠标固件</dt><dd>V{hw.firmware}</dd><dt>接收器固件</dt><dd>V{hw.receiver_firmware}</dd></dl><p className="my-3 text-xs text-muted-foreground">固件刷写和磁吸底座维护通过已安装的官方 M HUB 完成。此按钮会退出适配版并打开 M HUB。</p><Button variant="outline" onClick={()=>void run(()=>api.openMhub())}>切换到 M HUB 维护设备</Button></PanelSection>
    </>}
   </fieldset>

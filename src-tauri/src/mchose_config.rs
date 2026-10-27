@@ -996,8 +996,15 @@ impl Transport {
             refreshed.map_err(|e|bad(format!("回报率设置已读回匹配，但完整状态刷新未完成：{e}；未自动重试。原始备份：{}",backup.display())))
         } else {refreshed}
     }
+    // Legacy codec replay helper; runtime file restores always require preview.
+    #[cfg(test)]
     pub fn restore_snapshot(&self, s: Snapshot) -> Result<HardwareState> {
-        self.restore_snapshot_inner(s, true)
+        crate::mchose_backup::validate_restore_shape(&s)?;
+        let before=self.full_snapshot()?;
+        let board=before.state.profile;
+        let keys=crate::mhub_transaction::read_keys(self,board)?;
+        let compiled=crate::mchose_backup::compile(&s,&before,&keys)?;
+        crate::mhub_transaction::commit_compiled(self,board,before,keys,compiled,true).map(|r|r.state)
     }
     fn restore_snapshot_inner(&self, s: Snapshot, backup: bool) -> Result<HardwareState> {
         validate_snapshot(&s)?;

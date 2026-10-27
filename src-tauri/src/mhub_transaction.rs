@@ -11,7 +11,7 @@ use crate::{
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 
-type Keys = [Vec<Vec<u8>>; 3];
+pub(crate) type Keys = [Vec<Vec<u8>>; 3];
 #[derive(Clone, Serialize)]
 pub struct Applied {
     #[serde(flatten)]
@@ -26,7 +26,7 @@ fn error(message: impl Into<String>) -> Error {
 fn changed() -> Error {
     error("设备配置或其他板载组引用已改变，请重新读取；不继续写入")
 }
-fn read_keys(t: &Transport, board: u8) -> Result<Keys> {
+pub(crate) fn read_keys(t: &Transport, board: u8) -> Result<Keys> {
     let mut out: [Vec<Vec<u8>>; 3] = std::array::from_fn(|_| vec![]);
     for p in 0..3 {
         out[p] = native::parse_buttons(&t.request(1, &[p as u8, 0, 6])?)?;
@@ -74,8 +74,14 @@ fn apply_current(t: &Transport, board: u8, plan: &Plan) -> Result<Applied> {
     t.identity()?;
     t.require_board(board)?;
     let before = t.full_snapshot()?;
-    let mut keys = read_keys(t, board)?;
+    let keys = read_keys(t, board)?;
     let compiled = mhub_full::compile(plan, &before, &keys).map_err(error)?;
+    commit_compiled(t,board,before,keys,compiled,false)
+}
+/// The caller has validated a fresh complete before-image and compilation while
+/// holding the same target/manager lock. This function rechecks before backup/SET.
+pub(crate) fn commit_compiled(t:&Transport,board:u8,before:native::Snapshot,mut keys:Keys,compiled:mhub_full::Compiled,restore_headers:bool)->Result<Applied> {
+
     require_state(t, board, &before.state, &keys)?;
     let needed = compiled.slot_map.values().copied().collect::<BTreeSet<_>>();
     for slot in &needed {
@@ -112,7 +118,7 @@ fn apply_current(t: &Transport, board: u8, plan: &Plan) -> Result<Applied> {
         // Settings and DPI headers can share firmware state (active index).
         // Treat them as one verified stage instead of assuming intermediate
         // GETs keep the old DPI header after SET settings.
-        if expected.raw_settings != desired.raw_settings {
+        if !restore_headers && expected.raw_settings != desired.raw_settings {
             require_keys(t, board, &keys)?;
             t.checked_settings(&desired.raw_settings)?;
         }
@@ -126,6 +132,16 @@ fn apply_current(t: &Transport, board: u8, plan: &Plan) -> Result<Applied> {
                 desired.independent,
                 || require_keys(t, board, &keys),
             )?;
+        }
+        if restore_headers {
+            // DPI SET may update the two active-index header nibbles. A full
+            // backup can legitimately preserve different values for each link.
+            require_keys(t,board,&keys)?;
+            let now=t.settings()?;
+            let mut stable_now=now.clone();let mut stable_before=expected.raw_settings.clone();
+            for at in [1,2]{stable_now[at]&=0xf0;stable_before[at]&=0xf0;}
+            if stable_now!=stable_before {return Err(changed());}
+            if now!=desired.raw_settings {t.checked_settings(&desired.raw_settings)?;}
         }
         expected.raw_settings = desired.raw_settings.clone();
         expected.raw_x = desired.raw_x.clone();

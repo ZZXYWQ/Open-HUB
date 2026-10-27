@@ -76,6 +76,11 @@ export interface MchoseHardware {
   sleep:number; never_sleep:boolean; left_debounce:number; right_debounce:number; sensor:number; rotation:number; lod:number;
   buttons:number[][]; /** Legacy diagnostic only; empty for the current A7 capability set. */ adaptive:number[]; firmware:string; receiver_firmware:string;
 }
+export interface MchoseRestoreSelection {target:MchoseTarget;board:number;sha256:string;before_sha256:string}
+export interface MchoseRestorePreview {
+ selection:MchoseRestoreSelection;source_format:string;source_firmware:string;source_receiver_firmware:string;device_name:string;
+ current:Omit<MchoseHardware,'target'>;desired:Omit<MchoseHardware,'target'>;slot_map:Record<string,number>;macros:{source_slot:number;target_slot:number;name:string;mode:number;events:MchoseMacroEvent[];upload:boolean}[];unrelated_backup_macros:number;
+}
 export interface MchoseMacroEvent {kind:"key"|"mouse"|"scroll"|"delay";code:number;down:boolean;delay_ms:number}
 export interface MchoseMacro {slot:number;name:string;mode:number;events:MchoseMacroEvent[];raw?:number[]}
 
@@ -288,7 +293,8 @@ export const api = {
   mchoseMacroFile:(path:string,macro:MchoseMacro)=>invoke<void>("mchose_macro_file",{path,...macro,raw:macro.raw??null}),
   mchoseApply:(id:string,expectedProfile:number,action:Record<string,unknown>,target:MchoseTarget)=>invoke<MchoseHardware&{saved_macro?:MchoseMacro}>("mchose_apply",{id,expectedProfile,action,target}),
   mchoseExport:(id:string,path:string,target:MchoseTarget)=>invoke<void>("mchose_export",{id,path,target}),
-  mchoseRestore:(id:string,path:string,target:MchoseTarget)=>invoke<MchoseHardware>("mchose_restore",{id,path,target}),
+  mchoseRestorePreview:(id:string,path:string,target:MchoseTarget,expectedProfile:number)=>invoke<MchoseRestorePreview>("mchose_restore_preview",{id,path,target,expectedProfile}),
+  mchoseRestore:(id:string,path:string,selection:MchoseRestoreSelection)=>invoke<MchoseProfileReceipt>("mchose_restore",{id,path,selection}),
   importMhub:(path:string|null=null)=>invoke<ImportResult>("import_mhub_profiles",{path}),
   openMhub:()=>invoke<void>("open_mhub"),
   scan: () => invoke<ScanResult>("scan_devices"),

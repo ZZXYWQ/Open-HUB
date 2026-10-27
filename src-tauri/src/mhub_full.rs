@@ -99,7 +99,7 @@ pub fn prepare_file(path:&std::path::Path,library:Option<&std::path::Path>)->Res
 
 // Preserve ambiguity as an error instead of letting a JSON map silently use
 // the last duplicate setting. This also covers nested macro events.
-struct StrictValue(Value);
+pub(crate) struct StrictValue(pub(crate) Value);
 impl<'de> Deserialize<'de> for StrictValue {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Self, D::Error> {
         struct Visitor;
@@ -589,6 +589,12 @@ pub fn compile(plan: &Plan, current: &Snapshot, boards: &[Vec<Vec<u8>>; 3]) -> R
             return Err("三组按键快照不完整".into());
         }
         for key in keys {
+            // An unrecognized other-board action may conceal a macro reference.
+            // Reuse identical content if possible, but never allocate/overwrite
+            // any slot while that reference cannot be decoded.
+            if index!=board && key!=&[255;3] && native::validate_binding(key).is_err() {
+                protected.extend(0..18);
+            }
             if key.first() == Some(&0x21) {
                 if key.len() != 3 || key[1] >= 18 || key[2] != 0 {
                     return Err("设备含未知宏槽引用，不能覆盖".into());
