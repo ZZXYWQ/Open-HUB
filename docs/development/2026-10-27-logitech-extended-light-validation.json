@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-27",
+  "scope": "Logitech 8070 active extended effects 0x15/0x16 saturation and intensity",
+  "main_tests": {
+    "passed": 975,
+    "failed": 0,
+    "ignored": 78
+  },
+  "explicit_bridges": {
+    "native_DTO_export": "passed",
+    "built_UI_requests_native_transaction_replay": "passed",
+    "requests": 2
+  },
+  "UI_regressions": [
+    "native Off/Fixed",
+    "native breathing keep and seven waveforms"
+  ],
+  "builds": {
+    "frontend": "passed",
+    "native": "passed",
+    "main_js_bytes": 835748,
+    "main_js_delta_bytes": 1093,
+    "new_runtime_dependencies": 0
+  },
+  "physical_device_tested": false,
+  "accepted_complete_models": 0,
+  "target": 100,
+  "installer_created": false,
+  "installed_release": "0.3.7",
+  "limitations": [
+    "only currently active 0x15/0x16",
+    "no direction or timing edits",
+    "no 0x04 wave generalization",
+    "no 8071 takeover",
+    "no hardware visual confirmation"
+  ]
+}

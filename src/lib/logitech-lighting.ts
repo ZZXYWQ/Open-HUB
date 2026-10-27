@@ -1,7 +1,7 @@
 export interface LogitechLightSlot {index:number;effect_id:number;capabilities:number;period:number}
 export interface LogitechLightZone {index:number;location:number;persistency:number;effects:LogitechLightSlot[];current:number[]|null}
 export interface LogitechLightView {device_key:string;connection_key:string;feature:number;version:number;nv_caps:number;ext_caps:number;writable:boolean;zones:LogitechLightZone[]}
-export type LogitechLightEffect='Off'|{Fixed:{color:[number,number,number]}}|{Breathing:{color:[number,number,number];brightness_percent:number}}|{BreathingWaveform:{color:[number,number,number];brightness_percent:number;waveform:number}}|{Cycle:{brightness_percent:number}};
+export type LogitechLightEffect='Off'|{Fixed:{color:[number,number,number]}}|{Breathing:{color:[number,number,number];brightness_percent:number}}|{BreathingWaveform:{color:[number,number,number];brightness_percent:number;waveform:number}}|{Cycle:{brightness_percent:number}}|{ExtendedCycle:{brightness_percent:number;saturation:number}}|{ExtendedWave:{brightness_percent:number;saturation:number}};
 export interface LogitechLightChange {expected_device:string;expected_connection:string;zone:number;expected:number[];effect:LogitechLightEffect}
 export function zoneName(zone:LogitechLightZone){return ({1:'主灯区',2:'徽标',3:'左侧',4:'右侧',5:'组合灯区'} as Record<number,string>)[zone.location]??`灯区 ${zone.index+1}`;}
 export function currentEffect(zone:LogitechLightZone){const raw=zone.current;return raw?zone.effects.find(s=>s.index===raw[0])?.effect_id:null;}
@@ -12,6 +12,8 @@ export function nativeRhythm(zone:LogitechLightZone,id:number){
  if(zone.current&&currentEffect(zone)===id){const at=id===10?4:6;return zone.current[at]*256+zone.current[at+1];}
  const slots=zone.effects.filter(s=>s.effect_id===id);return slots.length===1&&slots[0].period>0?slots[0].period:null;
 }
-export function currentBrightness(zone:LogitechLightZone){const at=currentEffect(zone)===10?7:currentEffect(zone)===3?8:-1;const value=at<0?0:zone.current?.[at]??0;return value>=1&&value<=100?value:100;}
+export function currentBrightness(zone:LogitechLightZone){const at=currentEffect(zone)===10?7:currentEffect(zone)===3?8:currentEffect(zone)===0x15||currentEffect(zone)===0x16?9:-1;const value=at<0?0:zone.current?.[at]??0;return value>=1&&value<=100?value:100;}
 
 export const LOGITECH_BREATH_WAVEFORMS=[[0,'原厂默认'],[1,'正弦'],[2,'方波'],[3,'三角'],[4,'锯齿'],[5,'鲨鱼鳍'],[6,'指数']] as const;
+
+export function currentSaturation(zone:LogitechLightZone){return (currentEffect(zone)===0x15||currentEffect(zone)===0x16)?zone.current?.[2]??255:255;}

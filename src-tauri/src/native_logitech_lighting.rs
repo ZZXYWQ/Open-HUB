@@ -48,6 +48,9 @@ pub enum Effect {
     Cycle {
         brightness_percent: u8,
     },
+    /// Edit an already active extended effect; retain opaque timing/direction.
+    ExtendedCycle { brightness_percent: u8, saturation: u8 },
+    ExtendedWave { brightness_percent: u8, saturation: u8 },
 }
 impl Effect {
     fn id(&self) -> u16 {
@@ -56,6 +59,8 @@ impl Effect {
             Self::Fixed { .. } => 1,
             Self::Breathing { .. } | Self::BreathingWaveform { .. } => 10,
             Self::Cycle { .. } => 3,
+            Self::ExtendedCycle { .. } => 0x15,
+            Self::ExtendedWave { .. } => 0x16,
         }
     }
 }
@@ -243,6 +248,19 @@ fn compile(view: &View, change: &Change) -> Result<[u8; 13]> {
             preserve_same_effect(zone, slot, &mut out);
             out[7..9].copy_from_slice(&period.to_be_bytes());
             out[9] = intensity(*brightness_percent)?;
+        }
+        Effect::ExtendedCycle { brightness_percent, saturation }
+        | Effect::ExtendedWave { brightness_percent, saturation } => {
+            // Pinned protocol sources agree on 0x15/0x16 parameter offsets:
+            // saturation[1], native period[6..8], intensity[8], direction[9].
+            // Only edit an existing effect. Unknown bytes and model-dependent
+            // direction/period remain exactly as read; no guessed activation.
+            if !is_current(zone, slot) {
+                return Err(fail("extended effect must already be active on this zone"));
+            }
+            preserve_same_effect(zone, slot, &mut out);
+            out[3] = *saturation;
+            out[10] = intensity(*brightness_percent)?;
         }
     }
     // out[12] remains zero: RAM only. Never write flash while synchronizing.

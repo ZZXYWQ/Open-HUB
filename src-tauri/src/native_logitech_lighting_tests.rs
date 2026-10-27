@@ -9,6 +9,7 @@ enum Fault {
     ShortRead,
     ThirdValue,
     ForeignWaveform,
+    ForeignDirection,
     OwnerChanged,
     CapsChanged,
     RestoreFails,
@@ -169,12 +170,15 @@ impl FeatureRequest for Memory {
                     if s.fault == Fault::ForeignWaveform {
                         s.current[usize::from(p[0])][6] = 0xa6;
                     }
+                    if s.fault == Fault::ForeignDirection {
+                        s.current[usize::from(p[0])][10] ^= 0x80;
+                    }
                     if s.fault == Fault::OwnerChanged {
                         s.profile = 2;
                     }
                     if matches!(
                         s.fault,
-                        Fault::LostAck | Fault::RestoreFails | Fault::CapsChanged | Fault::ForeignWaveform
+                        Fault::LostAck | Fault::RestoreFails | Fault::CapsChanged | Fault::ForeignWaveform | Fault::ForeignDirection
                     ) {
                         return Err(Error::Timeout);
                     }
@@ -869,4 +873,123 @@ fn browser_logitech_waveforms_execute_production_native_transactions() {
     assert_eq!(state.current[0], other);
     assert_eq!(state.current[1], [4, 171, 205, 239, 0x13, 0x88, 6, 31, 0xc1, 0xc2, 0xc3]);
     assert_eq!((state.mode, state.profile, state.writes), (1, 1, 8));
+}
+
+
+fn extended_memory(id: u16) -> Memory {
+    let m = mem();
+    { let mut s = m.0.lock().unwrap();
+      s.effects.extend([0x15, 0x16]);
+      s.current[1] = [if id == 0x15 {5} else {6}, 0xa1, 201, 0xa3, 0xa4, 0xa5, 0xa6, 0x12, 0x34, 67, 0xe9];
+      s.period = 7;
+    }
+    m
+}
+fn extended_change(m: &Memory, id: u16, brightness: u8, saturation: u8) -> Change {
+    let mut c = change(m);
+    c.effect = if id == 0x15 {
+        Effect::ExtendedCycle { brightness_percent: brightness, saturation }
+    } else { Effect::ExtendedWave { brightness_percent: brightness, saturation } };
+    c
+}
+#[test]
+fn extended_active_effects_change_only_intensity_and_saturation() {
+    for id in [0x15, 0x16] {
+        for brightness in [1, 37, 100] {
+            for saturation in [0, 92, 255] {
+                let m = extended_memory(id);
+                let before = m.0.lock().unwrap().current.clone();
+                let c = extended_change(&m, id, brightness, saturation);
+                let result = apply(&device(), &m, &c).unwrap();
+                let mut after = before[1]; after[2] = saturation; after[9] = if brightness == 100 {0} else {brightness};
+                let mut packet = vec![1]; packet.extend(after); packet.push(0);
+                assert_eq!(lighting_writes(&m), [packet]);
+                assert_eq!(result.view.zones[1].current, Some(after));
+                assert_eq!(result.view.zones[0].current, Some(before[0]));
+                let mut again = c; again.expected = after;
+                assert!(apply(&device(), &m, &again).unwrap().unchanged);
+                assert_eq!(lighting_writes(&m).len(), 1);
+            }
+        }
+    }
+}
+#[test]
+fn extended_inactive_missing_duplicate_invalid_and_stale_requests_write_nothing() {
+    for id in [0x15, 0x16] {
+        for case in 0..7 {
+            let m = extended_memory(id);
+            let mut c = extended_change(&m, id, 37, 92);
+            { let mut s = m.0.lock().unwrap(); match case {
+                0 => { s.current[1][0] = 1; c.expected = s.current[1]; },
+                1 => s.effects.retain(|e| *e != id),
+                2 => s.effects.push(id),
+                3 => { c = extended_change_unlocked(&c, id, 0); },
+                4 => { c = extended_change_unlocked(&c, id, 101); },
+                5 => c.expected_connection.push_str("-old"),
+                _ => s.current[1][10] ^= 1,
+            }}
+            assert!(apply(&device(), &m, &c).is_err(), "id {id}, case {case}");
+            assert!(lighting_writes(&m).is_empty());
+        }
+    }
+    for value in [serde_json::json!(-1), serde_json::json!(256), serde_json::json!("255")] {
+        assert!(serde_json::from_value::<Effect>(serde_json::json!({"ExtendedWave":{"brightness_percent":37,"saturation":value}})).is_err());
+    }
+    assert!(serde_json::from_value::<Effect>(serde_json::json!({"ExtendedWave":{"brightness_percent":37,"saturation":92,"direction":0}})).is_err());
+}
+fn extended_change_unlocked(c: &Change, id: u16, brightness: u8) -> Change {
+    let mut c = c.clone();
+    c.effect = if id == 0x15 { Effect::ExtendedCycle {brightness_percent:brightness,saturation:92} }
+        else { Effect::ExtendedWave {brightness_percent:brightness,saturation:92} }; c
+}
+#[test]
+fn extended_lost_ack_restores_all_original_bytes() {
+    for id in [0x15,0x16] {
+        let m = extended_memory(id);
+        let before = m.0.lock().unwrap().current.clone();
+        let c = extended_change(&m,id,37,92);
+        m.0.lock().unwrap().fault = Fault::LostAck;
+        let error = apply(&device(),&m,&c).unwrap_err().to_string();
+        assert!(error.contains("restored/verified"), "{error}");
+        assert_eq!(m.0.lock().unwrap().current,before);
+        assert_eq!(lighting_writes(&m).len(),2);
+    }
+}
+#[test]
+fn extended_foreign_direction_or_owner_is_not_overwritten_during_recovery() {
+    for id in [0x15,0x16] {
+        for fault in [Fault::ThirdValue,Fault::ForeignDirection,Fault::OwnerChanged,Fault::CapsChanged] {
+            let m = extended_memory(id); let c = extended_change(&m,id,37,92);
+            m.0.lock().unwrap().fault = fault;
+            assert!(apply(&device(),&m,&c).unwrap_err().to_string().contains("state uncertain"));
+            assert_eq!(lighting_writes(&m).len(),1);
+        }
+    }
+}
+#[test]
+#[ignore = "exports production DTOs for explicit browser tests"]
+fn native_logitech_extended_fixture_export() {
+    let mut views = vec![];
+    for id in [0x15,0x16] {
+        let m = extended_memory(id); let view = read(&device(),&m).unwrap();
+        let c = extended_change(&m,id,37,92);
+        let after = apply(&device(),&m,&c).unwrap().view;
+        views.push(serde_json::json!({"view":view,"after":after}));
+    }
+    std::fs::write(std::env::var_os("OPEN_HUB_LOGITECH_EXTENDED_FIXTURE").unwrap(),serde_json::to_vec_pretty(&views).unwrap()).unwrap();
+}
+#[test]
+#[ignore = "replays actual built UI requests against production transactions"]
+fn browser_logitech_extended_execute_production_native_transactions() {
+    let values:serde_json::Value=serde_json::from_slice(&std::fs::read(std::env::var_os("OPEN_HUB_LOGITECH_EXTENDED_CHANGES").unwrap()).unwrap()).unwrap();
+    let rows=values.as_array().unwrap(); assert_eq!(rows.len(),2);
+    for (row,id) in rows.iter().zip([0x15,0x16]) {
+        let m=extended_memory(id); let c:Change=serde_json::from_value(row["change"].clone()).unwrap();
+        assert_eq!(c.effect,extended_change(&m,id,37,92).effect);
+        assert_eq!(c.zone,1); assert_eq!(c.expected_device,device().profile_key); assert_eq!(c.expected_connection,device().connection_key);
+        let before=m.0.lock().unwrap().current.clone();
+        let result=apply(&device(),&m,&c).unwrap(); let after=result.view.zones[1].current.unwrap();
+        for index in 0..11 {assert_eq!(after[index],if index==2 {92} else if index==9 {37} else {before[1][index]});}
+        assert_eq!(result.view.zones[0].current,Some(before[0])); assert_eq!(lighting_writes(&m).len(),1);
+    }
 }
