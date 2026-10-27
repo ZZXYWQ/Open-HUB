@@ -1,0 +1,66 @@
+{
+  "date_local": "2026-10-27",
+  "base_commit": "204e48b73833002703361289ed668ea0ba31726a",
+  "scope": "Five existing exact COMPX USB models: source-defined indicator enable/mode/three-level brightness/three-level speed, legacy compatibility and profile import/UI replay",
+  "accepted_complete_models": 0,
+  "release_version": "0.3.7",
+  "installer_built_published_or_installed": false,
+  "new_indicator_model_hardware_access": false,
+  "new_oem_download_or_execution": false,
+  "new_runtime_dependencies": false,
+  "validation": {
+    "default_native_passed": 779,
+    "default_native_failed": 0,
+    "default_native_ignored": 62,
+    "new_default_tests": 18,
+    "native_indicator_combinations_per_model": 36,
+    "native_indicator_distinct_models": 5,
+    "explicit_ui_profile_cross_tests_passed": 3,
+    "indicator_ui_profiles": 7,
+    "palette_ui_profiles": 5,
+    "media_ui_profiles": 9,
+    "vendor_unit_tests_passed": 327,
+    "headless_ui_suites": [
+      "compx-indicator",
+      "compx-palette",
+      "compx-media",
+      "atk-import",
+      "compx-controls"
+    ],
+    "native_preflight_and_legacy_tests_passed": true,
+    "frontend_build_passed": true,
+    "non_test_native_build_passed": true
+  },
+  "footprint": {
+    "frontend_js_bytes": 811551,
+    "previous_frontend_js_bytes": 806295,
+    "frontend_js_delta_bytes": 5256,
+    "installer_delta_not_measured": true
+  },
+  "limits": [
+    "Independent source-derived vectors and stateful simulation; no physical or optical indicator acceptance",
+    "Off zero mode is an exact source-defined disabled [0,0] exception, not general checksum tolerance",
+    "Firmware speed levels have no proved period in milliseconds",
+    "No private OEM file parser, cross-bank macro ownership proof, new RF serial guarantee or firmware atomicity",
+    "Separate MCHOSE read-only observation did not test these COMPX models"
+  ],
+  "source_sha256": {
+    "src-tauri/src/atk.rs": "2667a4b9203d0c78e003e600a9feec4b1a9ea913d564031f26493511b71c9045",
+    "src-tauri/src/atk_indicator.rs": "a2af1654add7712b0586e382b594440e9d595d0990e9f58c20ca2fdae5b27888",
+    "src-tauri/src/atk_indicator_tests.rs": "529def7dcdb341a98442ded11c85c052488f5a71131d1a3a7e29b4c86ce41955",
+    "src-tauri/src/compx_indicator_plan_tests.rs": "e725ead304da895239bffa94d8ec82d4bf4c165ec87238e9caebde22dcde76b2",
+    "src-tauri/src/multibrand.rs": "c38a21c33535d1f09ec2c33a80bdb6acf7fb59c64644de85dd5a82d647b11fb2",
+    "src-tauri/src/session_plan.rs": "2e00f027afa98959b21921160650fd0ac6cfd13a1362eaa4beb10b04eb1843c1",
+    "src-tauri/vendor/gearwise/crates/gearwise-core/src/model.rs": "9c33e6fd38a7d45c4e96eff9a496686acc2deccd0122637ee3e43b8434e8b7be",
+    "src-tauri/vendor/gearwise/crates/gearwise-core/src/device.rs": "f190155bc144ea256fc26c3a8c0512ffa044d4ce86399695b716a2d9aeb3f2f6",
+    "src/lib/multi.ts": "a68603c57514bc99e78696accabe47fbad360fd9d61c3bbde3f2e32a05bac4ea",
+    "src/lib/compx-indicator.ts": "323769a8a2fbfea60d10fcb5ad606588eb07eaaabc9f4c55d057016e25d0115e",
+    "src/components/compx-indicator.tsx": "5d7a6ce6111fb0e2f57397afee2e0af0122e73833f9bd18e112cc76b542dd7ee",
+    "src/components/multi-lighting.tsx": "c16eed6c83ab8a009d848086b8d359d18ba5f998d72666b5904e5c2a2b999737",
+    "src/components/atk-profile-import.tsx": "25ba4afad0407daa10d64b48dd3bc3cf85e00e6fd38a5f2c20e0451c99890777",
+    "scripts/check-compx-palette-source.cjs": "61f81ac426649310a532c5caefa8a2e2522bcc491fac69eab02692f877fbd54e",
+    "scripts/test-compx-indicator-ui.cjs": "3946a1f5eecaa0f7468219392b614019bfe8eef924b628f30d5e44c922374348",
+    "scripts/test-compx-palette-ui.cjs": "48a79b0cb8f229f82b49bd94acb6c6d418d1b0a61787a236008be70451de5793",
+    "scripts/test-compx-media-ui.cjs": "a2d7b8d42d45b4bd3757b618bf1406baa4dfe113ae9f8c9b2ecc381c2eb2dd0a"
+  }
+}

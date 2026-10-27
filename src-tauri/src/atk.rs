@@ -13,6 +13,8 @@ use gearwise_core::{
 mod native_macro;
 #[path="atk_tuning.rs"]
 mod tuning;
+#[path="atk_indicator.rs"]
+mod indicator;
 pub fn validate_tuning(v:u16,p:u16,t:&gearwise_core::tuning::MouseTuning)->Result<()>{tuning::validate(model(v,p).ok_or(Error::Unsupported("COMPX tuning model"))?,t)}
 #[path = "pulsar_shortcuts.rs"]
 mod pulsar_shortcut;
@@ -61,6 +63,8 @@ pub fn model(v: u16, p: u16) -> Option<&'static Model> {
 }
 pub fn supported(v: u16, p: u16) -> bool { model(v,p).is_some() }
 pub fn palette_stages(v:u16,p:u16)->u8 {model(v,p).filter(|m|m.indicator).map(|m|m.dpi_color_stages).unwrap_or(0)}
+pub fn validate_indicator(v:u16,p:u16)->Result<()> {if palette_stages(v,p)>0{Ok(())}else{Err(Error::Unsupported("Exact COMPX indicator mode and levels"))}}
+pub fn validate_indicator_state(v:u16,p:u16,state:&gearwise_core::model::DpiIndicatorState)->Result<()> {validate_indicator(v,p)?;if state.enabled&&state.mode==gearwise_core::model::DpiIndicatorMode::Unspecified{return Err(Error::invalid("Choose a known COMPX indicator mode before enabling"));}Ok(())}
 pub fn validate_palette(v:u16,p:u16,stage:u8)->Result<()> {if stage>=palette_stages(v,p){Err(Error::Unsupported("Exact COMPX DPI color table"))}else{Ok(())}}
 
 fn identity(p: u16) -> Option<(u8, &'static str, u16)> {
@@ -384,6 +388,7 @@ impl Atk {
                     })
                     .collect(),
                 dpi_color_stages:palette_stages(model.vendor,model.product),
+                dpi_indicator:palette_stages(model.vendor,model.product)>0,
                 lighting: if model.indicator {
                     vec![LightingZoneCaps {
                         id: 0,
@@ -573,7 +578,8 @@ impl Atk {
         }
         if !self.caps.lighting.is_empty() {
             let row = self.read(76, 8)?;
-            let mode = checked_pair(&row[..2])?;
+            if self.caps.dpi_indicator {state.dpi_indicator=indicator::decode(&row).ok();}
+            let mode = if state.dpi_indicator.is_some_and(|v|!v.enabled&&v.mode==gearwise_core::model::DpiIndicatorMode::Unspecified){0}else{checked_pair(&row[..2])?};
             let enabled = checked_pair(&row[6..8])?;
             if enabled == 0 {
                 state.lighting.insert(
@@ -682,6 +688,7 @@ impl Device for Atk {
                 }
             }
             Setting::DpiColor {stage,..}=>validate_palette(self.model.vendor,self.model.product,*stage)?,
+            Setting::DpiIndicator(value)=>validate_indicator_state(self.model.vendor,self.model.product,value)?,
             Setting::Lighting { zone: 0, state }
                 if self.model.indicator
                     && state.brightness == 100
@@ -698,6 +705,7 @@ impl Device for Atk {
         self.identify()?;
         match s {
             Setting::Tuning(p)=>self.apply_tuning(p)?,
+            Setting::DpiIndicator(value)=>self.apply_indicator(value)?,
             Setting::Dpi(d) => {
                 for (index, stage) in d.stages.iter().enumerate() {
                     self.write_verified(
@@ -1405,3 +1413,7 @@ mod dpi_limits_tests {
 #[cfg(test)]
 #[path="atk_palette_tests.rs"]
 mod compx_palette_tests;
+
+#[cfg(test)]
+#[path="atk_indicator_tests.rs"]
+mod compx_indicator_tests;

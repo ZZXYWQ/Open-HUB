@@ -3,22 +3,22 @@ const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),ass
 const views=JSON.parse(fs.readFileSync('../outputs/100-model-development/compx-palette-native-views.json','utf8'));
 const base=fs.readFileSync(path.join(__dirname,'test-synapse-import-ui.cjs'),'utf8'),marker='await page.addInitScript(()=>{',start=base.indexOf(marker)+marker.length,end=base.indexOf('\n});await ',start);assert(end>start);
 const incomplete=structuredClone(views.find(v=>v.capabilities.dpi_color_stages));incomplete.descriptor.id+=':bad';incomplete.descriptor.name+=' · 未读档位';delete incomplete.state.dpi_colors['7'];
-const unknown=structuredClone(views.find(v=>v.capabilities.dpi_color_stages));unknown.descriptor.id+=':unknown';unknown.descriptor.name+=' · 未知模式';unknown.state.lighting={};
+const unknown=structuredClone(views.find(v=>v.capabilities.dpi_color_stages));unknown.descriptor.id+=':unknown';unknown.descriptor.name+=' · 未知模式';unknown.state.lighting={};unknown.state.dpi_indicator=null;
 (async()=>{const browser=await chromium.launch({headless:true});try{
  const page=await browser.newPage({viewport:{width:1450,height:1050}}),errors=[],checks=[];page.on('pageerror',e=>errors.push(String(e)));
  await page.addInitScript({content:`(()=>{${base.slice(start,end)}})()`});await page.addInitScript(views=>{const old=window.__TAURI_INTERNALS__.invoke;window.__TAURI_INTERNALS__.invoke=async(cmd,a={})=>{if(cmd==='multi_templates'){window.__qaCalls.push({cmd,args:a});return views;}if(cmd==='multi_simulate'){window.__qaCalls.push({cmd,args:a});return{packet_count:20};}return old(cmd,a);};},[...views,incomplete,unknown]);
  await require('./ui-static-route.cjs')(page,path.resolve('dist'));await page.goto('http://127.0.0.1:1431');await page.getByRole('button',{name:'配置',exact:true}).click();
  async function open(v){await page.getByRole('button',{name:'按品牌新建配置',exact:true}).click();const d=page.getByRole('dialog');await d.getByRole('button',{name:v.descriptor.name,exact:true}).click();return d;}
- for(const v of views){const d=await open(v),palette=d.getByRole('region',{name:'DPI 档位指示颜色',exact:true});
+ for(const v of views){const d=await open(v),activeColor=()=>d.getByLabel(v.capabilities.dpi_indicator?'DPI 指示灯当前档颜色':'鼠标灯区0颜色',{exact:true}),palette=d.getByRole('region',{name:'DPI 档位指示颜色',exact:true});
   if(!v.capabilities.dpi_color_stages){assert.equal(await palette.count(),0);await page.keyboard.press('Escape');continue;}
   assert.equal(await palette.locator('input[type="color"]').count(),8);assert.equal(await palette.getByLabel('DPI 档位8指示颜色',{exact:true}).inputValue(),'#112233');
   await palette.getByLabel('DPI 档位1指示颜色',{exact:true}).fill('#aabbcc');await palette.getByLabel('DPI 档位8指示颜色',{exact:true}).fill('#334455');
-  assert.equal(await d.getByLabel('鼠标灯区0颜色',{exact:true}).inputValue(),'#00ff00');
+  assert.equal(await activeColor().inputValue(),'#00ff00');
   for(let n=v.state.dpi.stages.length;n<8;n++)await d.getByRole('button',{name:'新增 DPI 档位',exact:true}).click();
-  await d.getByRole('radio',{name:'鼠标档位8',exact:true}).check();assert.equal(await d.getByLabel('鼠标灯区0颜色',{exact:true}).inputValue(),'#334455');
-  await d.getByLabel('鼠标灯区0颜色',{exact:true}).fill('#dd4455');assert.equal(await palette.getByLabel('DPI 档位8指示颜色',{exact:true}).inputValue(),'#dd4455');
-  await d.getByRole('radio',{name:'鼠标档位1',exact:true}).check();assert.equal(await d.getByLabel('鼠标灯区0颜色',{exact:true}).inputValue(),'#aabbcc');await d.getByRole('radio',{name:'鼠标档位8',exact:true}).check();
-  await d.getByRole('combobox',{name:'原生灯区0效果',exact:true}).selectOption('Off');await palette.getByLabel('DPI 档位7指示颜色',{exact:true}).fill('#102030');assert.equal(await d.getByRole('combobox',{name:'原生灯区0效果',exact:true}).inputValue(),'Off');await d.getByRole('combobox',{name:'原生灯区0效果',exact:true}).selectOption('Static');assert.equal(await d.getByLabel('鼠标灯区0颜色',{exact:true}).inputValue(),'#dd4455');
+  await d.getByRole('radio',{name:'鼠标档位8',exact:true}).check();assert.equal(await activeColor().inputValue(),'#334455');
+  await activeColor().fill('#dd4455');assert.equal(await palette.getByLabel('DPI 档位8指示颜色',{exact:true}).inputValue(),'#dd4455');
+  await d.getByRole('radio',{name:'鼠标档位1',exact:true}).check();assert.equal(await activeColor().inputValue(),'#aabbcc');await d.getByRole('radio',{name:'鼠标档位8',exact:true}).check();
+  if(v.capabilities.dpi_indicator)await d.getByRole('switch',{name:'DPI 指示灯开关',exact:true}).uncheck();else await d.getByRole('combobox',{name:'原生灯区0效果',exact:true}).selectOption('Off');await palette.getByLabel('DPI 档位7指示颜色',{exact:true}).fill('#102030');if(v.capabilities.dpi_indicator){assert.equal(await d.getByRole('switch',{name:'DPI 指示灯开关',exact:true}).isChecked(),false);await d.getByRole('switch',{name:'DPI 指示灯开关',exact:true}).check();}else{assert.equal(await d.getByRole('combobox',{name:'原生灯区0效果',exact:true}).inputValue(),'Off');await d.getByRole('combobox',{name:'原生灯区0效果',exact:true}).selectOption('Static');}assert.equal(await activeColor().inputValue(),'#dd4455');
   await d.getByRole('button',{name:'模拟驱动验证',exact:true}).click();await d.getByRole('status').filter({hasText:'模拟驱动验证通过'}).waitFor();
   if(!checks.length)await palette.screenshot({path:'../outputs/100-model-development/compx-palette-ui.png'});
   await d.getByRole('button',{name:'保存设备方案',exact:true}).click();await d.waitFor({state:'hidden'});

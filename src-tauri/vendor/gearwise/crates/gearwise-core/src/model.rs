@@ -683,3 +683,17 @@ mod button_action_serialization_tests {
         assert!(serde_json::from_value::<MacroStep>(json!({"Scroll": "Up"})).is_err());
     }
 }
+
+/// Discrete firmware levels; no unverified percentage or timing is implied.
+#[derive(Clone,Copy,Debug,PartialEq,Eq,Serialize,Deserialize)]
+pub enum IndicatorLevel {Low,Medium,High}
+#[derive(Clone,Copy,Debug,PartialEq,Eq,Serialize,Deserialize)]
+pub enum DpiIndicatorMode {
+    Static,
+    Breathing,
+    /// Source-defined disabled record with both mode bytes zero. Never enabled implicitly.
+    Unspecified,
+}
+#[derive(Clone,Copy,Debug,PartialEq,Eq,Serialize,Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DpiIndicatorState {pub enabled:bool,pub mode:DpiIndicatorMode,pub brightness:IndicatorLevel,pub speed:IndicatorLevel}

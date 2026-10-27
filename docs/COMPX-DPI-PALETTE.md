@@ -36,6 +36,6 @@ ATK HUB 3.2.27 公开静态代码的 `pb`、`rd`、`_getMouseDpiColors`、`setMo
 
 本批完整应用回归 761 通过、0 失败、61 忽略；另显式执行上述 UI 保存方案回放测试 1 项。核心、雷蛇、海盗船、赛睿依赖测试共 327 项通过；TypeScript/Vite 和非测试原生构建通过。增加的前端 JS 约 3.9 KB，无新增运行时依赖或厂商脚本分发。
 
-本批未连接这五种实物，没有光学效果或真实重插持久化证明。原厂呼吸、亮度/速度、其他配置库共享引用和其他高级功能仍有待适配/验证，不能称为完整原厂功能。完整验收仍为 0/100，已安装版本保持 0.3.7；未打包、发布或安装。
+本批未连接这五种实物，没有光学效果或真实重插持久化证明。后续 [原厂呼吸、亮度/速度控制](COMPX-NATIVE-INDICATOR.md) 已补实现和模拟验证；对应实物、其他配置库共享引用和其他高级功能仍有缺口，不能称为完整原厂功能。完整验收仍为 0/100，已安装版本保持 0.3.7；未打包、发布或安装。
 
 协议来源：[ATK HUB 3.2.27 公开脚本](https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js)。固定 SHA256、静态位置和派生事实见 [源证据](development/2026-10-27-compx-palette-source.json)，验证范围见 [测试记录](development/2026-10-27-compx-palette-validation.json)。`scripts/check-compx-palette-source.cjs` 只读取并核对现有本地源文件，不执行、导入或重新下载原厂脚本。

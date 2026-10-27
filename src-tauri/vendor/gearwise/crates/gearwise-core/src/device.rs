@@ -38,6 +38,8 @@ impl DeviceDescriptor {
 /// UI hides the corresponding controls.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Capabilities {
+    #[serde(default,skip_serializing_if="is_false")]
+    pub dpi_indicator:bool,
     /// Logical DPI indicator table capacity, not a count of physical LED zones.
     #[serde(default,skip_serializing_if="is_zero_u8")]
     pub dpi_color_stages:u8,
@@ -74,6 +76,8 @@ pub struct Capabilities {
 /// can read back; write-only settings report the last value applied.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct DeviceState {
+    #[serde(default,skip_serializing_if="Option::is_none")]
+    pub dpi_indicator:Option<DpiIndicatorState>,
     /// Only stage colors actually read and verified by the device driver.
     #[serde(default,skip_serializing_if="BTreeMap::is_empty")]
     pub dpi_colors:BTreeMap<u8,Rgb>,
@@ -108,6 +112,7 @@ pub enum Setting {
     /// Switch the active stage only.
     DpiActiveStage(u8),
     DpiColor {stage:u8,color:Rgb},
+    DpiIndicator(DpiIndicatorState),
     ReportRate(u16),
     Lighting {
         zone: u8,
@@ -136,6 +141,7 @@ impl Setting {
             Setting::Dpi(_) => "DPI stages",
             Setting::DpiActiveStage(_) => "Active DPI stage",
             Setting::DpiColor{..}=>"DPI indicator color",
+            Setting::DpiIndicator(_)=>"DPI indicator mode and levels",
             Setting::ReportRate(_) => "Report rate",
             Setting::Lighting { .. } => "Lighting",
             Setting::PerKey(_) => "Per-key lighting",
@@ -164,6 +170,7 @@ impl Setting {
                 }
             }
             Setting::DpiColor{stage,color}=>{s.dpi_colors.insert(*stage,*color);}
+            Setting::DpiIndicator(value)=>s.dpi_indicator=Some(*value),
             Setting::ReportRate(r) => s.report_rate = Some(*r),
             Setting::Lighting { zone, state } => {
                 s.lighting.insert(*zone, *state);
@@ -268,3 +275,5 @@ pub trait Driver: Send + Sync {
 }
 
 fn is_zero_u8(value:&u8)->bool{*value==0}
+
+fn is_false(value:&bool)->bool{!*value}

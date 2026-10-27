@@ -1,0 +1,17 @@
+import type {DpiIndicator,IndicatorLevel,MultiPlan,MultiView} from '@/lib/multi';
+import {indicatorValue,putIndicator} from '@/lib/compx-indicator';
+import {paletteColor,putPaletteColor} from '@/lib/compx-palette';
+import {Button} from '@/components/ui/button';
+export function CompxIndicator({plan,view,onChange}:{plan:MultiPlan;view:MultiView;onChange:(p:MultiPlan)=>void}){
+ const value=indicatorValue(plan,view);
+ if(!value||!view.state.dpi_indicator)return <div role="group" aria-label="DPI 指示灯原厂设置" className="col-span-full space-y-3 rounded-xl border p-4"><b>DPI 指示灯</b><p className="text-sm text-muted-foreground">原始模式、亮度或速度未完整读到，请重新读取；原始参数已保留。</p>{plan.settings.some(s=>'DpiIndicator'in s)&&<Button variant="outline" onClick={()=>onChange({...plan,settings:plan.settings.filter(s=>!('DpiIndicator'in s))})}>暂不应用指示灯参数</Button>}</div>;
+ const put=(patch:Partial<DpiIndicator>)=>onChange(putIndicator(plan,view,{...value,...patch}));
+ const dpi=plan.settings.find(s=>'Dpi'in s),stage=dpi&&'Dpi'in dpi?dpi.Dpi.active:undefined,color=stage===undefined?undefined:paletteColor(plan,view,stage);
+ const hex=color?'#'+[color.r,color.g,color.b].map(n=>n.toString(16).padStart(2,'0')).join(''):'#000000';
+ return <div role="group" aria-label="DPI 指示灯原厂设置" className="col-span-full space-y-4 rounded-xl border bg-background/70 p-4"><div className="flex items-center justify-between gap-4"><b>DPI 档位指示灯</b><label className="flex items-center gap-2 text-sm">启用<input aria-label="DPI 指示灯开关" role="switch" type="checkbox" checked={value.enabled} disabled={value.mode==='Unspecified'} onChange={e=>put({enabled:e.target.checked})}/></label></div><div className="grid gap-4 sm:grid-cols-2">
+ <label className="flex items-center justify-between gap-3 text-sm">原厂效果<select aria-label="DPI 指示灯效果" className="rounded border bg-background p-2" value={value.mode} onChange={e=>put({mode:e.target.value as DpiIndicator['mode']})}>{value.mode==='Unspecified'&&<option disabled value="Unspecified">模式未保存</option>}<option value="Static">常亮</option><option value="Breathing">呼吸</option></select></label>
+ <label className="flex items-center justify-between gap-3 text-sm">亮度<select aria-label="DPI 指示灯亮度" className="rounded border bg-background p-2" value={value.brightness} onChange={e=>put({brightness:e.target.value as IndicatorLevel})}><option value="Low">低</option><option value="Medium">中</option><option value="High">高</option></select></label>
+ <label className="flex items-center justify-between gap-3 text-sm">呼吸速度<select aria-label="DPI 指示灯速度" className="rounded border bg-background p-2" value={value.speed} onChange={e=>put({speed:e.target.value as IndicatorLevel})}><option value="Low">慢</option><option value="Medium">中</option><option value="High">快</option></select></label>
+ {stage!==undefined&&<label className="flex items-center justify-between gap-3 text-sm">当前档位 {stage+1} 颜色<input aria-label="DPI 指示灯当前档颜色" type="color" value={hex} disabled={!color||view.state.dpi_colors?.[String(stage)]===undefined} onChange={e=>{const h=e.target.value;onChange(putPaletteColor(plan,stage,{r:parseInt(h.slice(1,3),16),g:parseInt(h.slice(3,5),16),b:parseInt(h.slice(5,7),16)}));}}/></label>}
+ </div>{value.mode==='Unspecified'&&<p className="text-xs text-muted-foreground">原厂关闭状态没有保留模式，请先选择常亮或呼吸再启用。</p>}<p className="text-xs text-muted-foreground">颜色随 DPI 档位切换；关闭时仍保留所选模式、亮度和速度。速度采用原厂档位，呼吸周期由鼠标固件决定。</p></div>;
+}

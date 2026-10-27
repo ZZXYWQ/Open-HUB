@@ -4,6 +4,34 @@
   "source_bytes": 5755795,
   "analysis": "static text only; no OEM code execution or distribution",
   "offset_units": "UTF-16 code units",
+  "indicator": {
+    "source_offset": 2064373,
+    "address": 76,
+    "bytes": 8,
+    "fields": [
+      "mode",
+      "brightness",
+      "speed",
+      "enabled"
+    ],
+    "pair_wrapping_sum": 85,
+    "modes": {
+      "Static": 1,
+      "Breathing": 2
+    },
+    "brightness": {
+      "Low": 16,
+      "Medium": 128,
+      "High": 255
+    },
+    "speed": {
+      "Low": 1,
+      "Medium": 3,
+      "High": 5
+    },
+    "oem_off_mode": "create(Off) leaves zero-initialized mode; both mode bytes remain zero; this exact disabled exception is retained as Unspecified, never enabled implicitly",
+    "verified_period_milliseconds": null
+  },
   "source_offsets": {
     "record": 2061234,
     "paired_rows": 2063490,

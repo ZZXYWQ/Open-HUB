@@ -171,6 +171,7 @@ fn logitech_mouse() -> DemoDevice {
     use EffectKind::*;
     let caps = Capabilities {
         dpi_color_stages:0,
+                dpi_indicator:false,
         layout: None,
         dpi: Some(DpiCaps {
             min: 100,
@@ -338,6 +339,7 @@ fn razer_keyboard() -> DemoDevice {
     });
     let caps = Capabilities {
         dpi_color_stages:0,
+                dpi_indicator:false,
         layout: None,
         dpi: None,
         report_rates: vec![125, 250, 500, 1000, 2000, 4000, 8000],
@@ -406,6 +408,7 @@ fn corsair_mouse() -> DemoDevice {
     use EffectKind::*;
     let caps = Capabilities {
         dpi_color_stages:0,
+                dpi_indicator:false,
         layout: None,
         dpi: Some(DpiCaps {
             min: 100,
