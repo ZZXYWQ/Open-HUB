@@ -99,6 +99,7 @@ pub fn encode(m: &Macro) -> Result<Vec<u8>> {
   MacroStep::KeyDown(v)=>events.push(key(*v,true)?),MacroStep::KeyUp(v)=>events.push(key(*v,false)?),
   MacroStep::MouseDown(b)|MacroStep::MouseUp(b)=>events.push([if matches!(step,MacroStep::MouseDown(_)){132}else{68},mouse(*b)?,0,0,1]),
   MacroStep::Delay(ms)=>{if *ms==0{continue;}let prev=events.last_mut().ok_or(Error::Unsupported("ATK leading macro delay"))?;let delay=(if delayed{u16::from_be_bytes([prev[3],prev[4]])}else{0}).checked_add(u16::try_from(*ms).map_err(|_|Error::invalid("ATK delay overflow"))?).ok_or(Error::invalid("ATK delay overflow"))?;let bytes=delay.to_be_bytes();prev[3..5].copy_from_slice(&bytes);delayed=true;},
+  MacroStep::Scroll(direction)=>{events.push([6,if matches!(direction,gearwise_core::model::ScrollDirection::Up){1}else{255},0,0,1]);events.push([6,0,0,0,0]);},
   MacroStep::Media(usage)=>{validate_media(*usage)?;events.push([0x82,*usage as u8,0,0,1]);events.push([0x42,*usage as u8,0,0,0]);},
   MacroStep::KeyTap{usage,mods}=>{let tap=keyboard(*usage,*mods);for s in tap.steps{match s{MacroStep::KeyDown(v)=>events.push(key(v,true)?),MacroStep::KeyUp(v)=>events.push(key(v,false)?),_=>unreachable!()}}},
   _=>return Err(Error::Unsupported("ATK native macros support key/mouse/media events and delays; text/physical-wait is unsupported")),
@@ -142,6 +143,15 @@ pub fn decode(slot: u8, play: u8, data: &[u8]) -> Result<Macro> {
     let mut at = 0;
     while at < rows.len() {
         let row = rows[at];
+        if row[0] == 6 {
+            let neutral=rows.get(at+1).ok_or(Error::invalid("COMPX scroll neutral event missing"))?;
+            if !matches!(row[1],1|255)||row[2]!=0||row[3..5]!=[0,1]||neutral[..3]!=[6,0,0]{
+                return Err(Error::Unsupported("COMPX noncanonical scroll pair retained"));
+            }
+            steps.push(MacroStep::Scroll(if row[1]==1 {gearwise_core::model::ScrollDirection::Up}else{gearwise_core::model::ScrollDirection::Down}));
+            let delay=u16::from_be_bytes([neutral[3],neutral[4]]);if delay>0{steps.push(MacroStep::Delay(u32::from(delay)));}
+            at+=2;continue;
+        }
         if row[0] == 0x82 {
             let release = rows
                 .get(at + 1)
@@ -312,4 +322,14 @@ mod media_tests {
             assert!(decode(0, 1, &raw).is_err());
         }
     }
+}
+
+#[cfg(test)]
+mod scroll_tests{
+ use super::*;use gearwise_core::model::ScrollDirection;
+ fn definition(direction:ScrollDirection)->Macro{Macro{id:"scroll".into(),name:"native wheel".into(),mode:MacroMode::Once,steps:vec![MacroStep::Scroll(direction)]}}
+ #[test]fn up_down_have_independent_complete_native_pair_vectors(){for (direction,body,checksum) in[(ScrollDirection::Up,[6,1,0,0,1,6,0,0,0,0],69),(ScrollDirection::Down,[6,255,0,0,1,6,0,0,0,0],71)]{let mut golden=HEADER.to_vec();golden.push(2);golden.extend(body);golden.push(checksum);let m=definition(direction);assert_eq!(encode(&m).unwrap(),golden);assert_eq!(decode(0,1,&golden).unwrap().steps,m.steps);}}
+ #[test]fn scroll_delay_roundtrips_without_losing_direction_or_neutral_event(){let mut m=definition(ScrollDirection::Up);m.steps.extend([MacroStep::Delay(37),MacroStep::Scroll(ScrollDirection::Down)]);let raw=encode(&m).unwrap();assert_eq!(&raw[32..52],&[6,1,0,0,1,6,0,0,0,37,6,255,0,0,1,6,0,0,0,0]);assert_eq!(decode(2,1,&raw).unwrap().steps,m.steps);}
+ #[test]fn unknown_scroll_shapes_remain_opaque_instead_of_normalized(){let original=encode(&definition(ScrollDirection::Up)).unwrap();for(at,value)in[(32,0x46),(33,2),(34,1),(36,2),(37,7),(38,1),(39,1)]{let mut raw=original.clone();raw[at]=value;let n=raw.len();raw[n-1]=0x55u8.wrapping_sub(raw[31..n-1].iter().fold(0u8,|a,b|a.wrapping_add(*b)));assert!(decode(0,1,&raw).is_err(),"offset {at}");}let mut raw=original[..37].to_vec();raw[31]=1;raw.push(0x55u8.wrapping_sub(raw[31..].iter().fold(0u8,|a,b|a.wrapping_add(*b))));assert!(decode(0,1,&raw).is_err());}
+ #[test]fn scroll_uses_two_native_events_and_obeys_existing_total_limits(){let mut m=definition(ScrollDirection::Down);m.steps=vec![MacroStep::Scroll(ScrollDirection::Down);35];assert_eq!(encode(&m).unwrap().len(),383);m.steps.push(MacroStep::Scroll(ScrollDirection::Up));assert!(encode(&m).is_err());assert!(serde_json::from_value::<MacroStep>(serde_json::json!({"Scroll":"Left"})).is_err());}
 }

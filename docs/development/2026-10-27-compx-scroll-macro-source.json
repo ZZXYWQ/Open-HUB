@@ -1,0 +1,21 @@
+{
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "source_sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "source_bytes": 5755795,
+  "analysis": "static only; no OEM execution or distribution",
+  "state_bits": "neither Down 0x80 nor Up 0x40",
+  "event_class": 6,
+  "value_up": 1,
+  "value_down": 255,
+  "neutral_value": 0,
+  "paired_events": true,
+  "value2": 0,
+  "delay": "big-endian16 at event offsets3-4",
+  "implemented_canonical_form": "one-tick event with delay1, neutral event with optional user delay",
+  "not_proven": [
+    "other scroll magnitudes or timings",
+    "cross-bank macro ownership",
+    "physical wheel playback timing",
+    "in-flight macro quiescence"
+  ]
+}

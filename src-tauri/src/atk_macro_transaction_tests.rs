@@ -189,3 +189,9 @@ fn transaction_rechecks_current_bank_reference_and_free_slot_before_any_write() 
         assert_eq!(count.lock().unwrap().sets, 0);
     }
 }
+
+#[test]
+fn vertical_scroll_macro_modes_execute_and_reopen_across_all_existing_compx_connections(){
+ use gearwise_core::model::ScrollDirection;
+ for spec in specs(){for mode in[MacroMode::Once,MacroMode::Repeat(3),MacroMode::WhileHeld,MacroMode::Toggle]{let(mut d,_)=memory_device(spec.product).unwrap();let mut m=definition();m.mode=mode;m.steps=vec![MacroStep::Scroll(ScrollDirection::Up),MacroStep::Delay(37),MacroStep::Scroll(ScrollDirection::Down)];d.set_macro_definitions(&[m.clone()]).unwrap();d.apply(&action()).unwrap();let state=d.read_state().unwrap();let ButtonAction::Macro(id)=&state.buttons[&4]else{panic!("scroll binding not decoded")};let actual=d.macro_definitions().into_iter().find(|m|&m.id==id).unwrap();assert_eq!(actual.mode,mode);assert_eq!(actual.steps,m.steps);let info=HidInterfaceInfo{vendor_id:spec.vendor,product_id:spec.product,usage_page:0xff02,usage:2,interface_number:1,..Default::default()};let mut reopened=Atk::open(d.io,&info).unwrap();let state=reopened.read_state().unwrap();assert!(matches!(state.buttons[&4],ButtonAction::Macro(_)));assert!(reopened.macro_definitions().iter().any(|x|x.steps==m.steps&&x.mode==mode));}}
+}

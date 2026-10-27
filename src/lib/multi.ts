@@ -39,7 +39,7 @@ export function fromMulti(v:MultiView):MultiPlan{
 }
 export function multiProfile(plan:MultiPlan,name:string){if(isX11(plan.vendor,plan.product)){const item=plan.settings.find(s=>'VendorProfile'in s);if(!item||!('VendorProfile'in item))throw Error('请先创建或载入完整 X11 方案');const p=item.VendorProfile.data;return {id:'',name,app_path:null,target_vendor:plan.vendor,target_model:plan.product,mchose_board:null,ghub_id:null,sino:null,multi:plan,levels:p.dpi.stages.map(x=>({x,y:x})),active_level:p.dpi.active,report_rate_hz:p.report_rate};}const dpi=plan.settings.find(s=>'Dpi'in s);const rate=plan.settings.find(s=>'ReportRate'in s);if(!dpi||!('Dpi'in dpi))throw Error('缺少 DPI 设置');return {id:'',name,app_path:null,target_vendor:plan.vendor,target_model:plan.product,mchose_board:null,ghub_id:null,sino:null,multi:plan,levels:dpi.Dpi.stages.map(v=>({x:v.x,y:v.y})),active_level:dpi.Dpi.active,report_rate_hz:rate&&'ReportRate'in rate?rate.ReportRate:null};}
 export interface MultiSource {vendor:number;product:number;path:string}
-export type MultiStep={KeyDown:number}|{KeyUp:number}|{Delay:number}|{MouseDown:'Left'|'Right'|'Middle'|'Back'|'Forward'}|{MouseUp:'Left'|'Right'|'Middle'|'Back'|'Forward'}|{Text:string}|{Media:number}|{KeyTap:{usage:number;mods:number}}|'WaitForRelease';
+export type MultiStep={KeyDown:number}|{KeyUp:number}|{Delay:number}|{MouseDown:'Left'|'Right'|'Middle'|'Back'|'Forward'}|{MouseUp:'Left'|'Right'|'Middle'|'Back'|'Forward'}|{Text:string}|{Media:number}|{Scroll:'Up'|'Down'}|{KeyTap:{usage:number;mods:number}}|'WaitForRelease';
 export interface MultiMacro {id:string;name:string;mode:'Once'|'WhileHeld'|'Toggle'|{Repeat:number};steps:MultiStep[]}
 
 export function basiliskPro(v:number,p:number){return v===0x1532&&[0x00aa,0x00ab].includes(p);}

@@ -688,7 +688,7 @@ mod button_action_serialization_tests {
             assert!(serde_json::from_value::<MacroStep>(json!({"MouseDown": direction})).is_err());
             assert!(serde_json::from_value::<MacroStep>(json!({"MouseUp": direction})).is_err());
         }
-        assert!(serde_json::from_value::<MacroStep>(json!({"Scroll": "Up"})).is_err());
+        assert_eq!(serde_json::from_value::<MacroStep>(json!({"Scroll": "Up"})).unwrap(), MacroStep::Scroll(ScrollDirection::Up));
     }
 }
 

@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-27",
+  "scope": "COMPX canonical vertical scroll macro pairs and existing scoped software player event",
+  "existing_connections": 9,
+  "distinct_partial_models": 8,
+  "main_tests": {
+    "passed": 1005,
+    "failed": 0,
+    "ignored": 83
+  },
+  "new_default_main_tests": 6,
+  "dependency_unit_tests_passed": 383,
+  "dependency_doc_tests_passed": 1,
+  "source_audit": "pinned SHA and static encoder/decoder facts passed",
+  "new_UI_saved_profiles": 9,
+  "negative_UI_models": 3,
+  "explicit_bridges": [
+    "production native DTO export: passed",
+    "actual UI profiles merge/import compile and native transaction replay: passed"
+  ],
+  "UI_regressions": [
+    "9 media transport profiles",
+    "27 counted-repeat profiles and 3 import previews"
+  ],
+  "builds": {
+    "frontend": "passed",
+    "native": "passed"
+  },
+  "main_js_bytes": 837394,
+  "js_delta_bytes": 559,
+  "new_runtime_dependencies": 0,
+  "hardware_tested": false,
+  "accepted_complete_models": 0,
+  "target": 100,
+  "installer_created": false,
+  "installed_release": "0.3.7",
+  "limitations": [
+    "canonical one-tick pair only",
+    "no native horizontal scroll macro claim",
+    "no cross-bank macro ownership proof",
+    "no in-flight macro quiescence proof",
+    "no physical timing/playback or full model acceptance"
+  ]
+}

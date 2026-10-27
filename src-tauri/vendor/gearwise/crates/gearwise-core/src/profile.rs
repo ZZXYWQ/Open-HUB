@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::device::{Capabilities, DeviceState, Setting};
 use crate::error::Result;
-use crate::model::{ButtonAction, Modifiers, MouseButton};
+use crate::model::{ButtonAction, Modifiers, MouseButton, ScrollDirection};
 
 /// A named set of settings for any number of device models.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -73,6 +73,8 @@ pub enum MacroStep {
     MouseUp(MouseButton),
     /// Atomic HID consumer-page tap (no held consumer state).
     Media(u16),
+    /// One vertical wheel tick; no held input state.
+    Scroll(ScrollDirection),
     /// Wait, in milliseconds.
     Delay(u32),
     /// Type a string (layout-dependent; best effort).
@@ -95,6 +97,7 @@ impl MacroStep {
             MacroStep::MouseDown(b) => format!("↓ {}", b.name()),
             MacroStep::MouseUp(b) => format!("↑ {}", b.name()),
             MacroStep::Media(usage) => ButtonAction::Media(*usage).label(),
+            MacroStep::Scroll(direction) => ButtonAction::Scroll(*direction).label(),
             MacroStep::Delay(ms) => format!("Wait {ms} ms"),
             MacroStep::WaitForRelease => "Hold until physical release".into(),
             MacroStep::Text(t) => format!("Type \"{t}\""),
@@ -396,3 +399,5 @@ mod tests {
 }
 
 #[cfg(test)]mod finite_mode_json_tests{use super::*;#[test]fn finite_mode_keeps_existing_mode_json_and_has_an_explicit_count(){for (mode,json) in [(MacroMode::Once,serde_json::json!("Once")),(MacroMode::Repeat(3),serde_json::json!({"Repeat":3}))]{assert_eq!(serde_json::to_value(mode).unwrap(),json);assert_eq!(serde_json::from_value::<MacroMode>(json).unwrap(),mode);}for json in [serde_json::json!({"Repeat":-1}),serde_json::json!({"Repeat":256}),serde_json::json!({"Repeat":2.5}),serde_json::json!("Repeat")]{assert!(serde_json::from_value::<MacroMode>(json).is_err());}}}
+
+#[cfg(test)]mod scroll_json_tests{use super::*;#[test]fn atomic_scroll_json_preserves_direction_and_existing_step_format(){for direction in[ScrollDirection::Up,ScrollDirection::Down]{let step=MacroStep::Scroll(direction);let value=serde_json::to_value(&step).unwrap();assert_eq!(value,serde_json::json!({"Scroll":if direction==ScrollDirection::Up{"Up"}else{"Down"}}));assert_eq!(serde_json::from_value::<MacroStep>(value).unwrap(),step);}for v in[serde_json::json!({"Scroll":"Left"}),serde_json::json!({"Scroll":1}),serde_json::json!({"Scroll":{"direction":"Up"}})]{assert!(serde_json::from_value::<MacroStep>(v).is_err());}assert_eq!(serde_json::to_value(MacroStep::KeyDown(4)).unwrap(),serde_json::json!({"KeyDown":4}));}}
