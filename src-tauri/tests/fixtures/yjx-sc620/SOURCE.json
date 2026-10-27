@@ -20,7 +20,9 @@
     "macro_delay_raw": "429DED uses buffer+cursor-4;429E31 writes accumulated delay to preceding record. Physical units/equivalence remain unverified",
     "macro_chunks": "42A2EE..42A3E8 writes0D/00 in56-byte chunks;42A3FE..42A417 final10/A5 marker;43A450 recomputes checksum",
     "macro_modifiers_unresolved": "429E82 calls43CD80 VK conversion, not the43D390 binding modifier-bitmask converter; do not reuse the binding bitmask encoding",
-    "macro_binding": "4112B8..4112EF:70,zero-based library index,repeat code,mode0/2/3;SC620 UI meanings unresolved"
+    "macro_binding": "4112B8..4112EF:70,zero-based library index,repeat code,mode0/2/3;SC620 UI meanings unresolved",
+    "macro_playback_semantics": "1033/2052.lan365/366/367->controls518/51C/520;41F903/41F915/41F968 writesplay_type1/2/0;4112CC/D7/E6 mapsnative2/3/0;program bytes independently rechecked",
+    "oem_macro_database": "fileoffset1484D0/1485D8 schemas;40891D..40894E extractsplay_type/play_times/delay_type/delay_time columns2/3/4/5"
   },
   "hardware_tested": false,
   "golden_kind": "reconstructed static vectors, not measured USB traces",

@@ -1,0 +1,22 @@
+{
+  "kind": "synthetic Python SQLite database created with statically recovered schema, not an OEM/user export",
+  "ids": [
+    7,
+    11,
+    42
+  ],
+  "playbacks": [
+    "WhileHeld",
+    "UntilAnyClick",
+    {
+      "Repeat": 3
+    }
+  ],
+  "events": [
+    3,
+    1,
+    2
+  ],
+  "unknown_event_retained": 99,
+  "model_identity": "schema alone cannot identify SC620 or a physical mouse"
+}

@@ -1,0 +1,154 @@
+{
+  "archive_source": "https://aulastar.com/mouse/",
+  "archive_sha256": "8c2537d687360a2922ec2b11e1710ba6b2612c8d8a3d4d60966fcad39cee9263",
+  "payload_sha256": {
+    "AULA SC620.exe": "cd947c856d287042bfa75e2617ee0488f9d29c9be532588a6cedfd8e3faf7514",
+    "config.xml": "db5f27dbbceed611e27c8613e2b19bda11e8b568d8ff3ca8ad34ade651922d90",
+    "language/1033.lan": "004ba916b47f3e4ecfbcf966c9cb4a19076b37c89dc3ed6e811f68b68f1a26df",
+    "language/2052.lan": "ad93fe8358b694ee6c1180564d805c4d1f9677d8dcbd2d4c906852291d493ee8"
+  },
+  "method": "static text and instruction bytes verified against pinned original executable; no OEM execution",
+  "labels": {
+    "365": {
+      "en": "Loops Until Stop Pressing",
+      "zh": "循环直到按键松开"
+    },
+    "366": {
+      "en": "Loops Until Any Click",
+      "zh": "循环直到任意键按下"
+    },
+    "367": {
+      "en": "Loop Times",
+      "zh": "循环次数"
+    }
+  },
+  "reviewed_instructions": {
+    "413f75": {
+      "bytes": "68 6d 01 00 00",
+      "instruction": "push\t0x16d"
+    },
+    "413f89": {
+      "bytes": "8b 8f 18 05 00 00",
+      "instruction": "mov\tecx, dword ptr [edi + 0x518]"
+    },
+    "413fbc": {
+      "bytes": "68 6e 01 00 00",
+      "instruction": "push\t0x16e"
+    },
+    "413fd0": {
+      "bytes": "8b 8f 1c 05 00 00",
+      "instruction": "mov\tecx, dword ptr [edi + 0x51c]"
+    },
+    "414003": {
+      "bytes": "68 6f 01 00 00",
+      "instruction": "push\t0x16f"
+    },
+    "414017": {
+      "bytes": "8b 8f 20 05 00 00",
+      "instruction": "mov\tecx, dword ptr [edi + 0x520]"
+    },
+    "41f8db": {
+      "bytes": "8b 8f 18 05 00 00",
+      "instruction": "mov\tecx, dword ptr [edi + 0x518]"
+    },
+    "41f8e3": {
+      "bytes": "8b 8f 1c 05 00 00",
+      "instruction": "mov\tecx, dword ptr [edi + 0x51c]"
+    },
+    "41f8ed": {
+      "bytes": "8b 8f 20 05 00 00",
+      "instruction": "mov\tecx, dword ptr [edi + 0x520]"
+    },
+    "41f903": {
+      "bytes": "c7 45 dc 01 00 00 00",
+      "instruction": "mov\tdword ptr [ebp - 0x24], 0x1"
+    },
+    "41f915": {
+      "bytes": "c7 45 dc 02 00 00 00",
+      "instruction": "mov\tdword ptr [ebp - 0x24], 0x2"
+    },
+    "41f968": {
+      "bytes": "c7 45 dc 00 00 00 00",
+      "instruction": "mov\tdword ptr [ebp - 0x24], 0x0"
+    },
+    "41f9c3": {
+      "bytes": "89 47 08",
+      "instruction": "mov\tdword ptr [edi + 0x8], eax"
+    },
+    "41f9c9": {
+      "bytes": "89 47 0c",
+      "instruction": "mov\tdword ptr [edi + 0xc], eax"
+    },
+    "40891d": {
+      "bytes": "6a 02",
+      "instruction": "push\t0x2"
+    },
+    "40892c": {
+      "bytes": "89 47 08",
+      "instruction": "mov\tdword ptr [edi + 0x8], eax"
+    },
+    "408927": {
+      "bytes": "6a 03",
+      "instruction": "push\t0x3"
+    },
+    "408939": {
+      "bytes": "89 47 0c",
+      "instruction": "mov\tdword ptr [edi + 0xc], eax"
+    },
+    "4112cc": {
+      "bytes": "c6 46 03 02",
+      "instruction": "mov\tbyte ptr [esi + 0x3], 0x2"
+    },
+    "4112d7": {
+      "bytes": "c6 46 03 03",
+      "instruction": "mov\tbyte ptr [esi + 0x3], 0x3"
+    },
+    "4112e6": {
+      "bytes": "88 46 02",
+      "instruction": "mov\tbyte ptr [esi + 0x2], al"
+    }
+  },
+  "mapping": [
+    {
+      "oem_type": 0,
+      "meaning": "fixed count,1=once",
+      "wire_mode": 0,
+      "repeat": "1..255 representable byte subset, not measured maximum"
+    },
+    {
+      "oem_type": 1,
+      "meaning": "while held",
+      "wire_mode": 2,
+      "repeat": 1
+    },
+    {
+      "oem_type": 2,
+      "meaning": "until any click",
+      "wire_mode": 3,
+      "repeat": 1
+    }
+  ],
+  "sql_schema_field_order": {
+    "0x1484d0": [
+      "macro_id",
+      "name",
+      "play_type",
+      "play_times",
+      "delay_type",
+      "delay_time"
+    ],
+    "0x1485d8": [
+      "record_id",
+      "macro_id",
+      "type",
+      "record_index",
+      "desc",
+      "value",
+      "delay_time"
+    ]
+  },
+  "identity_limit": "config device_type101 is host-side descriptor, not a proved wire ID; shared USB VID/PID unchanged",
+  "macro_event_limit": "preview preserves SQL event fields; does not convert unknown events or assign native slots",
+  "hardware_tested": false,
+  "OEM_executed": false
+}

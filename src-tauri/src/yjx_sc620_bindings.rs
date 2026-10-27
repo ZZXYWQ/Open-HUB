@@ -37,13 +37,51 @@ impl Media {
         }
     }
 }
-/// Exact SC620 wire codes. User-facing playback meanings are not established.
+/// Exact SC620 wire codes. Semantic mapping is pinned to OEM labels/save fields.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub enum MacroPlayback {
     Code0 { repeat: u8 },
     Code2,
     Code3,
+}
+/// Original SC620 semantics; UntilAnyClick is not host Toggle.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Playback {
+    Once,
+    Repeat(u8),
+    WhileHeld,
+    UntilAnyClick,
+}
+impl Playback {
+    pub fn from_oem(play_type: i64, play_times: i64) -> Result<Self> {
+        if !(1..=255).contains(&play_times) {
+            return Err(invalid("unverified OEM repeat count"));
+        }
+        match play_type {
+            0 if play_times == 1 => Ok(Self::Once),
+            0 => Ok(Self::Repeat(play_times as u8)),
+            1 => Ok(Self::WhileHeld),
+            2 => Ok(Self::UntilAnyClick),
+            _ => Err(invalid("unknown OEM playback type")),
+        }
+    }
+    pub fn wire(&self) -> Result<MacroPlayback> {
+        Ok(match *self {
+            Self::Once => MacroPlayback::Code0 { repeat: 1 },
+            Self::Repeat(n) if n >= 2 => MacroPlayback::Code0 { repeat: n },
+            Self::WhileHeld => MacroPlayback::Code2,
+            Self::UntilAnyClick => MacroPlayback::Code3,
+            _ => return Err(invalid("fixed repeat needs 2..255 plays")),
+        })
+    }
+    pub fn from_wire(wire: &MacroPlayback) -> Result<Self> {
+        match *wire {
+            MacroPlayback::Code0 { repeat } => Self::from_oem(0, i64::from(repeat)),
+            MacroPlayback::Code2 => Ok(Self::WhileHeld),
+            MacroPlayback::Code3 => Ok(Self::UntilAnyClick),
+        }
+    }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
