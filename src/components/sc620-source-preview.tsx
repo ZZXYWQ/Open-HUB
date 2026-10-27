@@ -1,3 +1,5 @@
+import {Sc620SourceEditor} from '@/components/sc620-source-editor';
+import type {Sc620EditRequest} from '@/lib/sc620-source';
 import {useEffect,useRef,useState} from 'react';
 import {open,save} from '@tauri-apps/plugin-dialog';
 import {invoke} from '@tauri-apps/api/core';
@@ -6,9 +8,10 @@ import {Button} from '@/components/ui/button';
 import {type Sc620Preview,sc620ActionLabel,sc620Playback,sc620Lights} from '@/lib/sc620-source';
 export function Sc620SourcePreview({onClose}:{onClose:()=>void}){
  const [data,setData]=useState<Sc620Preview|null>(null),[path,setPath]=useState(''),[error,setError]=useState(''),[note,setNote]=useState(''),[busy,setBusy]=useState(false);
+ const [editing,setEditing]=useState(false);
  const generation=useRef(0);useEffect(()=>()=>{generation.current++;},[]);
  const load=async(file?:string,profile?:number)=>{
-  const current=++generation.current;setBusy(true);setError('');setNote('');setData(null);
+  const current=++generation.current;setBusy(true);setError('');setNote('');setEditing(false);setData(null);
   try{
    const picked=file??await open({multiple:false,filters:[{name:'SC620 原厂数据库或 Open HUB 源方案',extensions:['db','sqlite','sqlite3','json']}]});
    if(typeof picked!=='string'||current!==generation.current)return;
@@ -26,11 +29,18 @@ export function Sc620SourcePreview({onClose}:{onClose:()=>void}){
   }catch(e){if(current===generation.current)setError(String(e));}
   finally{if(current===generation.current)setBusy(false);}
  };
+ const edit=async(request:Sc620EditRequest)=>{
+  if(!data)return;const current=generation.current;setBusy(true);setError('');setNote('');
+  try{const updated=await invoke<Sc620Preview>('edit_sc620_source',{source:data.source,request});if(current!==generation.current)return;setData(updated);setEditing(false);setNote('当前源方案已编辑，请另存为新文件；原厂文件未改变。');}
+  catch(e){if(current===generation.current)setError(String(e));}
+  finally{if(current===generation.current)setBusy(false);}
+ };
  const p=data?.source.settings.patch;
  return <Dialog open onOpenChange={v=>{if(!v&&!busy)onClose();}}><DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-3xl"><DialogHeader><DialogTitle>狼蛛 SC620 配置预览</DialogTitle><DialogDescription>读取原厂数据库或重新打开 Open HUB 源方案。完整保留设置、按键和宏；设备识别与写入尚未开放。</DialogDescription></DialogHeader>
- <div className="flex flex-wrap gap-2"><Button disabled={busy} onClick={()=>void load()}>{busy?'正在读取…':'选择 SC620 配置文件'}</Button>{data&&<Button variant="outline" disabled={busy} onClick={()=>void archive()}>保存 Open HUB 源方案</Button>}</div>
+ <div className="flex flex-wrap gap-2"><Button disabled={busy} onClick={()=>void load()}>{busy?'正在读取…':'选择 SC620 配置文件'}</Button>{data&&<Button variant="outline" disabled={busy||editing} onClick={()=>void archive()}>保存 Open HUB 源方案</Button>}{data&&!editing&&<Button variant="outline" disabled={busy} onClick={()=>setEditing(true)}>编辑源方案</Button>}</div>
  {error&&<p role="alert" className="lighting-error">{error}</p>}{note&&<p role="status">{note}</p>}
- {data&&p&&<>
+ {data&&editing&&<Sc620SourceEditor data={data} busy={busy} onCancel={()=>setEditing(false)} onSubmit={edit}/>}
+ {data&&p&&!editing&&<>
  <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-xs text-muted-foreground break-all">{path.split(/[\\/]/).pop()}</span><label className="text-sm">文件内配置<select aria-label="SC620 文件内配置" disabled={busy} className="ml-2 rounded border bg-background p-2" value={data.source.settings.profile_id} onChange={e=>void load(path,Number(e.target.value))}>{data.profile_ids.map(id=><option key={id} value={id}>配置 {id}</option>)}</select></label></div>
  <p role="status" className="rounded-lg border p-3 text-sm">{data.static_subset_convertible?'已核对字段可进行静态转换；仍不可应用到设备。':'存在未转换内容，不能准备整份设备配置；仍可保存完整源方案。'}</p>
  <section aria-label="SC620 设置" className="space-y-3 rounded-xl border p-4"><h3 className="font-semibold">DPI、性能与灯光</h3>

@@ -177,6 +177,8 @@ fn sino_models()->Vec<sinowealth::Model>{sinowealth::models()}
 fn sino_simulate(plan:sinowealth::Plan)->Result<serde_json::Value,String>{sinowealth::simulate(&plan)}
 
 #[tauri::command(async)]
+fn edit_sc620_source(source:yjx_sc620::oem_profile::Source,request:yjx_sc620::source_edit::Request)->Result<yjx_sc620::source_preview::Preview,String>{yjx_sc620::source_edit::update(source,request)}
+#[tauri::command(async)]
 fn preview_sc620_source(path:String,profile:Option<i64>)->Result<yjx_sc620::source_preview::Preview,String>{yjx_sc620::source_preview::preview(std::path::Path::new(&path),profile)}
 #[tauri::command(async)]
 fn export_sc620_source(path:String,source:yjx_sc620::oem_profile::Source)->Result<(),String>{yjx_sc620::source_preview::export(std::path::Path::new(&path),source)}
@@ -1207,7 +1209,7 @@ fn main() {
             activate_profile,
             import_ghub_profiles,
             import_mhub_profiles,
-            sino_read,sino_apply,sino_models,sino_simulate,multi_read,multi_battery,multi_apply,multi_templates,multi_simulate,multi_macro_simulate,multi_input_sources,multi_save_hardware,multi_macro_status,multi_stop_macros,multi_stop_device_macros,multi_recovery_list,multi_recovery_observe,multi_recovery_restore,multi_reconnect_list,multi_reconnect_candidates,multi_reconnect_resume,multi_reconnect_retry,multi_reconnect_discard,preview_sc620_source,export_sc620_source,preview_synapse_import,prepare_synapse_import,prepare_icue_import,prepare_gg_import,
+            sino_read,sino_apply,sino_models,sino_simulate,multi_read,multi_battery,multi_apply,multi_templates,multi_simulate,multi_macro_simulate,multi_input_sources,multi_save_hardware,multi_macro_status,multi_stop_macros,multi_stop_device_macros,multi_recovery_list,multi_recovery_observe,multi_recovery_restore,multi_reconnect_list,multi_reconnect_candidates,multi_reconnect_resume,multi_reconnect_retry,multi_reconnect_discard,edit_sc620_source,preview_sc620_source,export_sc620_source,preview_synapse_import,prepare_synapse_import,prepare_icue_import,prepare_gg_import,
             prepare_mhub_local_import,prepare_mhub_import,prepare_mchose_profile,preview_profile_import,commit_profile_import,export_profile_pack,
             onboard_snapshot,
             save_onboard_backup,

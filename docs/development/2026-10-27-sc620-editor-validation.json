@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-27",
+  "scope": "SC620 offline source settings/buttons/playback editor; no device application",
+  "new_default_tests": 8,
+  "targeted_sc620": {
+    "passed": 111,
+    "failed": 0,
+    "ignored": 4
+  },
+  "main_tests": {
+    "passed": 948,
+    "failed": 0,
+    "ignored": 72
+  },
+  "explicit_editor_bridges": {
+    "production_dto_emission": true,
+    "built_UI_typed_request_to_native_five_report_replay": true
+  },
+  "editor_built_UI": {
+    "checks": 12,
+    "passed": true,
+    "IPC_mocked": true,
+    "real_Rust_DTOs": true,
+    "captured_request_matches_independent_fixture": true,
+    "browser_errors": []
+  },
+  "regressions": {
+    "source_preview_UI_checks": 12,
+    "brand_import_UI_checks": 20
+  },
+  "frontend_build": true,
+  "non_test_native_build": true,
+  "fixture": "src-tauri/tests/fixtures/yjx-sc620/source-edit.json",
+  "fixture_sha256": "02d9261e235b4e86f7a58ba1adf2b227d17f971573b351ac9d4ecdb499613937",
+  "fixture_kind": "independent Python authored request and five complete static reports, not device traces",
+  "macro_event_content_preserved": true,
+  "source_unknown_fields_and_unselected_sensor_bits_preserved": true,
+  "caller_raw_disable_hint_refused": true,
+  "original_OEM_file_modified": false,
+  "source_archive_generic_Profile_import_refused": true,
+  "frontend_JS_bytes": 832165,
+  "previous_frontend_JS_bytes": 823455,
+  "frontend_JS_delta_bytes": 8710,
+  "new_runtime_dependencies": false,
+  "new_images": false,
+  "physical_IO": false,
+  "OS_input": false,
+  "OEM_download_or_execution": false,
+  "remaining": [
+    "macro event editor and remaining OEM actions",
+    "DPI flag mismatch",
+    "per-model/per-mouse identity and physical layout/model image",
+    "real firmware execution/readback/recovery/primary-key guard and device UI"
+  ],
+  "accepted_complete_models": 0,
+  "target_complete_models": 100,
+  "installer": false,
+  "release": false,
+  "installation": false,
+  "installed_version": "0.3.7"
+}

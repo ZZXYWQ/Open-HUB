@@ -27,3 +27,5 @@ export function sc620ActionLabel(action:unknown):string{
 }
 export function sc620Playback(value:Sc620Source['macros'][number]['playback']){return typeof value==='object'?`重复 ${value.Repeat} 次`:({Once:'播放一次',WhileHeld:'按住播放',UntilAnyClick:'直到任意键点击停止'}[value]??value);}
 export const sc620Lights:Record<string,string>={Wave:'波浪',Neon:'霓虹',CyclingFlash:'循环闪烁',YoyoBall:'悠悠球',SingleFlash:'单色闪烁',BreathingLoop:'循环呼吸',Off:'关闭'};
+export interface Sc620EditRequest{settings:Partial<Sc620Source['settings']['patch']>;buttons:Array<{control:number;choice:unknown}>;macros:Array<{id:number;playback:Sc620Source['macros'][number]['playback']}>}
+export const sc620BasicChoices=[...Object.entries(actions).map(([action,label])=>({action,label})),...Object.entries(mouse).map(([key,label])=>({action:{Mouse:key},label})),...Object.entries(media).map(([key,label])=>({action:{Media:key},label}))];

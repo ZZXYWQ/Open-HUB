@@ -280,3 +280,6 @@ mod tests;
 
 #[path="yjx_sc620_source_preview.rs"]
 pub mod source_preview;
+
+#[path="yjx_sc620_source_edit.rs"]
+pub mod source_edit;

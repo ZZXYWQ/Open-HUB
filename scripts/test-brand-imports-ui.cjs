@@ -44,7 +44,7 @@ const start=base.indexOf(marker)+marker.length,end=base.indexOf('\n});await ',st
     assert.equal(await cards.getByRole('button').count(),17);
     for(const brand of ['狼蛛 / AULA','Attack Shark','华硕 / ASUS','Roccat','芝奇 / G.Skill','Etekcity','Mars Gaming','罗技 / Logitech','迈从 / MCHOSE','雷蛇 / Razer','海盗船 / Corsair','赛睿 / SteelSeries','ATK','蜻蜓 / VXE','VGN','HyperX','Pulsar'])assert(await cards.getByText(brand,{exact:true}).isVisible());
     assert(await cards.getByText('Synapse · Naga V2 HyperSpeed · Synapse 4',{exact:true}).isVisible());
-    assert(await cards.getByText('设置、按键、宏预览和源方案保存；未开放设备应用 · 开发中',{exact:true}).isVisible());
+    assert(await cards.getByText('参数、按键与宏播放方式编辑／另存；未开放设备应用 · 开发中',{exact:true}).isVisible());
     assert(await cards.getByText('M HUB · A7 V3 Ultra+',{exact:true}).isVisible());
     assert.equal(await region.getByText('多品牌',{exact:true}).count(),0);
     await page.getByText(/catalog fixture unavailable/).waitFor();

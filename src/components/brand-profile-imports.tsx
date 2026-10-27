@@ -6,7 +6,7 @@ import type {SinoModel} from '@/lib/sino';
 import {Button} from '@/components/ui/button';
 
 const sources = [
-  {id:'sc620',brand:'狼蛛 / AULA',software:'原厂数据库预览',label:'狼蛛 SC620 原厂配置预览',models:'SC620 · 原厂 1.2.2 文件结构',scope:'设置、按键、宏预览和源方案保存；未开放设备应用 · 开发中'},
+  {id:'sc620',brand:'狼蛛 / AULA',software:'原厂数据库预览',label:'狼蛛 SC620 原厂配置预览',models:'SC620 · 原厂 1.2.2 文件结构',scope:'参数、按键与宏播放方式编辑／另存；未开放设备应用 · 开发中'},
   {id:'attackshark',brand:'Attack Shark',software:'Open HUB 配置包',label:'Attack Shark X11 配置导入',models:'X11 · USB / 2.4G',scope:'完整 DPI、八个控制、原生宏、性能及七种灯效；原厂私有文件尚未转换 · 模拟验证'},
   ...legacyModels.map(m=>({id:m.brand,brand:legacyNames[m.brand],software:'读取板载配置',label:legacyNames[m.brand]+' 板载配置导入',models:m.name+' · 有线 USB',scope:'预览 DPI、回报率、可读按键'+(m.lights.length?'和灯效':'')+'；原厂宏保持不变 · 模拟验证'})),
   {id:'hyperx',brand:'HyperX',software:'读取板载配置',label:'HyperX 板载配置导入',models:'Pulsefire Haste / Haste Wireless · HP USB ID',scope:'预览 DPI、回报率和可读按键；原厂宏与灯效无法读回 · 模拟验证'},
