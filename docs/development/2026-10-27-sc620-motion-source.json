@@ -1,0 +1,128 @@
+{
+  "source_program_sha256": "cd947c856d287042bfa75e2617ee0488f9d29c9be532588a6cedfd8e3faf7514",
+  "retained_disassembly_sha256": "d23dcf6f35566d990945fac89482cb06c541be1c845d85643a76c676ca305a54",
+  "method": "pinned retained disassembly; no new download or OEM execution this increment",
+  "reviewed_instructions": {
+    "42a090": {
+      "bytes": "83 fa 08",
+      "instruction": "cmp\tedx, 0x8"
+    },
+    "42a095": {
+      "bytes": "8a 4e 10",
+      "instruction": "mov\tcl, byte ptr [esi + 0x10]"
+    },
+    "42a098": {
+      "bytes": "c6 84 05 2e ef ff ff 46",
+      "instruction": "mov\tbyte ptr [ebp + eax - 0x10d2], 0x46"
+    },
+    "42a0a0": {
+      "bytes": "88 8c 05 2f ef ff ff",
+      "instruction": "mov\tbyte ptr [ebp + eax - 0x10d1], cl"
+    },
+    "42a0ac": {
+      "bytes": "83 fa 09",
+      "instruction": "cmp\tedx, 0x9"
+    },
+    "42a0b1": {
+      "bytes": "8a 4e 10",
+      "instruction": "mov\tcl, byte ptr [esi + 0x10]"
+    },
+    "42a0b4": {
+      "bytes": "c6 84 05 2e ef ff ff 46",
+      "instruction": "mov\tbyte ptr [ebp + eax - 0x10d2], 0x46"
+    },
+    "42a0bc": {
+      "bytes": "88 8c 05 2f ef ff ff",
+      "instruction": "mov\tbyte ptr [ebp + eax - 0x10d1], cl"
+    },
+    "42a0c8": {
+      "bytes": "83 fa 0a",
+      "instruction": "cmp\tedx, 0xa"
+    },
+    "42a0cd": {
+      "bytes": "8a 4e 10",
+      "instruction": "mov\tcl, byte ptr [esi + 0x10]"
+    },
+    "42a0d0": {
+      "bytes": "c6 84 05 2e ef ff ff 46",
+      "instruction": "mov\tbyte ptr [ebp + eax - 0x10d2], 0x46"
+    },
+    "42a0d8": {
+      "bytes": "88 8c 05 2f ef ff ff",
+      "instruction": "mov\tbyte ptr [ebp + eax - 0x10d1], cl"
+    },
+    "42a0e4": {
+      "bytes": "83 fa 0b",
+      "instruction": "cmp\tedx, 0xb"
+    },
+    "42a0e9": {
+      "bytes": "8a 4e 10",
+      "instruction": "mov\tcl, byte ptr [esi + 0x10]"
+    },
+    "42a0ec": {
+      "bytes": "c6 84 05 2e ef ff ff 46",
+      "instruction": "mov\tbyte ptr [ebp + eax - 0x10d2], 0x46"
+    },
+    "42a0f4": {
+      "bytes": "88 8c 05 2f ef ff ff",
+      "instruction": "mov\tbyte ptr [ebp + eax - 0x10d1], cl"
+    },
+    "42a100": {
+      "bytes": "83 fa 0c",
+      "instruction": "cmp\tedx, 0xc"
+    },
+    "42a109": {
+      "bytes": "0f b6 4e 10",
+      "instruction": "movzx\tecx, byte ptr [esi + 0x10]"
+    },
+    "42a10d": {
+      "bytes": "0f b6 56 11",
+      "instruction": "movzx\tedx, byte ptr [esi + 0x11]"
+    },
+    "42a11d": {
+      "bytes": "80 e2 0f",
+      "instruction": "and\tdl, 0xf"
+    },
+    "42a120": {
+      "bytes": "c0 e1 04",
+      "instruction": "shl\tcl, 0x4"
+    },
+    "42a123": {
+      "bytes": "0a d1",
+      "instruction": "or\tdl, cl"
+    },
+    "42a125": {
+      "bytes": "c6 84 05 2e ef ff ff 46",
+      "instruction": "mov\tbyte ptr [ebp + eax - 0x10d2], 0x46"
+    },
+    "42a12d": {
+      "bytes": "f6 85 0c ef ff ff 80",
+      "instruction": "test\tbyte ptr [ebp - 0x10f4], -0x80"
+    },
+    "42a13d": {
+      "bytes": "80 8c 05 2d ef ff ff 40",
+      "instruction": "or\tbyte ptr [ebp + eax - 0x10d3], 0x40"
+    },
+    "42a145": {
+      "bytes": "f6 85 10 ef ff ff 80",
+      "instruction": "test\tbyte ptr [ebp - 0x10f0], -0x80"
+    },
+    "42a152": {
+      "bytes": "80 8c 05 2d ef ff ff 80",
+      "instruction": "or\tbyte ptr [ebp + eax - 0x10d3], -0x80"
+    }
+  },
+  "native_type": 70,
+  "source_types8_to11": "low byte copied to packed payload, no semantic cardinal-direction labels inferred",
+  "source_type12": "low nibble of source low byte shifted4 OR low nibble of next byte; each byte high bit controls0x40/0x80 in delay-high field",
+  "delay_policy": "typed raw16-bit native field remains exact; semantic conversion limits delay to0x3fff to prevent overlap with axis flags",
+  "axis_polarity": "not established for SC620; no W12 polarity reused",
+  "limits": [
+    "byte/word native conversion only",
+    "not measured displacement, axis direction, timing or physical replay",
+    "modifiers unresolved",
+    "no driver/UI/executor or recovery"
+  ],
+  "physical_IO": false,
+  "OS_input": false
+}

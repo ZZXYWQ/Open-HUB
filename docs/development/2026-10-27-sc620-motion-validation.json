@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-27",
+  "scope": "SC620 native raw motion codec and OEM SQL motion conversion, not physical axis control",
+  "new_default_tests": 8,
+  "targeted_sc620_tests": {
+    "passed": 61,
+    "failed": 0,
+    "log": "2026-10-27-sc620-motion-tests.log"
+  },
+  "main_tests": {
+    "passed": 898,
+    "failed": 0,
+    "ignored": 68,
+    "log": "2026-10-27-sc620-motion-all.log"
+  },
+  "native_non_test_build": true,
+  "source_check": {
+    "passed": true,
+    "script": "scripts/check-sc620-motion-source.py",
+    "method": "pinned retained static disassembly, no new original binary-byte comparison claimed"
+  },
+  "coverage": {
+    "native_payloads": 256,
+    "axis_flag_combinations": 4,
+    "raw_delay_samples": 3,
+    "OEM_xy_words": 65536,
+    "source_types": [
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "pipeline_golden_reports": 4,
+    "pipeline": "temporary synthetic SQLite ->production read parser ->OEM event conversion ->native library ->explicit slot mapping ->six-page-protected plan compiler"
+  },
+  "fixture": "src-tauri/tests/fixtures/yjx-sc620/oem-motion-compile.json",
+  "fixture_kind": "independently constructed synthetic rows and complete vectors, not physical captures",
+  "source_database_unchanged_after_read": true,
+  "motion_delay_policy": "0..0x3fff nonoverlapping field subset; not measured duration limit",
+  "new_downloads": false,
+  "OEM_execution": false,
+  "physical_IO": false,
+  "OS_input": false,
+  "new_runtime_dependencies": false,
+  "new_frontend_resources": false,
+  "remaining": [
+    "physical axis polarity, distance, timing and final-event behavior",
+    "modifier conversion",
+    "exact device identity and physical input layout",
+    "executor/recovery and UI"
+  ],
+  "accepted_complete_models": 0,
+  "target_complete_models": 100,
+  "installer": false,
+  "release": false,
+  "installation": false
+}

@@ -1,0 +1,14 @@
+"""SC620 motion facts from pinned retained static disassembly; no execution."""
+import hashlib,re,json,sys
+from pathlib import Path
+blob=Path(sys.argv[1]).read_bytes();sha=hashlib.sha256(blob).hexdigest()
+assert sha=='d23dcf6f35566d990945fac89482cb06c541be1c845d85643a76c676ca305a54'
+lines={}
+for line in blob.decode().splitlines():
+ m=re.match(r'\s*([0-9a-f]+):\s*(.*?)\t(.*)',line)
+ if m:lines[m[1]]={'bytes':m[2].strip(),'instruction':m[3].strip()}
+checks={'42a090':'cmp\tedx, 0x8','42a095':'mov\tcl, byte ptr [esi + 0x10]','42a098':'mov\tbyte ptr [ebp + eax - 0x10d2], 0x46','42a0a0':'mov\tbyte ptr [ebp + eax - 0x10d1], cl','42a0ac':'cmp\tedx, 0x9','42a0b1':'mov\tcl, byte ptr [esi + 0x10]','42a0b4':'mov\tbyte ptr [ebp + eax - 0x10d2], 0x46','42a0bc':'mov\tbyte ptr [ebp + eax - 0x10d1], cl','42a0c8':'cmp\tedx, 0xa','42a0cd':'mov\tcl, byte ptr [esi + 0x10]','42a0d0':'mov\tbyte ptr [ebp + eax - 0x10d2], 0x46','42a0d8':'mov\tbyte ptr [ebp + eax - 0x10d1], cl','42a0e4':'cmp\tedx, 0xb','42a0e9':'mov\tcl, byte ptr [esi + 0x10]','42a0ec':'mov\tbyte ptr [ebp + eax - 0x10d2], 0x46','42a0f4':'mov\tbyte ptr [ebp + eax - 0x10d1], cl','42a100':'cmp\tedx, 0xc','42a109':'movzx\tecx, byte ptr [esi + 0x10]','42a10d':'movzx\tedx, byte ptr [esi + 0x11]','42a11d':'and\tdl, 0xf','42a120':'shl\tcl, 0x4','42a123':'or\tdl, cl','42a125':'mov\tbyte ptr [ebp + eax - 0x10d2], 0x46','42a12d':'test\tbyte ptr [ebp - 0x10f4], -0x80','42a13d':'or\tbyte ptr [ebp + eax - 0x10d3], 0x40','42a145':'test\tbyte ptr [ebp - 0x10f0], -0x80','42a152':'or\tbyte ptr [ebp + eax - 0x10d3], -0x80'}
+for a,op in checks.items():assert lines[a]['instruction']==op,(a,lines.get(a))
+record={'source_program_sha256':'cd947c856d287042bfa75e2617ee0488f9d29c9be532588a6cedfd8e3faf7514','retained_disassembly_sha256':sha,'method':'pinned retained disassembly; no new download or OEM execution this increment','reviewed_instructions':{a:lines[a]for a in checks},'native_type':70,'source_types8_to11':'low byte copied to packed payload, no semantic cardinal-direction labels inferred','source_type12':'low nibble of source low byte shifted4 OR low nibble of next byte; each byte high bit controls0x40/0x80 in delay-high field','delay_policy':'typed raw16-bit native field remains exact; semantic conversion limits delay to0x3fff to prevent overlap with axis flags','axis_polarity':'not established for SC620; no W12 polarity reused','limits':['byte/word native conversion only','not measured displacement, axis direction, timing or physical replay','modifiers unresolved','no driver/UI/executor or recovery'],'physical_IO':False,'OS_input':False}
+Path(sys.argv[2]).write_text(json.dumps(record,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+print('SC620 five motion source types and shared field flag positions verified statically.')

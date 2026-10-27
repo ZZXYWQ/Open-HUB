@@ -14,6 +14,10 @@ pub enum Action {
     MouseDown(u8),
     MouseUp(u8),
     Wheel(i8),
+    /// Exact OEM packed movement payload; axis polarity is not yet measured.
+    Motion {
+        packed: u8,
+    },
 }
 impl Action {
     fn encode(&self) -> Result<[u8; 2]> {
@@ -23,6 +27,7 @@ impl Action {
             Self::MouseDown(bit) if bit.is_power_of_two() && bit <= 16 => [0x43, bit],
             Self::MouseUp(bit) if bit.is_power_of_two() && bit <= 16 => [3, bit],
             Self::Wheel(n) if n == 1 || n == -1 => [0x44, n as u8],
+            Self::Motion { packed } => [0x46, packed],
             _ => return Err(invalid("unverified macro event")),
         })
     }
@@ -33,6 +38,7 @@ impl Action {
             0x43 => Self::MouseDown(value),
             3 => Self::MouseUp(value),
             0x44 => Self::Wheel(value as i8),
+            0x46 => Self::Motion { packed: value },
             _ => return Err(invalid("opaque macro action; original bytes retained")),
         };
         a.encode()?;
@@ -42,7 +48,8 @@ impl Action {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Record {
-    /// Exact little-endian field before action bytes. No unit conversion.
+    /// Exact two-byte field before action bytes; motion shares its high bits
+    /// with axis flags. No unit conversion.
     pub delay_raw: u16,
     pub action: Action,
 }

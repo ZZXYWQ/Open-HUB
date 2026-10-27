@@ -102,12 +102,12 @@ fn slot_limits_empty_library_and_explicit_empty_macro_are_distinct() {
 fn opaque_events_remain_exact_and_are_never_substituted_with_defaults() {
     let mut bytes = vec![0; 64];
     bytes[0] = 64;
-    bytes.extend([0, 0, 0xc6, 0x92]);
+    bytes.extend([0, 0, 0xc7, 0x92]);
     let image = Image::from_bytes(bytes.clone()).unwrap();
     assert!(image.records(0).is_err());
     assert_eq!(image.bytes(), bytes);
     let packets = image.compile_reports();
-    assert_eq!(&packets[1][17..21], &[0, 0, 0xc6, 0x92]);
+    assert_eq!(&packets[1][17..21], &[0, 0, 0xc7, 0x92]);
     assert_eq!(image.bytes(), bytes);
 }
 #[test]

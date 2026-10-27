@@ -1,0 +1,84 @@
+{
+  "kind": "independent static synthetic source rows and complete vectors, not physical motion traces",
+  "events": [
+    {
+      "record_id": 1,
+      "kind": 12,
+      "index": 0,
+      "description": "",
+      "value": 33538,
+      "delay_raw": 0
+    },
+    {
+      "record_id": 2,
+      "kind": 1,
+      "index": 1,
+      "description": "",
+      "value": 258,
+      "delay_raw": 0
+    },
+    {
+      "record_id": 3,
+      "kind": 8,
+      "index": 2,
+      "description": "",
+      "value": 240,
+      "delay_raw": 0
+    },
+    {
+      "record_id": 4,
+      "kind": 1,
+      "index": 3,
+      "description": "",
+      "value": 0,
+      "delay_raw": 0
+    },
+    {
+      "record_id": 5,
+      "kind": 9,
+      "index": 4,
+      "description": "",
+      "value": 15,
+      "delay_raw": 0
+    },
+    {
+      "record_id": 6,
+      "kind": 10,
+      "index": 5,
+      "description": "",
+      "value": 160,
+      "delay_raw": 0
+    },
+    {
+      "record_id": 7,
+      "kind": 11,
+      "index": 6,
+      "description": "",
+      "value": 11,
+      "delay_raw": 0
+    },
+    {
+      "record_id": 8,
+      "kind": 12,
+      "index": 7,
+      "description": "",
+      "value": 1412,
+      "delay_raw": 0
+    },
+    {
+      "record_id": 9,
+      "kind": 1,
+      "index": 8,
+      "description": "",
+      "value": 16383,
+      "delay_raw": 0
+    }
+  ],
+  "image_hex": "40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 81 46 23 0a 00 46 f0 0a 00 46 0f 0a 00 46 a0 0a 00 46 0b ff 7f c6 45",
+  "reports_hex": [
+    "00 55 0d 00 78 38 00 00 00 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+    "00 55 0d 00 b7 20 38 00 00 00 00 00 00 00 00 00 00 02 81 46 23 0a 00 46 f0 0a 00 46 0f 0a 00 46 a0 0a 00 46 0b ff 7f c6 45 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+    "00 55 10 a5 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+    "00 55 09 a5 eb 2c 00 00 02 20 01 00 00 20 01 00 00 20 01 00 00 20 01 00 00 20 01 00 00 70 00 03 00 20 01 00 00 20 01 00 00 20 01 00 00 20 01 00 00 20 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+  ]
+}

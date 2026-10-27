@@ -208,17 +208,8 @@ fn mouse_and_explicit_wheel_events_preserve_button_sides() {
     }
 }
 #[test]
-fn unsupported_modifier_motion_and_unknown_events_never_produce_partial_library() {
-    for (kind, value) in [
-        (2, 0),
-        (2, 0xa2),
-        (3, 0xe2),
-        (4, 3),
-        (5, 32),
-        (8, 1),
-        (12, 0),
-        (99, 5),
-    ] {
+fn unsupported_modifiers_and_unknown_events_never_produce_partial_library() {
+    for (kind, value) in [(2, 0), (2, 0xa2), (3, 0xe2), (4, 3), (5, 32), (99, 5)] {
         let m = source(vec![e(2, 65, 0), e(kind, value, 1)]);
         let original = m.clone();
         assert!(prepare(&[m]).is_err());

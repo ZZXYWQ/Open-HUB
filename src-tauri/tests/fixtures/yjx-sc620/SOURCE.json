@@ -26,7 +26,8 @@
     "oem_key_conversion": "43CD80..43D385,109 statically confirmed nonmodifier output cases; original instruction bytes checked",
     "oem_event_value": "408FA7..408FBE maps SQL columns5/6 to object+10/+14;429DCB delay uses+10",
     "oem_scroll_descriptions": "54BE18 Scroll Up and54BE4C Scroll Down, exact case-sensitive substring overrides in429F07/429FD6/42A023/42A041",
-    "oem_global_macro_delay": "429D7F sets accumulator1 for each macro;429E15 cursor>64 then429E37 ORs into preceding record; global cursor survives macro boundaries"
+    "oem_global_macro_delay": "429D7F sets accumulator1 for each macro;429E15 cursor>64 then429E37 ORs into preceding record; global cursor survives macro boundaries",
+    "oem_motion": "42A090..42A15A: source8..11 payload byte ->46;source12 two nibbles ->packed plus source-high bits ->delay-high40/80;SC620 physical axis polarity not established"
   },
   "hardware_tested": false,
   "golden_kind": "reconstructed static vectors, not measured USB traces",

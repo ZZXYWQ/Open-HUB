@@ -57,23 +57,59 @@ fn key(v: i64) -> Result<u8> {
         _ => return Err(invalid("unverified SC620 OEM key/modifier code")),
     })
 }
-fn event(kind: i64, value: i64, description: &str) -> Result<Action> {
-    Ok(match kind {
-        2 => Action::KeyDown(key(value)?),
-        3 => Action::KeyUp(key(value)?),
-        4 | 5 if description.contains("Scroll Up") => Action::Wheel(1),
-        4 | 5 if description.contains("Scroll Down") => Action::Wheel(-1),
-        4 | 5 if matches!(value, 1 | 2 | 4 | 8 | 16) => {
-            if kind == 4 {
-                Action::MouseDown(value as u8)
-            } else {
-                Action::MouseUp(value as u8)
-            }
+fn event(kind: i64, value: i64, description: &str) -> Result<(Action, u16)> {
+    if (8..=11).contains(&kind) {
+        if !(-128..=255).contains(&value) {
+            return Err(invalid("OEM packed motion byte would truncate"));
         }
-        6 => Action::Wheel(1),
-        7 => Action::Wheel(-1),
-        _ => return Err(invalid("unverified SC620 OEM macro event")),
-    })
+        return Ok((
+            Action::Motion {
+                packed: value as u8,
+            },
+            0,
+        ));
+    }
+    if kind == 12 {
+        if !(-32768..=65535).contains(&value) {
+            return Err(invalid("OEM XY source would truncate"));
+        }
+        let xy = value as u16;
+        let x = xy as u8;
+        let y = (xy >> 8) as u8;
+        let packed = (x << 4) | (y & 15);
+        let flags = if x & 0x80 != 0 { 0x4000 } else { 0 } | if y & 0x80 != 0 { 0x8000 } else { 0 };
+        return Ok((Action::Motion { packed }, flags));
+    }
+    Ok((
+        match kind {
+            2 => Action::KeyDown(key(value)?),
+            3 => Action::KeyUp(key(value)?),
+            4 | 5 if description.contains("Scroll Up") => Action::Wheel(1),
+            4 | 5 if description.contains("Scroll Down") => Action::Wheel(-1),
+            4 | 5 if matches!(value, 1 | 2 | 4 | 8 | 16) => {
+                if kind == 4 {
+                    Action::MouseDown(value as u8)
+                } else {
+                    Action::MouseUp(value as u8)
+                }
+            }
+            6 => Action::Wheel(1),
+            7 => Action::Wheel(-1),
+            _ => return Err(invalid("unverified SC620 OEM macro event")),
+        },
+        0,
+    ))
+}
+fn set_delay(record: &mut Record, delay: u16) -> Result<()> {
+    if matches!(record.action, Action::Motion { .. }) {
+        if delay > 0x3fff {
+            return Err(invalid("motion delay overlaps OEM axis flag bits"));
+        }
+        record.delay_raw |= delay;
+    } else {
+        record.delay_raw = delay;
+    }
+    Ok(())
 }
 pub fn records(m: &Macro) -> Result<Vec<Record>> {
     if m.events.len() > 4096 {
@@ -106,13 +142,13 @@ pub fn records(m: &Macro) -> Result<Vec<Record>> {
                 .ok_or_else(|| invalid("accumulated OEM delay would truncate"))?;
             trailing = true;
         } else {
-            let action = event(e.kind, e.value, &e.description)
+            let (action, flags) = event(e.kind, e.value, &e.description)
                 .map_err(|err| invalid(&format!("macro {} event {}: {err}", m.id, e.index)))?;
             if let Some(last) = records.last_mut() {
-                last.delay_raw = if pending == 0 { 10 } else { pending as u16 };
+                set_delay(last, if pending == 0 { 10 } else { pending as u16 })?;
             }
             records.push(Record {
-                delay_raw: 0,
+                delay_raw: flags,
                 action,
             });
             pending = 0;
@@ -120,7 +156,7 @@ pub fn records(m: &Macro) -> Result<Vec<Record>> {
         }
     }
     if trailing {
-        records.last_mut().unwrap().delay_raw = pending as u16;
+        set_delay(records.last_mut().unwrap(), pending as u16)?;
     }
     Ok(records)
 }
@@ -173,3 +209,7 @@ pub fn prepare(macros: &[Macro]) -> Result<Prepared> {
 #[cfg(test)]
 #[path = "yjx_sc620_oem_compile_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "yjx_sc620_motion_tests.rs"]
+mod motion_tests;
