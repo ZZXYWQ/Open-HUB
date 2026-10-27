@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-27",
+  "scope": "SC620 static packed macro memory codec and report compiler only",
+  "new_default_tests": 9,
+  "main_tests": {
+    "passed": 862,
+    "failed": 0,
+    "ignored": 68,
+    "log": "2026-10-27-sc620-macro-all.log"
+  },
+  "native_non_test_build": true,
+  "fixture": "src-tauri/tests/fixtures/yjx-sc620/macros.json",
+  "fixture_kind": "independently reconstructed static memory and complete output vectors, not measured captures",
+  "source_audit_script": "scripts/check-sc620-macro-source.py",
+  "source_audit": "passed, pinned retained disassembly SHA256 and 22 reviewed instructions",
+  "initial_source_audit_failure": "branch address typo429fc7 corrected to429fcd; instruction assertion caught mismatch before source record generated",
+  "changes": [
+    "64-byte/32-slot packed offsets",
+    "<=0x1080 exact capacity",
+    "nonempty last-event marker and empty-only sentinel",
+    "raw delay fields without unit conversion",
+    "keyboard/mouse/wheel subset",
+    "opaque unknown/motion/modifier records retained",
+    "pure56-byte chunk report compiler, no transport calls"
+  ],
+  "not_done": [
+    "model identity",
+    "physical input layout",
+    "macro binding/play modes",
+    "modifier and original event conversion",
+    "readback/merge/recovery",
+    "UI/driver registration",
+    "physical testing"
+  ],
+  "accepted_complete_models": 0,
+  "target_complete_models": 100,
+  "physical_IO": false,
+  "OS_input": false,
+  "new_dependencies": false,
+  "new_frontend_resources": false,
+  "installer": false,
+  "release": false,
+  "installation": false
+}

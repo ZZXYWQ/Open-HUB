@@ -1,0 +1,102 @@
+{
+  "source": "retained disassembly of official SC620 1.2.2 archive; program not re-executed",
+  "program_sha256": "cd947c856d287042bfa75e2617ee0488f9d29c9be532588a6cedfd8e3faf7514",
+  "disassembly_sha256": "d23dcf6f35566d990945fac89482cb06c541be1c845d85643a76c676ca305a54",
+  "reviewed_instructions": {
+    "429c51": {
+      "bytes": "68 80 10 00 00",
+      "instruction": "push\t0x1080"
+    },
+    "429c7c": {
+      "bytes": "c7 85 10 ef ff ff 40 00 00 00",
+      "instruction": "mov\tdword ptr [ebp - 0x10f0], 0x40"
+    },
+    "429d15": {
+      "bytes": "88 84 7d 2c ef ff ff",
+      "instruction": "mov\tbyte ptr [ebp + 2*edi - 0x10d4], al"
+    },
+    "429d31": {
+      "bytes": "88 84 7d 2d ef ff ff",
+      "instruction": "mov\tbyte ptr [ebp + 2*edi - 0x10d3], al"
+    },
+    "429d77": {
+      "bytes": "0f 8e e2 03 00 00",
+      "instruction": "jle\t0x42a15f <.text+0x2915f>"
+    },
+    "429de1": {
+      "bytes": "8b 85 10 ef ff ff",
+      "instruction": "mov\teax, dword ptr [ebp - 0x10f0]"
+    },
+    "429ded": {
+      "bytes": "8d 8c 05 28 ef ff ff",
+      "instruction": "lea\tecx, [ebp + eax - 0x10d8]"
+    },
+    "429e02": {
+      "bytes": "80 8c 05 2a ef ff ff 80",
+      "instruction": "or\tbyte ptr [ebp + eax - 0x10d6], -0x80"
+    },
+    "429e1c": {
+      "bytes": "ba 0a 00 00 00",
+      "instruction": "mov\tedx, 0xa"
+    },
+    "429e21": {
+      "bytes": "0f 4e ca",
+      "instruction": "cmovle\tecx, edx"
+    },
+    "429e82": {
+      "bytes": "e8 f9 2e 01 00",
+      "instruction": "call\t0x43cd80 <.text+0x3bd80>"
+    },
+    "429f53": {
+      "bytes": "80 8c 05 2e ef ff ff 80",
+      "instruction": "or\tbyte ptr [ebp + eax - 0x10d2], -0x80"
+    },
+    "429f5b": {
+      "bytes": "83 c0 04",
+      "instruction": "add\teax, 0x4"
+    },
+    "429fcd": {
+      "bytes": "e9 eb 01 00 00",
+      "instruction": "jmp\t0x42a1bd <.text+0x291bd>"
+    },
+    "42a173": {
+      "bytes": "c6 84 05 2c ef ff ff 00",
+      "instruction": "mov\tbyte ptr [ebp + eax - 0x10d4], 0x0"
+    },
+    "42a187": {
+      "bytes": "c6 84 0d 2c ef ff ff 00",
+      "instruction": "mov\tbyte ptr [ebp + ecx - 0x10d4], 0x0"
+    },
+    "42a192": {
+      "bytes": "80 8c 05 2e ef ff ff 80",
+      "instruction": "or\tbyte ptr [ebp + eax - 0x10d2], -0x80"
+    },
+    "42a1af": {
+      "bytes": "c6 84 0d 2c ef ff ff 00",
+      "instruction": "mov\tbyte ptr [ebp + ecx - 0x10d4], 0x0"
+    },
+    "42a2ee": {
+      "bytes": "66 c7 45 ad 55 0d",
+      "instruction": "mov\tword ptr [ebp - 0x53], 0xd55"
+    },
+    "42a2f9": {
+      "bytes": "c6 45 b1 38",
+      "instruction": "mov\tbyte ptr [ebp - 0x4f], 0x38"
+    },
+    "42a3fe": {
+      "bytes": "c7 45 ad 55 10 a5 22",
+      "instruction": "mov\tdword ptr [ebp - 0x53], 0x22a51055"
+    },
+    "43d39e": {
+      "bytes": "8d 88 20 ff ff ff",
+      "instruction": "lea\tecx, [eax - 0xe0]"
+    }
+  },
+  "correction": "429d77 reaches sentinel only for empty list; 429fcd jumps over sentinel after nonempty loop. Last action has bit80, including trailing-delay path.",
+  "delay": "writes cursor-4/-3, a field of preceding record; exposed raw, no playback unit or timing equivalence claim",
+  "modifier_gap": "macro calls43cd80, not binding bitmask converter43d390; low type1/41 remains opaque",
+  "compiler_scope": "packed OEM-format image, 32 header entries, <=0x1080 bytes; 56-byte chunks and final marker compiled only",
+  "hardware_tested": false,
+  "automatic_driver_registration": false,
+  "live_writer": false
+}
