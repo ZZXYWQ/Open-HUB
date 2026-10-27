@@ -1,0 +1,137 @@
+{
+  "date": "2026-10-27",
+  "status": "development-only",
+  "accepted_models": 0,
+  "target_models": 100,
+  "new_models_added": 0,
+  "existing_distinct_models_extended": 8,
+  "positive_transports": 9,
+  "negative_ui_transports": 3,
+  "default_native_tests": {
+    "passed": 841,
+    "failed": 0,
+    "ignored": 66,
+    "new_default_tests": 8
+  },
+  "explicit_ui_profile_cross_test": {
+    "passed": 1,
+    "profiles": 9,
+    "software_input": false
+  },
+  "ui": {
+    "native_DTO": true,
+    "mocked_IPC": true,
+    "physical_HID": false,
+    "OS_input": false
+  },
+  "native_non_test_build": "passed",
+  "frontend_build": "passed",
+  "bundle": {
+    "javascript_bytes": 813725,
+    "previous_bytes": 813535,
+    "new_runtime_dependencies": 0
+  },
+  "installer_built": false,
+  "release_published": false,
+  "installed": false,
+  "limits": [
+    "no physical cycle press or persistence test",
+    "active-bank token domain and firmware behavior not physically verified",
+    "GET/SET not atomic",
+    "cross-library macro references unresolved",
+    "requires device disconnect/reconnect after hardware bank change",
+    "complete OEM controls and UI remain incomplete"
+  ],
+  "evidence": [
+    {
+      "path": "src-tauri/src/atk.rs",
+      "bytes": 74527,
+      "sha256": "705a446b3876572bc014bf62868594d25d4f5716cdb38dae3f225adb2a2604da"
+    },
+    {
+      "path": "src-tauri/src/multibrand.rs",
+      "bytes": 120484,
+      "sha256": "bc3f9816d360059c2a99b1b999a0440fe9460e28022e1c14d44984163554f93f"
+    },
+    {
+      "path": "src-tauri/src/compx_profile_cycle_tests.rs",
+      "bytes": 6539,
+      "sha256": "754744112cd4cf438d6a94b1d76bd122cdd31a3095dc216582dfa552a7984a3f"
+    },
+    {
+      "path": "src-tauri/src/compx_profile_cycle_plan_tests.rs",
+      "bytes": 3187,
+      "sha256": "a18b660def676d6bfdfe1c95568471276835c4a22287c262b591b82c35f4d874"
+    },
+    {
+      "path": "src/components/multi-panel.tsx",
+      "bytes": 27570,
+      "sha256": "34891cfa0e0c3d2b5825c6007094e6f371598ae516032fd69e723e173035512c"
+    },
+    {
+      "path": "src/lib/multi.ts",
+      "bytes": 8464,
+      "sha256": "a157a23a31bece32138db4028d3e279bcc29cc937807ba9e0436c35a24a2f04c"
+    },
+    {
+      "path": "scripts/check-compx-profile-cycle-source.cjs",
+      "bytes": 1532,
+      "sha256": "00a2e347d239fa880320b9a6bd9e2540d4bf51b1802cdcf17fc0cd8292ff916c"
+    },
+    {
+      "path": "scripts/test-compx-profile-cycle-ui.cjs",
+      "bytes": 3456,
+      "sha256": "c7aee616346ae7b5074581b56b2f67e7883401d78957bcf432d8b612b1b274ff"
+    },
+    {
+      "path": "docs/development/2026-10-27-compx-profile-cycle-source.json",
+      "bytes": 996,
+      "sha256": "ff40e0eb3e3461d2139962eca9a2f4da62978b49953c542eb43cb21625d4471a"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-profile-cycle-focused.log",
+      "bytes": 8073,
+      "sha256": "38d434630be0ad1d2ea3c46476caeb7b255b2f84b0b3f2fa63d4d6094a75573f"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-profile-cycle-all.log",
+      "bytes": 105664,
+      "sha256": "fa6d730d01c3eb4be961b7b6b7de8a1b9d96e54957e89256b7233a8a4eee4332"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-profile-cycle-cross.log",
+      "bytes": 7024,
+      "sha256": "9500a357191690305338899caa77a6b026711908d1dcc264f0ea9d972967030e"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-profile-cycle-native-build.log",
+      "bytes": 6794,
+      "sha256": "ed62426d06d5720bb3953fc35f5d227498abfc72a4837b18f21cc2608575b4a2"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-profile-cycle-frontend-final.log",
+      "bytes": 1211,
+      "sha256": "5fb67937c119aa5962edcc65cdbc932c3b537d4d6a896a65bdc7dd9bd1cc2fe9"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-profile-cycle-ui.log",
+      "bytes": 83,
+      "sha256": "2b5a69af5d951f688fe396cd554539bfe194baa2a40cd4b595ccd83afe45e62c"
+    },
+    {
+      "path": "../outputs/100-model-development/compx-profile-cycle-native-views.json",
+      "bytes": 42029,
+      "sha256": "b802c091866a283b7271ee16aa1d69d5ca442a1d5bfa8855f5827a85b3e62312"
+    },
+    {
+      "path": "../outputs/100-model-development/compx-profile-cycle-ui/profiles.json",
+      "bytes": 26941,
+      "sha256": "5704f15867002d3f28f2ac5dbc280bcc1985856e70f95f7a9d4b5598ff307f84"
+    },
+    {
+      "path": "../outputs/100-model-development/compx-profile-cycle-ui/report.json",
+      "bytes": 1075,
+      "sha256": "e996d1a6b5a76a7b1952ea78111c21e713cdd399c173f23f63910bf4ccfbbd0f"
+    }
+  ]
+}

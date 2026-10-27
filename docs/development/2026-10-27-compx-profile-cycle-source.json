@@ -1,0 +1,40 @@
+{
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "source_sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "source_bytes": 5755795,
+  "analysis": "static text only; no OEM code execution or redistribution",
+  "offset_units": "UTF-16 code units",
+  "offsets": {
+    "class": 2043239,
+    "constructor": 2049235,
+    "cycle": 4203112,
+    "current_command": 2037574,
+    "current_field": 2053653,
+    "checksum": 2045575
+  },
+  "cycle_record": [
+    9,
+    255,
+    0,
+    77
+  ],
+  "current_bank": {
+    "command": 14,
+    "token_offset": 0,
+    "display_numbering": null
+  },
+  "not_enabled": {
+    "direct_bank_values": [
+      161,
+      162,
+      163,
+      164
+    ],
+    "dpi_lock": "enumeration exists, insufficient implementation evidence"
+  },
+  "limits": [
+    "no physical cycle press or bank persistence proof",
+    "GET/SET not atomic",
+    "shared macro references across banks remain unverified"
+  ]
+}

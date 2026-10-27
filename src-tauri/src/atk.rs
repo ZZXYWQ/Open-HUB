@@ -42,6 +42,7 @@ pub fn validate_key(usage: u8, mods: gearwise_core::model::Modifiers) -> Result<
     native_macro::encode(&native_macro::keyboard(usage, mods)).map(|_| ())
 }
 pub fn horizontal_scroll_supported(v:u16,p:u16)->bool{model(v,p).is_some_and(|m|m.native_macros&&m.native_buttons&&matches!(m.brand.as_str(),"atk"|"vxe"|"vgn"))}
+pub fn profile_cycle_supported(v:u16,p:u16)->bool{horizontal_scroll_supported(v,p)}
 pub fn battery_supported(v:u16,p:u16)->bool{horizontal_scroll_supported(v,p)}
 pub fn vertical_scroll_supported(v:u16,p:u16)->bool{horizontal_scroll_supported(v,p)}
 pub fn is_pulsar(v:u16,p:u16)->bool{v==0x3554&&matches!(p,0xf507|0xf508)}
@@ -175,6 +176,7 @@ fn button_bytes(action: &ButtonAction, id: u16) -> Result<[u8; 4]> {
     };
     let (c, v) = match action {
         ButtonAction::Disabled => (0, 0),
+        ButtonAction::ProfileCycle => (9,255),
         ButtonAction::Scroll(gearwise_core::model::ScrollDirection::Up) => (11,1),
         ButtonAction::Scroll(gearwise_core::model::ScrollDirection::Down) => (11,2),
         ButtonAction::Mouse(MouseButton::WheelLeft) => (3,1),
@@ -313,11 +315,19 @@ impl Atk {
                 "ATK model/sensor identity changed or unknown; no settings written",
             ));
         }
+        // EEPROM rows are scoped to the currently selected firmware bank.
+        // Pin its raw token; do not infer its display numbering or switch banks.
+        let selected=self.exchange(0x0e,0,0)?;
+        if selected.len()!=1{return Err(Error::invalid("COMPX current board reply length"));}
+        let current=selected[0];
+        if self.profile.is_some_and(|p|p!=current){return Err(Error::invalid("COMPX 板载配置已改变；请断开并重新连接鼠标，再读取当前组。未继续写入"));}
+        self.profile=Some(current);
         Ok(())
     }
     fn write_verified(&mut self, address: u16, next: &[u8]) -> Result<()> {
         self.identify()?;
         let before = self.read(address, next.len())?;
+        self.identify()?;
         if before == next {
             return Ok(());
         }
@@ -447,6 +457,7 @@ impl Atk {
         native_macro::decode(slot, play, &raw)
     }
     fn read_action(&mut self, raw: &[u8]) -> Option<(ButtonAction, Option<Macro>)> {
+        if profile_cycle_supported(self.model.vendor,self.model.product)&&raw==[9,255,0,77]{return Some((ButtonAction::ProfileCycle,None));}
         if horizontal_scroll_supported(self.model.vendor,self.model.product)&&raw.len()==4&&sum(raw)==0x55&&matches!(raw[0],3|11)&&raw[2]==0{
             use gearwise_core::model::ScrollDirection;
             let action=match (raw[0],raw[1]){(3,1)=>ButtonAction::Mouse(MouseButton::WheelLeft),(3,2)=>ButtonAction::Mouse(MouseButton::WheelRight),(11,1)=>ButtonAction::Scroll(ScrollDirection::Up),(11,2)=>ButtonAction::Scroll(ScrollDirection::Down),_=>return None};
@@ -691,6 +702,9 @@ impl Device for Atk {
                     ));
                 }
                 match action {
+                    ButtonAction::ProfileCycle => {
+                        if !profile_cycle_supported(self.model.vendor,self.model.product){return Err(Error::Unsupported("Exact COMPX profile cycle binding"));}
+                    }
                     ButtonAction::Scroll(_) => {
                         if !vertical_scroll_supported(self.model.vendor,self.model.product){return Err(Error::Unsupported("Exact COMPX vertical scroll binding"));}
                     }
@@ -1448,3 +1462,7 @@ mod compx_indicator_tests;
 #[cfg(test)]
 #[path="compx_horizontal_tests.rs"]
 mod horizontal_tests;
+
+#[cfg(test)]
+#[path="compx_profile_cycle_tests.rs"]
+mod profile_cycle_tests;
