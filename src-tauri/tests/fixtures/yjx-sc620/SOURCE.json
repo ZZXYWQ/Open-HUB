@@ -22,7 +22,11 @@
     "macro_modifiers_unresolved": "429E82 calls43CD80 VK conversion, not the43D390 binding modifier-bitmask converter; do not reuse the binding bitmask encoding",
     "macro_binding": "4112B8..4112EF:70,zero-based library index,repeat code,mode0/2/3;SC620 UI meanings unresolved",
     "macro_playback_semantics": "1033/2052.lan365/366/367->controls518/51C/520;41F903/41F915/41F968 writesplay_type1/2/0;4112CC/D7/E6 mapsnative2/3/0;program bytes independently rechecked",
-    "oem_macro_database": "fileoffset1484D0/1485D8 schemas;40891D..40894E extractsplay_type/play_times/delay_type/delay_time columns2/3/4/5"
+    "oem_macro_database": "fileoffset1484D0/1485D8 schemas;40891D..40894E extractsplay_type/play_times/delay_type/delay_time columns2/3/4/5",
+    "oem_key_conversion": "43CD80..43D385,109 statically confirmed nonmodifier output cases; original instruction bytes checked",
+    "oem_event_value": "408FA7..408FBE maps SQL columns5/6 to object+10/+14;429DCB delay uses+10",
+    "oem_scroll_descriptions": "54BE18 Scroll Up and54BE4C Scroll Down, exact case-sensitive substring overrides in429F07/429FD6/42A023/42A041",
+    "oem_global_macro_delay": "429D7F sets accumulator1 for each macro;429E15 cursor>64 then429E37 ORs into preceding record; global cursor survives macro boundaries"
   },
   "hardware_tested": false,
   "golden_kind": "reconstructed static vectors, not measured USB traces",

@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-27",
+  "scope": "SC620 OEM event subset ->static native macro image, explicit slot mapping and full plan reports",
+  "new_default_tests": 10,
+  "main_tests": {
+    "passed": 890,
+    "failed": 0,
+    "ignored": 68,
+    "log": "2026-10-27-sc620-event-all.log"
+  },
+  "targeted_tests": {
+    "passed": 10,
+    "failed": 0,
+    "log": "2026-10-27-sc620-event-tests-final.log"
+  },
+  "native_non_test_build": true,
+  "source_audit": {
+    "passed": true,
+    "script": "scripts/check-sc620-event-source.py",
+    "original_program_bytes_checked": true,
+    "OEM_execution": false
+  },
+  "supported_source_key_codes": 109,
+  "key_press_release_cases": 218,
+  "independent_fixtures": [
+    "src-tauri/tests/fixtures/yjx-sc620/oem-event-keys.json",
+    "src-tauri/tests/fixtures/yjx-sc620/oem-event-compile.json"
+  ],
+  "pipeline": "synthetic Python SQLite ->production read parser ->known explicit subset ->OEM event compiler ->macro image and ID/slot mapping ->production six-page library plan compiler ->five independent complete report vectors",
+  "unknown_event_behavior": "whole prepare rejected; original source remains intact, no implicit subset selection",
+  "global_boundary_correction": "static review found accumulator1 plus global cursor ORs prior macro terminal delay; added explicit test and corrected whole-library golden output before commit",
+  "physical_IO": false,
+  "OS_input": false,
+  "UI": false,
+  "new_dependencies": false,
+  "new_frontend_resources": false,
+  "cleanup": {
+    "OEM_execution": false,
+    "removed_files": 2,
+    "preserved": "static extracted facts and extraction log only",
+    "remaining_oem_payload_files": 0
+  },
+  "limits": [
+    "static OEM output matching, not measured timing or firmware playback",
+    "modifier and motion conversion incomplete",
+    "leading delay and16-bit truncation refused explicitly",
+    "device identity, physical control map, executor/recovery and UI incomplete"
+  ],
+  "accepted_complete_models": 0,
+  "target_complete_models": 100,
+  "installer": false,
+  "release": false,
+  "installation": false
+}

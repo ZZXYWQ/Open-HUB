@@ -231,6 +231,8 @@ fn validate_dpi(dpi: &[u16; 6]) -> Result<()> {
 }
 #[path = "yjx_sc620_macros.rs"]
 pub mod macros;
+#[path = "yjx_sc620_oem_compile.rs"]
+pub mod oem_compile;
 #[path = "yjx_sc620_oem_library.rs"]
 pub mod oem_library;
 #[path = "yjx_sc620_library_plan.rs"]

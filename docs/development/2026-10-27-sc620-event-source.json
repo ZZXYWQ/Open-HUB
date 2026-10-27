@@ -1,0 +1,1007 @@
+{
+  "program_sha256": "cd947c856d287042bfa75e2617ee0488f9d29c9be532588a6cedfd8e3faf7514",
+  "disassembly_sha256": "d23dcf6f35566d990945fac89482cb06c541be1c845d85643a76c676ca305a54",
+  "method": "static source and original instruction/data bytes, no OEM execution",
+  "supported_key_cases": 109,
+  "key_fixture": "src-tauri/tests/fixtures/yjx-sc620/oem-event-keys.json",
+  "reviewed_instructions": {
+    "43cdb0": {
+      "bytes": "83 f8 30",
+      "instruction": "cmp\teax, 0x30"
+    },
+    "43cdb3": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cdc0 <.text+0x3bdc0>"
+    },
+    "43cdb5": {
+      "bytes": "b9 27 00 00 00",
+      "instruction": "mov\tecx, 0x27"
+    },
+    "43cdc0": {
+      "bytes": "83 f8 0d",
+      "instruction": "cmp\teax, 0xd"
+    },
+    "43cdc3": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cdd0 <.text+0x3bdd0>"
+    },
+    "43cdc5": {
+      "bytes": "b9 28 00 00 00",
+      "instruction": "mov\tecx, 0x28"
+    },
+    "43cdd0": {
+      "bytes": "83 f8 1b",
+      "instruction": "cmp\teax, 0x1b"
+    },
+    "43cdd3": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cde0 <.text+0x3bde0>"
+    },
+    "43cdd5": {
+      "bytes": "b9 29 00 00 00",
+      "instruction": "mov\tecx, 0x29"
+    },
+    "43cde0": {
+      "bytes": "83 f8 08",
+      "instruction": "cmp\teax, 0x8"
+    },
+    "43cde3": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cdf0 <.text+0x3bdf0>"
+    },
+    "43cde5": {
+      "bytes": "b9 2a 00 00 00",
+      "instruction": "mov\tecx, 0x2a"
+    },
+    "43cdf0": {
+      "bytes": "83 f8 09",
+      "instruction": "cmp\teax, 0x9"
+    },
+    "43cdf3": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43ce00 <.text+0x3be00>"
+    },
+    "43cdf5": {
+      "bytes": "b9 2b 00 00 00",
+      "instruction": "mov\tecx, 0x2b"
+    },
+    "43ce00": {
+      "bytes": "83 f8 20",
+      "instruction": "cmp\teax, 0x20"
+    },
+    "43ce03": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43ce10 <.text+0x3be10>"
+    },
+    "43ce05": {
+      "bytes": "b9 2c 00 00 00",
+      "instruction": "mov\tecx, 0x2c"
+    },
+    "43ce10": {
+      "bytes": "3d bd 00 00 00",
+      "instruction": "cmp\teax, 0xbd"
+    },
+    "43ce15": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43ce22 <.text+0x3be22>"
+    },
+    "43ce17": {
+      "bytes": "b9 2d 00 00 00",
+      "instruction": "mov\tecx, 0x2d"
+    },
+    "43ce22": {
+      "bytes": "3d bb 00 00 00",
+      "instruction": "cmp\teax, 0xbb"
+    },
+    "43ce27": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43ce34 <.text+0x3be34>"
+    },
+    "43ce29": {
+      "bytes": "b9 2e 00 00 00",
+      "instruction": "mov\tecx, 0x2e"
+    },
+    "43ce34": {
+      "bytes": "3d db 00 00 00",
+      "instruction": "cmp\teax, 0xdb"
+    },
+    "43ce39": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43ce46 <.text+0x3be46>"
+    },
+    "43ce3b": {
+      "bytes": "b9 2f 00 00 00",
+      "instruction": "mov\tecx, 0x2f"
+    },
+    "43ce46": {
+      "bytes": "3d dd 00 00 00",
+      "instruction": "cmp\teax, 0xdd"
+    },
+    "43ce4b": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43ce58 <.text+0x3be58>"
+    },
+    "43ce4d": {
+      "bytes": "b9 30 00 00 00",
+      "instruction": "mov\tecx, 0x30"
+    },
+    "43ce58": {
+      "bytes": "3d dc 00 00 00",
+      "instruction": "cmp\teax, 0xdc"
+    },
+    "43ce5d": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43ce6a <.text+0x3be6a>"
+    },
+    "43ce5f": {
+      "bytes": "b9 31 00 00 00",
+      "instruction": "mov\tecx, 0x31"
+    },
+    "43ce6a": {
+      "bytes": "3d 9a 02 00 00",
+      "instruction": "cmp\teax, 0x29a"
+    },
+    "43ce6f": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43ce7c <.text+0x3be7c>"
+    },
+    "43ce71": {
+      "bytes": "b9 32 00 00 00",
+      "instruction": "mov\tecx, 0x32"
+    },
+    "43ce7c": {
+      "bytes": "3d ba 00 00 00",
+      "instruction": "cmp\teax, 0xba"
+    },
+    "43ce81": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43ce8e <.text+0x3be8e>"
+    },
+    "43ce83": {
+      "bytes": "b9 33 00 00 00",
+      "instruction": "mov\tecx, 0x33"
+    },
+    "43ce8e": {
+      "bytes": "3d de 00 00 00",
+      "instruction": "cmp\teax, 0xde"
+    },
+    "43ce93": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cea0 <.text+0x3bea0>"
+    },
+    "43ce95": {
+      "bytes": "b9 34 00 00 00",
+      "instruction": "mov\tecx, 0x34"
+    },
+    "43cea0": {
+      "bytes": "3d c0 00 00 00",
+      "instruction": "cmp\teax, 0xc0"
+    },
+    "43cea5": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43ceb2 <.text+0x3beb2>"
+    },
+    "43cea7": {
+      "bytes": "b9 35 00 00 00",
+      "instruction": "mov\tecx, 0x35"
+    },
+    "43ceb2": {
+      "bytes": "3d bc 00 00 00",
+      "instruction": "cmp\teax, 0xbc"
+    },
+    "43ceb7": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cec4 <.text+0x3bec4>"
+    },
+    "43ceb9": {
+      "bytes": "b9 36 00 00 00",
+      "instruction": "mov\tecx, 0x36"
+    },
+    "43cec4": {
+      "bytes": "3d be 00 00 00",
+      "instruction": "cmp\teax, 0xbe"
+    },
+    "43cec9": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43ced6 <.text+0x3bed6>"
+    },
+    "43cecb": {
+      "bytes": "b9 37 00 00 00",
+      "instruction": "mov\tecx, 0x37"
+    },
+    "43ced6": {
+      "bytes": "3d bf 00 00 00",
+      "instruction": "cmp\teax, 0xbf"
+    },
+    "43cedb": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cee8 <.text+0x3bee8>"
+    },
+    "43cedd": {
+      "bytes": "b9 38 00 00 00",
+      "instruction": "mov\tecx, 0x38"
+    },
+    "43cee8": {
+      "bytes": "83 f8 14",
+      "instruction": "cmp\teax, 0x14"
+    },
+    "43ceeb": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cef8 <.text+0x3bef8>"
+    },
+    "43ceed": {
+      "bytes": "b9 39 00 00 00",
+      "instruction": "mov\tecx, 0x39"
+    },
+    "43cef8": {
+      "bytes": "83 f8 70",
+      "instruction": "cmp\teax, 0x70"
+    },
+    "43cefb": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cf08 <.text+0x3bf08>"
+    },
+    "43cefd": {
+      "bytes": "b9 3a 00 00 00",
+      "instruction": "mov\tecx, 0x3a"
+    },
+    "43cf08": {
+      "bytes": "83 f8 71",
+      "instruction": "cmp\teax, 0x71"
+    },
+    "43cf0b": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cf18 <.text+0x3bf18>"
+    },
+    "43cf0d": {
+      "bytes": "b9 3b 00 00 00",
+      "instruction": "mov\tecx, 0x3b"
+    },
+    "43cf18": {
+      "bytes": "83 f8 72",
+      "instruction": "cmp\teax, 0x72"
+    },
+    "43cf1b": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cf28 <.text+0x3bf28>"
+    },
+    "43cf1d": {
+      "bytes": "b9 3c 00 00 00",
+      "instruction": "mov\tecx, 0x3c"
+    },
+    "43cf28": {
+      "bytes": "83 f8 73",
+      "instruction": "cmp\teax, 0x73"
+    },
+    "43cf2b": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cf38 <.text+0x3bf38>"
+    },
+    "43cf2d": {
+      "bytes": "b9 3d 00 00 00",
+      "instruction": "mov\tecx, 0x3d"
+    },
+    "43cf38": {
+      "bytes": "83 f8 74",
+      "instruction": "cmp\teax, 0x74"
+    },
+    "43cf3b": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cf48 <.text+0x3bf48>"
+    },
+    "43cf3d": {
+      "bytes": "b9 3e 00 00 00",
+      "instruction": "mov\tecx, 0x3e"
+    },
+    "43cf48": {
+      "bytes": "83 f8 75",
+      "instruction": "cmp\teax, 0x75"
+    },
+    "43cf4b": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cf58 <.text+0x3bf58>"
+    },
+    "43cf4d": {
+      "bytes": "b9 3f 00 00 00",
+      "instruction": "mov\tecx, 0x3f"
+    },
+    "43cf58": {
+      "bytes": "83 f8 76",
+      "instruction": "cmp\teax, 0x76"
+    },
+    "43cf5b": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cf68 <.text+0x3bf68>"
+    },
+    "43cf5d": {
+      "bytes": "b9 40 00 00 00",
+      "instruction": "mov\tecx, 0x40"
+    },
+    "43cf68": {
+      "bytes": "83 f8 77",
+      "instruction": "cmp\teax, 0x77"
+    },
+    "43cf6b": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cf78 <.text+0x3bf78>"
+    },
+    "43cf6d": {
+      "bytes": "b9 41 00 00 00",
+      "instruction": "mov\tecx, 0x41"
+    },
+    "43cf78": {
+      "bytes": "83 f8 78",
+      "instruction": "cmp\teax, 0x78"
+    },
+    "43cf7b": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cf88 <.text+0x3bf88>"
+    },
+    "43cf7d": {
+      "bytes": "b9 42 00 00 00",
+      "instruction": "mov\tecx, 0x42"
+    },
+    "43cf88": {
+      "bytes": "83 f8 79",
+      "instruction": "cmp\teax, 0x79"
+    },
+    "43cf8b": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cf98 <.text+0x3bf98>"
+    },
+    "43cf8d": {
+      "bytes": "b9 43 00 00 00",
+      "instruction": "mov\tecx, 0x43"
+    },
+    "43cf98": {
+      "bytes": "83 f8 7a",
+      "instruction": "cmp\teax, 0x7a"
+    },
+    "43cf9b": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cfa8 <.text+0x3bfa8>"
+    },
+    "43cf9d": {
+      "bytes": "b9 44 00 00 00",
+      "instruction": "mov\tecx, 0x44"
+    },
+    "43cfa8": {
+      "bytes": "83 f8 7b",
+      "instruction": "cmp\teax, 0x7b"
+    },
+    "43cfab": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cfb8 <.text+0x3bfb8>"
+    },
+    "43cfad": {
+      "bytes": "b9 45 00 00 00",
+      "instruction": "mov\tecx, 0x45"
+    },
+    "43cfb8": {
+      "bytes": "83 f8 7c",
+      "instruction": "cmp\teax, 0x7c"
+    },
+    "43cfbb": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cfc8 <.text+0x3bfc8>"
+    },
+    "43cfbd": {
+      "bytes": "b9 68 00 00 00",
+      "instruction": "mov\tecx, 0x68"
+    },
+    "43cfc8": {
+      "bytes": "83 f8 7d",
+      "instruction": "cmp\teax, 0x7d"
+    },
+    "43cfcb": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cfd8 <.text+0x3bfd8>"
+    },
+    "43cfcd": {
+      "bytes": "b9 69 00 00 00",
+      "instruction": "mov\tecx, 0x69"
+    },
+    "43cfd8": {
+      "bytes": "83 f8 7e",
+      "instruction": "cmp\teax, 0x7e"
+    },
+    "43cfdb": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cfe8 <.text+0x3bfe8>"
+    },
+    "43cfdd": {
+      "bytes": "b9 6a 00 00 00",
+      "instruction": "mov\tecx, 0x6a"
+    },
+    "43cfe8": {
+      "bytes": "83 f8 7f",
+      "instruction": "cmp\teax, 0x7f"
+    },
+    "43cfeb": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43cff8 <.text+0x3bff8>"
+    },
+    "43cfed": {
+      "bytes": "b9 6b 00 00 00",
+      "instruction": "mov\tecx, 0x6b"
+    },
+    "43cff8": {
+      "bytes": "3d 80 00 00 00",
+      "instruction": "cmp\teax, 0x80"
+    },
+    "43cffd": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d00a <.text+0x3c00a>"
+    },
+    "43cfff": {
+      "bytes": "b9 6c 00 00 00",
+      "instruction": "mov\tecx, 0x6c"
+    },
+    "43d00a": {
+      "bytes": "3d 81 00 00 00",
+      "instruction": "cmp\teax, 0x81"
+    },
+    "43d00f": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d01c <.text+0x3c01c>"
+    },
+    "43d011": {
+      "bytes": "b9 6d 00 00 00",
+      "instruction": "mov\tecx, 0x6d"
+    },
+    "43d01c": {
+      "bytes": "3d 82 00 00 00",
+      "instruction": "cmp\teax, 0x82"
+    },
+    "43d021": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d02e <.text+0x3c02e>"
+    },
+    "43d023": {
+      "bytes": "b9 6e 00 00 00",
+      "instruction": "mov\tecx, 0x6e"
+    },
+    "43d02e": {
+      "bytes": "3d 83 00 00 00",
+      "instruction": "cmp\teax, 0x83"
+    },
+    "43d033": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d040 <.text+0x3c040>"
+    },
+    "43d035": {
+      "bytes": "b9 6f 00 00 00",
+      "instruction": "mov\tecx, 0x6f"
+    },
+    "43d040": {
+      "bytes": "3d 84 00 00 00",
+      "instruction": "cmp\teax, 0x84"
+    },
+    "43d045": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d052 <.text+0x3c052>"
+    },
+    "43d047": {
+      "bytes": "b9 70 00 00 00",
+      "instruction": "mov\tecx, 0x70"
+    },
+    "43d052": {
+      "bytes": "3d 85 00 00 00",
+      "instruction": "cmp\teax, 0x85"
+    },
+    "43d057": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d064 <.text+0x3c064>"
+    },
+    "43d059": {
+      "bytes": "b9 71 00 00 00",
+      "instruction": "mov\tecx, 0x71"
+    },
+    "43d064": {
+      "bytes": "3d 86 00 00 00",
+      "instruction": "cmp\teax, 0x86"
+    },
+    "43d069": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d076 <.text+0x3c076>"
+    },
+    "43d06b": {
+      "bytes": "b9 72 00 00 00",
+      "instruction": "mov\tecx, 0x72"
+    },
+    "43d076": {
+      "bytes": "3d 87 00 00 00",
+      "instruction": "cmp\teax, 0x87"
+    },
+    "43d07b": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d088 <.text+0x3c088>"
+    },
+    "43d07d": {
+      "bytes": "b9 73 00 00 00",
+      "instruction": "mov\tecx, 0x73"
+    },
+    "43d088": {
+      "bytes": "83 f8 2c",
+      "instruction": "cmp\teax, 0x2c"
+    },
+    "43d08b": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d098 <.text+0x3c098>"
+    },
+    "43d08d": {
+      "bytes": "b9 46 00 00 00",
+      "instruction": "mov\tecx, 0x46"
+    },
+    "43d098": {
+      "bytes": "3d 91 00 00 00",
+      "instruction": "cmp\teax, 0x91"
+    },
+    "43d09d": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d0aa <.text+0x3c0aa>"
+    },
+    "43d09f": {
+      "bytes": "b9 47 00 00 00",
+      "instruction": "mov\tecx, 0x47"
+    },
+    "43d0aa": {
+      "bytes": "83 f8 13",
+      "instruction": "cmp\teax, 0x13"
+    },
+    "43d0ad": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d0ba <.text+0x3c0ba>"
+    },
+    "43d0af": {
+      "bytes": "b9 48 00 00 00",
+      "instruction": "mov\tecx, 0x48"
+    },
+    "43d0ba": {
+      "bytes": "83 f8 2d",
+      "instruction": "cmp\teax, 0x2d"
+    },
+    "43d0bd": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d0ca <.text+0x3c0ca>"
+    },
+    "43d0bf": {
+      "bytes": "b9 49 00 00 00",
+      "instruction": "mov\tecx, 0x49"
+    },
+    "43d0ca": {
+      "bytes": "83 f8 24",
+      "instruction": "cmp\teax, 0x24"
+    },
+    "43d0cd": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d0da <.text+0x3c0da>"
+    },
+    "43d0cf": {
+      "bytes": "b9 4a 00 00 00",
+      "instruction": "mov\tecx, 0x4a"
+    },
+    "43d0da": {
+      "bytes": "83 f8 21",
+      "instruction": "cmp\teax, 0x21"
+    },
+    "43d0dd": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d0ea <.text+0x3c0ea>"
+    },
+    "43d0df": {
+      "bytes": "b9 4b 00 00 00",
+      "instruction": "mov\tecx, 0x4b"
+    },
+    "43d0ea": {
+      "bytes": "83 f8 2e",
+      "instruction": "cmp\teax, 0x2e"
+    },
+    "43d0ed": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d0fa <.text+0x3c0fa>"
+    },
+    "43d0ef": {
+      "bytes": "b9 4c 00 00 00",
+      "instruction": "mov\tecx, 0x4c"
+    },
+    "43d0fa": {
+      "bytes": "83 f8 23",
+      "instruction": "cmp\teax, 0x23"
+    },
+    "43d0fd": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d10a <.text+0x3c10a>"
+    },
+    "43d0ff": {
+      "bytes": "b9 4d 00 00 00",
+      "instruction": "mov\tecx, 0x4d"
+    },
+    "43d10a": {
+      "bytes": "83 f8 22",
+      "instruction": "cmp\teax, 0x22"
+    },
+    "43d10d": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d11a <.text+0x3c11a>"
+    },
+    "43d10f": {
+      "bytes": "b9 4e 00 00 00",
+      "instruction": "mov\tecx, 0x4e"
+    },
+    "43d11a": {
+      "bytes": "83 f8 27",
+      "instruction": "cmp\teax, 0x27"
+    },
+    "43d11d": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d12a <.text+0x3c12a>"
+    },
+    "43d11f": {
+      "bytes": "b9 4f 00 00 00",
+      "instruction": "mov\tecx, 0x4f"
+    },
+    "43d12a": {
+      "bytes": "83 f8 25",
+      "instruction": "cmp\teax, 0x25"
+    },
+    "43d12d": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d13a <.text+0x3c13a>"
+    },
+    "43d12f": {
+      "bytes": "b9 50 00 00 00",
+      "instruction": "mov\tecx, 0x50"
+    },
+    "43d13a": {
+      "bytes": "83 f8 28",
+      "instruction": "cmp\teax, 0x28"
+    },
+    "43d13d": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d14a <.text+0x3c14a>"
+    },
+    "43d13f": {
+      "bytes": "b9 51 00 00 00",
+      "instruction": "mov\tecx, 0x51"
+    },
+    "43d14a": {
+      "bytes": "83 f8 26",
+      "instruction": "cmp\teax, 0x26"
+    },
+    "43d14d": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d15a <.text+0x3c15a>"
+    },
+    "43d14f": {
+      "bytes": "b9 52 00 00 00",
+      "instruction": "mov\tecx, 0x52"
+    },
+    "43d15a": {
+      "bytes": "3d 90 00 00 00",
+      "instruction": "cmp\teax, 0x90"
+    },
+    "43d15f": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d16c <.text+0x3c16c>"
+    },
+    "43d161": {
+      "bytes": "b9 53 00 00 00",
+      "instruction": "mov\tecx, 0x53"
+    },
+    "43d16c": {
+      "bytes": "83 f8 6f",
+      "instruction": "cmp\teax, 0x6f"
+    },
+    "43d16f": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d17c <.text+0x3c17c>"
+    },
+    "43d171": {
+      "bytes": "b9 54 00 00 00",
+      "instruction": "mov\tecx, 0x54"
+    },
+    "43d17c": {
+      "bytes": "83 f8 6a",
+      "instruction": "cmp\teax, 0x6a"
+    },
+    "43d17f": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d18c <.text+0x3c18c>"
+    },
+    "43d181": {
+      "bytes": "b9 55 00 00 00",
+      "instruction": "mov\tecx, 0x55"
+    },
+    "43d18c": {
+      "bytes": "83 f8 6d",
+      "instruction": "cmp\teax, 0x6d"
+    },
+    "43d18f": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d19c <.text+0x3c19c>"
+    },
+    "43d191": {
+      "bytes": "b9 56 00 00 00",
+      "instruction": "mov\tecx, 0x56"
+    },
+    "43d19c": {
+      "bytes": "83 f8 6b",
+      "instruction": "cmp\teax, 0x6b"
+    },
+    "43d19f": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d1ac <.text+0x3c1ac>"
+    },
+    "43d1a1": {
+      "bytes": "b9 57 00 00 00",
+      "instruction": "mov\tecx, 0x57"
+    },
+    "43d1ac": {
+      "bytes": "83 f8 6c",
+      "instruction": "cmp\teax, 0x6c"
+    },
+    "43d1af": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d1bc <.text+0x3c1bc>"
+    },
+    "43d1b1": {
+      "bytes": "b9 58 00 00 00",
+      "instruction": "mov\tecx, 0x58"
+    },
+    "43d1bc": {
+      "bytes": "83 f8 61",
+      "instruction": "cmp\teax, 0x61"
+    },
+    "43d1bf": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d1cc <.text+0x3c1cc>"
+    },
+    "43d1c1": {
+      "bytes": "b9 59 00 00 00",
+      "instruction": "mov\tecx, 0x59"
+    },
+    "43d1cc": {
+      "bytes": "83 f8 62",
+      "instruction": "cmp\teax, 0x62"
+    },
+    "43d1cf": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d1dc <.text+0x3c1dc>"
+    },
+    "43d1d1": {
+      "bytes": "b9 5a 00 00 00",
+      "instruction": "mov\tecx, 0x5a"
+    },
+    "43d1dc": {
+      "bytes": "83 f8 63",
+      "instruction": "cmp\teax, 0x63"
+    },
+    "43d1df": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d1ec <.text+0x3c1ec>"
+    },
+    "43d1e1": {
+      "bytes": "b9 5b 00 00 00",
+      "instruction": "mov\tecx, 0x5b"
+    },
+    "43d1ec": {
+      "bytes": "83 f8 64",
+      "instruction": "cmp\teax, 0x64"
+    },
+    "43d1ef": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d1fc <.text+0x3c1fc>"
+    },
+    "43d1f1": {
+      "bytes": "b9 5c 00 00 00",
+      "instruction": "mov\tecx, 0x5c"
+    },
+    "43d1fc": {
+      "bytes": "83 f8 65",
+      "instruction": "cmp\teax, 0x65"
+    },
+    "43d1ff": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d20c <.text+0x3c20c>"
+    },
+    "43d201": {
+      "bytes": "b9 5d 00 00 00",
+      "instruction": "mov\tecx, 0x5d"
+    },
+    "43d20c": {
+      "bytes": "83 f8 66",
+      "instruction": "cmp\teax, 0x66"
+    },
+    "43d20f": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d21c <.text+0x3c21c>"
+    },
+    "43d211": {
+      "bytes": "b9 5e 00 00 00",
+      "instruction": "mov\tecx, 0x5e"
+    },
+    "43d21c": {
+      "bytes": "83 f8 67",
+      "instruction": "cmp\teax, 0x67"
+    },
+    "43d21f": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d22c <.text+0x3c22c>"
+    },
+    "43d221": {
+      "bytes": "b9 5f 00 00 00",
+      "instruction": "mov\tecx, 0x5f"
+    },
+    "43d22c": {
+      "bytes": "83 f8 68",
+      "instruction": "cmp\teax, 0x68"
+    },
+    "43d22f": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d23c <.text+0x3c23c>"
+    },
+    "43d231": {
+      "bytes": "b9 60 00 00 00",
+      "instruction": "mov\tecx, 0x60"
+    },
+    "43d23c": {
+      "bytes": "83 f8 69",
+      "instruction": "cmp\teax, 0x69"
+    },
+    "43d23f": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d24c <.text+0x3c24c>"
+    },
+    "43d241": {
+      "bytes": "b9 61 00 00 00",
+      "instruction": "mov\tecx, 0x61"
+    },
+    "43d24c": {
+      "bytes": "83 f8 60",
+      "instruction": "cmp\teax, 0x60"
+    },
+    "43d24f": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d25c <.text+0x3c25c>"
+    },
+    "43d251": {
+      "bytes": "b9 62 00 00 00",
+      "instruction": "mov\tecx, 0x62"
+    },
+    "43d25c": {
+      "bytes": "83 f8 6e",
+      "instruction": "cmp\teax, 0x6e"
+    },
+    "43d25f": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d26c <.text+0x3c26c>"
+    },
+    "43d261": {
+      "bytes": "b9 63 00 00 00",
+      "instruction": "mov\tecx, 0x63"
+    },
+    "43d2f8": {
+      "bytes": "83 f8 5d",
+      "instruction": "cmp\teax, 0x5d"
+    },
+    "43d2fb": {
+      "bytes": "75 0b",
+      "instruction": "jne\t0x43d308 <.text+0x3c308>"
+    },
+    "43d2fd": {
+      "bytes": "b9 65 00 00 00",
+      "instruction": "mov\tecx, 0x65"
+    },
+    "43cd8a": {
+      "bytes": "83 f8 41",
+      "instruction": "cmp\teax, 0x41"
+    },
+    "43cd8f": {
+      "bytes": "83 f8 5a",
+      "instruction": "cmp\teax, 0x5a"
+    },
+    "43cd94": {
+      "bytes": "8d 48 c3",
+      "instruction": "lea\tecx, [eax - 0x3d]"
+    },
+    "43cd9d": {
+      "bytes": "83 f8 31",
+      "instruction": "cmp\teax, 0x31"
+    },
+    "43cda2": {
+      "bytes": "83 f8 39",
+      "instruction": "cmp\teax, 0x39"
+    },
+    "43cda7": {
+      "bytes": "8d 48 ed",
+      "instruction": "lea\tecx, [eax - 0x13]"
+    },
+    "408f57": {
+      "bytes": "6a 03",
+      "instruction": "push\t0x3"
+    },
+    "408f5c": {
+      "bytes": "89 47 08",
+      "instruction": "mov\tdword ptr [edi + 0x8], eax"
+    },
+    "408fa7": {
+      "bytes": "6a 05",
+      "instruction": "push\t0x5"
+    },
+    "408fb6": {
+      "bytes": "89 47 10",
+      "instruction": "mov\tdword ptr [edi + 0x10], eax"
+    },
+    "408fbe": {
+      "bytes": "89 47 14",
+      "instruction": "mov\tdword ptr [edi + 0x14], eax"
+    },
+    "429d7f": {
+      "bytes": "b9 01 00 00 00",
+      "instruction": "mov\tecx, 0x1"
+    },
+    "429dcb": {
+      "bytes": "03 4e 10",
+      "instruction": "add\tecx, dword ptr [esi + 0x10]"
+    },
+    "429e15": {
+      "bytes": "83 f8 40",
+      "instruction": "cmp\teax, 0x40"
+    },
+    "429e21": {
+      "bytes": "0f 4e ca",
+      "instruction": "cmovle\tecx, edx"
+    },
+    "429e31": {
+      "bytes": "8b 95 0c ef ff ff",
+      "instruction": "mov\tedx, dword ptr [ebp - 0x10f4]"
+    },
+    "429e37": {
+      "bytes": "08 11",
+      "instruction": "or\tbyte ptr [ecx], dl"
+    },
+    "429f5e": {
+      "bytes": "c7 85 0c ef ff ff 00 00 00 00",
+      "instruction": "mov\tdword ptr [ebp - 0x10f4], 0x0"
+    },
+    "429f07": {
+      "bytes": "68 18 be 54 00",
+      "instruction": "push\t0x54be18"
+    },
+    "429fd6": {
+      "bytes": "68 4c be 54 00",
+      "instruction": "push\t0x54be4c"
+    },
+    "42a023": {
+      "bytes": "68 18 be 54 00",
+      "instruction": "push\t0x54be18"
+    },
+    "42a041": {
+      "bytes": "68 4c be 54 00",
+      "instruction": "push\t0x54be4c"
+    },
+    "42a06d": {
+      "bytes": "66 c7 84 05 2e ef ff ff 44 01",
+      "instruction": "mov\tword ptr [ebp + eax - 0x10d2], 0x144"
+    },
+    "42a081": {
+      "bytes": "66 c7 84 05 2e ef ff ff 44 ff",
+      "instruction": "mov\tword ptr [ebp + eax - 0x10d2], 0xff44"
+    }
+  },
+  "scroll_substrings": {
+    "0x54be18": "Scroll Up",
+    "0x54be4c": "Scroll Down"
+  },
+  "delays": "SQL value column5 ->object+10,not delay_time column6; accumulated into previous record; zero before next action defaults10; trailing delay kept raw; no physical unit proof",
+  "global_cursor_boundary": "each macro accumulator starts1; later nonempty first action ORs1 into previous macro terminal delay; even empty sentinel can gain delay1",
+  "strict_subset": [
+    "leading delay rejected because OEM would discard/overwrite header",
+    "overflow rejected rather than truncating",
+    "modifier/motion/unknown conversion unresolved",
+    "unconverted source records remain in preview and block preparation"
+  ],
+  "physical_IO": false,
+  "OEM_execution": false
+}
