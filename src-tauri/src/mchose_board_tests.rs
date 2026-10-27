@@ -9,6 +9,9 @@ enum Switch {
     DuringBackup,
     BeforeOptionalLod,
     AfterFirstDpiSet,
+    AfterDpiFirmware,
+    AfterFirstNameSet,
+    AfterFirstMacroSet,
 }
 struct Mouse {
     active: u8,
@@ -18,6 +21,7 @@ struct Mouse {
     staged_names: std::collections::BTreeMap<u8, Vec<u8>>,
     switch: Option<Switch>,
     dpi_written: bool,
+    receiver_reads: usize,
     receiver_read_after_dpi: bool,
 }
 impl Mouse {
@@ -50,6 +54,7 @@ impl Mouse {
             staged_names: Default::default(),
             switch,
             dpi_written: false,
+            receiver_reads: 0,
             receiver_read_after_dpi: false,
         }
     }
@@ -89,6 +94,7 @@ impl Mouse {
                 raw[args[1] as usize..usize::from(args[1]) + usize::from(args[2])].to_vec()
             }
             0x0901 => {
+                if args == [1] { self.receiver_reads += 1; }
                 if args == [1] && self.dpi_written {
                     self.receiver_read_after_dpi = true;
                 }
@@ -153,6 +159,10 @@ impl Mouse {
                 }
                 vec![]
             }
+            0x090b => {
+                self.writes.push((command, args.to_vec()));
+                vec![] // Only the interrupted first chunk is exercised in this harness.
+            }
             0x0906 => {
                 self.writes.push((command, args.to_vec()));
                 self.active = args[0];
@@ -169,7 +179,13 @@ impl Mouse {
                 || matches!(self.switch, Some(Switch::DuringBackup)) && command == 0x0905
                 || matches!(self.switch, Some(Switch::AfterFirstDpiSet))
                     && command == 0x0103
-                    && args[1] == 0;
+                    && args[1] == 0
+                || matches!(self.switch, Some(Switch::AfterDpiFirmware))
+                    && command == 0x0901 && args == [1] && self.receiver_reads == 2
+                || matches!(self.switch, Some(Switch::AfterFirstNameSet))
+                    && command == 0x0910
+                || matches!(self.switch, Some(Switch::AfterFirstMacroSet))
+                    && command == 0x090b;
         if switch {
             self.active = 1;
             self.switch = None;
@@ -333,7 +349,8 @@ fn switch_between_xy_sets_never_targets_new_board_and_is_reported() {
         .writes
         .iter()
         .all(|(command, args)| *command == 0x0103 && args[0] == 0));
-    assert_eq!(mouse.writes.len(), 2);
+    assert_eq!(mouse.writes.len(), 1);
+    assert_eq!(mouse.boards[0].dpi_y, before[0].dpi_y);
 }
 
 #[test]
@@ -643,3 +660,61 @@ fn nondefault_unknown_or_v3_adaptive_data_is_refused_before_any_native_io() {
 
 #[path="mchose_roundtrip_tests.rs"]
 mod roundtrip;
+
+#[test]
+fn standalone_dpi_rechecks_board_after_firmware_queries_before_first_set() {
+    let rig = Rig::new(None);
+    // Arm after deriving the action so the switch happens in the writer itself.
+    let state = rig.transport.hardware_state().unwrap();
+    {
+        let mut mouse = rig.mouse.lock().unwrap();
+        mouse.switch = Some(Switch::AfterDpiFirmware);
+        mouse.receiver_reads = 0;
+    }
+    let error = rig.transport.apply_hardware_for(0, Action::Dpi {
+        x: state.dpi_x, y: state.dpi_y, count: state.count,
+        active: state.active, independent: true,
+    }).err().expect("board switch must reject write");
+    assert!(error.to_string().contains("板载配置已改变"));
+    let mouse = rig.mouse.lock().unwrap();
+    assert_eq!(mouse.active, 1);
+    assert!(mouse.writes.is_empty());
+}
+
+#[test]
+fn standalone_name_stops_after_first_chunk_when_board_switches() {
+    let rig = Rig::new(Some(Switch::AfterFirstNameSet));
+    let before = rig.mouse.lock().unwrap().boards.clone();
+    let result = rig.transport.apply_hardware_for(0, Action::Rename { name: "New name".into() });
+    assert!(result.is_err());
+    let mouse = rig.mouse.lock().unwrap();
+    assert_eq!(mouse.active, 1);
+    assert_eq!(mouse.writes.len(), 1);
+    assert_eq!(mouse.writes[0].0, 0x0910);
+    assert!(mouse.boards == before);
+    assert_eq!(std::fs::read_dir(&rig.backup).unwrap().count(), 1);
+}
+
+#[test]
+fn standalone_macro_upload_and_delete_stop_after_board_switch() {
+    for action in [
+        Action::Macro { slot: 2, name: "Guard".into(), mode: 1, raw: None,
+            events: vec![crate::mchose_config::MacroEvent {
+                kind: "key".into(), code: 4, down: true, delay_ms: 0,
+            }, crate::mchose_config::MacroEvent {
+                kind: "key".into(), code: 4, down: false, delay_ms: 0,
+            }] },
+        Action::DeleteMacro { slot: 2 },
+    ] {
+        let rig = Rig::new(Some(Switch::AfterFirstMacroSet));
+        let before = rig.mouse.lock().unwrap().boards.clone();
+        let error = rig.transport.apply_hardware_for(0, action).err().expect("interrupted upload");
+        assert!(error.to_string().contains("板载配置已改变"));
+        let mouse = rig.mouse.lock().unwrap();
+        assert_eq!(mouse.active, 1);
+        assert_eq!(mouse.writes.len(), 1);
+        assert_eq!(mouse.writes[0].0, 0x090b);
+        assert!(mouse.boards == before);
+        assert_eq!(std::fs::read_dir(&rig.backup).unwrap().count(), 1);
+    }
+}

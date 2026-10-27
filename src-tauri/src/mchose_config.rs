@@ -689,7 +689,7 @@ impl Transport {
         active: u8,
         independent: bool,
     ) -> Result<()> {
-        self.write_dpi_table_checked(p,x,y,count,active,independent,||Ok(()))
+        self.write_dpi_table_checked(p,x,y,count,active,independent,||self.require_board(p))
     }
     pub(crate) fn write_dpi_table_checked(&self, p:u8,x:&[u16],y:&[u16],count:u8,active:u8,independent:bool,before_axis:impl Fn()->Result<()>) -> Result<()> {
         profile(p)?;
@@ -766,7 +766,7 @@ impl Transport {
         Ok(())
     }
     fn write_name(&self, p: u8, name: &str) -> Result<()> {
-        self.write_name_checked(p,name,||Ok(()))
+        self.write_name_checked(p,name,||self.require_board(p))
     }
     pub(crate) fn write_name_checked(&self,p:u8,name:&str,before_chunk:impl Fn()->Result<()>) -> Result<()> {
         let raw = name.as_bytes();
@@ -922,6 +922,9 @@ impl Transport {
         let backup=self.backup_full_for(p)?;
         let is_rate=matches!(&action,Action::ReportRate{..}|Action::ConnectionRate{..});
         self.require_board(p)?;
+        // Settings are bank-scoped even when the upload itself spans several reports.
+        // A detected physical/OEM board switch stops subsequent chunks, never retargets them.
+        let applied=(||->Result<()>{
         match action {
             Action::ReportRate { value } => {
                 let before=cfg.clone();
@@ -985,12 +988,16 @@ impl Transport {
                 mode,
                 events,
                 raw,
-            } => self.write_macro_raw(
+            } => self.write_macro_checked(
                 slot,
                 &macro_record(slot, &name, mode, &events, raw.as_deref())?.raw,
+                ||self.require_board(p),
             )?,
-            Action::DeleteMacro { slot } => self.write_macro_raw(slot, &[0u8; 64])?,
+            Action::DeleteMacro { slot } => self.write_macro_checked(slot, &[0u8; 64], ||self.require_board(p))?,
         }
+        Ok(())
+        })();
+        applied.map_err(|e|bad(format!("{e}；操作未完成，可能已有部分写入，未自动重试。原始备份：{}",backup.display())))?;
         let refreshed=(||->Result<HardwareState>{
             let state = self.hardware_state()?;
             if state.profile != expected_after { return Err(bad("板载配置已改变，请刷新重试")); }

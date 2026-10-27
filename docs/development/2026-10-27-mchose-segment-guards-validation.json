@@ -1,0 +1,69 @@
+{
+  "date": "2026-10-27",
+  "status": "development-only",
+  "accepted_models": 0,
+  "target_models": 100,
+  "native_tests": {
+    "passed": 799,
+    "failed": 0,
+    "ignored": 62,
+    "new_default_tests": 3,
+    "strengthened_existing_tests": 1
+  },
+  "native_non_test_build": "passed",
+  "headless_ui": {
+    "groups": 11,
+    "ipc": "mocked",
+    "physical_io": false
+  },
+  "interruption_cases": [
+    "X SET to Y SET",
+    "firmware GET to first axis SET",
+    "first name chunk to second",
+    "first macro save chunk to second",
+    "first macro delete chunk to second"
+  ],
+  "hardware_settings_written": false,
+  "installer_built": false,
+  "release_published": false,
+  "installed": false,
+  "limits": [
+    "GET/SET is not atomic",
+    "away-and-back switch may be unobserved",
+    "global macros remain shared across boards",
+    "partial writes are not automatically undone",
+    "no new physical interruption proof"
+  ],
+  "evidence": [
+    {
+      "path": "src-tauri/src/mchose_config.rs",
+      "bytes": 43517,
+      "sha256": "5bb83b8e5ae66eee1d1f442858807f5142551ed4e4b1197c4ae808bb3e10f47e"
+    },
+    {
+      "path": "src-tauri/src/mchose_board_tests.rs",
+      "bytes": 28927,
+      "sha256": "442fdb536ca4441e06712864fd4534a6eac98401c17fecc4f04a2d2a30da14f7"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-mchose-segment-guards-all.log",
+      "bytes": 100527,
+      "sha256": "10c08603afa3e0df537d66fde1399ea4b9b6420f6a2b7d88a88ab38a81be24b1"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-mchose-segment-guards-build.log",
+      "bytes": 6794,
+      "sha256": "903c274a2e2d446cabec210d405e9ebdbf1db7b819f9b7c3607f1715519de3f3"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-mchose-segment-guards-ui.log",
+      "bytes": 51,
+      "sha256": "a8cef8672425483f30864661d6f93d5eb4cbd0cfc9f641489c7107ed223190dc"
+    },
+    {
+      "path": "../outputs/100-model-development/mchose-drafts-ui-segment-guards/report.json",
+      "bytes": 1186,
+      "sha256": "f5a7be2c546fe70b4c2931a4618c226c07ff1fcf55d6d4817a53adc1667e53d4"
+    }
+  ]
+}
