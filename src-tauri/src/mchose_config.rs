@@ -9,6 +9,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 pub const SNAPSHOT_FORMAT: &str = "mchose-v3-full-v3";
 const LEGACY_SNAPSHOT_FORMAT: &str = "mchose-v3-full-v2";
 
+/// Observed A7 mouse0x17/receiver0x06 mirrors the six Y values while XY is linked.
+pub(crate) fn mirrored_linked_axes(s:&HardwareState)->bool{s.firmware=="17"&&s.receiver_firmware=="6"}
 fn bad(s: impl Into<String>) -> Error {
     Error::Other(s.into())
 }
@@ -76,7 +78,7 @@ pub struct MouseMacro {
     pub events: Vec<MacroEvent>,
     pub raw: Vec<u8>,
 }
-#[derive(Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub struct Snapshot {
     pub format: String,
     pub model: String,
@@ -696,7 +698,10 @@ impl Transport {
         if !(1..=6).contains(&count) || active >= count {
             return Err(bad("DPI 启用档数或当前档位无效"));
         }
-        for (axis, values) in [(0, x), (1, y)] {
+        let mouse=self.request(0x0901,&[0])?;let receiver=self.request(0x0901,&[1])?;
+        let mirrored=!independent&&mouse.get(..2)==Some(&[0,0x17])&&receiver.get(..2)==Some(&[0,6]);
+        let axes=if mirrored{vec![(0,x)]}else{vec![(0,x),(1,y)]};
+        for (axis, values) in axes {
             before_axis()?;
             let mut args = vec![p, axis, independent as u8, count, active];
             for v in values {
@@ -713,7 +718,7 @@ impl Transport {
             }
             out
         };
-        if a != expected(0, x) || b != expected(1, y) {
+        if a != expected(0, x) || b != expected(1, if mirrored{x}else{y}) {
             return Err(bad("DPI 表回读未匹配"));
         }
         Ok(())
@@ -1153,3 +1158,10 @@ mod tests {
         assert!(encode_macro("bad", 0, &ev[..1]).is_err());
     }
 }
+
+#[path="mchose_roundtrip.rs"]
+pub(crate) mod roundtrip;
+
+#[cfg(test)]
+#[path="mchose_dpi_capture_tests.rs"]
+mod dpi_captures;

@@ -1,0 +1,73 @@
+{
+  "source_url": "https://www.mchose.com.cn/assets/purify.es-BufdR6vO.js",
+  "decompressed_sha256": "c3e91c2828283cbcb8edb24474b45d64b2526bcbed0a2740919a0deef7ad61bc",
+  "decompressed_bytes": 7763164,
+  "inspection": "existing artifact, inert text only; no OEM execution or download",
+  "offset_units": "UTF-16 code units",
+  "functions": {
+    "get": {
+      "start": 4216577,
+      "end": 4216869
+    },
+    "set": {
+      "start": 4218801,
+      "end": 4218916
+    },
+    "encode": {
+      "start": 4210516,
+      "end": 4211220
+    },
+    "decode": {
+      "start": 4206473,
+      "end": 4206747
+    },
+    "select": {
+      "start": 4218721,
+      "end": 4218759
+    },
+    "keys": {
+      "start": 4216033,
+      "end": 4216213
+    }
+  },
+  "dpi_get_command": "0x0003",
+  "dpi_get_arguments": [
+    "profile",
+    "axis"
+  ],
+  "dpi_reply": [
+    "profile",
+    "axis",
+    "count",
+    "active",
+    "independent",
+    "six u16 little-endian values"
+  ],
+  "dpi_set_command": "0x0103",
+  "dpi_set_arguments": [
+    "profile",
+    "axis",
+    "independent",
+    "count",
+    "active",
+    "six u16 little-endian values"
+  ],
+  "official_linked_write_axes": [
+    "X"
+  ],
+  "official_independent_write_axes": [
+    "X",
+    "Y"
+  ],
+  "profile_select_command": "0x0906",
+  "key_get_command": "0x0001",
+  "key_get_arguments": [
+    "profile",
+    0,
+    6
+  ],
+  "limits": [
+    "Static shared V3 protocol evidence does not equate every catalog model/firmware with observed hardware",
+    "Current-only GET behavior and linked-Y mirroring are separate physical observations, not inferred solely from the static function"
+  ]
+}

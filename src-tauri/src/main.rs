@@ -1008,8 +1008,9 @@ fn main() {
     if std::env::args().any(|a|a=="--magdock-probe"||a=="--magdock-self-test"||a=="--magdock-music-test") {
         let c=magdock::Controller::default();let result=if std::env::args().any(|a|a=="--magdock-self-test"){c.self_test()}else if std::env::args().any(|a|a=="--magdock-music-test"){c.music_test()}else{c.view().and_then(|v|serde_json::to_value(v).map_err(|e|e.to_string()))};match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;
     }
-    if std::env::args().any(|a|a=="--mchose-hardware-probe"||a=="--mchose-hardware-self-test") {
+    if std::env::args().any(|a|a=="--mchose-hardware-probe"||a=="--mchose-hardware-self-test"||a=="--mchose-dpi-roundtrip"||a=="--mchose-dpi-roundtrip-with-board-reads") {
         let test=std::env::args().any(|a|a=="--mchose-hardware-self-test");
+        let args=std::env::args().collect::<Vec<_>>();let pulse=args.iter().position(|a|a=="--mchose-dpi-roundtrip"||a=="--mchose-dpi-roundtrip-with-board-reads");
         let result=(||->Result<serde_json::Value,String>{
             // This dedicated probe must not scan other brands or enable their
             // receiver notifications. Refuse ambiguous targets before opening I/O.
@@ -1017,9 +1018,9 @@ fn main() {
             let candidates=api.device_list().filter(|d|mchose::known_interface(d.vendor_id(),d.product_id(),d.usage_page(),d.usage(),d.product_string())).take(2).collect::<Vec<_>>();
             if candidates.len()!=1{return Err("MCHOSE probe requires one exact known receiver".into())}
             let t=mchose::Transport::open(&api,candidates[0].path(),events::sink()).map_err(|e|e.to_string())?;
-            if test{t.hardware_self_test().map_err(|e|e.to_string())}else{serde_json::to_value(t.full_snapshot().map_err(|e|e.to_string())?).map_err(|e|e.to_string())}
+            if let Some(index)=pulse {let path=args.get(index+1).ok_or("DPI roundtrip requires a new receipt directory")?;if args[index]=="--mchose-dpi-roundtrip-with-board-reads" {t.hardware_dpi_roundtrip_with_board_reads(std::path::Path::new(path)).map_err(|e|e.to_string())}else{t.hardware_dpi_roundtrip(std::path::Path::new(path)).map_err(|e|e.to_string())}}else if test{t.hardware_self_test().map_err(|e|e.to_string())}else{serde_json::to_value(t.full_snapshot().map_err(|e|e.to_string())?).map_err(|e|e.to_string())}
         })();
-        match result{Ok(v)=>println!("{}",serde_json::to_string_pretty(&v).unwrap()),Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;
+        match result{Ok(v)=>{println!("{}",serde_json::to_string_pretty(&v).unwrap());if pulse.is_some()&&v["passed"]!=true{std::process::exit(2);}},Err(e)=>{eprintln!("{e}");std::process::exit(1)}}return;
     }
     // Reversible real-hardware validation, never performed at normal startup.
     if std::env::args().any(|a| a == "--mchose-self-test") {

@@ -1,7 +1,7 @@
 // Production built React UI; only device IPC is simulated. No HID or OS input output.
 const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),assert=require('assert');
 const base=fs.readFileSync(path.join(__dirname,'test-synapse-import-ui.cjs'),'utf8'),marker='await page.addInitScript(()=>{',start=base.indexOf(marker)+marker.length,end=base.indexOf('\n});await ',start);assert(end>start);
-const out=path.resolve('../outputs/100-model-development/mchose-drafts-ui');fs.mkdirSync(out,{recursive:true});
+const out=path.resolve(process.env.OPEN_HUB_MCHOSE_DRAFT_UI_OUT??'../outputs/100-model-development/mchose-drafts-ui');fs.mkdirSync(out,{recursive:true});
 (async()=>{const browser=await chromium.launch({headless:true}),checks=[];try{
  const page=await browser.newPage({viewport:{width:1500,height:1150}}),errors=[];page.on('pageerror',e=>errors.push(String(e)));
  await page.addInitScript({content:`(()=>{${base.slice(start,end)}})()`});

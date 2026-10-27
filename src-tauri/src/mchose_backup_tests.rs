@@ -193,11 +193,11 @@ fn restore_loader_rejects_duplicates_unknown_fields_model_and_incomplete_macro_b
     }
 }
 #[test]
-fn restore_retains_inactive_y_and_separate_link_header_indices_after_dpi_updates_headers() {
+fn restore_retains_linked_mirror_and_separate_header_indices_after_dpi_updates_headers() {
     let mut f = Fixture::new();
     f.saved.state.independent = false;
     f.saved.state.active = 2;
-    f.saved.state.dpi_y = vec![450, 950, 1850, 3650, 7250, 14450];
+    f.saved.state.dpi_y = f.saved.state.dpi_x.clone();
     tables(&mut f.saved.state);
     f.saved.state.raw_settings[1] = (f.saved.state.raw_settings[1] & 0xf0) | 1;
     f.saved.state.raw_settings[2] = (f.saved.state.raw_settings[2] & 0xf0) | 4;
@@ -355,3 +355,8 @@ fn mchose_backup_ui_bridge() {
     )
     .unwrap();
 }
+
+#[test]fn factory_empty_native_name_restores_without_fabricating_a_label(){let mut f=Fixture::new();f.rig.mouse.lock().unwrap().state.names[0]="Existing board name".into();f.saved.state.names[0].clear();f.save();let preview=f.preview().unwrap();assert_eq!(preview.desired.names[0],"");let restored=backup::restore(&f.device,&f.rig.t,&f.path,&preview.selection).unwrap();assert_eq!(restored.state.names[0],"");assert_eq!(f.rig.t.hardware_state().unwrap().names[0],"");let requests=&f.rig.mouse.lock().unwrap().requests;let names=requests.iter().filter(|(cmd,_)|*cmd==0x0910).collect::<Vec<_>>();assert_eq!(names.len(),3);assert!(names.iter().all(|(_,p)|p[3..].iter().all(|v|*v==0)));}
+#[test]fn empty_native_name_noop_and_regular_template_name_validation_stay_distinct(){let rig=Rig::new();rig.mouse.lock().unwrap().state.names[0].clear();let before=rig.t.full_snapshot().unwrap();let keys=crate::mhub_transaction::read_keys(&rig.t,0).unwrap();let restored=backup::compile(&before,&before,&keys).unwrap();assert!(restored.snapshot==before);assert!(restored.macro_writes.is_empty());let applied=crate::mhub_transaction::commit_compiled(&rig.t,0,before,keys,restored,true).unwrap();assert!(applied.backup.is_none());assert!(set_records(&rig.mouse.lock().unwrap()).is_empty());let mut regular=plan();regular.name.clear();assert!(crate::mhub_full::validate(&regular).is_err());}
+
+#[test]fn observed_linked_firmware_rejects_nonrestorable_distinct_y_backup_before_any_set(){let mut f=Fixture::new();f.saved.state.independent=false;f.saved.state.dpi_y=vec![450,950,1850,3650,7250,14450];tables(&mut f.saved.state);f.save();assert!(f.preview().err().unwrap().to_string().contains("镜像"));assert_eq!(f.set_count(),0);assert!(!f.rig.directory.exists());}

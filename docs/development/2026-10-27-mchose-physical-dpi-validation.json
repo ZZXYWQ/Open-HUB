@@ -1,0 +1,119 @@
+{
+  "date_local": "2026-10-27",
+  "base_commit": "03ef09476813407ce65b788581b8c57a04233dbe",
+  "scope": "Physical A7 V3 Ultra+ linked-DPI roundtrip; active-bank GET semantics, factory-empty restore names and firmware-gated linked Y mirror",
+  "accepted_complete_models": 0,
+  "release_version": "0.3.7",
+  "installer_built_published_or_installed": false,
+  "hardware": {
+    "receiver": "3837:1014 / ff01:1",
+    "payload_model": "3837:4026",
+    "mouse_firmware_raw": "17",
+    "receiver_firmware_raw": "6"
+  },
+  "physical": {
+    "passed": true,
+    "restored": true,
+    "current_board_zero_based": 0,
+    "active_stage_zero_based": 3,
+    "original_dpi": 1600,
+    "observed_test_dpi": 1650,
+    "observed_mirror_y": 1650,
+    "final_dpi": 1600,
+    "dpi_banks_compared": 3,
+    "key_banks_compared": 3,
+    "macro_slots_read": 18,
+    "complete_capture_before_after_equal": true,
+    "observed_equals_compiled_desired": true,
+    "independent_node_get_confirms_original_xy_bytes": true,
+    "profile_names_changed": false,
+    "buttons_or_macros_triggered": false,
+    "firmware_reset_DFU_commands_sent": false,
+    "other_brand_receivers_opened": false,
+    "monitor_timeout_handled_without_restart": true,
+    "process_terminal_by_pid_absence": true,
+    "final_process_exit_code_captured": false,
+    "tested_binary_sha256": "87a295df47974e11a55fec05d0e46919c2f07aebd6047d9ccbf50274fc3b08d2"
+  },
+  "exploration": [
+    {
+      "attempt": 1,
+      "passed": false,
+      "dpi_sets": false,
+      "reason": "inactive GET returned current profile0; strict parser refused"
+    },
+    {
+      "attempt": 2,
+      "passed": false,
+      "dpi_sets": false,
+      "original_board_restored": true,
+      "reason": "native factory-empty name reached strict template validator after selected-bank capture"
+    },
+    {
+      "attempt": 3,
+      "passed": false,
+      "restored": true,
+      "observed_equals_original": true,
+      "reason": "old two-axis linked write did not read back the requested change"
+    },
+    {
+      "attempt": 4,
+      "passed": true,
+      "restored": true,
+      "reason": "single X SET on observed linked firmware; real intermediate1650 and exact original recovery"
+    }
+  ],
+  "validation": {
+    "default_native_passed": 796,
+    "default_native_failed": 0,
+    "default_native_ignored": 62,
+    "new_default_tests": 17,
+    "native_backed_backup_ui_checks": 15,
+    "native_backed_import_editor_ui_groups": 15,
+    "mock_ipc_draft_ui_groups": 11,
+    "backup_ui_native_requests": 10,
+    "non_test_build_passed": true,
+    "frontend_js_unchanged_bytes": 811551,
+    "new_runtime_dependencies": false
+  },
+  "limits": [
+    "These are native decoded physical GET observations and independent GET payloads, not a captured complete USB SET trace",
+    "Final tested binary predates only actionable wrong-bank error text and test-only captured fixtures; relevant linked-write/restore behavior was unchanged",
+    "Native board names in public fixture were blanked; complete original local receipts remain private",
+    "Physical independent XY, every button action and macro playback, report-rate reconnect, power cycle, full UI/light parity and RF unit serial identity remain unproved",
+    "Other firmware variants retain prior experimental path and are not generalized as physically validated",
+    "No installer/release/install; complete model acceptance remains zero"
+  ],
+  "evidence_sha256": {
+    "2026-10-27-mchose-dpi-roundtrip-04/before-selection.json": "695ad977d4aec70fcb72396f42d9c2affce242a0d27f421c88535c7099bea0b5",
+    "2026-10-27-mchose-dpi-roundtrip-04/before.json": "d2e2c387d81acc9f414290161e21e061a43932dd8e1fde706e41c9ca20d84dd5",
+    "2026-10-27-mchose-dpi-roundtrip-04/observed.json": "fba011a8eac8114f1525e0cfae0017acafb722d25c8f2d70bfe25db107548e73",
+    "2026-10-27-mchose-dpi-roundtrip-04/after.json": "444b5a8d9dc0f980d8ebef442a107bfb327b77367b5c4542eb966e6724858295",
+    "2026-10-27-mchose-dpi-roundtrip-04/result.json": "712a95132df076b5000d357541d9a4499353dcd531185a36a4e0b8e5d2b8fb35",
+    "2026-10-27-mchose-dpi-roundtrip-01.process.json": "a824c1475cfc70645702cfdc380957390e5af6a7e81f0dde55275cab716d3d27",
+    "2026-10-27-mchose-dpi-roundtrip-02.process.json": "64557f94c31a46651288f340ce4300283e268de90674c5b309a850c0b7ec3d07",
+    "2026-10-27-mchose-dpi-roundtrip-03.process.json": "ff22d0ae9d16fa96274a8fb21cc04df187993863808276683f15709217e88fb1",
+    "2026-10-27-mchose-dpi-roundtrip-04.process.json": "2d5ad2770bb759f067227e43bf3d15fdd593e02e54e799222dd830354a034c73",
+    "2026-10-27-mchose-dpi-banks-readonly.json": "694e798ba9564ce2a43a813c703201f75d14659d9cd939378c631556274a041e",
+    "2026-10-27-mchose-key-banks-readonly.json": "0dcbc02ef50367995696804a9d4ef769d1a139381a376bb6047f3a86bdc6a006",
+    "2026-10-27-mchose-dpi-roundtrip-postcheck.json": "35d5f61dd90595e57325c28d466d6078985133c21178b6f515784ef866421944",
+    "2026-10-27-mchose-roundtrip-all.log": "1ca7935b569a34ba898a508629d715ae20bb5b479c18f11153d82a884f8daaf0",
+    "2026-10-27-mchose-roundtrip-final-build.log": "251c54f2563b491a44b827cc18ad943567911c69e32b97d26847e2ee03dadcd3",
+    "mchose-backup-restore-ui-linked-dpi/report.json": "73d1b3107434be1eb93bdbc6e2c0f7a8a88a3e49b35494e1cc5d42031e3eb46b",
+    "mhub-full-import-editor-ui-linked-dpi/report.json": "ea92ab12336a598960bc5bce46f6a97792cb6d3fb132330c210338654d52b85b",
+    "mchose-drafts-ui-linked-dpi/report.json": "f5a7be2c546fe70b4c2931a4618c226c07ff1fcf55d6d4817a53adc1667e53d4"
+  },
+  "source_sha256": {
+    "src-tauri/src/main.rs": "6c09484169dbe23130703ab88f27a1371585a81015d20dc1b912aa33a5112c6e",
+    "src-tauri/src/mchose.rs": "91850ec8c88a15a2e6843c4014f526eba7306d1f7fb15c4705279d4e2b1b3337",
+    "src-tauri/src/mchose_config.rs": "6f2f06fa616ad992c4c9b3c010322b49933bd013f29d50378af37f4ac37ac8d9",
+    "src-tauri/src/mchose_roundtrip.rs": "60ce2d1b8274fd177f719a11c00529e5be4e17ecf5053b222f62b93167006b44",
+    "src-tauri/src/mchose_roundtrip_tests.rs": "9f145592e6f30a69ea76e2ca9841ef2174b0795c3af8a70d6eae95041f196408",
+    "src-tauri/src/mchose_backup.rs": "c646b8fd7b6b8c883365d7b666afbae4109afc947c9fd0db6c84c11d11edd109",
+    "src-tauri/src/mchose_backup_tests.rs": "34d57f3f90f88727b87679de311a9877e46f166f0507017bca19f987e409339b",
+    "src-tauri/src/mhub_full.rs": "46483cf49b50cf6bed5105c11ff6e45605a0f49a109a6cbc6fc135a1dabc361a",
+    "src-tauri/src/mchose_dpi_capture_tests.rs": "b01e39aa98ff07ccfbf887ef4ae7a1fb1825fb59325430f60cd0c04370d0c74f",
+    "src-tauri/tests/fixtures/mchose-dpi-physical-2026-10-27.json": "32fea0ba6630ec4c6c98a907cad5520b38eb5d0d79acef76586ee6788d42f31a",
+    "scripts/check-mchose-dpi-scope-source.cjs": "3d4016b2432c5888a7929b953967ee99fc4af492211ef1d256e4645ee891b9e0"
+  }
+}

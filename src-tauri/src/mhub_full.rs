@@ -498,12 +498,13 @@ pub fn parse(doc: &Value, library: &Value) -> Result<Plan> {
     Ok(plan)
 }
 
-pub fn validate(plan: &Plan) -> Result<()> {
+pub fn validate(plan:&Plan)->Result<()>{validate_inner(plan,false)}
+fn validate_inner(plan: &Plan, allow_empty_native_name:bool) -> Result<()> {
     if plan.vendor != crate::mchose::VID || plan.model != crate::mchose::MODEL_PID || plan.board > 2
     {
         return Err("完整方案的品牌、型号或板载组不匹配".into());
     }
-    if plan.name.trim().is_empty() || plan.name.len() > 60 || plan.name.contains('\0') {
+    if (!allow_empty_native_name&&plan.name.trim().is_empty()) || plan.name.len() > 60 || plan.name.contains('\0') {
         return Err("配置名称需为 1–60 UTF-8 字节".into());
     }
     for values in [Some(&plan.dpi_x), plan.dpi_y.as_ref()]
@@ -565,8 +566,11 @@ pub fn validate(plan: &Plan) -> Result<()> {
 
 /// Compile against one freshly read board plus all three boards' key tables.
 /// The native caller must bind these reads and every write to its live target.
-pub fn compile(plan: &Plan, current: &Snapshot, boards: &[Vec<Vec<u8>>; 3]) -> Result<Compiled> {
-    validate(plan)?;
+pub fn compile(plan:&Plan,current:&Snapshot,boards:&[Vec<Vec<u8>>;3])->Result<Compiled>{compile_inner(plan,current,boards,false)}
+/// Only strict native backup restoration may preserve a factory-empty board name.
+pub(crate) fn compile_restore(plan:&Plan,current:&Snapshot,boards:&[Vec<Vec<u8>>;3])->Result<Compiled>{compile_inner(plan,current,boards,true)}
+fn compile_inner(plan: &Plan, current: &Snapshot, boards: &[Vec<Vec<u8>>; 3],allow_empty_native_name:bool) -> Result<Compiled> {
+    validate_inner(plan,allow_empty_native_name)?;
     native::validate_snapshot(current).map_err(|e| e.to_string())?;
     let board = plan.board as usize;
     if current.state.profile != plan.board || boards[board] != current.state.buttons {
@@ -646,6 +650,10 @@ pub fn compile(plan: &Plan, current: &Snapshot, boards: &[Vec<Vec<u8>>; 3]) -> R
     state.dpi_x = plan.dpi_x.clone();
     if plan.independent {
         state.dpi_y = plan.dpi_y.clone().ok_or("独立 Y 缺少六档")?;
+    }else if native::mirrored_linked_axes(&current.state){
+        // The portable inactive Y values remain in Plan; this target firmware
+        // reports mirrored hardware Y and must not receive a second Y SET.
+        state.dpi_y=plan.dpi_x.clone();
     }
     state.count = plan.count;
     state.active = plan.active;

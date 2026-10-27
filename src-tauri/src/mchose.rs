@@ -385,9 +385,9 @@ impl Transport {
     }
     pub(crate) fn dpi_table(&self, profile: u8, axis: u8) -> Result<Vec<u8>> {
         let b = self.request(0x0003, &[profile, axis])?;
-        if b.len() != 17
-            || b[0] != profile
-            || b[1] != axis
+        if b.len()!=17{return Err(invalid("Invalid MCHOSE DPI table length"));}
+        if b[0]!=profile{return Err(invalid(format!("DPI 读取返回板载组 {}，并非请求组 {}；请先切换到目标组再读取，未把其他组数据当作本组",b[0],profile)));}
+        if b[1] != axis
             || !(1..=6).contains(&b[2])
             || b[3] >= b[2]
             || b[4] > 1

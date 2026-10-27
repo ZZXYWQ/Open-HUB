@@ -1,7 +1,7 @@
 // Built React UI calls the original Rust file preview/compiler/commit on
 // isolated authored memory mice. Each scenario resets the authored initial state.
 const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),assert=require('assert'),{spawnSync}=require('child_process');
-const out=path.resolve('../outputs/100-model-development/mchose-backup-restore-ui');fs.mkdirSync(out,{recursive:true});const calls=[];
+const out=path.resolve(process.env.OPEN_HUB_MCHOSE_BACKUP_UI_OUT??'../outputs/100-model-development/mchose-backup-restore-ui');fs.mkdirSync(out,{recursive:true});const calls=[];
 function native(request){const n=calls.length,input=path.join(out,`request-${n}.json`),output=path.join(out,`response-${n}.json`);fs.writeFileSync(input,JSON.stringify(request));const r=spawnSync('cargo',['test','--manifest-path','src-tauri/Cargo.toml','--locked','mchose_backup_ui_bridge','--','--ignored'],{windowsHide:true,encoding:'utf8',timeout:60000,env:{...process.env,OPEN_HUB_MCHOSE_BACKUP_UI_REQUEST:input,OPEN_HUB_MCHOSE_BACKUP_UI_RESPONSE:output}});fs.writeFileSync(path.join(out,`native-${n}.log`),(r.stdout??'')+(r.stderr??''));if(r.error)throw r.error;assert.equal(r.status,0,(r.stdout+r.stderr).slice(-3000));assert((r.stdout??'').includes('1 passed; 0 failed'));const response=JSON.parse(fs.readFileSync(output,'utf8'));calls.push({request,response});return response;}
 const baseline=native({operation:'hardware',args:{}}).value;
 const base=fs.readFileSync(path.join(__dirname,'test-synapse-import-ui.cjs'),'utf8'),marker='await page.addInitScript(()=>{',start=base.indexOf(marker)+marker.length,end=base.indexOf('\n});await ',start);assert(end>start);

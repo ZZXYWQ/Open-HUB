@@ -103,6 +103,7 @@ fn schema(v: &serde_json::Value) -> Result<()> {
 pub(crate) fn validate_restore_shape(saved: &Snapshot) -> Result<()> {
     native::validate_snapshot(saved)?;
     let s = &saved.state;
+    if native::mirrored_linked_axes(s)&&!s.independent&&s.dpi_x!=s.dpi_y{return Err(bad("鼠标17/接收器6的联动 XY 会镜像 Y，不能精确恢复不同的未启用 Y 表；未写入"));}
     if s.raw_buttons != s.buttons.concat()
         || s.raw_settings[1] & 15 > 5
         || s.raw_settings[2] & 15 > 5
@@ -210,9 +211,10 @@ pub(crate) fn compile(
         buttons: s.buttons.clone(),
         macros,
     };
-    let mut compiled = mhub_full::compile(&plan, before, keys).map_err(bad)?;
-    // Backup restore retains inactive Y table and both independent header low
-    // nibbles. OEM Plan import intentionally has different inactive-Y semantics.
+    let mut compiled = mhub_full::compile_restore(&plan, before, keys).map_err(bad)?;
+    // Restore exact raw tables and both header nibbles. The observed linked
+    // firmware's mirror invariant was checked before compilation; never discard
+    // an incompatible inactive Y silently. Portable Plan semantics differ.
     compiled.snapshot.state.dpi_y = s.dpi_y.clone();
     compiled.snapshot.state.raw_settings = s.raw_settings.clone();
     compiled.snapshot.state.raw_x = s.raw_x.clone();

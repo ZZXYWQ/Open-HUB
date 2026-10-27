@@ -106,7 +106,9 @@ impl Mouse {
                     .chunks_exact(2)
                     .map(|v| u16::from_le_bytes([v[0], v[1]]))
                     .collect();
-                if args[1] == 0 {
+                if !board.independent&&crate::mchose_config::mirrored_linked_axes(board){
+                    board.dpi_x=values;board.dpi_y=board.dpi_x.clone();board.raw_x=table(board,0);board.raw_y=table(board,1);
+                }else if args[1] == 0 {
                     board.dpi_x = values;
                     board.raw_x = table(board, 0);
                 } else {
@@ -638,3 +640,6 @@ fn nondefault_unknown_or_v3_adaptive_data_is_refused_before_any_native_io() {
         assert!(!rig.backup.exists());
     }
 }
+
+#[path="mchose_roundtrip_tests.rs"]
+mod roundtrip;

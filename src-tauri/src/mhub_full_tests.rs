@@ -341,7 +341,7 @@ fn unknown_missing_reference_and_stale_board_read_set_do_not_compile() {
 }
 
 #[test]
-fn inactive_y_stays_in_portable_plan_without_overwriting_target_axis() {
+fn inactive_y_stays_in_portable_plan_while_observed_linked_hardware_mirrors_x() {
     let mut p = plan();
     p.independent = false;
     let before = baseline();
@@ -350,7 +350,7 @@ fn inactive_y_stays_in_portable_plan_without_overwriting_target_axis() {
     let parsed: Plan = serde_json::from_slice(&encoded).unwrap();
     assert_eq!(parsed, p);
     let result = compile(&parsed, &before, &boards(&before)).unwrap();
-    assert_eq!(result.snapshot.state.dpi_y, before.state.dpi_y);
+    assert_eq!(result.snapshot.state.dpi_y, p.dpi_x);
     assert_eq!(p.dpi_y, original_y);
     assert_ne!(p.dpi_y.as_ref().unwrap(), &before.state.dpi_y);
 }

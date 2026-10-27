@@ -130,7 +130,9 @@ impl Mouse {
                     args[5..].to_vec(),
                 ]
                 .concat();
-                if args[1] == 0 {
+                if args[2]==0&&native::mirrored_linked_axes(&self.state){
+                    self.state.raw_x=table.clone();self.state.raw_x[1]=0;self.state.raw_y=table;self.state.raw_y[1]=1;
+                }else if args[1] == 0 {
                     self.state.raw_x = table
                 } else {
                     self.state.raw_y = table

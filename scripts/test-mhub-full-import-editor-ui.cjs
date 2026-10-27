@@ -1,6 +1,6 @@
 // Built React uses the actual Rust file reader/editor compiler through a test-only bridge.
 const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),assert=require('assert');
-const out=path.resolve('../outputs/100-model-development/mhub-full-import-editor-ui');fs.mkdirSync(out,{recursive:true});
+const out=path.resolve(process.env.OPEN_HUB_MHUB_EDITOR_UI_OUT??'../outputs/100-model-development/mhub-full-import-editor-ui');fs.mkdirSync(out,{recursive:true});
 const template=path.resolve('src-tauri/tests/fixtures/mhub-full-template.json'),library=path.resolve('src-tauri/tests/fixtures/mhub-macro-library.json');
 const bad=JSON.parse(fs.readFileSync(template,'utf8'));Object.values(bad)[0].unexplainedSetting=1;const badFile=path.join(out,'authored-unknown-source.json');fs.writeFileSync(badFile,JSON.stringify(bad));
 const base=fs.readFileSync(path.join(__dirname,'test-synapse-import-ui.cjs'),'utf8'),marker='await page.addInitScript(()=>{',start=base.indexOf(marker)+marker.length,end=base.indexOf('\n});await ',start);assert(end>start);
