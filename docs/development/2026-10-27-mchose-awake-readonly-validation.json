@@ -1,0 +1,82 @@
+{
+  "date_local": "2026-10-27",
+  "observation_utc": "2026-10-27T00:32:18.392Z",
+  "scope": "Physical A7 V3 Ultra+ awake identity GET and native full-snapshot read; no SET or mouse configuration change",
+  "accepted_complete_models": 0,
+  "release_version": "0.3.7",
+  "installer_built_published_or_installed": false,
+  "user_context": "User reported that detection was unavailable after prolonged inactivity and that the mouse was now awake",
+  "physical_receiver": {
+    "vendor": "0x3837",
+    "product": "0x1014",
+    "usage_page": "0xff01",
+    "usage": 1,
+    "product_string": "MCHOSE A7 V3 Ultra+"
+  },
+  "identity_read": {
+    "command": "0x0900",
+    "payload_vendor": "0x3837",
+    "payload_model": "0x4026",
+    "raw_state_byte10": 2,
+    "raw_battery_byte12": 100,
+    "settings_writes": false,
+    "checksum_verified": true
+  },
+  "native_read": {
+    "command_line": "--mchose-hardware-probe",
+    "dedicated_mchose_scan": true,
+    "completed_json_snapshot": true,
+    "stderr_empty": true,
+    "snapshot_format": "mchose-v3-full-v3",
+    "profile_zero_based": 0,
+    "name_count": 3,
+    "dpi_count": 6,
+    "active_zero_based": 3,
+    "dpi_x": [
+      400,
+      800,
+      1600,
+      1600,
+      6400,
+      50000
+    ],
+    "dpi_y": [
+      400,
+      800,
+      1600,
+      1600,
+      6400,
+      50000
+    ],
+    "independent_xy": false,
+    "button_records": 6,
+    "macro_slots_queried": 18,
+    "nonempty_macro_records": 0,
+    "firmware_raw_display": "17",
+    "receiver_firmware_raw_display": "6",
+    "raw_settings_bytes": 19,
+    "raw_x_bytes": 17,
+    "raw_y_bytes": 17,
+    "raw_buttons_bytes": 18,
+    "gui_executable_exit_status_not_captured": true,
+    "process_observed_absent_after_complete_output": true,
+    "settings_or_macro_writes": false
+  },
+  "evidence_sha256": {
+    "2026-10-27-mchose-awake-readonly.json": "56dc9fd8a73b3ae15bdf3efcde2e103c46d0ab18849806071af2abac8d743482",
+    "2026-10-27-mchose-awake-native-snapshot.json": "73993d140430d615a818a6eea9b5e4d293dac5f36ea41720870159aee59575b5",
+    "2026-10-27-mchose-awake-native.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "source_sha256": {
+    "src-tauri/src/main.rs": "8b4b19c9cbc392990c8ace5e598bdced40d99ead3c93b3cc64e33a2d5b5e79f8",
+    "src-tauri/src/mchose.rs": "a1425303fa97c42d6e8206c563d36f8fcbfb84efd339bc575dff1a07eb073d90",
+    "src-tauri/src/mchose_config.rs": "8bd5d11404d1d85405c1f9b063945dc9523e5a1e7ed22b345574f8d069b3a21f"
+  },
+  "limits": [
+    "Successful awake reads support an inactivity correlation but do not prove the only cause of earlier FF responses",
+    "No controlled asleep/awake timing, auto-reconnect repair or firmware write was validated",
+    "No DPI/button/macro write, physical button/macro playback, persistence/power cycle or RF unit serial proof in this observation",
+    "Raw local snapshot with profile names was retained locally and is not published",
+    "GUI executable exit status and pre-rebuild binary hash were not captured; evidence is complete native JSON, empty stderr and terminal process absence"
+  ]
+}
