@@ -11,6 +11,8 @@ use gearwise_core::{
 };
 #[path = "atk_macros.rs"]
 mod native_macro;
+#[path="atk_macro_transaction.rs"]
+mod macro_transaction;
 #[path="atk_tuning.rs"]
 mod tuning;
 #[path="atk_indicator.rs"]
@@ -559,36 +561,9 @@ impl Atk {
                 "ATK has no free native macro slot; existing macros were retained",
             ))?;
         let base = 768 + u16::from(slot) * 384;
-        let backup = self.read_blob(base, payload.len())?;
-        let operation = (|| -> Result<()> {
-            for (index, chunk) in payload.chunks(10).enumerate() {
-                self.write_verified(base + index as u16 * 10, chunk)?;
-            }
-            let play = native_macro::mode(macro_def.mode);
-            let row = [
-                6,
-                slot,
-                play,
-                0x55u8.wrapping_sub(6).wrapping_sub(slot).wrapping_sub(play),
-            ];
-            self.write_verified(target, &row)?;
-            Ok(())
-        })();
-        if let Err(e) = operation {
-            if self.identify().is_ok() {
-                for (index, chunk) in backup.chunks(10).enumerate() {
-                    let request = frame(7, base + index as u16 * 10, chunk.len(), chunk)?;
-                    let _ = self.io.write(&request);
-                    std::thread::sleep(Duration::from_millis(10));
-                }
-                let request = frame(7, target, 4, &original)?;
-                let _ = self.io.write(&request);
-            }
-            return Err(Error::invalid(format!(
-                "{e}; ATK original macro and binding restoration attempted; re-read required"
-            )));
-        }
-        Ok(())
+        let play = native_macro::mode(macro_def.mode);
+        let row = [6, slot, play, 0x55u8.wrapping_sub(6).wrapping_sub(slot).wrapping_sub(play)];
+        self.commit_native_macro(id, base, &payload, &original, &row)
     }
     fn refresh(&mut self) -> Result<DeviceState> {
         self.identify()?;
@@ -1497,3 +1472,7 @@ mod profile_cycle_tests;
 #[cfg(test)]
 #[path="atk_identity_tests.rs"]
 mod identity_tests;
+
+#[cfg(test)]
+#[path="atk_macro_transaction_tests.rs"]
+mod macro_transaction_tests;

@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-27",
+  "scope": "COMPX full selected macro slot/current-bank binding transaction",
+  "existing_connections": 9,
+  "distinct_partial_models": 8,
+  "main_tests": {
+    "passed": 999,
+    "failed": 0,
+    "ignored": 81
+  },
+  "new_default_tests": 5,
+  "uncertain_write_recovery_cases": 108,
+  "foreign_state_cases": 36,
+  "UI_regressions": [
+    "native media/full snapshot for 9 connections",
+    "counted repeat: 27 saved profiles, 3 import previews, 3 negative cases"
+  ],
+  "explicit_production_replays": [
+    "native media: passed",
+    "counted repeat: passed"
+  ],
+  "native_build": "passed",
+  "frontend_changed": false,
+  "new_runtime_dependencies": 0,
+  "hardware_tested": false,
+  "accepted_complete_models": 0,
+  "target": 100,
+  "installer_created": false,
+  "installed_release": "0.3.7",
+  "limitations": [
+    "current-bank references only",
+    "in-memory transaction preimages, no new durable full-device backup",
+    "no protocol exclusive lock or atomic transaction",
+    "in-flight macro quiescence not verified",
+    "hardware upload latency not measured"
+  ]
+}
