@@ -5,12 +5,15 @@ use gearwise_core::{profile::{Macro,MacroMode,MacroStep},model::MouseButton};
 use std::collections::{BTreeMap,BTreeSet};
 use serde::Serialize;
 fn fail(s:&str)->Error{Error::Other(format!("Logitech macro planning: {s}"))}
-/// Once-only instruction groups. Atomic shortcuts and media taps are kept
+/// Finite instruction groups; counted runs expand balanced complete bodies. Atomic shortcuts and media taps are kept
 /// together when a planner inserts cross-page links.
 fn groups(m:&Macro,sector_size:u16)->Result<Vec<Vec<u8>>>{
- crate::host_macros::validate(m).map_err(Error::Other)?;
+ let copies=match &m.mode{MacroMode::Once=>1usize,MacroMode::Repeat(n) if *n>=2=>usize::from(*n),_=>return Err(fail("native playback supports Once or a fixed 2..255 count; while-held and toggle are not enabled"))};
+ // Validate a single complete body. Other backends' reserved repeat bytes are
+ // irrelevant: this native backend emits no repeat-counter opcode.
+ let mut body=m.clone();body.mode=MacroMode::Once;
+ crate::host_macros::validate(&body).map_err(Error::Other)?;
  if m.name.trim().is_empty(){return Err(fail("macro needs a name"));}
- if m.mode!=MacroMode::Once{return Err(fail("native repeat-mode layout is not enabled"));}
  if !(210..=4096).contains(&sector_size){return Err(fail("unsupported sector size"));}
  let mut out=Vec::new();let mut held_modifiers=0u8;
  for step in &m.steps{
@@ -27,8 +30,10 @@ fn groups(m:&Macro,sector_size:u16)->Result<Vec<Vec<u8>>>{
  match step{MacroStep::KeyDown(k) if (0xe0..=0xe7).contains(k)=>held_modifiers|=1<<(*k-0xe0),MacroStep::KeyUp(k) if (0xe0..=0xe7).contains(k)=>held_modifiers&=!(1<<(*k-0xe0)),_=>{}}
  if !item.is_empty(){out.push(item);}}
  if out.is_empty(){return Err(fail("macro has no input or timed event"));}
- if out.iter().map(|v|v.len()/3).sum::<usize>()+1>crate::onboard_macros::MAX_STEPS{return Err(fail("native instruction budget exceeded"));}
- Ok(out)
+ let instructions=out.iter().map(|v|v.len()/3).sum::<usize>();
+ if instructions.checked_mul(copies).and_then(|n|n.checked_add(1)).is_none_or(|n|n>crate::onboard_macros::MAX_STEPS){return Err(fail("expanded native instruction budget exceeded; count was not truncated"));}
+ let mut expanded=Vec::with_capacity(out.len()*copies);for _ in 0..copies{expanded.extend(out.iter().cloned());}
+ Ok(expanded)
 }
 pub fn compile(m:&Macro,sector_size:u16)->Result<Vec<u8>>{let mut bytes:Vec<_>=groups(m,sector_size)?.into_iter().flatten().collect();bytes.push(0xff);Ok(bytes)}
 #[derive(Debug,Serialize)]pub struct Reference{pub slot:u8,pub layer:&'static str,pub button:u8,pub entry:Address,pub complete:bool}
@@ -202,3 +207,7 @@ pub fn plan(bank:&Bank,m:&Macro)->Result<Plan>{
 #[cfg(test)]
 #[path="onboard_modifier_hold_tests.rs"]
 mod modifier_hold_tests;
+
+#[cfg(test)]
+#[path="onboard_counted_macro_tests.rs"]
+mod counted_macro_tests;

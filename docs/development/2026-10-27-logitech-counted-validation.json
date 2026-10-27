@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-27",
+  "scope": "finite native Logitech macro body expansion; no new firmware counter opcode or host input",
+  "new_default_tests": 8,
+  "main_tests": {
+    "passed": 964,
+    "failed": 0,
+    "ignored": 74
+  },
+  "native_schema_count_range": [
+    2,
+    255
+  ],
+  "range_basis": "existing Repeat(u8) source representation; actual fit additionally gated by1024 instructions,16 pages and verified erased capacity",
+  "other_backend_repeat_limits_unchanged": true,
+  "source_body_validated_as_complete_once_program": true,
+  "capacity_or_budget_errors_truncate": false,
+  "production_tests": {
+    "golden_body_counts": [
+      2,
+      3,
+      5,
+      20
+    ],
+    "count_boundary_tested_every_value": true,
+    "cross_page_sizes": [
+      255,
+      256
+    ],
+    "per_iteration_modifier_release_preserved": true,
+    "oversized_body_has_zero_feature_requests": true,
+    "uncertain_single_page_write_stages": 36,
+    "uncertain_two_page_write_stages": 54
+  },
+  "built_UI": {
+    "requests": 3,
+    "counts": [
+      2,
+      3,
+      5
+    ],
+    "IPC_mocked": true,
+    "production_compile_commit_reader_replay": true,
+    "changed_count_invalidates_preview": true,
+    "allocated_page_count_displayed": true,
+    "browser_errors": []
+  },
+  "regressions": [
+    "single-run short macro composer",
+    "43-event cross-page composer",
+    "eight independent modifier holds"
+  ],
+  "frontend_build": true,
+  "non_test_native_build": true,
+  "frontend_JS_bytes": 833074,
+  "previous_frontend_JS_bytes": 832288,
+  "frontend_JS_delta_bytes": 786,
+  "new_runtime_dependencies": false,
+  "new_images": false,
+  "physical_IO": false,
+  "OS_input": false,
+  "OEM_download_or_execution": false,
+  "device_or_transport_admission_expanded": false,
+  "remaining": [
+    "native while-held/toggle layouts and unknown writers",
+    "portable macro import/name persistence/dense allocation/safe reclamation",
+    "actual firmware execution/timing and model/OEM completeness"
+  ],
+  "accepted_complete_models": 0,
+  "target_complete_models": 100,
+  "installer": false,
+  "release": false,
+  "installation": false,
+  "installed_version": "0.3.7"
+}
