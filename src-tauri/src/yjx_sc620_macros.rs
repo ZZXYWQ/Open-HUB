@@ -132,6 +132,12 @@ impl Image {
     pub fn slots(&self) -> usize {
         self.ranges.len()
     }
+    pub fn raw_slot(&self, slot: usize) -> Result<&[u8]> {
+        self.ranges
+            .get(slot)
+            .map(|range| &self.bytes[range.clone()])
+            .ok_or_else(|| invalid("macro slot outside image"))
+    }
     pub fn records(&self, slot: usize) -> Result<Vec<Record>> {
         let range = self
             .ranges

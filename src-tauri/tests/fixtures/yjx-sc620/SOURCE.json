@@ -10,7 +10,7 @@
     "read_config": "42933A..42936B: 0E/A5, 46 bytes, page currentProfile-1",
     "write_config": "42A960..42B0CC: 0F/AE; 46-byte payload, six stages, little-endian DPI and COLORREF bytes",
     "dpi_bounds": "42AB1A..42AB2B, repeated for all six values: unsigned(value-50) <= 0x655E",
-    "write_bindings": "42A4CB..42A5D5: 09/A5, 44-byte page, eleven four-byte records; six pages",
+    "write_bindings": "42A48E..42A5FC: starts1, page=ebx-1, repeats whileebx<6 => writes pages0..4;44-byte/11-record pages, not six writable pages",
     "known_actions": "411110..4115AF: mouse, double click, wheel, DPI cycle, keyboard/modifier, eight media records",
     "modifier_conversion": "43D390..43D3F5: E0..E7 converted to bits 0..7; other usage codes retained",
     "lighting_menu": "41307C..413195: language IDs 531..537 with item indices0..6; 416784..4167EB selected index -> light_mode; 42AA0F -> payload byte1",
@@ -19,7 +19,8 @@
     "macro_empty_only_end": "429D77 empty list ->42A15F sentinel; nonempty429FCD jumps to42A1BD, skipping sentinel;429F53 marks final action and429E02 marks prior record after trailing delay",
     "macro_delay_raw": "429DED uses buffer+cursor-4;429E31 writes accumulated delay to preceding record. Physical units/equivalence remain unverified",
     "macro_chunks": "42A2EE..42A3E8 writes0D/00 in56-byte chunks;42A3FE..42A417 final10/A5 marker;43A450 recomputes checksum",
-    "macro_modifiers_unresolved": "429E82 calls43CD80 VK conversion, not the43D390 binding modifier-bitmask converter; do not reuse the binding bitmask encoding"
+    "macro_modifiers_unresolved": "429E82 calls43CD80 VK conversion, not the43D390 binding modifier-bitmask converter; do not reuse the binding bitmask encoding",
+    "macro_binding": "4112B8..4112EF:70,zero-based library index,repeat code,mode0/2/3;SC620 UI meanings unresolved"
   },
   "hardware_tested": false,
   "golden_kind": "reconstructed static vectors, not measured USB traces",

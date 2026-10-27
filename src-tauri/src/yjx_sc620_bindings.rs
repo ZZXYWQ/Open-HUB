@@ -37,6 +37,50 @@ impl Media {
         }
     }
 }
+/// Exact SC620 wire codes. User-facing playback meanings are not established.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum MacroPlayback {
+    Code0 { repeat: u8 },
+    Code2,
+    Code3,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MacroBinding {
+    pub slot: u8,
+    pub playback: MacroPlayback,
+}
+impl MacroBinding {
+    pub fn encode(&self) -> Result<[u8; 4]> {
+        if self.slot >= 32 {
+            return Err(invalid("macro index outside 0..31"));
+        }
+        let (repeat, mode) = match self.playback {
+            MacroPlayback::Code0 { repeat } if repeat > 0 => (repeat, 0),
+            MacroPlayback::Code2 => (1, 2),
+            MacroPlayback::Code3 => (1, 3),
+            _ => return Err(invalid("unverified macro repeat code")),
+        };
+        Ok([0x70, self.slot, repeat, mode])
+    }
+    pub fn decode(raw: [u8; 4]) -> Option<Self> {
+        if raw[0] != 0x70 {
+            return None;
+        }
+        let playback = match (raw[2], raw[3]) {
+            (repeat, 0) if repeat > 0 => MacroPlayback::Code0 { repeat },
+            (1, 2) => MacroPlayback::Code2,
+            (1, 3) => MacroPlayback::Code3,
+            _ => return None,
+        };
+        let binding = Self {
+            slot: raw[1],
+            playback,
+        };
+        (binding.encode().ok() == Some(raw)).then_some(binding)
+    }
+}
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub enum Action {
@@ -146,7 +190,30 @@ impl Image {
         let at = usize::from(index) * 4;
         Ok(self.bytes[at..at + 4].try_into().unwrap())
     }
+    pub fn with_macro(
+        &self,
+        record: u8,
+        expected: [u8; 4],
+        binding: &MacroBinding,
+        library: &super::macros::Image,
+    ) -> Result<Self> {
+        if self.page >= 5 {
+            return Err(invalid("sixth binding page has no verified write path"));
+        }
+        if self.record(record)? != expected {
+            return Err(invalid("binding changed since preview"));
+        }
+        library.raw_slot(usize::from(binding.slot))?;
+        let raw = binding.encode()?;
+        let mut next = self.clone();
+        let at = usize::from(record) * 4;
+        next.bytes[at..at + 4].copy_from_slice(&raw);
+        Ok(next)
+    }
     pub fn patch(&self, changes: &[Change]) -> Result<Self> {
+        if self.page >= 5 {
+            return Err(invalid("sixth binding page has no verified write path"));
+        }
         if changes.is_empty() || changes.len() > 11 {
             return Err(invalid("select 1..11 distinct binding records"));
         }
@@ -170,7 +237,10 @@ impl Image {
     }
     /// Compile the source's 44-byte page rather than writing a smaller default
     /// eight-record table, which would discard unknown records 8..10.
-    pub fn compile_output(&self) -> [u8; 65] {
+    pub fn compile_output(&self) -> Result<[u8; 65]> {
+        if self.page >= 5 {
+            return Err(invalid("sixth binding page has no verified write path"));
+        }
         let mut raw = [0; FRAME];
         raw[0] = 0x55;
         raw[1] = 9;
@@ -178,7 +248,7 @@ impl Image {
         raw[4] = BINDING_LEN as u8;
         raw[7] = self.page;
         raw[8..8 + BINDING_LEN].copy_from_slice(&self.bytes);
-        output(raw)
+        Ok(output(raw))
     }
 }
 #[cfg(test)]
@@ -218,7 +288,7 @@ mod tests {
         let changes: Vec<Change> = serde_json::from_value(f["changes"].clone()).unwrap();
         let after = old.patch(&changes).unwrap();
         assert_eq!(
-            after.compile_output().to_vec(),
+            after.compile_output().unwrap().to_vec(),
             hex(f["expected_output_hex"].as_str().unwrap())
         );
         for i in 0..11 {

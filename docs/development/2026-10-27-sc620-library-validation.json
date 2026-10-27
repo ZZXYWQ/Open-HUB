@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-27",
+  "scope": "SC620 static macro binding and complete library transaction compiler, no live IO",
+  "new_default_tests": 10,
+  "sc620_tests": {
+    "passed": 35,
+    "failed": 0,
+    "log": "2026-10-27-sc620-library-tests.log"
+  },
+  "main_tests": {
+    "passed": 872,
+    "failed": 0,
+    "ignored": 68,
+    "log": "2026-10-27-sc620-library-all.log"
+  },
+  "native_build": {
+    "passed": true,
+    "log": "2026-10-27-sc620-library-build.log"
+  },
+  "source_audit": {
+    "passed": true,
+    "script": "scripts/check-sc620-binding-source.py",
+    "reviewed_instructions": 20
+  },
+  "independent_fixture": "src-tauri/tests/fixtures/yjx-sc620/library-plan.json",
+  "fixture_kind": "synthetic complete reports reconstructed from static encoder, not captured USB",
+  "reference_validation": [
+    "all six ordered read pages required",
+    "untargeted macro bodies compared per slot including readonly sixth page",
+    "shared macro mutation requires all references selected",
+    "opaque bindings block global library replacement",
+    "old or new dangling index refused",
+    "selected four-byte original must match",
+    "no sixth-page write compiler",
+    "no changes yield no reports"
+  ],
+  "playback_labels": "wire codes only, no user-facing meanings inferred from W12",
+  "limitations": [
+    "no dynamic firmware confirmation",
+    "no fresh-device snapshot collector",
+    "no physical control map",
+    "no reliable model identity",
+    "no HID writer or recovery",
+    "no UI or official file import",
+    "no model counted accepted"
+  ],
+  "physical_IO": false,
+  "OS_input": false,
+  "new_frontend_resources": false,
+  "new_dependencies": false,
+  "accepted_complete_models": 0,
+  "target_complete_models": 100,
+  "installer": false,
+  "release": false,
+  "installation": false
+}
