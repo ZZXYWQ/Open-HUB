@@ -1,0 +1,124 @@
+{
+  "date": "2026-10-27",
+  "status": "development-only",
+  "accepted_models": 0,
+  "target_models": 100,
+  "new_models_added": 0,
+  "existing_distinct_models_extended": 8,
+  "positive_transports": 9,
+  "negative_transports": 2,
+  "default_native_tests": {
+    "passed": 833,
+    "failed": 0,
+    "ignored": 65,
+    "new_default_tests": 7
+  },
+  "ui": {
+    "groups": 5,
+    "native_DTO": true,
+    "mocked_IPC": true,
+    "physical_HID": false,
+    "OS_input": false
+  },
+  "native_non_test_build": "passed",
+  "frontend_build": "passed",
+  "bundle": {
+    "javascript_bytes": 813535,
+    "previous_bytes": 812381,
+    "new_runtime_dependencies": 0
+  },
+  "physical_battery_measurement": false,
+  "installer_built": false,
+  "release_published": false,
+  "installed": false,
+  "limits": [
+    "real SOC and charging transitions not observed",
+    "no voltage units claimed",
+    "no device-list/tray battery cache integration",
+    "manual battery refresh still reads complete device state",
+    "no new RF-unit stable identity",
+    "complete OEM function and UI acceptance incomplete"
+  ],
+  "evidence": [
+    {
+      "path": "src-tauri/src/atk.rs",
+      "bytes": 73349,
+      "sha256": "b1bccd037314d4b6fc92c5b3de3b5817005a60ed4777848bc6478d1afb438e6d"
+    },
+    {
+      "path": "src-tauri/src/atk_battery.rs",
+      "bytes": 513,
+      "sha256": "adfff8dc2759aacc560db3ca0711464623488ed3478af0323a48939204ca5904"
+    },
+    {
+      "path": "src-tauri/src/atk_battery_tests.rs",
+      "bytes": 6425,
+      "sha256": "b2fd3e6e7407a66262b93a4788605192184688a94bcd59f1ed4b0bc6bef3077b"
+    },
+    {
+      "path": "src/components/compx-battery.tsx",
+      "bytes": 1695,
+      "sha256": "ca42a022a62746d11ee88bc129e3a414da06e3889746b105d7903ebb7eba4156"
+    },
+    {
+      "path": "src/components/multi-panel.tsx",
+      "bytes": 27393,
+      "sha256": "9219d64661e7fe4a627ff81cd0b789d5a41353fd11628610c081d41643f57db6"
+    },
+    {
+      "path": "src/lib/multi.ts",
+      "bytes": 8449,
+      "sha256": "51b82179a349be36ac0e0f0813e247334d40dc49e2e07a7896513920b40e5372"
+    },
+    {
+      "path": "scripts/check-compx-battery-source.cjs",
+      "bytes": 1743,
+      "sha256": "443b05a16488a0c067b818d5e3d4fec0c28c32436ba68495be96f3c7eb359e5c"
+    },
+    {
+      "path": "scripts/test-compx-battery-ui.cjs",
+      "bytes": 6057,
+      "sha256": "b974a14e98781397a9027bc46c13f6eabb017ead93bfe6eb6c524a06b50d6258"
+    },
+    {
+      "path": "docs/development/2026-10-27-compx-battery-source.json",
+      "bytes": 1018,
+      "sha256": "f63d23edbde3fb26d40888664558463bc6eddbf6cf82ee49214eeebc544626ae"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-battery-focused.log",
+      "bytes": 7695,
+      "sha256": "64b5c84cb70a4349b99b6c6e3832c9cfe1263bf975262f10fbf0854de1863aba"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-battery-all-final.log",
+      "bytes": 104686,
+      "sha256": "2de306513113080f82517bf0e872550cb71caf9b6e91b474e00d33703eaaa8b9"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-battery-native-build.log",
+      "bytes": 6794,
+      "sha256": "d3bdb016d53e13203da1d3ad70d05e953743079122fc1bfc140097a0d3476134"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-battery-frontend.log",
+      "bytes": 1211,
+      "sha256": "3056b983966017b243ccc696ac49c9f7b1ec99a614829141d226dbad187101e1"
+    },
+    {
+      "path": "../outputs/100-model-development/2026-10-27-compx-battery-ui.log",
+      "bytes": 34,
+      "sha256": "4c340e81c6596c192221a7bf32bbe7553c2df3d54e2267803df170cefec54ece"
+    },
+    {
+      "path": "../outputs/100-model-development/compx-battery-native-views.json",
+      "bytes": 49209,
+      "sha256": "0cc157d2faf6dceaab5b4e22af1084dd878bfd5e3bf8a479e37bdc880b700eb2"
+    },
+    {
+      "path": "../outputs/100-model-development/compx-battery-ui/report.json",
+      "bytes": 1009,
+      "sha256": "c54ba8804e52a0bcb95983a85ddd36bfe6803826d36c58bcb6d4783dd4b60bae"
+    }
+  ]
+}

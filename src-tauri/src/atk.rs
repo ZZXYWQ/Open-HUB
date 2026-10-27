@@ -15,6 +15,8 @@ mod native_macro;
 mod tuning;
 #[path="atk_indicator.rs"]
 mod indicator;
+#[path="atk_battery.rs"]
+mod battery;
 pub fn validate_tuning(v:u16,p:u16,t:&gearwise_core::tuning::MouseTuning)->Result<()>{tuning::validate(model(v,p).ok_or(Error::Unsupported("COMPX tuning model"))?,t)}
 #[path = "pulsar_shortcuts.rs"]
 mod pulsar_shortcut;
@@ -40,6 +42,7 @@ pub fn validate_key(usage: u8, mods: gearwise_core::model::Modifiers) -> Result<
     native_macro::encode(&native_macro::keyboard(usage, mods)).map(|_| ())
 }
 pub fn horizontal_scroll_supported(v:u16,p:u16)->bool{model(v,p).is_some_and(|m|m.native_macros&&m.native_buttons&&matches!(m.brand.as_str(),"atk"|"vxe"|"vgn"))}
+pub fn battery_supported(v:u16,p:u16)->bool{horizontal_scroll_supported(v,p)}
 pub fn vertical_scroll_supported(v:u16,p:u16)->bool{horizontal_scroll_supported(v,p)}
 pub fn is_pulsar(v:u16,p:u16)->bool{v==0x3554&&matches!(p,0xf507|0xf508)}
 pub fn validate_pulsar_key(usage:u8,mods:gearwise_core::model::Modifiers)->Result<()>{pulsar_shortcut::encode(usage,mods).map(|_|())}
@@ -373,6 +376,7 @@ impl Atk {
                 simulated: false,
             },
             caps: Capabilities {
+                battery:battery_supported(model.vendor,model.product),
                 dpi: Some(DpiCaps {
                     min: model.min_dpi,
                     max,
@@ -626,6 +630,12 @@ impl Atk {
         }
         if self.caps.dpi_color_stages>0 {self.identify()?;}
         if self.caps.tuning.is_some(){state.tuning=self.read_tuning().ok();}
+        if self.caps.battery {
+            // Optional telemetry never prevents editing readable settings. Unknown
+            // data does not become a default percentage or a cached prior value.
+            state.battery=self.exchange(4,0,0).ok().and_then(|raw|battery::decode(&raw).ok());
+            self.identify()?;
+        }
         Ok(state)
     }
 }
@@ -860,7 +870,7 @@ fn memory_device(
         }
         let data = match req[1] {
             0x10 => vec![2, mid],
-            3=>vec![1],0x0e=>vec![0],
+            3=>vec![1],0x0e=>vec![0],4=>vec![73,1,0x10,0],
             8 => eeprom[addr..addr + count].to_vec(),
             7 => {
                 eeprom[addr..addr + count].copy_from_slice(&req[6..6 + count]);

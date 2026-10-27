@@ -1,0 +1,37 @@
+{
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "source_sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "source_bytes": 5755795,
+  "analysis": "static text, no OEM execution or redistribution",
+  "offset_units": "UTF-16 code units",
+  "offsets": {
+    "command": 2037162,
+    "request": 2053300,
+    "level": 2053360,
+    "charge": 2053421,
+    "voltage": 2053485,
+    "charge_enum": 1598514,
+    "raw_use": 2104476
+  },
+  "query": {
+    "command": 4,
+    "address": 0,
+    "payload_bytes": 0
+  },
+  "response": {
+    "bytes": 4,
+    "percent_offset": 0,
+    "charge_offset": 1,
+    "discharging": 0,
+    "charging": 1,
+    "voltage_offset": 2,
+    "voltage_units": null
+  },
+  "fallback": "OEM synthetic 100 percent default is not adopted",
+  "limits": [
+    "not a physical battery measurement or USB capture",
+    "Pulsar not enabled",
+    "only exact existing CID/MID models",
+    "voltage not exposed without verified units"
+  ]
+}
