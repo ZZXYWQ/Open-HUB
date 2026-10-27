@@ -554,57 +554,63 @@ impl Device {
             active_reloaded: false,
             reload_note: None,
         };
-        self.verify_native_preview(t, &settings.expected_device,&settings.expected_connection)?;
+        // Reconcile ownership and the complete sector around each write. A
+        // selected-record expectation alone cannot protect concurrent edits to
+        // DPI, lighting, other bindings, or opaque bytes in this same sector.
+        let capture = || -> Result<Vec<u8>> {
+            self.verify_native_preview(t, &settings.expected_device, &settings.expected_connection)?;
+            if self.onboard_info(t)? != info {
+                return Err(Error::Other("memory layout changed".into()));
+            }
+            if self.read_sector(t, DIRECTORY_SECTOR, info.sector_size)? != directory {
+                return Err(Error::Other("profile directory changed".into()));
+            }
+            let bytes = self.read_sector(t, sector, info.sector_size)?;
+            self.verify_native_preview(t, &settings.expected_device, &settings.expected_connection)?;
+            if self.onboard_info(t)? != info
+                || self.read_sector(t, DIRECTORY_SECTOR, info.sector_size)? != directory
+            {
+                return Err(Error::Other("memory ownership changed during read".into()));
+            }
+            self.verify_native_preview(t, &settings.expected_device, &settings.expected_connection)?;
+            Ok(bytes)
+        };
+        if capture()? != original {
+            return Err(Error::Other("profile changed before binding write; refresh before editing".into()));
+        }
         if bytes_changed == 0 {
             return Ok(report);
         }
-        let outcome = self
-            .write_sector(t, sector, &patched)
-            .and_then(|()| self.read_sector(t, sector, info.sector_size))
-            .and_then(|bytes| { self.verify_native_preview(t, &settings.expected_device,&settings.expected_connection)?; Ok(bytes) });
+        let outcome = self.write_sector(t, sector, &patched).and_then(|()| capture());
         let error = match outcome {
             Ok(readback) if readback == patched => None,
             Ok(_) => Some("the stored profile differs from the submitted bindings".to_string()),
             Err(e) => Some(e.to_string()),
         };
         if let Some(error) = error {
-            // Do not restore into a sector whose directory ownership changed.
-            let ownership = (|| -> Result<()> {
-                self.verify_native_preview(t, &settings.expected_device,&settings.expected_connection)?;
-                let now = self.onboard_info(t)?;
-                if (
-                    now.memory_model,
-                    now.profile_format,
-                    now.macro_format,
-                    now.sector_size,
-                    now.button_count,
-                    now.mechanical_layout,
-                ) != (
-                    info.memory_model,
-                    info.profile_format,
-                    info.macro_format,
-                    info.sector_size,
-                    info.button_count,
-                    info.mechanical_layout,
-                ) {
-                    return Err(Error::Other("memory layout changed".into()));
+            let recovery = (|| -> Result<()> {
+                let actual = capture()?;
+                if actual != original && actual != patched {
+                    return Err(Error::Other("third-party or partial profile state; no blind restoration".into()));
                 }
-                let now = self.read_sector(t, DIRECTORY_SECTOR, info.sector_size)?;
-                if !sector_crc_ok(&now) || now != directory {
-                    return Err(Error::Other("profile directory changed".into()));
+                // Close an interrupted sector transaction only while the entire
+                // readback is still an exact state belonging to this operation.
+                // Check again immediately before restoration; no protocol lock
+                // or atomic compare-and-swap is available on this feature.
+                if capture()? != actual {
+                    return Err(Error::Other("profile changed during recovery; no blind restoration".into()));
+                }
+                self.write_sector(t, sector, &original)?;
+                if capture()? != original {
+                    return Err(Error::Other("original profile readback or ownership not confirmed".into()));
                 }
                 Ok(())
             })();
-            let restored = ownership
-                .and_then(|()| self.write_sector(t, sector, &original))
-                .and_then(|()| self.read_sector(t, sector, info.sector_size))
-                .is_ok_and(|back| back == original);
             return Err(Error::Other(format!(
                 "binding write failed ({error}); {}",
-                if restored {
-                    "original sector restored and verified"
-                } else {
-                    "original state could not be confirmed; keep the backup and refresh, no blind retry"
+                match recovery {
+                    Ok(()) => "original sector restored and verified".to_string(),
+                    Err(reason) => format!("state uncertain; keep the backup and refresh, no blind retry: {reason}"),
                 }
             )));
         }

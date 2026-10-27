@@ -29,6 +29,10 @@ struct State {
     change_unrelated_on_fault: bool,
     descriptor_changed: bool,
     switch_after_read: Option<usize>,
+    profile_change_on_fault: Option<(usize,bool)>,
+    profile_change_after_read: Option<(usize,usize)>,
+    descriptor_change_on_fault: Option<usize>,
+    descriptor_override: Option<usize>,
     read_count: usize,
 }
 struct Memory(Mutex<State>);
@@ -145,7 +149,7 @@ impl FeatureRequest for Memory {
         }
         let mut r = vec![0; 16];
         match function {
-            0 => {r[..11].copy_from_slice(&[1, 3, 1, 2, 0, 11, 8, 1, 0, 10, 1]);if let Some(size)=s.sector_size{r[7..9].copy_from_slice(&size.to_be_bytes());}if s.descriptor_changed{r[9]^=1;}},
+            0 => {r[..11].copy_from_slice(&[1, 3, 1, 2, 0, 11, 8, 1, 0, 10, 1]);if let Some(size)=s.sector_size{r[7..9].copy_from_slice(&size.to_be_bytes());}if s.descriptor_changed{r[9]^=1;}if let Some(at)=s.descriptor_override{r[at]^=1;}},
             2 => r[0] = s.mode,
             11 => r[0] = 0,
             4 => r[1] = s.active,
@@ -163,6 +167,12 @@ impl FeatureRequest for Memory {
                 let sector = u16::from_be_bytes([p[0], p[1]]);
                 let at = usize::from(u16::from_be_bytes([p[2], p[3]]));
                 r.copy_from_slice(&s.sectors[&sector][at..at + 16]);
+                if let Some((nth, at)) = s.profile_change_after_read {
+                    if s.read_count == nth {
+                        let mut page = s.sectors[&1].clone(); page[at] ^= 0x40;
+                        s.sectors.insert(1, crc(page));
+                    }
+                }
                 if sector == 1 && s.committed && s.corrupt_readback {
                     s.corrupt_readback = false;
                     r[3] ^= 1;
@@ -198,6 +208,11 @@ impl FeatureRequest for Memory {
                 s.seen += 1;
                 if s.seen == nth {
                     s.fault = None;
+                    if let Some((at, valid_crc)) = s.profile_change_on_fault {
+                        let mut page=s.sectors[&1].clone();page[at]^=0x40;
+                        s.sectors.insert(1,if valid_crc {crc(page)} else {page});
+                    }
+                    if let Some(at)=s.descriptor_change_on_fault {s.descriptor_override=Some(at);}
                     if s.change_unit_on_fault {s.unit=[9;4];}
                     if s.change_unrelated_on_fault{let mut p=s.sectors[&2].clone();p[0x12]^=0x40;s.sectors.insert(2,crc(p));}
                     if s.change_directory_on_fault {
@@ -718,3 +733,65 @@ fn native_mouse_mask_fixture_export(){let m=memory();let(snapshot,_)=device().on
 #[test]
 #[ignore="requires actual built UI mouse output selection requests"]
 fn browser_mouse_output_masks_execute_native_transaction(){let s:Settings=serde_json::from_slice(&std::fs::read(std::env::var_os("OPEN_HUB_MOUSE_MASK_SETTINGS").unwrap()).unwrap()).unwrap();let m=memory();assert_eq!(s.changes,mouse_mask_settings(&m).changes);check_mouse_mask_transaction(&m,&s);}
+
+
+#[test]
+fn binding_recovery_preserves_external_or_partial_whole_profile_values_at_all_write_stages(){
+    for fault in [(6,1),(8,1)].into_iter().chain((1..=16).map(|n|(7,n))) {
+        for at in [0x12,0x2c,0x38,0x6c,0xa0,0x1f] {
+            for valid_crc in [false,true] {
+                let m=memory();let d=unit_device(&m);let b=unit_settings(&m,&d);let before=m.0.lock().unwrap().sectors.clone();
+                let mut expected=if fault.0==8 {crate::onboard_bindings::patch(&before[&1],&d.onboard_info(&m).unwrap(),&b.changes).unwrap()}else{before[&1].clone()};
+                expected[at]^=0x40;if valid_crc{expected=crc(expected);}
+                {let mut s=m.0.lock().unwrap();s.fault=Some(fault);s.profile_change_on_fault=Some((at,valid_crc));}
+                let error=d.write_slot_bindings(&m,&b).unwrap_err().to_string();
+                assert!(error.contains("state uncertain")&&error.contains("third-party or partial"),"{fault:?} {at} {valid_crc}: {error}");
+                let state=m.0.lock().unwrap();assert_eq!(state.calls.iter().filter(|(f,_)|*f==6).count(),1);assert!(!state.calls.iter().any(|(f,_)|*f==3));
+                assert_ne!(state.sectors[&1],before[&1]);assert_eq!(state.sectors[&1],expected);
+                for sector in [0,2]{assert_eq!(state.sectors[&sector],before[&sector]);}
+            }
+        }
+    }
+}
+#[test]
+fn binding_prewrite_recheck_refuses_changes_outside_selected_records(){
+    for at in [0x12,0x1f,0x38,0xa0] {
+        let m=memory();let d=unit_device(&m);let b=unit_settings(&m,&d);
+        // Directory + original profile have each consumed 16 native read chunks.
+        m.0.lock().unwrap().profile_change_after_read=Some((32,at));
+        let error=d.write_slot_bindings(&m,&b).unwrap_err().to_string();assert!(error.contains("changed before binding write"),"{error}");
+        assert!(!m.0.lock().unwrap().calls.iter().any(|(f,_)|matches!(f,3|6|7|8)));
+    }
+}
+#[test]
+fn binding_recovery_rejects_descriptor_changes_even_when_directory_is_unchanged(){
+    for fault in [(6,1),(7,1),(8,1)] {
+        for at in [3,4,6,9,10] {
+        let m=memory();let d=unit_device(&m);let b=unit_settings(&m,&d);
+        {let mut s=m.0.lock().unwrap();s.fault=Some(fault);s.descriptor_change_on_fault=Some(at);}
+        let error=d.write_slot_bindings(&m,&b).unwrap_err().to_string();assert!(error.contains("state uncertain")&&error.contains("memory layout changed"),"{at}: {error}");
+        assert_eq!(m.0.lock().unwrap().calls.iter().filter(|(f,_)|*f==6).count(),1);
+        }
+    }
+}
+
+#[test]
+fn binding_recovery_identity_change_after_restore_readback_is_never_reported_verified(){
+    let baseline=memory();let d=unit_device(&baseline);let b=unit_settings(&baseline,&d);baseline.0.lock().unwrap().fault=Some((8,1));assert!(d.write_slot_bindings(&baseline,&b).unwrap_err().to_string().contains("restored and verified"));
+    let total_reads=baseline.0.lock().unwrap().read_count;
+    for read in [total_reads-16,total_reads] {
+        let m=memory();let d=unit_device(&m);let b=unit_settings(&m,&d);
+        {let mut s=m.0.lock().unwrap();s.fault=Some((8,1));s.switch_after_read=Some(read);}
+        let error=d.write_slot_bindings(&m,&b).unwrap_err().to_string();assert!(error.contains("state uncertain"),"{read}: {error}");assert!(!error.contains("restored and verified"));assert!(!m.0.lock().unwrap().calls.iter().any(|(f,_)|*f==3));
+    }
+}
+#[test]
+fn binding_recovery_rereads_exact_state_immediately_before_restoration(){
+    let baseline=memory();let d=unit_device(&baseline);let b=unit_settings(&baseline,&d);baseline.0.lock().unwrap().fault=Some((8,1));let _=d.write_slot_bindings(&baseline,&b);
+    let calls=baseline.0.lock().unwrap().calls.clone();let mut reads=0;let mut starts=0;let mut before_restore_reads=0;
+    for (f,_) in calls {if f==5{reads+=1;}if f==6{starts+=1;if starts==2{before_restore_reads=reads;break;}}}
+    assert!(before_restore_reads>48);
+    let m=memory();let d=unit_device(&m);let b=unit_settings(&m,&d);
+    {let mut s=m.0.lock().unwrap();s.fault=Some((8,1));s.profile_change_after_read=Some((before_restore_reads-48,0x12));}
+    let error=d.write_slot_bindings(&m,&b).unwrap_err().to_string();assert!(error.contains("state uncertain"),"{error}");assert_eq!(m.0.lock().unwrap().calls.iter().filter(|(f,_)|*f==6).count(),1);
+}
