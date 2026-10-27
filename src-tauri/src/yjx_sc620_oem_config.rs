@@ -37,7 +37,7 @@ pub fn read(path: &std::path::Path, profile_id: i64) -> Result<Source> {
     db(tx.commit())?;
     Ok(result)
 }
-fn parse(c: &rusqlite::Connection, profile_id: i64) -> Result<Source> {
+pub(super) fn parse(c: &rusqlite::Connection, profile_id: i64) -> Result<Source> {
     schema(
         c,
         "t_configdata",

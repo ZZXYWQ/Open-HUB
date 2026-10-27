@@ -40,6 +40,7 @@ pub(super) fn schema(c: &Connection, table: &str, expected: &[(&str, &str, i64)]
         "t_macro_data" => "PRAGMA table_info(t_macro_data)",
         "t_macrorecord" => "PRAGMA table_info(t_macrorecord)",
         "t_configdata" => "PRAGMA table_info(t_configdata)",
+        "t_key_macro_data" => "PRAGMA table_info(t_key_macro_data)",
         _ => return Err(invalid("unexpected OEM table")),
     };
     let mut stmt = db(c.prepare(sql))?;
@@ -81,7 +82,7 @@ pub fn read(path: &std::path::Path) -> Result<Vec<Macro>> {
     db(tx.commit())?;
     Ok(result)
 }
-fn parse(c: &Connection) -> Result<Vec<Macro>> {
+pub(super) fn parse(c: &Connection) -> Result<Vec<Macro>> {
     schema(
         c,
         "t_macro_data",

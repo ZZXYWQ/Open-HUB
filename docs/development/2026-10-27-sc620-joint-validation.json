@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-27",
+  "scope": "strict known-subset joint OEM settings/buttons/macros static conversion; unregistered SC620 module",
+  "new_default_tests": 10,
+  "targeted_sc620": {
+    "passed": 91,
+    "failed": 0
+  },
+  "main_tests": {
+    "passed": 928,
+    "failed": 0,
+    "ignored": 68
+  },
+  "native_non_test_build": true,
+  "source_audit": {
+    "script": "scripts/check-sc620-profile-source.py",
+    "exact_instructions": 49,
+    "modifier_jump_targets": 8,
+    "passed": true,
+    "OEM_execution": false
+  },
+  "fixture_kind": "Python synthetic SQLite with independent reports; not OEM export, capture or physical proof",
+  "fixture_sha256": {
+    "src-tauri/tests/fixtures/yjx-sc620/oem-profile.sqlite3": "43d83eed534bb8907f7d5208bff781e5cc61c896ec5fc3314dc7c2e240355bb4",
+    "src-tauri/tests/fixtures/yjx-sc620/oem-profile.json": "90594d4c51e2b58d28e7e2e5d0f5a3dad023af813a3e2dd21ffecd17e0bce791"
+  },
+  "coverage": {
+    "source_profile_ids": [
+      7,
+      42
+    ],
+    "target_page": 2,
+    "source_key_rows": 11,
+    "source_macro_ids": [
+      7,
+      42
+    ],
+    "native_slots": [
+      0,
+      1
+    ],
+    "full_golden_reports": 5,
+    "basic_actions": 9,
+    "media_controls": 8,
+    "standalone_modifiers": 8,
+    "all_six_binding_pages_protected": true,
+    "read_source_unchanged": true,
+    "repeat_import_no_reports": true
+  },
+  "initial_test_correction": "empty64-byte macro header requires two data reports plus marker; corrected new test count3 to4 including binding report",
+  "physical_IO": false,
+  "OS_input": false,
+  "new_runtime_dependencies": false,
+  "new_frontend_resources": false,
+  "OEM_downloaded_this_increment": false,
+  "limits": [
+    "strict whole-source macro conversion, no slot allocator/merge",
+    "unknown actions/layers or settings block preparation",
+    "DPI flag default/read/write mismatch still unresolved",
+    "no model/unit identity, live executor/readback/recovery or UI"
+  ],
+  "accepted_complete_models": 0,
+  "target_complete_models": 100,
+  "installer": false,
+  "release": false,
+  "installation": false,
+  "installed_version": "0.3.7"
+}
