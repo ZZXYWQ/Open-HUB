@@ -30,7 +30,13 @@
     "oem_motion": "42A090..42A15A: source8..11 payload byte ->46;source12 two nibbles ->packed plus source-high bits ->delay-high40/80;SC620 physical axis polarity not established",
     "report_rate": "42E100..42E26C labels125/250/500/1000Hz andcontrols72..75;419FBF..41A040 stores1..4;42AA22..42AA51 writespayload2",
     "debounce": "language2052 id111 ms;41A0F4..41A103 bounds0..20,41A15A keybutton_respondtime,42AFD5 writespayload43",
-    "oem_config_table": "fileoffset148120 t_configdata(config_id,profile,key,value);profileID not used as hardware page by converter"
+    "oem_config_table": "fileoffset148120 t_configdata(config_id,profile,key,value);profileID not used as hardware page by converter",
+    "sensor_tuning": "labels585/586/587 ->controls470/474/478 ->source4/8/16 ->native10/01/20 at42AF72..42AF93;other native bits preserved",
+    "scroll_reverse": "language601/602 ->forward/reverse;41A3B9/C0 writes0/1;42AEEC payload40",
+    "esports": "language606/607 On/Off ->control49C/4A0;41A4C9/D0 writes2/1;42B05A payload45",
+    "lod": "label561 Low1mm/High2mm;41A2B3/BA writes2/1;42AF2E payload41",
+    "sleep_minutes": "IAT5376C4 MComboBox.GetCurData;seven AddItem values1,3,5,10,20,30,60;hour label613 at42EAAB;payload44 at42B017",
+    "dpi_flag_inconsistency": "initial string549580 is5;4294C3 reads stage field directly;42AA93 writes6;converter accepts only6 for fixed six-stage image"
   },
   "hardware_tested": false,
   "golden_kind": "reconstructed static vectors, not measured USB traces",

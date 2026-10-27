@@ -1,0 +1,285 @@
+{
+  "source_program_sha256": "cd947c856d287042bfa75e2617ee0488f9d29c9be532588a6cedfd8e3faf7514",
+  "disassembly_sha256": "d23dcf6f35566d990945fac89482cb06c541be1c845d85643a76c676ca305a54",
+  "method": "static original instruction/data/import/label checks, no OEM execution",
+  "labels": {
+    "560": {
+      "1033": "LOD",
+      "2052": "鼠标LOD高度"
+    },
+    "561": {
+      "1033": "Distance the mouse stops moving when lifted from the surface, Low: 1mm, High: 2mm",
+      "2052": "鼠标离开桌面停止运动的距离,低:1mm, 高：2mm"
+    },
+    "585": {
+      "1033": "Ripple",
+      "2052": "波纹控制"
+    },
+    "586": {
+      "1033": "Angle Snap",
+      "2052": "直线修正"
+    },
+    "587": {
+      "1033": "Motion Sync",
+      "2052": "Motion Sync开启"
+    },
+    "600": {
+      "1033": "Scroll Direction",
+      "2052": "滚动方向设置"
+    },
+    "601": {
+      "1033": "Forward",
+      "2052": "正向"
+    },
+    "602": {
+      "1033": "Reverse",
+      "2052": "反向"
+    },
+    "603": {
+      "1033": "Switch between mouse scroll up and scroll down functions",
+      "2052": "切换鼠标滚轮上和滚轮下功能"
+    },
+    "605": {
+      "1033": "E-Sports Mode",
+      "2052": "电竞模式"
+    },
+    "606": {
+      "1033": "On",
+      "2052": "开"
+    },
+    "607": {
+      "1033": "Off",
+      "2052": "关"
+    },
+    "608": {
+      "1033": "Beneficial for improving mouse performance, but will increase power consumption.",
+      "2052": "有利于提高鼠标性能，但会增加功耗"
+    },
+    "610": {
+      "1033": "SleepTime",
+      "2052": "休眠时间"
+    },
+    "611": {
+      "1033": "Min",
+      "2052": "分钟"
+    },
+    "613": {
+      "1033": "Hour",
+      "2052": "小时"
+    }
+  },
+  "reviewed_instructions": {
+    "413516": {
+      "bytes": "68 49 02 00 00",
+      "instruction": "push\t0x249"
+    },
+    "41355d": {
+      "bytes": "68 4a 02 00 00",
+      "instruction": "push\t0x24a"
+    },
+    "4135a4": {
+      "bytes": "68 4b 02 00 00",
+      "instruction": "push\t0x24b"
+    },
+    "413679": {
+      "bytes": "68 59 02 00 00",
+      "instruction": "push\t0x259"
+    },
+    "4136c0": {
+      "bytes": "68 5a 02 00 00",
+      "instruction": "push\t0x25a"
+    },
+    "41374e": {
+      "bytes": "68 5e 02 00 00",
+      "instruction": "push\t0x25e"
+    },
+    "413795": {
+      "bytes": "68 5f 02 00 00",
+      "instruction": "push\t0x25f"
+    },
+    "41a5c7": {
+      "bytes": "b9 04 00 00 00",
+      "instruction": "mov\tecx, 0x4"
+    },
+    "41a5d5": {
+      "bytes": "83 ce 08",
+      "instruction": "or\tesi, 0x8"
+    },
+    "41a5dc": {
+      "bytes": "83 ce 10",
+      "instruction": "or\tesi, 0x10"
+    },
+    "42af72": {
+      "bytes": "a8 04",
+      "instruction": "test\tal, 0x4"
+    },
+    "42af77": {
+      "bytes": "ba 10 00 00 00",
+      "instruction": "mov\tedx, 0x10"
+    },
+    "42af86": {
+      "bytes": "80 c9 01",
+      "instruction": "or\tcl, 0x1"
+    },
+    "42af90": {
+      "bytes": "80 c9 20",
+      "instruction": "or\tcl, 0x20"
+    },
+    "41a2b3": {
+      "bytes": "68 bc 94 54 00",
+      "instruction": "push\t0x5494bc"
+    },
+    "41a2ba": {
+      "bytes": "68 0c 95 54 00",
+      "instruction": "push\t0x54950c"
+    },
+    "42af2e": {
+      "bytes": "88 45 d1",
+      "instruction": "mov\tbyte ptr [ebp - 0x2f], al"
+    },
+    "41a3b9": {
+      "bytes": "68 60 94 54 00",
+      "instruction": "push\t0x549460"
+    },
+    "41a3c0": {
+      "bytes": "68 0c 95 54 00",
+      "instruction": "push\t0x54950c"
+    },
+    "42aeec": {
+      "bytes": "88 45 d0",
+      "instruction": "mov\tbyte ptr [ebp - 0x30], al"
+    },
+    "41a4c9": {
+      "bytes": "68 bc 94 54 00",
+      "instruction": "push\t0x5494bc"
+    },
+    "41a4d0": {
+      "bytes": "68 0c 95 54 00",
+      "instruction": "push\t0x54950c"
+    },
+    "42b05a": {
+      "bytes": "88 45 d5",
+      "instruction": "mov\tbyte ptr [ebp - 0x2b], al"
+    },
+    "41a6e3": {
+      "bytes": "ff 15 c4 76 53 00",
+      "instruction": "call\tdword ptr [0x5376c4]"
+    },
+    "42afd5": {
+      "bytes": "88 45 d3",
+      "instruction": "mov\tbyte ptr [ebp - 0x2d], al"
+    },
+    "42b017": {
+      "bytes": "88 45 d4",
+      "instruction": "mov\tbyte ptr [ebp - 0x2c], al"
+    },
+    "42e88f": {
+      "bytes": "6a 01",
+      "instruction": "push\t0x1"
+    },
+    "42e8fb": {
+      "bytes": "6a 03",
+      "instruction": "push\t0x3"
+    },
+    "42e961": {
+      "bytes": "6a 05",
+      "instruction": "push\t0x5"
+    },
+    "42e9c7": {
+      "bytes": "6a 0a",
+      "instruction": "push\t0xa"
+    },
+    "42ea2d": {
+      "bytes": "6a 14",
+      "instruction": "push\t0x14"
+    },
+    "42ea93": {
+      "bytes": "6a 1e",
+      "instruction": "push\t0x1e"
+    },
+    "42eaf9": {
+      "bytes": "6a 3c",
+      "instruction": "push\t0x3c"
+    },
+    "42e844": {
+      "bytes": "68 63 02 00 00",
+      "instruction": "push\t0x263"
+    },
+    "42eaab": {
+      "bytes": "68 65 02 00 00",
+      "instruction": "push\t0x265"
+    },
+    "403112": {
+      "bytes": "68 80 95 54 00",
+      "instruction": "push\t0x549580"
+    },
+    "4294c3": {
+      "bytes": "0f b6 85 7b ff ff ff",
+      "instruction": "movzx\teax, byte ptr [ebp - 0x85]"
+    },
+    "42aa93": {
+      "bytes": "c6 45 ab 06",
+      "instruction": "mov\tbyte ptr [ebp - 0x55], 0x6"
+    }
+  },
+  "imports": {
+    "0x5375f0": "?AddItem@MComboBox@YJXUI@@QAEHPB_WJ0VColor@Gdiplus@@@Z",
+    "0x5376c4": "?GetCurData@MComboBox@YJXUI@@QAEJXZ"
+  },
+  "native_mapping": {
+    "lod": {
+      "offset": 41,
+      "low_mm_code": 1,
+      "high_mm_code": 2
+    },
+    "scroll": {
+      "offset": 40,
+      "forward": 0,
+      "reverse": 1
+    },
+    "esports": {
+      "offset": 45,
+      "off": 1,
+      "on": 2
+    },
+    "sensor_flags": {
+      "offset": 42,
+      "ripple": {
+        "source": 4,
+        "native": 16
+      },
+      "angle_snap": {
+        "source": 8,
+        "native": 1
+      },
+      "motion_sync": {
+        "source": 16,
+        "native": 32
+      }
+    },
+    "sleep": {
+      "offset": 44,
+      "minutes": [
+        1,
+        3,
+        5,
+        10,
+        20,
+        30,
+        60
+      ],
+      "source": "MComboBox.GetCurData, not selected index"
+    }
+  },
+  "dpi_flag_boundary": {
+    "initial_default_string": 5,
+    "readback_stores_payload_stage_field_directly": true,
+    "native_writer_constant": 6,
+    "converter_accepts_only": 6,
+    "other_values": "kept unconverted; no unsupported stage count silently turned into6"
+  },
+  "unknown_native_bits": "read-preserving mask, never clear unselected native bits",
+  "source_sensor_low_bits": "preserved source metadata, not used by verified SC620 native writer",
+  "physical_IO": false,
+  "OEM_execution": false
+}

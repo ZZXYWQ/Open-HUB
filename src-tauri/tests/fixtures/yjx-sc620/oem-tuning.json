@@ -1,0 +1,29 @@
+{
+  "kind": "independent static22-key source and read-preserving report, not OEM export or physical capture",
+  "fields": {
+    "light_mode": "5",
+    "report_rate": "2",
+    "button_respondtime": "17",
+    "dpi_index": "4",
+    "dpi_group0_value": "50",
+    "dpi_group0_rgb": "16777215",
+    "dpi_group1_value": "51",
+    "dpi_group1_rgb": "0",
+    "dpi_group2_value": "1234",
+    "dpi_group2_rgb": "8453633",
+    "dpi_group3_value": "10000",
+    "dpi_group3_rgb": "6307872",
+    "dpi_group4_value": "25000",
+    "dpi_group4_rgb": "3351057",
+    "dpi_group5_value": "26000",
+    "dpi_group5_rgb": "12496350",
+    "liftoff_height": "2",
+    "scroll_flag": "1",
+    "e-sports_flag": "2",
+    "sleep_light": "30",
+    "sensor_flag": "8",
+    "dpi_flag": "6"
+  },
+  "expected_windows_report_hex": "00 55 0f ae 54 2e 00 00 02 02 05 02 06 05 32 00 33 00 d2 04 10 27 a8 61 90 65 ff ff ff 00 00 00 01 fe 80 20 40 60 11 22 33 de ad be aa bb cc dd ee 01 02 85 11 1e 02 00 00 00 00 00 00 00 00 00 00",
+  "preserved_native_sensor_bits": 132
+}

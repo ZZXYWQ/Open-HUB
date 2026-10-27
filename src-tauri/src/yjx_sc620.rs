@@ -144,6 +144,13 @@ impl LightMode {
 pub struct ConfigPatch {
     pub report_rate_hz: Option<u16>,
     pub debounce_ms: Option<u8>,
+    pub lod_mm: Option<u8>,
+    pub scroll_reverse: Option<bool>,
+    pub esports: Option<bool>,
+    pub sleep_minutes: Option<u8>,
+    pub ripple_control: Option<bool>,
+    pub angle_snap: Option<bool>,
+    pub motion_sync: Option<bool>,
     pub light: Option<LightMode>,
     /// Zero-based stage; firmware stores 1..6.
     pub active: Option<u8>,
@@ -166,6 +173,13 @@ impl ConfigImage {
         validate_dpi(&image.dpi())?;
         Ok(image)
     }
+    pub fn lod_mm(&self)->Option<u8>{matches!(self.bytes[41],1|2).then_some(self.bytes[41])}
+    pub fn scroll_reverse(&self)->Option<bool>{match self.bytes[40]{0=>Some(false),1=>Some(true),_=>None}}
+    pub fn esports(&self)->Option<bool>{match self.bytes[45]{1=>Some(false),2=>Some(true),_=>None}}
+    pub fn sleep_minutes(&self)->Option<u8>{matches!(self.bytes[44],1|3|5|10|20|30|60).then_some(self.bytes[44])}
+    pub fn ripple_control(&self)->bool{self.bytes[42]&0x10!=0}
+    pub fn angle_snap(&self)->bool{self.bytes[42]&1!=0}
+    pub fn motion_sync(&self)->bool{self.bytes[42]&0x20!=0}
     pub fn report_rate_hz(&self)->Option<u16>{match self.bytes[2]{1=>Some(125),2=>Some(250),3=>Some(500),4=>Some(1000),_=>None}}
     pub fn debounce_ms(&self)->Option<u8>{(self.bytes[43]<=20).then_some(self.bytes[43])}
     pub fn light(&self) -> Option<LightMode> {
@@ -198,7 +212,14 @@ impl ConfigImage {
         }
         if let Some(rate)=changes.report_rate_hz{if !matches!(rate,125|250|500|1000){return Err(invalid("unverified SC620 report rate"));}}
         if changes.debounce_ms.is_some_and(|ms|ms>20){return Err(invalid("SC620 debounce must be0..20ms"));}
+        if changes.lod_mm.is_some_and(|v|!matches!(v,1|2)){return Err(invalid("SC620 LOD is1or2mm"));}
+        if changes.sleep_minutes.is_some_and(|v|!matches!(v,1|3|5|10|20|30|60)){return Err(invalid("unverified SC620 sleep minutes"));}
         let mut next = self.clone();
+        if let Some(v)=changes.lod_mm{next.bytes[41]=v;}
+        if let Some(v)=changes.scroll_reverse{next.bytes[40]=u8::from(v);}
+        if let Some(v)=changes.esports{next.bytes[45]=if v{2}else{1};}
+        if let Some(v)=changes.sleep_minutes{next.bytes[44]=v;}
+        for (selected,mask) in [(changes.ripple_control,0x10),(changes.angle_snap,1),(changes.motion_sync,0x20)]{if let Some(on)=selected{next.bytes[42]=(next.bytes[42]&!mask)|if on{mask}else{0};}}
         if let Some(rate)=changes.report_rate_hz{next.bytes[2]=match rate{125=>1,250=>2,500=>3,1000=>4,_=>unreachable!()};}
         if let Some(ms)=changes.debounce_ms{next.bytes[43]=ms;}
         if let Some(light) = changes.light {

@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-27",
+  "scope": "SC620 tuning/power raw fields and verified22-key settings subset, no device/UI registration",
+  "new_default_tests": 10,
+  "targeted_sc620": {
+    "passed": 81,
+    "failed": 0,
+    "log": "2026-10-27-sc620-tuning-tests.log"
+  },
+  "main_tests": {
+    "passed": 918,
+    "failed": 0,
+    "ignored": 68,
+    "log": "2026-10-27-sc620-tuning-all.log"
+  },
+  "native_non_test_build": true,
+  "source_audit": {
+    "passed": true,
+    "script": "scripts/check-sc620-tuning-source.py",
+    "original_instruction_data_label_and_import_checks": true,
+    "OEM_execution": false
+  },
+  "coverage": {
+    "tuning_combinations": 448,
+    "raw_sensor_original_bytes": 256,
+    "source_sensor_bit_and_metadata_combinations": 32,
+    "settings_keys": 22,
+    "complete_golden_reports": 1
+  },
+  "fixture": "src-tauri/tests/fixtures/yjx-sc620/oem-tuning.json",
+  "fixture_kind": "independent synthetic source fields and read-preserving complete vector, not hardware trace",
+  "source_database_unchanged_after_read": true,
+  "native_unknown_sensor_bits_preserved": 132,
+  "dpi_flag_limit": "originaldefault5/readbackfield/nativeconstant6 disagreement; only6 accepted, other values remain unconverted",
+  "physical_IO": false,
+  "OS_input": false,
+  "new_runtime_dependencies": false,
+  "new_frontend_resources": false,
+  "cleanup": {
+    "remaining_oem_payload_files": 0,
+    "OEM_execution": false,
+    "preserved": "static facts and extraction metadata only",
+    "removed_files": 4
+  },
+  "remaining": [
+    "physical firmware capabilities, behavior and timing",
+    "modifier and full joint profile/button/macro import",
+    "model/per-mouse identity",
+    "device executor/recovery",
+    "UI"
+  ],
+  "accepted_complete_models": 0,
+  "target_complete_models": 100,
+  "installer": false,
+  "release": false,
+  "installation": false
+}

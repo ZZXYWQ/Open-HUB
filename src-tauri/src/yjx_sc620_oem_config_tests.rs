@@ -126,7 +126,7 @@ fn independent_sqlite_read_and_known_config_compile_match_complete_golden_report
 #[test]
 fn unconverted_source_fields_remain_visible_and_block_whole_source_preparation() {
     let mut f = fields();
-    f.insert("sensor_flag".into(), "28".into());
+    f.insert("sensor_flag".into(), "128".into());
     f.insert("sleep_light".into(), "99".into());
     let src = convert(7, f.clone()).unwrap();
     assert_eq!(src.fields, f);
@@ -214,7 +214,7 @@ fn preview_tampering_cannot_bypass_unconverted_fields_or_change_settings() {
     source.patch.debounce_ms = Some(0);
     assert!(source.prepare(&image()).is_err());
     let mut f = fields();
-    f.insert("e-sports_flag".into(), "2".into());
+    f.insert("e-sports_flag".into(), "9".into());
     let mut source = convert(7, f).unwrap();
     source.unconverted.clear();
     assert!(source.prepare(&image()).is_err());

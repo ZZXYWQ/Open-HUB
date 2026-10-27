@@ -131,20 +131,71 @@ fn convert(profile_id: i64, fields: BTreeMap<String, String>) -> Result<Source> 
         unconverted.remove(&dk);
         unconverted.remove(&ck);
     }
+    let mut patch = ConfigPatch {
+        light: Some(light),
+        active: Some(active),
+        dpi: Some(dpi),
+        colors: Some(colors),
+        report_rate_hz: Some(rate),
+        debounce_ms: Some(debounce),
+        ..ConfigPatch::default()
+    };
+    if fields.contains_key("liftoff_height") {
+        let n = value(&fields, "liftoff_height", 255)?;
+        if matches!(n, 1 | 2) {
+            patch.lod_mm = Some(n as u8);
+            unconverted.remove("liftoff_height");
+        }
+    }
+    if fields.contains_key("scroll_flag") {
+        let n = value(&fields, "scroll_flag", 255)?;
+        if n <= 1 {
+            patch.scroll_reverse = Some(n == 1);
+            unconverted.remove("scroll_flag");
+        }
+    }
+    if fields.contains_key("e-sports_flag") {
+        let n = value(&fields, "e-sports_flag", 255)?;
+        if matches!(n, 1 | 2) {
+            patch.esports = Some(n == 2);
+            unconverted.remove("e-sports_flag");
+        }
+    }
+    if fields.contains_key("sleep_light") {
+        let n = value(&fields, "sleep_light", 255)?;
+        if matches!(n, 1 | 3 | 5 | 10 | 20 | 30 | 60) {
+            patch.sleep_minutes = Some(n as u8);
+            unconverted.remove("sleep_light");
+        }
+    }
+    if fields.contains_key("sensor_flag") {
+        let n = value(&fields, "sensor_flag", 255)?;
+        // The source's two low bits are retained file metadata. The verified
+        // SC620 native writer reads only4/8/16; other higher bits stay gated.
+        if n & !0x1f == 0 {
+            patch.ripple_control = Some(n & 4 != 0);
+            patch.angle_snap = Some(n & 8 != 0);
+            patch.motion_sync = Some(n & 16 != 0);
+            unconverted.remove("sensor_flag");
+        }
+    }
+    if fields.contains_key("dpi_flag") {
+        if value(&fields, "dpi_flag", 255)? == 6 {
+            unconverted.remove("dpi_flag");
+        }
+    }
     Ok(Source {
         profile_id,
         fields,
-        patch: ConfigPatch {
-            light: Some(light),
-            active: Some(active),
-            dpi: Some(dpi),
-            colors: Some(colors),
-            report_rate_hz: Some(rate),
-            debounce_ms: Some(debounce),
-        },
+        patch,
         unconverted,
     })
 }
+
 #[cfg(test)]
 #[path = "yjx_sc620_oem_config_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "yjx_sc620_tuning_tests.rs"]
+mod tuning_tests;
