@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-28",
+  "scope": "Explicit OEM-file known button conversion; macros and shortcuts not yet converted",
+  "distinct_mice": 9,
+  "connections": 10,
+  "logical_record_variants": 18,
+  "native_conversion_driver_matrix_cases": 180,
+  "actual_UI_saved_profiles": 10,
+  "explicit_UI_production_replay": "passed",
+  "UI_toggle_stale_clear": "passed",
+  "UI_bad_mismatch_cancel": "passed",
+  "DPI_only_UI_regression_cases": 10,
+  "board_tuning_UI_regression_cases": 13,
+  "main_tests": {
+    "passed": 1021,
+    "failed": 0,
+    "ignored": 88
+  },
+  "frontend_build": "passed",
+  "native_build": "passed",
+  "main_js_bytes": 840735,
+  "delta_js_bytes": 1220,
+  "new_runtime_dependencies": 0,
+  "hardware_tested": false,
+  "OEM_export_hardware_fixture": false,
+  "left_button_writable": false,
+  "macro_shortcut_file_import": false,
+  "accepted_complete_models": 0,
+  "installer_created": false,
+  "installed_release": "0.3.7"
+}

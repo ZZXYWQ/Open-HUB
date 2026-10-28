@@ -65,20 +65,35 @@ fn integer(v: &Value, name: &str, max: u64) -> Result<u64> {
         .filter(|n| *n <= max)
         .ok_or_else(|| format!("原厂配置 {name} 必须是有效整数"))
 }
-pub fn prepare_file(path: &std::path::Path, vendor: u16, product: u16) -> Result<Prepared> {
+pub fn prepare_file(
+    path: &std::path::Path,
+    vendor: u16,
+    product: u16,
+    include_buttons: bool,
+) -> Result<Prepared> {
     if !path
         .extension()
         .is_some_and(|e| e.eq_ignore_ascii_case("bin"))
     {
         return Err("请选择 ATK HUB 导出的 .bin 文件".into());
     }
-    prepare_bytes(
+    prepare_with_buttons(
         &crate::mhub_full::read_explicit_file(path)?,
         vendor,
         product,
+        include_buttons,
     )
 }
+#[cfg(test)]
 pub fn prepare_bytes(bytes: &[u8], vendor: u16, product: u16) -> Result<Prepared> {
+    prepare_with_buttons(bytes, vendor, product, false)
+}
+pub fn prepare_with_buttons(
+    bytes: &[u8],
+    vendor: u16,
+    product: u16,
+    include_buttons: bool,
+) -> Result<Prepared> {
     let model = atk::model(vendor, product)
         .filter(|m| m.native_macros && matches!(m.brand.as_str(), "atk" | "vxe" | "vgn"))
         .ok_or("此型号尚无 ATK HUB 文件转换器")?;
@@ -138,9 +153,21 @@ pub fn prepare_bytes(bytes: &[u8], vendor: u16, product: u16) -> Result<Prepared
             y: Some(d.y),
         })
         .collect();
+    let mut settings = vec![Setting::Dpi(dpi), Setting::ReportRate(rate)];
+    if include_buttons {
+        settings.extend(buttons(&root, model.buttons)?);
+    }
     let profile = Profile {
         id: String::new(),
-        name: format!("{} · 原厂 DPI 导入", model.name),
+        name: format!(
+            "{} · 原厂{}导入",
+            model.name,
+            if include_buttons {
+                "按键 / DPI "
+            } else {
+                " DPI "
+            }
+        ),
         target_vendor: Some(vendor),
         target_model: Some(product),
         levels,
@@ -149,7 +176,7 @@ pub fn prepare_bytes(bytes: &[u8], vendor: u16, product: u16) -> Result<Prepared
         multi: Some(Plan {
             vendor,
             product,
-            settings: vec![Setting::Dpi(dpi), Setting::ReportRate(rate)],
+            settings,
             macros: vec![],
             source: None,
         }),
@@ -160,7 +187,80 @@ pub fn prepare_bytes(bytes: &[u8], vendor: u16, product: u16) -> Result<Prepared
         sino: None,
     };
     crate::profile_transfer::validate(&profile)?;
-    Ok(Prepared{profile,note:"本次仅转换活动 DPI 档位、独立 X/Y 和回报率。文件中的按键、宏、灯效、性能、省电及非活动 DPI 槽位未导入，应用后沿用鼠标现有设置。导入不会自动应用。".into()})
+    let note = if include_buttons {
+        "本次转换活动 DPI 档位、独立 X/Y、回报率及已登记非左键的已解析动作；独立左键保持原值。文件中的宏、灯效、性能、省电和非活动 DPI 槽位未导入。未知动作或缺少宏内容时整份按键导入拒绝，未替换成默认键。导入不会自动应用。"
+    } else {
+        "本次仅转换活动 DPI 档位、独立 X/Y 和回报率。文件中的按键、宏、灯效、性能、省电及非活动 DPI 槽位未导入，应用后沿用鼠标现有设置。导入不会自动应用。"
+    };
+    Ok(Prepared {
+        profile,
+        note: note.into(),
+    })
+}
+fn triplet(value: &Value) -> Result<[u8; 3]> {
+    let a = value
+        .as_array()
+        .filter(|a| a.len() == 3)
+        .ok_or("按键必须包含三个完整编码字节")?;
+    Ok([
+        integer(&a[0], "按键类型", 255)? as u8,
+        integer(&a[1], "按键值", 255)? as u8,
+        integer(&a[2], "按键附加值", 255)? as u8,
+    ])
+}
+fn buttons(root: &Value, count: u16) -> Result<Vec<Setting>> {
+    let layers = root["keyActions"]
+        .as_array()
+        .filter(|a| a.len() == 1)
+        .ok_or("需要单层完整鼠标按键表")?;
+    let rows = layers[0]
+        .as_array()
+        .filter(|a| a.len() == 1)
+        .ok_or("需要单行完整鼠标按键表")?;
+    let items = rows[0]
+        .as_array()
+        .filter(|a| a.len() == 6 && matches!(count, 5 | 6))
+        .ok_or("原厂按键表数量与目标鼠标不一致")?;
+    let defaults = [
+        [1, 1, 0],
+        [1, 2, 0],
+        [1, 4, 0],
+        [1, 8, 0],
+        [1, 16, 0],
+        [2, 1, 0],
+    ];
+    let mut mapped = std::collections::BTreeMap::new();
+    for item in items {
+        let def = triplet(&item["defaultKey"])?;
+        let index = defaults
+            .iter()
+            .position(|v| v == &def)
+            .ok_or("未知实体按键标识，未猜测按键位置")?;
+        if mapped.contains_key(&index) {
+            return Err("原厂文件含重复实体按键".into());
+        }
+        let raw = triplet(&item["changeKey"])?;
+        if index == 0 && raw != defaults[0] {
+            return Err("当前驱动保留独立左键；原厂左键已改动，无法完整迁移此按键表".into());
+        }
+        if index >= usize::from(count) && raw != def {
+            return Err("文件含当前型号未开放的额外控制，未静默丢弃".into());
+        }
+        let crc = 0x55u8
+            .wrapping_sub(raw[0])
+            .wrapping_sub(raw[1])
+            .wrapping_sub(raw[2]);
+        let action=atk::compx_button_action(&[raw[0],raw[1],raw[2],crc]).ok_or_else(||format!("第 {} 个按键的动作尚未完整转换（类型 {}）；宏/快捷键必须具备已验证内容，未生成空动作",index+1,raw[0]))?;
+        mapped.insert(index, action);
+    }
+    Ok(mapped
+        .into_iter()
+        .filter(|(index, _)| *index != 0 && *index < usize::from(count))
+        .map(|(index, action)| Setting::Button {
+            id: index as u16 + 1,
+            action,
+        })
+        .collect())
 }
 #[cfg(test)]
 #[path = "compx_file_import_tests.rs"]

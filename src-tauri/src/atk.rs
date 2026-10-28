@@ -254,6 +254,22 @@ fn decode_button(p: &[u8]) -> Option<ButtonAction> {
     }
 }
 
+// Pure logical conversion shared by live reads and explicit OEM file imports.
+// Macro/shortcut records require their full bodies and are never guessed here.
+pub(crate) fn compx_button_action(raw:&[u8])->Option<ButtonAction>{
+ if raw.len()!=4||sum(raw)!=0x55||raw[2]!=0{return None;}
+ use gearwise_core::model::ScrollDirection;
+ match (raw[0],raw[1]){
+  (9,255)=>Some(ButtonAction::ProfileCycle),
+  (9,161..=164)=>Some(ButtonAction::ProfileSelect(raw[1]-161)),
+  (3,1)=>Some(ButtonAction::Mouse(MouseButton::WheelLeft)),
+  (3,2)=>Some(ButtonAction::Mouse(MouseButton::WheelRight)),
+  (11,1)=>Some(ButtonAction::Scroll(ScrollDirection::Up)),
+  (11,2)=>Some(ButtonAction::Scroll(ScrollDirection::Down)),
+  _=>decode_button(raw),
+ }
+}
+
 // The fixed OEM fb response defines bytes 6..10 as uniqueId. Keep the
 // complete four-byte value opaque (including 00/FF): no unproven global
 // uniqueness, validity filter, USB serial replacement or host-route authority.
@@ -483,16 +499,8 @@ impl Atk {
         native_macro::decode(slot, play, &raw)
     }
     fn read_action(&mut self, raw: &[u8]) -> Option<(ButtonAction, Option<Macro>)> {
-        if profile_cycle_supported(self.model.vendor,self.model.product)&&raw==[9,255,0,77]{return Some((ButtonAction::ProfileCycle,None));}
-        if profile_cycle_supported(self.model.vendor,self.model.product)&&raw.len()==4&&sum(raw)==0x55&&raw[0]==9&&raw[2]==0&&(161..=164).contains(&raw[1]){return Some((ButtonAction::ProfileSelect(raw[1]-161),None));}
-        if horizontal_scroll_supported(self.model.vendor,self.model.product)&&raw.len()==4&&sum(raw)==0x55&&matches!(raw[0],3|11)&&raw[2]==0{
-            use gearwise_core::model::ScrollDirection;
-            let action=match (raw[0],raw[1]){(3,1)=>ButtonAction::Mouse(MouseButton::WheelLeft),(3,2)=>ButtonAction::Mouse(MouseButton::WheelRight),(11,1)=>ButtonAction::Scroll(ScrollDirection::Up),(11,2)=>ButtonAction::Scroll(ScrollDirection::Down),_=>return None};
-            return Some((action,None));
-        }
-        if let Some(action) = decode_button(raw) {
-            return Some((action, None));
-        }
+        let action=if profile_cycle_supported(self.model.vendor,self.model.product){compx_button_action(raw)}else{decode_button(raw)};
+        if let Some(action)=action{return Some((action,None));}
         if raw.len() == 4 && sum(raw) == 0x55 && raw[0] == 6 {
             let m = self.read_native_macro(raw[1], raw[2]).ok()?;
             if let Some(action)=native_macro::media_action(&m){return Some((action,None));}

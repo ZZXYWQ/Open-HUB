@@ -144,8 +144,8 @@ fn explicit_file_rejects_wrong_extension_and_reads_without_device_access() {
     std::fs::create_dir(&root).unwrap();
     let path = root.join("配置.BIN");
     std::fs::write(&path, encode(&serde_json::to_vec(&fixture(m)).unwrap())).unwrap();
-    assert!(prepare_file(&path, m.vendor, m.product).is_ok());
-    assert!(prepare_file(&root.join("bad.json"), m.vendor, m.product).is_err());
+    assert!(prepare_file(&path, m.vendor, m.product, false).is_ok());
+    assert!(prepare_file(&root.join("bad.json"), m.vendor, m.product, false).is_err());
     std::fs::remove_file(path).unwrap();
     std::fs::remove_dir(root).unwrap();
 }
@@ -168,5 +168,162 @@ fn browser_file_import_saves_execute_the_native_plan() {
         let state = d.read_state().unwrap();
         assert_eq!(state.dpi.unwrap().stages[0], DpiStage { x: 400, y: 800 });
         assert_eq!(state.report_rate, Some(500));
+    }
+}
+
+fn button_fixture(m: &atk::Model, changes: [[u8; 3]; 5]) -> Value {
+    let mut f = fixture(m);
+    let defs = [
+        [1, 1, 0],
+        [1, 2, 0],
+        [1, 4, 0],
+        [1, 8, 0],
+        [1, 16, 0],
+        [2, 1, 0],
+    ];
+    let mut keys=(0..6).map(|i|json!({"defaultKey":defs[i],"defaultLabel":"untrusted label","changeKey":if i==0{defs[0]}else{changes[i-1]}})).collect::<Vec<_>>();
+    keys.reverse();
+    f["keyActions"] = json!([[keys]]);
+    f
+}
+#[test]
+fn full_known_button_tables_use_physical_default_keys_and_native_driver() {
+    let choices = [
+        [0, 0, 0],
+        [1, 1, 0],
+        [1, 2, 0],
+        [1, 4, 0],
+        [1, 8, 0],
+        [1, 16, 0],
+        [2, 1, 0],
+        [2, 2, 0],
+        [2, 3, 0],
+        [3, 1, 0],
+        [3, 2, 0],
+        [9, 255, 0],
+        [9, 161, 0],
+        [9, 162, 0],
+        [9, 163, 0],
+        [9, 164, 0],
+        [11, 1, 0],
+        [11, 2, 0],
+    ];
+    let mut cases = vec![];
+    for m in models() {
+        for offset in 0..choices.len() {
+            let changes = std::array::from_fn(|i| {
+                if m.buttons == 5 && i == 4 {
+                    [2, 1, 0]
+                } else {
+                    choices[(offset + i) % choices.len()]
+                }
+            });
+            let f = button_fixture(m, changes);
+            let prepared = prepare_with_buttons(
+                &encode(&serde_json::to_vec(&f).unwrap()),
+                m.vendor,
+                m.product,
+                true,
+            )
+            .unwrap();
+            let plan = prepared.profile.multi.as_ref().unwrap();
+            let c = crate::multibrand::compile(plan).unwrap();
+            assert_eq!(c.settings.len(), usize::from(m.buttons) + 1);
+            assert!(!c.software_input);
+            let (mut d, _) = atk::simulated(m.product).unwrap();
+            let before = d.read_state().unwrap();
+            for s in &c.settings {
+                d.apply(s).unwrap();
+            }
+            let after = d.read_state().unwrap();
+            assert_eq!(after.buttons[&1], before.buttons[&1]);
+            for s in &c.settings {
+                if let Setting::Button { id, action } = s {
+                    assert_eq!(&after.buttons[id], action);
+                }
+            }
+            assert_eq!(after.lighting, before.lighting);
+            assert_eq!(after.dpi_colors, before.dpi_colors);
+            assert_eq!(after.tuning, before.tuning);
+            crate::profile_transfer::validate(&prepared.profile).unwrap();
+            if offset == 9 {
+                cases.push(json!({"vendor":m.vendor,"product":m.product,"prepared":prepared}));
+            }
+        }
+    }
+    if let Some(path) = std::env::var_os("OPEN_HUB_COMPX_BUTTON_FILE_FIXTURES") {
+        std::fs::write(path, serde_json::to_vec_pretty(&cases).unwrap()).unwrap();
+    }
+}
+#[test]
+fn unresolved_macro_shortcut_and_ambiguous_physical_keys_reject_entire_button_conversion() {
+    let m = models().next().unwrap();
+    let base = button_fixture(m, [[1, 2, 0], [1, 4, 0], [1, 8, 0], [1, 16, 0], [2, 1, 0]]);
+    for field in ["changeKey", "defaultKey"] {
+        for bad in [
+            json!([6, 0, 3]),
+            json!([5, 0, 0]),
+            json!([255, 1, 0]),
+            json!([1, 3, 0]),
+            json!([1, 2, 1]),
+            json!([1, 2]),
+            json!([1, 2, 0, 0]),
+            json!([1, -1, 0]),
+        ] {
+            let mut f = base.clone();
+            f["keyActions"][0][0][0][field] = bad;
+            assert!(prepare_with_buttons(
+                &encode(&serde_json::to_vec(&f).unwrap()),
+                m.vendor,
+                m.product,
+                true
+            )
+            .is_err());
+            assert!(prepare(&f, m).is_ok());
+        }
+    }
+    assert_eq!(buttons(&base, 5).unwrap().len(), 4);
+    let mut extra = base.clone();
+    extra["keyActions"][0][0][0]["changeKey"] = json!([2, 2, 0]);
+    assert!(buttons(&extra, 5).is_err());
+    let mut f = base.clone();
+    f["keyActions"][0][0][0]["defaultKey"] = f["keyActions"][0][0][1]["defaultKey"].clone();
+    assert!(buttons(&f, 6).is_err());
+    let mut f = base.clone();
+    f["keyActions"][0][0][5]["changeKey"] = json!([0, 0, 0]);
+    assert!(buttons(&f, 6).is_err());
+    for table in [json!([]), json!([[[]]]), json!([[], []])] {
+        let mut f = base.clone();
+        f["keyActions"] = table;
+        assert!(buttons(&f, 6).is_err());
+    }
+}
+#[test]
+#[ignore = "requires actual browser button file-import saves"]
+fn browser_button_file_imports_execute_all_saved_bindings() {
+    let bytes =
+        std::fs::read(std::env::var_os("OPEN_HUB_COMPX_BUTTON_FILE_UI_PROFILES").unwrap()).unwrap();
+    let profiles: Vec<Profile> = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(profiles.len(), atk::native_test_count());
+    for p in profiles {
+        crate::profile_transfer::validate(&p).unwrap();
+        let plan = p.multi.unwrap();
+        let c = crate::multibrand::compile(&plan).unwrap();
+        assert_eq!(
+            c.settings.len(),
+            usize::from(atk::model(plan.vendor, plan.product).unwrap().buttons) + 1
+        );
+        let (mut d, _) = atk::simulated(plan.product).unwrap();
+        let before = d.read_state().unwrap();
+        for s in &c.settings {
+            d.apply(s).unwrap();
+        }
+        let state = d.read_state().unwrap();
+        assert_eq!(state.buttons[&1], before.buttons[&1]);
+        for s in c.settings {
+            if let Setting::Button { id, action } = s {
+                assert_eq!(state.buttons[&id], action);
+            }
+        }
     }
 }

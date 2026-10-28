@@ -1,0 +1,47 @@
+{
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "offset_unit": "Python Unicode codepoints",
+  "method": "static read, no OEM execution",
+  "facts": [
+    {
+      "pattern": "R(this,\"buttonKeysValue\",[[1,1,0],[1,2,0],[1,4,0],[1,8,0],[1,16,0],[2,1,0]])",
+      "codepoint_offset": 2103239
+    },
+    {
+      "pattern": "async getCurrentKeyMatrix(){",
+      "codepoint_offset": 2105560
+    },
+    {
+      "pattern": "changeKey:[r,l,c],defaultKey:this.buttonKeysValue[i]",
+      "codepoint_offset": 2105923
+    },
+    {
+      "pattern": "async setKey(e){",
+      "codepoint_offset": 2106002
+    },
+    {
+      "pattern": "const s=Ah.buttonKeysValue.findIndex",
+      "codepoint_offset": 2106194
+    },
+    {
+      "pattern": "async setCustomConfig(e,n){",
+      "codepoint_offset": 2117979
+    },
+    {
+      "pattern": "async getMacro(){",
+      "codepoint_offset": 2114241
+    }
+  ],
+  "interpretation": [
+    "getCurrentKeyMatrix assembles six records from key0/key2/key4 and supplies physical defaultKey triplets.",
+    "setKey resolves EEPROM address by defaultKey, not label, filename, display order or a source path.",
+    "setCustomConfig supplies defaultKey and changeKey independently; shortcutAction payloads are written separately.",
+    "Class 6 is a slot reference with playback encoding. getDeviceData itself does not fetch getMacro, so a slot reference alone does not prove a macro body is exported.",
+    "Known ordinary actions reuse the existing source-audited COMPX logical decoder; see COMPX profile/scroll documents for class 3/9/11 evidence."
+  ],
+  "limits": [
+    "Only four or five registered non-left controls are applied. Six raw records are not a new six-button claim for MAD R/R+.",
+    "No physical OEM export file, capture or behavior evidence added."
+  ]
+}
