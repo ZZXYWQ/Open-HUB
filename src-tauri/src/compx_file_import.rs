@@ -215,7 +215,7 @@ pub fn prepare_selected(
     } else {
         let mut included = vec!["活动 DPI 档位、独立 X/Y、回报率"];
         if include_buttons {
-            included.push("已登记非左键及完整单键/组合键");
+            included.push("已登记非左键及完整的已解析快捷序列");
         }
         if include_tuning {
             included.push("已支持的性能与省电字段");
@@ -224,7 +224,7 @@ pub fn prepare_selected(
             included.push("DPI 指示灯模式、亮度、速度及完整八档颜色");
         }
         let mut excluded =
-            vec!["其他宏、多键快捷序列、未开放性能项、接收器/装饰灯、未启用档位的 DPI 数值"];
+            vec!["其他宏、未支持快捷事件、未开放性能项、接收器/装饰灯、未启用档位的 DPI 数值"];
         if !include_buttons {
             excluded.push("按键与快捷键");
         }
@@ -266,7 +266,7 @@ fn shortcut_chord(value: &Value) -> Result<gearwise_core::model::ButtonAction> {
             integer(&a[3], "快捷键附加值", 255)? as u8,
         ]);
     }
-    atk::shortcuts::chord(&rows).map_err(|e| e.to_string())
+    atk::shortcuts::from_rows(&rows).map_err(|e| e.to_string())
 }
 fn triplet(value: &Value) -> Result<[u8; 3]> {
     let a = value

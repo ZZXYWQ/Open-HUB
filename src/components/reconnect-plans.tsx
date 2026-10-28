@@ -25,6 +25,7 @@ function settingLabel(s:MultiSetting,plan:MultiPlan){
   if(typeof a==='string')action={Default:'默认动作',Disabled:'禁用',Hypershift:'按住 Hypershift',ProfileCycle:'循环板载配置'}[a];
   else if('Macro'in a)action=`软件宏“${plan.macros?.find(m=>m.id===a.Macro)?.name??a.Macro}”`;
   else if('Key'in a){const modifiers=['左 Ctrl','左 Shift','左 Alt','左 Win','右 Ctrl','右 Shift','右 Alt','右 Win'].filter((_,i)=>a.Key.mods&(1<<i));action=`键盘 ${[...modifiers,KEY_NAMES.find(([k])=>k===a.Key.usage)?.[1]??String(a.Key.usage)].join(' + ')}`;}
+  else if('Shortcut'in a)action=`原生快捷序列（${a.Shortcut.length} 条事件）`;
   else if('Mouse'in a)action=`鼠标 ${{Left:'左键',Right:'右键',Middle:'中键',Back:'后退',Forward:'前进',WheelLeft:'滚轮左倾',WheelRight:'滚轮右倾'}[a.Mouse]}`;
   else if('ProfileSelect'in a)action=`切到板载配置 ${a.ProfileSelect+1}`;
   else if('Scroll'in a)action=a.Scroll==='Up'?'向上滚动':'向下滚动';

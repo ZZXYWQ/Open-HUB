@@ -537,6 +537,12 @@ impl Atk {
         if let Err(error)=operation{let restore=(||->Result<()>{self.identify()?;for(n,chunk)in before.chunks(10).enumerate(){self.write_verified(address+n as u16*10,chunk)?;}self.write_verified(target,&original)?;Ok(())})();return Err(Error::invalid(format!("{error}; Pulsar original shortcut restoration: {restore:?}")));}Ok(())
     }
     fn native_binding(&mut self, id: u16, action: &ButtonAction) -> Result<()> {
+        if let ButtonAction::Shortcut(events)=action{
+            let payload=shortcuts::encode_events(events)?;self.identify()?;
+            let original=self.read(96+(id-1)*4,4)?;
+            if self.read_action(id,&original).is_none(){return Err(Error::invalid("COMPX unknown original binding retained"));}
+            return self.commit_native_shortcut(id,&payload,&original);
+        }
         if let ButtonAction::Key{usage,mods}=action{if (4..=0xa4).contains(usage){
             let payload=shortcuts::encode(*usage,*mods)?;
             self.identify()?;
@@ -738,6 +744,7 @@ impl Device for Atk {
                     ButtonAction::Mouse(MouseButton::WheelLeft|MouseButton::WheelRight) => {
                         if !horizontal_scroll_supported(self.model.vendor,self.model.product){return Err(Error::Unsupported("Exact COMPX horizontal scroll binding"));}
                     }
+                    ButtonAction::Shortcut(events)=>{if !self.model.native_macros{return Err(Error::Unsupported("Exact native shortcut sequence"));}shortcuts::encode_events(events)?;},
                     ButtonAction::Key { usage, mods } => {
                         if is_pulsar(self.model.vendor,self.model.product){validate_pulsar_key(*usage,*mods)?;}else{native_macro::encode(&native_macro::keyboard(*usage, *mods))?;}
                     }
@@ -801,7 +808,7 @@ impl Device for Atk {
             }
             Setting::Button{id,action:ButtonAction::Key{usage,mods}} if is_pulsar(self.model.vendor,self.model.product)=>{self.pulsar_key(*id,*usage,*mods)?;}
             Setting::Button { id, action }
-                if matches!(action, ButtonAction::Macro(_) | ButtonAction::Key { .. } | ButtonAction::Media(_)) =>
+                if matches!(action, ButtonAction::Macro(_) | ButtonAction::Key { .. } | ButtonAction::Shortcut(_) | ButtonAction::Media(_)) =>
             {
                 self.native_binding(*id, action)?;
             }

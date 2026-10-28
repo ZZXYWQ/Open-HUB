@@ -6,7 +6,8 @@ export interface TuningCaps {debounce_ms:number[];motion_sync:boolean;angle_snap
 export type SensorCalibration={Standard:{distance:number}}|{Asymmetric:{lift:number;landing:number}};
 export interface SensorCalibrationCaps {standard_levels:number[];lift_levels:number[];landing_levels:number[]}
 export interface MultiDpi {stages:Array<{x:number;y:number}>;active:number}
-export type MultiAction='Default'|'Disabled'|'Hypershift'|'ProfileCycle'|{ProfileSelect:number}|{Mouse:'Left'|'Right'|'Middle'|'Back'|'Forward'|'WheelLeft'|'WheelRight'}|{Scroll:'Up'|'Down'}|{Key:{usage:number;mods:number}}|{Dpi:'Cycle'|'CycleDown'|'Up'|'Down'|{Shift:number}|{ShiftXY:{x:number;y:number}}}|{Macro:string}|{Media:number};
+export interface ShortcutEvent {kind:'Modifier'|'Key'|'Mouse'|'Media';down:boolean;value:number}
+export type MultiAction='Default'|'Disabled'|'Hypershift'|'ProfileCycle'|{ProfileSelect:number}|{Mouse:'Left'|'Right'|'Middle'|'Back'|'Forward'|'WheelLeft'|'WheelRight'}|{Scroll:'Up'|'Down'}|{Key:{usage:number;mods:number}}|{Dpi:'Cycle'|'CycleDown'|'Up'|'Down'|{Shift:number}|{ShiftXY:{x:number;y:number}}}|{Macro:string}|{Media:number}|{Shortcut:ShortcutEvent[]};
 export interface MultiColor {r:number;g:number;b:number}
 export interface MultiColorStop{color:MultiColor;position:number}
 export interface MultiGradient{stops:MultiColorStop[];count:number;period_ms:number}

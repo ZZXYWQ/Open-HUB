@@ -710,3 +710,93 @@ fn browser_selected_extras_saved_profiles_import_and_execute_exact_categories() 
         }
     }
 }
+
+#[test]
+fn source_order_file_sequences_are_lossless_and_foreign_brands_are_rejected() {
+    let mut cases = vec![];
+    for m in models() {
+        let mut f = extras_fixture(m);
+        f["keyActions"][0][0][4]["changeKey"] = json!([5, 0, 0]);
+        f["deviceConfig"]["mouseConfig"]["shortcutAction"] = json!({"right":[["000",0,1,0],["000",0,128,0],["001",0,6,0],["000",1,1,0],["000",1,128,0],["001",1,6,0]]});
+        let p = selected(&f, m, false, false).unwrap();
+        let plan = p.profile.multi.as_ref().unwrap();
+        let action = plan
+            .settings
+            .iter()
+            .find_map(|s| {
+                if let Setting::Button { id: 2, action } = s {
+                    Some(action.clone())
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+        assert!(matches!(
+            action,
+            gearwise_core::model::ButtonAction::Shortcut(_)
+        ));
+        let c = crate::multibrand::compile(plan).unwrap();
+        assert!(!c.software_input);
+        let (mut d, _) = atk::simulated(m.product).unwrap();
+        for s in c.settings {
+            d.apply(&s).unwrap();
+        }
+        assert_eq!(d.read_state().unwrap().buttons[&2], action);
+        for (v, product) in [
+            (0x046d, m.product),
+            (0x3554, 0xf507),
+            (0x1532, 0x00b7),
+            (0x1b1c, 0x1b2e),
+            (0x1038, 0x1720),
+        ] {
+            let mut wrong = plan.clone();
+            wrong.vendor = v;
+            wrong.product = product;
+            assert!(crate::multibrand::compile(&wrong).is_err());
+        }
+        cases.push(json!({"vendor":m.vendor,"product":m.product,"prepared":p}));
+    }
+    if let Some(path) = std::env::var_os("OPEN_HUB_COMPX_SEQUENCE_FILE_FIXTURES") {
+        std::fs::write(path, serde_json::to_vec_pretty(&cases).unwrap()).unwrap();
+    }
+}
+#[test]
+#[ignore = "requires actual native-sequence browser saves"]
+fn browser_ordered_sequence_import_and_edit_preserve_every_event() {
+    let profiles: Vec<Profile> = serde_json::from_slice(
+        &std::fs::read(std::env::var_os("OPEN_HUB_COMPX_SEQUENCE_FILE_UI_PROFILES").unwrap())
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(profiles.len(), atk::native_test_count() * 2);
+    for (index, p) in profiles.into_iter().enumerate() {
+        crate::profile_transfer::validate(&p).unwrap();
+        let plan = p.multi.unwrap();
+        let action = plan
+            .settings
+            .iter()
+            .find_map(|s| {
+                if let Setting::Button { id: 2, action } = s {
+                    Some(action.clone())
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+        let gearwise_core::model::ButtonAction::Shortcut(events) = &action else {
+            panic!("sequence collapsed")
+        };
+        assert_eq!(events.len(), 6);
+        assert_eq!(events[3].kind, gearwise_core::model::ShortcutKind::Modifier);
+        assert!(!events[3].down);
+        assert_eq!(events[2].value, if index % 2 == 0 { 6 } else { 7 });
+        assert_eq!(events[5].value, if index % 2 == 0 { 6 } else { 7 });
+        let c = crate::multibrand::compile(&plan).unwrap();
+        let (mut d, _) = atk::simulated(plan.product).unwrap();
+        for s in c.settings {
+            d.apply(&s).unwrap();
+        }
+        assert_eq!(d.read_state().unwrap().buttons[&2], action);
+        assert!(d.macro_definitions().is_empty());
+    }
+}

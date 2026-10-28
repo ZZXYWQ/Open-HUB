@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-28",
+  "scope": "Lossless finite COMPX class5 ordered event sequences; original modifier-release order fixed",
+  "distinct_partial_mice": 9,
+  "connections": 10,
+  "wire_order_permutation_cases": 1932,
+  "full_sequence_failed_set_restore_cases": 60,
+  "foreign_state_no_restore_cases": 10,
+  "cross_brand_compile_rejections": 50,
+  "actual_UI_import_profiles": 10,
+  "actual_UI_editor_profiles": 10,
+  "explicit_UI_native_replay": "passed",
+  "UI_existing_light_performance_profiles": 10,
+  "UI_existing_chord_import_editor_profiles": 20,
+  "UI_screenshot_inspected": true,
+  "main_tests": {
+    "passed": 1043,
+    "failed": 0,
+    "ignored": 91
+  },
+  "dependency_unit_tests": 385,
+  "dependency_doc_tests": 1,
+  "builds": {
+    "frontend": "passed",
+    "native": "passed"
+  },
+  "main_js_bytes": 846819,
+  "js_delta_bytes": 3793,
+  "new_runtime_dependencies": 0,
+  "new_images": 0,
+  "physical_HID_access": false,
+  "hardware_tested": false,
+  "OEM_full_macro_file_import": false,
+  "accepted_complete_models": 0,
+  "target": 100,
+  "installer_created": false,
+  "last_recorded_installed_release": "0.3.7"
+}

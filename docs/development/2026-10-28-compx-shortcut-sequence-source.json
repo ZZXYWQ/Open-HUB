@@ -1,0 +1,42 @@
+{
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "method": "static source inspection, no OEM execution",
+  "offset_unit": "Python Unicode codepoints",
+  "facts": [
+    {
+      "pattern": "async function At(je){if(Ge=\"key.combineButton\"",
+      "codepoint_offset": 4243371
+    },
+    {
+      "pattern": "Rt=[[\"001\",0,Me,0],[\"001\",1,Me,0]]",
+      "codepoint_offset": 4243449
+    },
+    {
+      "pattern": "jt=[...na.filter((La,Yn)=>Yn%2===0),Rt[0]]",
+      "codepoint_offset": 4243543
+    },
+    {
+      "pattern": "ca=[...na.filter((La,Yn)=>Yn%2===1),Rt[1]]",
+      "codepoint_offset": 4243586
+    },
+    {
+      "pattern": "await Wt([...jt,...ca])",
+      "codepoint_offset": 4243629
+    }
+  ],
+  "finding": "Original combination UI assembles modifier-down records before key-down, then modifier-up records before key-up. Earlier single-chord conversion rejected this ordering.",
+  "implementation": "Typed finite native event sequence preserves order and modifier groups, normalized to Key only when re-encoding gives byte-for-byte identical records.",
+  "supported_kinds": [
+    "Modifier",
+    "Key",
+    "Mouse",
+    "Media (seven already verified usages)"
+  ],
+  "limits": [
+    "Six-event firmware table bound retained.",
+    "Power, movement, scroll, extended values and unknown media are not inferred.",
+    "No physical timing or in-flight program read evidence.",
+    "Macro library bodies and ambiguous raw/UI playback encoding remain separate unfinished work."
+  ]
+}

@@ -521,6 +521,13 @@ pub mod media {
     }
 }
 
+/// A finite native shortcut event; grouping and order are significant.
+#[derive(Clone,Copy,Debug,PartialEq,Eq,Hash,Serialize,Deserialize)]
+pub enum ShortcutKind {Modifier,Key,Mouse,Media}
+#[derive(Clone,Copy,Debug,PartialEq,Eq,Hash,Serialize,Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShortcutEvent {pub kind:ShortcutKind,pub down:bool,pub value:u8}
+
 /// What a button or key does.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ButtonAction {
@@ -533,6 +540,8 @@ pub enum ButtonAction {
         usage: u8,
         mods: Modifiers,
     },
+    /// Ordered, balanced native events, supported only by exact drivers.
+    Shortcut(Vec<ShortcutEvent>),
     /// HID consumer usage (page 0x0C).
     Media(u16),
     Dpi(DpiFunction),
@@ -561,6 +570,7 @@ impl ButtonAction {
                     format!("{}+{}", mods.label(), key)
                 }
             }
+            ButtonAction::Shortcut(events)=>format!("Native shortcut ({} events)",events.len()),
             ButtonAction::Media(u) => media::name(*u)
                 .map(str::to_string)
                 .unwrap_or_else(|| format!("Media 0x{u:03x}")),
@@ -705,3 +715,7 @@ pub enum DpiIndicatorMode {
 #[derive(Clone,Copy,Debug,PartialEq,Eq,Serialize,Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DpiIndicatorState {pub enabled:bool,pub mode:DpiIndicatorMode,pub brightness:IndicatorLevel,pub speed:IndicatorLevel}
+
+#[cfg(test)]mod ordered_shortcut_json_tests{use super::*;
+#[test]fn typed_sequence_keeps_grouping_order_and_existing_actions(){let a=ButtonAction::Shortcut(vec![ShortcutEvent{kind:ShortcutKind::Modifier,down:true,value:129},ShortcutEvent{kind:ShortcutKind::Key,down:true,value:6},ShortcutEvent{kind:ShortcutKind::Modifier,down:false,value:129},ShortcutEvent{kind:ShortcutKind::Key,down:false,value:6}]);let json=serde_json::to_string(&a).unwrap();assert_eq!(serde_json::from_str::<ButtonAction>(&json).unwrap(),a);assert_eq!(serde_json::to_string(&ButtonAction::Key{usage:6,mods:Modifiers(129)}).unwrap(),r#"{"Key":{"usage":6,"mods":129}}"#);}
+#[test]fn sequence_event_unknown_fields_kinds_nonboolean_state_and_overflow_reject(){for json in [r#"{"Shortcut":[{"kind":"Key","down":true,"value":6,"delay":1}]}"#,r#"{"Shortcut":[{"kind":"Power","down":true,"value":6}]}"#,r#"{"Shortcut":[{"kind":"Key","down":0,"value":6}]}"#,r#"{"Shortcut":[{"kind":"Key","down":true,"value":256}]}"#]{assert!(serde_json::from_str::<ButtonAction>(json).is_err());}}}

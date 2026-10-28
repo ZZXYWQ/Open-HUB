@@ -90,6 +90,7 @@ fn encode(spec: &ButtonSpec, action: &ButtonAction) -> Result<Vec<u8>> {
         ButtonAction::Dpi(_) => Err(Error::Unsupported("this DPI function")),
         ButtonAction::ProfileCycle | ButtonAction::ProfileSelect(_) => Err(Error::Unsupported("profile switching")),
         ButtonAction::Hypershift => Err(Error::Unsupported("Razer secondary layer on SteelSeries")),
+        ButtonAction::Shortcut(_)=>Err(Error::Unsupported("native shortcut sequences on this model")),
         ButtonAction::Macro(_) => Err(Error::Unsupported("macros on the mouse")),
     }
 }

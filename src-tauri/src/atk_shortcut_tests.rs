@@ -367,3 +367,215 @@ fn malformed_shortcut_transactions_and_foreign_protocols_reject_before_any_set()
         assert_eq!(count.lock().unwrap().sets, 0);
     }
 }
+
+fn source_sequence() -> Vec<gearwise_core::model::ShortcutEvent> {
+    use gearwise_core::model::{ShortcutEvent as E, ShortcutKind as K};
+    vec![
+        E {
+            kind: K::Modifier,
+            down: true,
+            value: 1,
+        },
+        E {
+            kind: K::Modifier,
+            down: true,
+            value: 128,
+        },
+        E {
+            kind: K::Key,
+            down: true,
+            value: 6,
+        },
+        E {
+            kind: K::Modifier,
+            down: false,
+            value: 1,
+        },
+        E {
+            kind: K::Modifier,
+            down: false,
+            value: 128,
+        },
+        E {
+            kind: K::Key,
+            down: false,
+            value: 6,
+        },
+    ]
+}
+#[test]
+fn original_release_order_and_modifier_grouping_roundtrip_exact_native_records() {
+    let expected = vec![
+        6, 128, 1, 0, 128, 128, 0, 129, 6, 0, 64, 1, 0, 64, 128, 0, 65, 6, 0, 255,
+    ];
+    assert_eq!(
+        shortcuts::encode_events(&source_sequence()).unwrap(),
+        expected
+    );
+    let mut raw = vec![171; 32];
+    raw[..20].copy_from_slice(&expected);
+    assert_eq!(
+        shortcuts::decode(&raw).unwrap(),
+        ButtonAction::Shortcut(source_sequence())
+    );
+    for m in models().iter().filter(|m| m.native_macros) {
+        let (mut d, _) = memory_device(m.product).unwrap();
+        let before = d.read_blob(0, 768 + 12 * 384).unwrap();
+        d.apply(&Setting::Button {
+            id: 2,
+            action: ButtonAction::Shortcut(source_sequence()),
+        })
+        .unwrap();
+        assert_eq!(d.read(288, 10).unwrap(), expected[..10]);
+        assert_eq!(d.read_blob(288, 20).unwrap(), expected);
+        assert_eq!(
+            d.read_state().unwrap().buttons[&2],
+            ButtonAction::Shortcut(source_sequence())
+        );
+        assert_eq!(d.read_blob(768, 12 * 384).unwrap(), before[768..]);
+        let info = HidInterfaceInfo {
+            vendor_id: m.vendor,
+            product_id: m.product,
+            usage_page: m.usage_page,
+            usage: 2,
+            interface_number: 1,
+            ..Default::default()
+        };
+        let mut reopened = Atk::open(d.io, &info).unwrap();
+        assert_eq!(
+            reopened.read_state().unwrap().buttons[&2],
+            ButtonAction::Shortcut(source_sequence())
+        );
+    }
+}
+#[test]
+fn full_sequences_keep_key_mouse_media_events_and_refuse_held_or_unknown_inputs() {
+    use gearwise_core::model::{ShortcutEvent as E, ShortcutKind as K};
+    let events = vec![
+        E {
+            kind: K::Key,
+            down: true,
+            value: 4,
+        },
+        E {
+            kind: K::Mouse,
+            down: true,
+            value: 8,
+        },
+        E {
+            kind: K::Key,
+            down: false,
+            value: 4,
+        },
+        E {
+            kind: K::Mouse,
+            down: false,
+            value: 8,
+        },
+        E {
+            kind: K::Media,
+            down: true,
+            value: 205,
+        },
+        E {
+            kind: K::Media,
+            down: false,
+            value: 205,
+        },
+    ];
+    for m in models().iter().filter(|m| m.native_macros) {
+        let (mut d, _) = memory_device(m.product).unwrap();
+        d.apply(&Setting::Button {
+            id: 2,
+            action: ButtonAction::Shortcut(events.clone()),
+        })
+        .unwrap();
+        assert_eq!(
+            d.read_state().unwrap().buttons[&2],
+            ButtonAction::Shortcut(events.clone())
+        );
+    }
+    let payload = shortcuts::encode_events(&events).unwrap();
+    let mut raw = vec![0; 32];
+    raw[..payload.len()].copy_from_slice(&payload);
+    assert_eq!(
+        shortcuts::decode(&raw).unwrap(),
+        ButtonAction::Shortcut(events.clone())
+    );
+    for at in 0..events.len() {
+        let mut bad = events.clone();
+        bad.remove(at);
+        assert!(shortcuts::encode_events(&bad).is_err());
+    }
+    let mut bad = events.clone();
+    bad[1].value = 3;
+    assert!(shortcuts::encode_events(&bad).is_err());
+    let mut bad = events;
+    bad[4].value = 255;
+    assert!(shortcuts::encode_events(&bad).is_err());
+}
+#[test]
+fn sequence_transactions_recover_every_write_and_refuse_foreign_state() {
+    for m in models().iter().filter(|m| m.native_macros) {
+        let action = Setting::Button {
+            id: 2,
+            action: ButtonAction::Shortcut(source_sequence()),
+        };
+        for nth in 1..=3 {
+            for after in [false, true] {
+                let (mut d, _) = memory_device(m.product).unwrap();
+                let before = d.read_blob(0, 768 + 12 * 384).unwrap();
+                let (mut d, _) =
+                    super::macro_transaction_tests::instrument(d, vec![(nth, after)], None);
+                assert!(d
+                    .apply(&action)
+                    .unwrap_err()
+                    .to_string()
+                    .contains("restored and verified"));
+                assert_eq!(d.read_blob(0, before.len()).unwrap(), before);
+            }
+        }
+        let (d, _) = memory_device(m.product).unwrap();
+        let (mut d, counter) =
+            super::macro_transaction_tests::instrument(d, vec![], Some((1, 319, vec![0xa5])));
+        assert!(d
+            .apply(&action)
+            .unwrap_err()
+            .to_string()
+            .contains("state uncertain"));
+        assert_eq!(counter.lock().unwrap().sets, 1);
+    }
+}
+
+#[test]
+fn every_source_modifier_release_permutation_retains_complete_wire_order() {
+    for usage in 4..=0xa4 {
+        for downs in [[1, 128], [128, 1]] {
+            let releases = [
+                [0, 1, 2],
+                [0, 2, 1],
+                [1, 0, 2],
+                [1, 2, 0],
+                [2, 0, 1],
+                [2, 1, 0],
+            ];
+            for order in releases {
+                let mut rows = vec![[0, 0, downs[0], 0], [0, 0, downs[1], 0], [1, 0, usage, 0]];
+                let ups = [[0, 1, 1, 0], [0, 1, 128, 0], [1, 1, usage, 0]];
+                for i in order {
+                    rows.push(ups[i]);
+                }
+                let action = shortcuts::from_rows(&rows).unwrap();
+                let ButtonAction::Shortcut(events) = action else {
+                    panic!("split records collapsed")
+                };
+                let raw = shortcuts::encode_events(&events).unwrap();
+                let expected = rows
+                    .iter()
+                    .flat_map(|r| [if r[1] == 0 { 128 } else { 64 } | r[0], r[2], 0])
+                    .collect::<Vec<_>>();
+                assert_eq!(&raw[1..raw.len() - 1], expected);
+            }
+        }
+    }
+}
