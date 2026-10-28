@@ -1,0 +1,56 @@
+{
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "method": "static source review; no vendor JavaScript execution",
+  "offset_unit": "Python Unicode codepoints",
+  "facts": [
+    {
+      "pattern": "function M5t(a,t)",
+      "offset": 4390265
+    },
+    {
+      "pattern": "function D5t(a)",
+      "offset": 4390886
+    },
+    {
+      "pattern": "async getDeviceData(e){const n={},o={};let s={},i=[]",
+      "offset": 2117074
+    },
+    {
+      "pattern": "o.cidMid=s",
+      "offset": 2109882
+    },
+    {
+      "pattern": "o.reportRate=d.reportRate,o.dpiTotal=d.maxDpi,o.dpiLevel=d.currentDpi",
+      "offset": 2110322
+    },
+    {
+      "pattern": "async _getMouseDpiConfig(){",
+      "offset": 2120679
+    },
+    {
+      "pattern": "usesLogical:!0",
+      "offset": 2108834
+    },
+    {
+      "pattern": "var Ma=(a=>(a[a.Hz125=0]",
+      "offset": 1629340
+    },
+    {
+      "pattern": "get currentDpi(){return this.raw.getUint8(this.baseOffset+4)}",
+      "offset": 2059043
+    }
+  ],
+  "interpretation": [
+    "Export serializes current deviceData, not necessarily the saved profile named in filename.",
+    "getDeviceData includes deviceConfig.mouseConfig with cidMid and DPI fields.",
+    "getMouseFunction exports raw maxDpi count and currentDpi index; reportRate is the Ma enum 0..6.",
+    "_getMouseDpiConfig emits logical XY values with usesLogical true.",
+    "Only active stages and polling are converted; all other source fields are excluded and preview states this explicitly."
+  ],
+  "limits": [
+    "Envelope Base64 library traced separately in 2026-10-28-atk-bin-envelope-source.json.",
+    "Fixtures are independently generated from source shape, not hardware captures or a user OEM export.",
+    "No claim of old raw-DPI file compatibility, complete OEM import or full model acceptance."
+  ]
+}

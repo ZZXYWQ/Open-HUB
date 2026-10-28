@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-28",
+  "scope": "ATK HUB .bin active logical XY DPI and polling only",
+  "distinct_mice": 9,
+  "connections": 10,
+  "synthetic_source_files": 10,
+  "native_parse_merge_compile_driver_roundtrip": "passed",
+  "UI_production_parsed_results_saved": 10,
+  "UI_bad_file_identity_mismatch_cancel": "passed",
+  "UI_saved_profile_production_driver_replay": "passed",
+  "existing_board_tuning_UI_cases": 13,
+  "main_tests": {
+    "passed": 1019,
+    "failed": 0,
+    "ignored": 87
+  },
+  "builds": {
+    "frontend": "passed",
+    "native": "passed"
+  },
+  "main_js_bytes": 839515,
+  "js_delta_bytes": 1018,
+  "new_runtime_dependencies": 0,
+  "hardware_tested": false,
+  "OEM_hardware_export_fixture": false,
+  "only_DPI_and_polling_converted": true,
+  "device_writes_during_UI_import": false,
+  "accepted_complete_models": 0,
+  "target": 100,
+  "installer_created": false,
+  "installed_release": "0.3.7"
+}
