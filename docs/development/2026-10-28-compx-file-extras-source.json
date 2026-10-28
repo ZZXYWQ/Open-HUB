@@ -1,0 +1,70 @@
+{
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "offset_unit": "Python Unicode codepoints",
+  "method": "pinned static read, no OEM code executed",
+  "facts": [
+    {
+      "pattern": "pa=(a=>(a[a.Off=0]",
+      "codepoint_offset": 1827920
+    },
+    {
+      "pattern": "a[a.Breathing=8]",
+      "codepoint_offset": 1828212
+    },
+    {
+      "pattern": "a[a.SteadyOn=9]",
+      "codepoint_offset": 1828241
+    },
+    {
+      "pattern": "Zs=(a=>(a[a.Slow=0]",
+      "codepoint_offset": 1828466
+    },
+    {
+      "pattern": "ss=(a=>(a[a.Low=0]",
+      "codepoint_offset": 1828547
+    },
+    {
+      "pattern": "class Fu extends go",
+      "codepoint_offset": 2064372
+    },
+    {
+      "pattern": "class pb{",
+      "codepoint_offset": 2061233
+    },
+    {
+      "pattern": "async _getMouseDpiColors(){",
+      "codepoint_offset": 2122757
+    },
+    {
+      "pattern": "o.moveSync=e.motionSync",
+      "codepoint_offset": 2109680
+    },
+    {
+      "pattern": "o.sensorModel=c.sensorModel,o.sensorSleepTime=c.sensorSleepTime,o.sensorSleepEnabled=c.sensorSleepEnabled",
+      "codepoint_offset": 2110163
+    },
+    {
+      "pattern": "get closeLedTime(){return this.raw.getUint8(this.baseOffset+4)*10}",
+      "codepoint_offset": 2066283
+    },
+    {
+      "pattern": "get sensorSleepTime(){return this.raw.getUint8(this.baseOffset+2)*10}",
+      "codepoint_offset": 2067462
+    }
+  ],
+  "interpretation": [
+    "Fu getters export logical mode enum Off0/Breathing8/SteadyOn9, not raw device mode1/2.",
+    "Brightness and speed use separate 0/1/2 logical enums; Fu translates them to firmware values.",
+    "pb.color is an RGB object; four paired rows yield all eight colors through _getMouseDpiColors.",
+    "_getMouseDpiConfig merges logical DPI and color objects, including inactive stages.",
+    "Bu.closeLedTime and Uu.sensorSleepTime getters already multiply raw values by10: JSON values are seconds.",
+    "getMouseFunction exports raw numeric boolean0/1 and exact performance field names.",
+    "Existing model-specific tuning and LOD capabilities validate selected values; unsupported fields are not generalized."
+  ],
+  "limits": [
+    "Only known mouse DPI indicator and table, not dongle/decoration zones.",
+    "No OEM hardware-export sample or physical effect evidence.",
+    "Macro bodies, other advanced fields and full profile fidelity remain incomplete."
+  ]
+}

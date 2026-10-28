@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-28",
+  "scope": "Selected OEM file mouse DPI lighting/palette and exact known tuning/sleep categories",
+  "distinct_partial_mice": 9,
+  "performance_connections": 10,
+  "lighting_models_and_connections": 6,
+  "light_mode_native_replays": 18,
+  "brightness_speed_combinations_per_light_model": 9,
+  "actual_UI_saved_profiles": 10,
+  "explicit_UI_production_replay": "passed",
+  "modifier_import_editor_UI_regression_saves": 20,
+  "DPI_only_UI_regression_saves": 10,
+  "board_tuning_UI_regression_saves": 13,
+  "UI_visual_screenshot_inspected": true,
+  "main_tests": {
+    "passed": 1038,
+    "failed": 0,
+    "ignored": 90
+  },
+  "builds": {
+    "frontend": "passed",
+    "native": "passed"
+  },
+  "main_js_bytes": 843026,
+  "js_delta_bytes": 2089,
+  "new_runtime_dependencies": 0,
+  "new_images": 0,
+  "physical_HID_access": false,
+  "hardware_tested": false,
+  "OEM_hardware_export_fixture": false,
+  "complete_OEM_profile_migration": false,
+  "atomic_whole_profile_transaction": false,
+  "accepted_complete_models": 0,
+  "target": 100,
+  "installer_created": false,
+  "installed_release": "0.3.7"
+}

@@ -144,8 +144,16 @@ fn explicit_file_rejects_wrong_extension_and_reads_without_device_access() {
     std::fs::create_dir(&root).unwrap();
     let path = root.join("配置.BIN");
     std::fs::write(&path, encode(&serde_json::to_vec(&fixture(m)).unwrap())).unwrap();
-    assert!(prepare_file(&path, m.vendor, m.product, false).is_ok());
-    assert!(prepare_file(&root.join("bad.json"), m.vendor, m.product, false).is_err());
+    assert!(prepare_file(&path, m.vendor, m.product, false, false, false).is_ok());
+    assert!(prepare_file(
+        &root.join("bad.json"),
+        m.vendor,
+        m.product,
+        false,
+        false,
+        false
+    )
+    .is_err());
     std::fs::remove_file(path).unwrap();
     std::fs::remove_dir(root).unwrap();
 }
@@ -427,5 +435,278 @@ fn browser_chord_import_and_editor_saves_preserve_both_modifier_sides() {
             }
         );
         assert!(d.macro_definitions().is_empty());
+    }
+}
+
+fn extras_fixture(m: &atk::Model) -> Value {
+    let mut f = button_fixture(m, [[1, 2, 0], [1, 4, 0], [1, 8, 0], [1, 16, 0], [2, 1, 0]]);
+    let mouse = &mut f["deviceConfig"]["mouseConfig"];
+    mouse["keyDebounceTime"] = json!(4);
+    mouse["moveSync"] = json!(0);
+    mouse["lineCorrection"] = json!(1);
+    mouse["rippleCorrection"] = json!(1);
+    mouse["sleepTime"] = json!(120);
+    mouse["sensorSleepEnabled"] = json!(0);
+    mouse["sensorSleepTime"] = json!(300);
+    mouse["silentHeight"] = json!(2);
+    mouse["sensorModel"] = json!(255);
+    for (i, item) in mouse["dpiList"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .enumerate()
+    {
+        item["color"] = json!({"r":i*20,"g":255-i*20,"b":i+5});
+    }
+    f["deviceConfig"]["lightConfig"] = json!({"enabled":1,"mode":8,"brightness":2,"speed":0});
+    f
+}
+fn selected(f: &Value, m: &atk::Model, tuning: bool, lighting: bool) -> Result<Prepared> {
+    prepare_selected(
+        &encode(&serde_json::to_vec(f).unwrap()),
+        m.vendor,
+        m.product,
+        true,
+        tuning,
+        lighting,
+    )
+}
+#[test]
+fn selected_performance_and_light_files_save_compile_execute_and_preserve_unselected_fields() {
+    let mut cases = vec![];
+    for m in models() {
+        let f = extras_fixture(m);
+        let light = atk::palette_stages(m.vendor, m.product) > 0;
+        let prepared = selected(&f, m, true, light).unwrap();
+        let mut store = crate::profiles::ProfileStore::default();
+        crate::profile_transfer::merge(&mut store, vec![prepared.profile.clone()]).unwrap();
+        let plan = prepared.profile.multi.as_ref().unwrap();
+        let c = crate::multibrand::compile(plan).unwrap();
+        assert!(!c.software_input);
+        let (mut d, _) = atk::simulated(m.product).unwrap();
+        let before = d.read_state().unwrap();
+        for s in &c.settings {
+            d.apply(s).unwrap();
+        }
+        let after = d.read_state().unwrap();
+        let t = after.tuning.unwrap();
+        assert_eq!(t.debounce_ms, Some(4));
+        assert_eq!(t.motion_sync, Some(false));
+        assert_eq!(t.ripple_control, Some(true));
+        assert_eq!(t.led_idle_seconds, Some(120));
+        assert_eq!(t.sensor_sleep_enabled, Some(false));
+        assert_eq!(t.sensor_sleep_seconds, Some(300));
+        if atk::tuning_capabilities(m.vendor, m.product)
+            .unwrap()
+            .angle_snapping
+        {
+            assert_eq!(t.angle_snapping, Some(true));
+        } else {
+            assert_eq!(t.angle_snapping, before.tuning.unwrap().angle_snapping);
+        }
+        if light {
+            let i = after.dpi_indicator.unwrap();
+            assert!(i.enabled);
+            assert_eq!(i.mode, gearwise_core::model::DpiIndicatorMode::Breathing);
+            assert_eq!(i.brightness, gearwise_core::model::IndicatorLevel::High);
+            assert_eq!(i.speed, gearwise_core::model::IndicatorLevel::Low);
+            assert_eq!(after.dpi_colors.len(), 8);
+            assert_eq!(
+                after.dpi_colors[&7],
+                gearwise_core::model::Rgb {
+                    r: 140,
+                    g: 115,
+                    b: 12
+                }
+            );
+        } else {
+            assert_eq!(after.dpi_indicator, before.dpi_indicator);
+            assert_eq!(after.dpi_colors, before.dpi_colors);
+        }
+        assert!(prepared.note.contains("已支持的性能与省电字段"));
+        assert_eq!(after.buttons[&1], before.buttons[&1]);
+        cases.push(json!({"vendor":m.vendor,"product":m.product,"includeLighting":light,"prepared":prepared}));
+    }
+    if let Some(path) = std::env::var_os("OPEN_HUB_COMPX_EXTRAS_FILE_FIXTURES") {
+        std::fs::write(path, serde_json::to_vec_pretty(&cases).unwrap()).unwrap();
+    }
+}
+#[test]
+fn exact_oem_modes_brightness_and_speed_enums_preserve_all_palette_slots() {
+    for m in models().filter(|m| atk::palette_stages(m.vendor, m.product) > 0) {
+        for (mode, enabled, expected) in [
+            (0, 0, gearwise_core::model::DpiIndicatorMode::Unspecified),
+            (8, 1, gearwise_core::model::DpiIndicatorMode::Breathing),
+            (9, 1, gearwise_core::model::DpiIndicatorMode::Static),
+        ] {
+            let mut f = extras_fixture(m);
+            f["deviceConfig"]["lightConfig"]["mode"] = json!(mode);
+            f["deviceConfig"]["lightConfig"]["enabled"] = json!(enabled);
+            let p = selected(&f, m, false, true).unwrap();
+            let (mut d, _) = atk::simulated(m.product).unwrap();
+            for s in &p.profile.multi.unwrap().settings {
+                d.apply(s).unwrap();
+            }
+            let state = d.read_state().unwrap();
+            assert_eq!(state.dpi_indicator.unwrap().mode, expected);
+            assert_eq!(
+                state.dpi_colors[&7],
+                gearwise_core::model::Rgb {
+                    r: 140,
+                    g: 115,
+                    b: 12
+                }
+            );
+        }
+        for bright in 0..=2 {
+            for speed in 0..=2 {
+                let mut f = extras_fixture(m);
+                f["deviceConfig"]["lightConfig"]["brightness"] = json!(bright);
+                f["deviceConfig"]["lightConfig"]["speed"] = json!(speed);
+                assert!(selected(&f, m, false, true).is_ok());
+            }
+        }
+    }
+}
+#[test]
+fn invalid_selected_fields_refuse_whole_import_but_unselected_categories_remain_explicitly_excluded(
+) {
+    let m = models().find(|m| m.product == 0x113e).unwrap();
+    for (pointer, bad, tuning, lighting) in [
+        ("/deviceConfig/mouseConfig/moveSync", json!(2), true, false),
+        (
+            "/deviceConfig/mouseConfig/sleepTime",
+            json!(12),
+            true,
+            false,
+        ),
+        (
+            "/deviceConfig/mouseConfig/sensorSleepTime",
+            json!(30.5),
+            true,
+            false,
+        ),
+        (
+            "/deviceConfig/mouseConfig/sensorSleepEnabled",
+            json!(true),
+            true,
+            false,
+        ),
+        (
+            "/deviceConfig/mouseConfig/silentHeight",
+            json!(3),
+            true,
+            false,
+        ),
+        ("/deviceConfig/lightConfig/mode", json!(1), false, true),
+        ("/deviceConfig/lightConfig/enabled", json!(0), false, true),
+        (
+            "/deviceConfig/lightConfig/brightness",
+            json!(255),
+            false,
+            true,
+        ),
+        ("/deviceConfig/lightConfig/speed", json!(3), false, true),
+        (
+            "/deviceConfig/mouseConfig/dpiList/7/color/r",
+            json!(256),
+            false,
+            true,
+        ),
+        (
+            "/deviceConfig/mouseConfig/dpiList/7/color",
+            json!([1, 2, 3]),
+            false,
+            true,
+        ),
+    ] {
+        let mut f = extras_fixture(m);
+        *f.pointer_mut(pointer).unwrap() = bad;
+        assert!(selected(&f, m, tuning, lighting).is_err(), "{pointer}");
+        assert!(selected(&f, m, false, false).is_ok());
+    }
+    let mut f = extras_fixture(m);
+    f["deviceConfig"]["mouseConfig"]
+        .as_object_mut()
+        .unwrap()
+        .remove("sensorSleepTime");
+    assert!(selected(&f, m, true, false).is_err());
+    for m in models().filter(|m| atk::palette_stages(m.vendor, m.product) == 0) {
+        assert!(selected(&extras_fixture(m), m, false, true).is_err());
+    }
+    let mut f = extras_fixture(m);
+    f["deviceConfig"]["mouseConfig"]["dpiList"]
+        .as_array_mut()
+        .unwrap()
+        .pop();
+    assert!(selected(&f, m, false, true).is_err());
+}
+#[test]
+fn unsupported_performance_fields_are_not_fabricated_and_exact_lod_model_is_enforced() {
+    let m = models().find(|m| m.product == 0x103f).unwrap();
+    let mut f = extras_fixture(m);
+    f["deviceConfig"]["mouseConfig"]["lineCorrection"] = json!(255);
+    f["deviceConfig"]["mouseConfig"]["silentHeight"] = json!(255);
+    let p = selected(&f, m, true, false).unwrap();
+    let plan = p.profile.multi.unwrap();
+    let t = plan
+        .settings
+        .iter()
+        .find_map(|s| {
+            if let Setting::Tuning(v) = s {
+                Some(v)
+            } else {
+                None
+            }
+        })
+        .unwrap();
+    assert!(t.angle_snapping.is_none());
+    assert!(t.lift_off_microns.is_none());
+    let m = models().find(|m| m.product == 0x1017).unwrap();
+    let mut f = extras_fixture(m);
+    f["deviceConfig"]["mouseConfig"]["silentHeight"] = json!(3);
+    assert!(selected(&f, m, true, false)
+        .unwrap()
+        .profile
+        .multi
+        .unwrap()
+        .settings
+        .iter()
+        .any(|s| matches!(s,Setting::Tuning(t)if t.lift_off_microns==Some(700))));
+}
+#[test]
+#[ignore = "requires current browser selected-extra saves"]
+fn browser_selected_extras_saved_profiles_import_and_execute_exact_categories() {
+    let bytes =
+        std::fs::read(std::env::var_os("OPEN_HUB_COMPX_EXTRAS_FILE_UI_PROFILES").unwrap()).unwrap();
+    let profiles: Vec<Profile> = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(profiles.len(), atk::native_test_count());
+    for p in profiles {
+        crate::profile_transfer::validate(&p).unwrap();
+        let plan = p.multi.unwrap();
+        let c = crate::multibrand::compile(&plan).unwrap();
+        let (mut d, _) = atk::simulated(plan.product).unwrap();
+        for s in &c.settings {
+            d.apply(s).unwrap();
+        }
+        let state = d.read_state().unwrap();
+        let t = state.tuning.unwrap();
+        assert_eq!(t.motion_sync, Some(false));
+        assert_eq!(t.led_idle_seconds, Some(120));
+        assert_eq!(t.sensor_sleep_seconds, Some(300));
+        if atk::palette_stages(plan.vendor, plan.product) > 0 {
+            assert_eq!(
+                state.dpi_colors[&7],
+                gearwise_core::model::Rgb {
+                    r: 140,
+                    g: 115,
+                    b: 12
+                }
+            );
+            assert_eq!(
+                state.dpi_indicator.unwrap().mode,
+                gearwise_core::model::DpiIndicatorMode::Breathing
+            );
+        }
     }
 }

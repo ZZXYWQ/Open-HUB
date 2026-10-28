@@ -12,6 +12,8 @@ use gearwise_core::{
 };
 use serde::Serialize;
 use serde_json::Value;
+#[path = "compx_file_extras.rs"]
+mod extras;
 type Result<T> = std::result::Result<T, String>;
 const MAX: usize = 8 * 1024 * 1024;
 #[derive(Serialize)]
@@ -70,6 +72,8 @@ pub fn prepare_file(
     vendor: u16,
     product: u16,
     include_buttons: bool,
+    include_tuning: bool,
+    include_lighting: bool,
 ) -> Result<Prepared> {
     if !path
         .extension()
@@ -77,22 +81,35 @@ pub fn prepare_file(
     {
         return Err("请选择 ATK HUB 导出的 .bin 文件".into());
     }
-    prepare_with_buttons(
+    prepare_selected(
         &crate::mhub_full::read_explicit_file(path)?,
         vendor,
         product,
         include_buttons,
+        include_tuning,
+        include_lighting,
     )
 }
 #[cfg(test)]
 pub fn prepare_bytes(bytes: &[u8], vendor: u16, product: u16) -> Result<Prepared> {
     prepare_with_buttons(bytes, vendor, product, false)
 }
+#[cfg(test)]
 pub fn prepare_with_buttons(
     bytes: &[u8],
     vendor: u16,
     product: u16,
     include_buttons: bool,
+) -> Result<Prepared> {
+    prepare_selected(bytes, vendor, product, include_buttons, false, false)
+}
+pub fn prepare_selected(
+    bytes: &[u8],
+    vendor: u16,
+    product: u16,
+    include_buttons: bool,
+    include_tuning: bool,
+    include_lighting: bool,
 ) -> Result<Prepared> {
     let model = atk::model(vendor, product)
         .filter(|m| m.native_macros && matches!(m.brand.as_str(), "atk" | "vxe" | "vgn"))
@@ -157,6 +174,12 @@ pub fn prepare_with_buttons(
     if include_buttons {
         settings.extend(buttons(&root, model.buttons)?);
     }
+    if include_tuning {
+        settings.push(extras::tuning(mouse, model)?);
+    }
+    if include_lighting {
+        settings.extend(extras::lighting(&root, model)?);
+    }
     let profile = Profile {
         id: String::new(),
         name: format!(
@@ -187,10 +210,31 @@ pub fn prepare_with_buttons(
         sino: None,
     };
     crate::profile_transfer::validate(&profile)?;
-    let note = if include_buttons {
-        "本次转换活动 DPI 档位、独立 X/Y、回报率及已登记非左键的已解析动作；独立左键保持原值。单键/组合键保留修饰键和完整按下抬起；应用时使用原厂快捷键表，不占用宏槽。文件中的其他宏、多键快捷序列、灯效、性能、省电和非活动 DPI 槽位未导入。未知动作或缺少宏内容时整份按键导入拒绝，未替换成默认键。导入不会自动应用。"
+    let note = if !include_buttons && !include_tuning && !include_lighting {
+        "本次仅转换活动 DPI 档位、独立 X/Y 和回报率。文件中的按键、宏、灯效、性能、省电及非活动 DPI 槽位未导入，应用后沿用鼠标现有设置。导入不会自动应用。".to_string()
     } else {
-        "本次仅转换活动 DPI 档位、独立 X/Y 和回报率。文件中的按键、宏、灯效、性能、省电及非活动 DPI 槽位未导入，应用后沿用鼠标现有设置。导入不会自动应用。"
+        let mut included = vec!["活动 DPI 档位、独立 X/Y、回报率"];
+        if include_buttons {
+            included.push("已登记非左键及完整单键/组合键");
+        }
+        if include_tuning {
+            included.push("已支持的性能与省电字段");
+        }
+        if include_lighting {
+            included.push("DPI 指示灯模式、亮度、速度及完整八档颜色");
+        }
+        let mut excluded =
+            vec!["其他宏、多键快捷序列、未开放性能项、接收器/装饰灯、未启用档位的 DPI 数值"];
+        if !include_buttons {
+            excluded.push("按键与快捷键");
+        }
+        if !include_tuning {
+            excluded.push("性能与省电");
+        }
+        if !include_lighting {
+            excluded.push("DPI 灯效与色表");
+        }
+        format!("本次转换{}。独立左键保持原值；单键/组合键使用原厂快捷键表。未导入：{}。未选择或未开放的设置保留鼠标原值；未知或无效的已选字段会拒绝导入。导入不会自动应用。",included.join("、"),excluded.join("、"))
     };
     Ok(Prepared {
         profile,

@@ -23,6 +23,7 @@ mod tuning_transaction;
 mod indicator;
 #[path="atk_battery.rs"]
 mod battery;
+pub(crate) fn tuning_capabilities(v:u16,p:u16)->Option<gearwise_core::tuning::TuningCaps>{tuning::capabilities(model(v,p)?)}
 pub fn validate_tuning(v:u16,p:u16,t:&gearwise_core::tuning::MouseTuning)->Result<()>{tuning::validate(model(v,p).ok_or(Error::Unsupported("COMPX tuning model"))?,t)}
 #[path = "pulsar_shortcuts.rs"]
 mod pulsar_shortcut;

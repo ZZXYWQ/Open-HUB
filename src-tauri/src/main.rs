@@ -852,7 +852,7 @@ fn import_ghub_profiles(app: AppHandle, state: State<ProfilesState>) -> Result<I
 }
 
 #[tauri::command(async)]
-fn prepare_compx_file_import(path:String,vendor:u16,product:u16,include_buttons:Option<bool>)->Result<compx_file_import::Prepared,String>{compx_file_import::prepare_file(std::path::Path::new(&path),vendor,product,include_buttons.unwrap_or(false))}
+fn prepare_compx_file_import(path:String,vendor:u16,product:u16,include_buttons:Option<bool>,include_tuning:Option<bool>,include_lighting:Option<bool>)->Result<compx_file_import::Prepared,String>{compx_file_import::prepare_file(std::path::Path::new(&path),vendor,product,include_buttons.unwrap_or(false),include_tuning.unwrap_or(false),include_lighting.unwrap_or(false))}
 #[tauri::command(async)]
 fn prepare_mhub_local_import(path:String,origin:Option<String>)->Result<mhub_local::Prepared,String>{mhub_local::prepare(std::path::Path::new(&path),origin.as_deref())}
 #[tauri::command(async)]
