@@ -3,12 +3,12 @@
 use super::*;
 use gearwise_core::tuning::{MouseTuning, TuningCaps};
 fn r1_style(p: u16) -> bool {
-    matches!(p, 0x1115 | 0x10c9 | 0x1017 | 0xf58f | 0xf58c)
+    matches!(p, 0x1115 | 0x10c9 | 0x1017 | 0x113e | 0xf58f | 0xf58c)
 }
 pub(super) fn capabilities(m: &Model) -> Option<TuningCaps> {
     if !matches!(
         (m.vendor, m.product),
-        (0x373b, 0x1115 | 0x10c9 | 0x1017 | 0x103f | 0x104b)
+        (0x373b, 0x1115 | 0x10c9 | 0x1017 | 0x113e | 0x103f | 0x104b)
             | (0x3554, 0xf58f | 0xf58c | 0xf502 | 0xf506)
     ) {
         return None;
@@ -36,7 +36,7 @@ pub(super) fn capabilities(m: &Model) -> Option<TuningCaps> {
         },
         lift_off_microns: match m.product {
             0x1017 => vec![700, 1000, 2000],
-            0x1115 | 0x10c9 | 0xf58f | 0xf58c => vec![1000, 2000],
+            0x1115 | 0x10c9 | 0x113e | 0xf58f | 0xf58c => vec![1000, 2000],
             _ => vec![],
         },
         ..Default::default()
@@ -64,8 +64,8 @@ fn set(row: &mut [u8], offset: usize, v: u8) {
 fn lift_code(m: &Model, microns: u16) -> Result<u8> {
     match (m.product, microns) {
         (0x1017, 700) => Ok(3),
-        (0x1017 | 0x1115 | 0x10c9 | 0xf58f | 0xf58c, 1000) => Ok(1),
-        (0x1017 | 0x1115 | 0x10c9 | 0xf58f | 0xf58c, 2000) => Ok(2),
+        (0x1017 | 0x1115 | 0x10c9 | 0x113e | 0xf58f | 0xf58c, 1000) => Ok(1),
+        (0x1017 | 0x1115 | 0x10c9 | 0x113e | 0xf58f | 0xf58c, 2000) => Ok(2),
         _ => Err(Error::invalid("Exact COMPX lift-off encoding")),
     }
 }
@@ -259,7 +259,7 @@ mod tests {
                 .all(|p| matches!(u16::from_be_bytes([p[3], p[4]]), 10 | 169 | 181)));
             count += 1;
         }
-        assert_eq!(count, 9);
+        assert_eq!(count, native_test_count());
     }
     #[test]
     fn published_a9_row_keeps_unmodified_pairs_in_exact_patch_packet() {

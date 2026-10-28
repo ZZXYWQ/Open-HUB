@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-28",
+  "scope": "ATK X1 Lite exact performance and power subset",
+  "main_tests": {
+    "passed": 1010,
+    "failed": 0,
+    "ignored": 85
+  },
+  "new_default_tests": 3,
+  "independent_complete_SET_vectors": 3,
+  "failure_cases_before_after_effect": 6,
+  "explicit_replays": [
+    "X1 Lite production DTO + full built UI saved plan: passed",
+    "ten COMPX performance UI saved plans configuration-pack import/native apply: passed"
+  ],
+  "native_build": "passed",
+  "frontend_changed": false,
+  "new_runtime_dependencies": 0,
+  "hardware_tested": false,
+  "accepted_complete_models": 0,
+  "target": 100,
+  "installer_created": false,
+  "installed_release": "0.3.7",
+  "remaining": [
+    "concurrent external editing recovery boundary",
+    "OEM private file importer",
+    "cross-bank macro references",
+    "other advanced OEM fields",
+    "physical firmware playback/persistence",
+    "OEM UI parity acceptance"
+  ]
+}

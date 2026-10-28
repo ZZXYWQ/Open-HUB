@@ -8,9 +8,9 @@ fn tuning_native_dtos_export_without_inventing_other_vendor_capabilities() {
         .into_iter()
         .filter(|v| v.capabilities.tuning.is_some())
         .collect::<Vec<_>>();
-    assert_eq!(views.len(), 11);
+    assert_eq!(views.len(), crate::atk::native_test_count()+2);
     let views = views.into_iter().filter(|v| matches!(v.descriptor.vendor_id, 0x373b | 0x3554)).collect::<Vec<_>>();
-    assert_eq!(views.len(), 9);
+    assert_eq!(views.len(), crate::atk::native_test_count());
     assert!(views
         .iter()
         .all(|v| !v.hardware_tested && v.descriptor.simulated && v.state.tuning.is_some()));
@@ -116,7 +116,7 @@ fn tuning_browser_saved_profiles_import_and_execute() {
     let path = std::env::var_os("OPEN_HUB_TUNING_UI_PROFILES").unwrap();
     let profiles: Vec<crate::profiles::Profile> =
         serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
-    assert_eq!(profiles.len(), 9);
+    assert_eq!(profiles.len(), crate::atk::native_test_count());
     let file = std::env::temp_dir().join(format!("tuning-pack-{}.json", crate::profiles::new_id()));
     std::fs::write(
         &file,

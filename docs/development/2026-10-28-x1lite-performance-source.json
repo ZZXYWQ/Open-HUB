@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-28",
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "static_only": true,
+  "model": "ATK X1 Lite",
+  "cid_mid": [
+    2,
+    89
+  ],
+  "sensor": "PAW3395",
+  "rows": {
+    "LOD": [
+      10,
+      2
+    ],
+    "performance": [
+      169,
+      10
+    ],
+    "sensor": [
+      181,
+      6
+    ]
+  },
+  "checksum": "each scalar pair sums modulo256 to0x55",
+  "time_unit_seconds": 10,
+  "debounce_ms": [
+    0,
+    1,
+    2,
+    4,
+    8,
+    15,
+    20
+  ],
+  "idle_and_sleep_seconds": [
+    30,
+    60,
+    120,
+    180,
+    300,
+    1200,
+    1500,
+    1800
+  ],
+  "LOD_microns": [
+    1000,
+    2000
+  ],
+  "not_enabled": [
+    "far distance",
+    "0.7mm LOD",
+    "sensor model selection",
+    "other unverified advanced fields"
+  ]
+}

@@ -105,3 +105,163 @@ fn x1lite_known_controls_dpi_and_light_palette_roundtrip_and_reopen() {
     }
     assert!(log.lock().unwrap().is_empty());
 }
+
+#[test]
+fn x1lite_performance_has_exact_native_rows_and_preserves_every_unselected_byte() {
+    use gearwise_core::tuning::MouseTuning;
+    let (mut d, log) = memory_device(0x113e).unwrap();
+    let (mut peer, _) = memory_device(0x113e).unwrap();
+    let peer_before = peer.read_state().unwrap();
+    let before = d.read_blob(0, 768 + 12 * 384).unwrap();
+    let patch = MouseTuning {
+        debounce_ms: Some(20),
+        motion_sync: Some(false),
+        angle_snapping: Some(true),
+        ripple_control: Some(false),
+        led_idle_seconds: Some(1800),
+        sensor_sleep_enabled: Some(false),
+        sensor_sleep_seconds: Some(300),
+        lift_off_microns: Some(2000),
+        ..Default::default()
+    };
+    log.lock().unwrap().clear();
+    d.apply(&Setting::Tuning(patch.clone())).unwrap();
+    let writes = log
+        .lock()
+        .unwrap()
+        .iter()
+        .filter_map(|r| {
+            if let gearwise_core::transport::MockRecord::Write(p) = r {
+                if p[1] == 7 {
+                    Some(p.clone())
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        writes,
+        vec![
+            vec![8, 7, 0, 0, 10, 2, 2, 83, 0, 0, 0, 0, 0, 0, 0, 0, 229],
+            vec![8, 7, 0, 0, 169, 10, 20, 65, 0, 85, 180, 161, 1, 84, 0, 85, 234],
+            vec![8, 7, 0, 0, 181, 6, 0, 85, 30, 55, 2, 83, 0, 0, 0, 0, 140]
+        ]
+    );
+
+    assert_eq!(d.read(10, 2).unwrap(), [2, 83]);
+    assert_eq!(
+        d.read(169, 10).unwrap(),
+        [20, 65, 0, 85, 180, 161, 1, 84, 0, 85]
+    );
+    assert_eq!(d.read(181, 6).unwrap(), [0, 85, 30, 55, 2, 83]);
+    let actual = d.read_state().unwrap().tuning.unwrap();
+    assert_eq!(actual, patch);
+    let after = d.read_blob(0, before.len()).unwrap();
+    for at in 0..before.len() {
+        if !(10..12).contains(&at) && !(169..179).contains(&at) && !(181..185).contains(&at) {
+            assert_eq!(after[at], before[at], "untouched {at}");
+        }
+    }
+    assert_eq!(peer.read_state().unwrap(), peer_before);
+    let info = HidInterfaceInfo {
+        vendor_id: 0x373b,
+        product_id: 0x113e,
+        usage_page: 0xff04,
+        usage: 2,
+        ..Default::default()
+    };
+    let mut reopened = Atk::open(d.io, &info).unwrap();
+    assert_eq!(reopened.read_state().unwrap().tuning.unwrap(), patch);
+}
+#[test]
+fn x1lite_performance_rejects_unsupported_values_without_any_transfer() {
+    use gearwise_core::tuning::MouseTuning;
+    let (mut d, log) = memory_device(0x113e).unwrap();
+    let caps = d.capabilities().tuning.as_ref().unwrap();
+    assert_eq!(caps.debounce_ms, [0, 1, 2, 4, 8, 15, 20]);
+    assert_eq!(caps.lift_off_microns, [1000, 2000]);
+    for patch in [
+        MouseTuning {
+            debounce_ms: Some(3),
+            ..Default::default()
+        },
+        MouseTuning {
+            led_idle_seconds: Some(90),
+            ..Default::default()
+        },
+        MouseTuning {
+            sensor_sleep_seconds: Some(90),
+            ..Default::default()
+        },
+        MouseTuning {
+            lift_off_microns: Some(700),
+            ..Default::default()
+        },
+    ] {
+        log.lock().unwrap().clear();
+        assert!(d.apply(&Setting::Tuning(patch)).is_err());
+        assert!(log.lock().unwrap().is_empty());
+    }
+}
+
+struct TuningFault {
+    inner: Box<dyn HidTransport>,
+    sets: usize,
+    nth: usize,
+    after: bool,
+}
+impl HidTransport for TuningFault {
+    fn write(&mut self, p: &[u8]) -> Result<usize> {
+        if p[1] == 7 {
+            self.sets += 1;
+            if self.sets == self.nth {
+                if self.after {
+                    self.inner.write(p)?;
+                }
+                return Err(Error::invalid("synthetic X1 Lite performance failure"));
+            }
+        }
+        self.inner.write(p)
+    }
+    fn read_timeout(&mut self, p: &mut [u8], ms: i32) -> Result<usize> {
+        self.inner.read_timeout(p, ms)
+    }
+    fn send_feature_report(&mut self, p: &[u8]) -> Result<()> {
+        self.inner.send_feature_report(p)
+    }
+    fn get_feature_report(&mut self, p: &mut [u8]) -> Result<usize> {
+        self.inner.get_feature_report(p)
+    }
+}
+#[test]
+fn x1lite_three_performance_stages_before_and_after_effect_restore_original_eeprom() {
+    use gearwise_core::tuning::MouseTuning;
+    for nth in 1..=3 {
+        for after in [false, true] {
+            let (mut d, _) = memory_device(0x113e).unwrap();
+            let before = d.read_blob(0, 768 + 12 * 384).unwrap();
+            let patch = MouseTuning {
+                lift_off_microns: Some(2000),
+                debounce_ms: Some(20),
+                motion_sync: Some(false),
+                sensor_sleep_seconds: Some(300),
+                ..Default::default()
+            };
+            d.io = Box::new(TuningFault {
+                inner: d.io,
+                sets: 0,
+                nth,
+                after,
+            });
+            let error = d.apply(&Setting::Tuning(patch)).unwrap_err().to_string();
+            assert!(
+                error.contains("performance original rows restoration: confirmed"),
+                "{nth} {after}: {error}"
+            );
+            assert_eq!(d.read_blob(0, before.len()).unwrap(), before);
+        }
+    }
+}
