@@ -15,6 +15,8 @@ mod native_macro;
 mod macro_transaction;
 #[path="atk_tuning.rs"]
 mod tuning;
+#[path="atk_tuning_transaction.rs"]
+mod tuning_transaction;
 #[path="atk_indicator.rs"]
 mod indicator;
 #[path="atk_battery.rs"]
@@ -1483,3 +1485,7 @@ mod macro_transaction_tests;
 #[cfg(test)]
 #[path="atk_x1lite_tests.rs"]
 mod x1lite_tests;
+
+#[cfg(test)]
+#[path="atk_tuning_transaction_tests.rs"]
+mod tuning_transaction_tests;

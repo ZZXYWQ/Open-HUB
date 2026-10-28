@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-28",
+  "scope": "COMPX performance related-row reconciliation and conditional restoration",
+  "connections": 10,
+  "main_tests": {
+    "passed": 1015,
+    "failed": 0,
+    "ignored": 85
+  },
+  "new_default_tests": 5,
+  "external_partial_row_cases": 40,
+  "explicit_production_replays": [
+    "X1 Lite full UI saved profile: passed",
+    "10 performance UI saved profiles import/native apply: passed"
+  ],
+  "native_build": "passed",
+  "frontend_changed": false,
+  "new_runtime_dependencies": 0,
+  "hardware_tested": false,
+  "accepted_complete_models": 0,
+  "target": 100,
+  "installer_created": false,
+  "installed_release": "0.3.7",
+  "limits": [
+    "no protocol atomic lock",
+    "in-memory preimages only",
+    "other single-row EEPROM paths remain outside this change",
+    "no firmware/hardware parity claim"
+  ]
+}

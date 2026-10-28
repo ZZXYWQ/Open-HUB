@@ -23,15 +23,15 @@ impl Atk {
         Ok(())
     }
     // No recursive restoration: the whole transaction owns recovery decisions.
-    fn write_macro_row(&mut self, address: u16, next: &[u8]) -> Result<()> {
+    pub(super) fn write_transaction_row(&mut self, address: u16, next: &[u8]) -> Result<()> {
         self.identify()?;
         let packet = frame(7, address, next.len(), next)?;
         if self.io.write(&packet)? != 17 {
-            return Err(Error::invalid("COMPX macro short EEPROM write"));
+            return Err(Error::invalid("COMPX transaction short EEPROM write"));
         }
         std::thread::sleep(Duration::from_millis(10));
         if self.read(address, next.len())? != next {
-            return Err(Error::invalid("COMPX macro row readback mismatch"));
+            return Err(Error::invalid("COMPX transaction row readback mismatch"));
         }
         self.identify()?;
         Ok(())
@@ -95,14 +95,14 @@ impl Atk {
                 }
                 self.verify_macro_state(base, &stage)?;
                 attempted.push((offset, chunk.len()));
-                self.write_macro_row(base + offset as u16, chunk)?;
+                self.write_transaction_row(base + offset as u16, chunk)?;
                 stage.slot[offset..offset + chunk.len()].copy_from_slice(chunk);
                 self.verify_macro_state(base, &stage)?;
             }
             self.verify_macro_state(base, &stage)?;
             if stage.buttons[target_at..target_at + 4] != *next_binding {
                 binding_attempted = true;
-                self.write_macro_row(96 + target_at as u16, next_binding)?;
+                self.write_transaction_row(96 + target_at as u16, next_binding)?;
                 stage.buttons[target_at..target_at + 4].copy_from_slice(next_binding);
             }
             self.verify_macro_state(base, &wanted)
@@ -137,7 +137,7 @@ impl Atk {
                 self.verify_macro_state(base, &actual)?;
                 // Remove our new reference before putting original code back.
                 if actual.buttons[target_at..target_at + 4] != *original_binding {
-                    self.write_macro_row(96 + target_at as u16, original_binding)?;
+                    self.write_transaction_row(96 + target_at as u16, original_binding)?;
                     actual.buttons[target_at..target_at + 4].copy_from_slice(original_binding);
                     self.verify_macro_state(base, &actual)?;
                 }
@@ -146,7 +146,7 @@ impl Atk {
                         continue;
                     }
                     self.verify_macro_state(base, &actual)?;
-                    self.write_macro_row(base + *at as u16, &before.slot[*at..*at + *len])?;
+                    self.write_transaction_row(base + *at as u16, &before.slot[*at..*at + *len])?;
                     actual.slot[*at..*at + *len].copy_from_slice(&before.slot[*at..*at + *len]);
                     self.verify_macro_state(base, &actual)?;
                 }

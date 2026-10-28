@@ -168,40 +168,7 @@ impl Atk {
             }
             rows.push((181, before, next));
         }
-        let mut attempted = Vec::new();
-        let operation = (|| -> Result<()> {
-            for (i, (address, _, next)) in rows.iter().enumerate() {
-                attempted.push(i);
-                self.write_verified(*address, next)?;
-            }
-            let actual = self.read_tuning()?;
-            let mut wanted = actual.clone();
-            p.merge(&mut wanted);
-            if actual != wanted {
-                return Err(Error::invalid(
-                    "COMPX complete performance readback mismatch",
-                ));
-            }
-            Ok(())
-        })();
-        if let Err(error) = operation {
-            let mut restore_errors = Vec::new();
-            for i in attempted.into_iter().rev() {
-                let (address, before, _) = &rows[i];
-                if let Err(e) = self.write_verified(*address, before) {
-                    restore_errors.push(e.to_string());
-                }
-            }
-            return Err(Error::invalid(format!(
-                "{error}; performance original rows restoration: {}",
-                if restore_errors.is_empty() {
-                    "confirmed".into()
-                } else {
-                    restore_errors.join("; ")
-                }
-            )));
-        }
-        Ok(())
+        self.commit_tuning_rows(&rows,p)
     }
 }
 
