@@ -21,10 +21,11 @@
   },
   {
     "id": "atk-x1",
-    "label": "ATK X1 Pro Max",
+    "label": "ATK X1 系列",
     "vendor": 14139,
     "products": [
-      4119
+      4119,
+      4414
     ],
     "names": [],
     "images": [

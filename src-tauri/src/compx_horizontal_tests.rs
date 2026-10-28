@@ -23,7 +23,7 @@ fn nine_transports_all_nonleft_buttons_roundtrip_without_other_eeprom_or_peer_ch
         .iter()
         .filter(|m| horizontal_scroll_supported(m.vendor, m.product))
         .collect::<Vec<_>>();
-    assert_eq!(eligible.len(), 9);
+    assert_eq!(eligible.len(), native_test_count());
     for m in eligible {
         let (mut d, log) = memory_device(m.product).unwrap();
         let (mut peer, _) = memory_device(m.product).unwrap();

@@ -65,7 +65,7 @@ fn direct_profile_plans_compile_natively_and_reject_wrong_index_model_or_key() {
 #[test]
 fn export_compx_profile_select_ui_fixture() {
     let v = views();
-    assert_eq!(v.len(), 9);
+    assert_eq!(v.len(), crate::atk::native_test_count());
     if let Some(path) = std::env::var_os("OPEN_HUB_COMPX_PROFILE_SELECT_FIXTURE") {
         std::fs::write(path, serde_json::to_vec_pretty(&v).unwrap()).unwrap();
     }

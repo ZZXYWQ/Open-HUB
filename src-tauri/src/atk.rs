@@ -53,8 +53,10 @@ pub fn validate_media(usage:u16)->Result<()>{native_macro::validate_media(usage)
 pub fn validate_macro(m: &Macro) -> Result<()> {
     native_macro::encode(m).map(|_| ())
 }
+fn default_usage_page()->u16{0xff02}
 #[derive(serde::Deserialize)]
 pub struct Model {
+    #[serde(default="default_usage_page")] pub usage_page:u16,
     pub vendor: u16, pub product: u16, pub mids: Vec<u8>, pub brand: String,
     pub name: String, pub max_dpi: u16, pub buttons: u16, pub indicator: bool,
     pub wireless: bool, pub rates: Vec<u16>,
@@ -70,6 +72,7 @@ pub fn model(v: u16, p: u16) -> Option<&'static Model> {
     models().iter().find(|m| m.vendor == v && m.product == p)
 }
 pub fn supported(v: u16, p: u16) -> bool { model(v,p).is_some() }
+#[cfg(test)]pub(crate) fn native_test_count()->usize{models().iter().filter(|m|m.native_macros).count()}
 pub fn palette_stages(v:u16,p:u16)->u8 {model(v,p).filter(|m|m.indicator).map(|m|m.dpi_color_stages).unwrap_or(0)}
 pub fn validate_indicator(v:u16,p:u16)->Result<()> {if palette_stages(v,p)>0{Ok(())}else{Err(Error::Unsupported("Exact COMPX indicator mode and levels"))}}
 pub fn validate_indicator_state(v:u16,p:u16,state:&gearwise_core::model::DpiIndicatorState)->Result<()> {validate_indicator(v,p)?;if state.enabled&&state.mode==gearwise_core::model::DpiIndicatorMode::Unspecified{return Err(Error::invalid("Choose a known COMPX indicator mode before enabling"));}Ok(())}
@@ -830,7 +833,7 @@ impl Driver for AtkDriver {
         Vendor::Other
     }
     fn probe(&self, i: &HidInterfaceInfo) -> bool {
-        supported(i.vendor_id,i.product_id)&&i.bus==gearwise_core::transport::BusKind::Usb&&if model(i.vendor_id,i.product_id).is_some_and(|m|m.brand=="pulsar"){i.interface_number==1&&i.usage_page>=0xff00}else{i.usage_page==0xff02&&i.usage==2}
+        supported(i.vendor_id,i.product_id)&&i.bus==gearwise_core::transport::BusKind::Usb&&if model(i.vendor_id,i.product_id).is_some_and(|m|m.brand=="pulsar"){i.interface_number==1&&i.usage_page>=0xff00}else{model(i.vendor_id,i.product_id).is_some_and(|m|i.usage_page==m.usage_page)&&i.usage==2}
     }
     fn open(&self, i: &HidInterfaceInfo, b: &dyn HidBackend) -> Result<Vec<Box<dyn Device>>> {
         if !self.probe(i) {
@@ -901,7 +904,7 @@ fn memory_device(
         path: format!("simulation:atk:{product:04x}"),
         vendor_id: spec.vendor,
         product_id: product,
-        usage_page: 0xff02,
+        usage_page: spec.usage_page,
         usage: 2,
         interface_number:1,
         ..Default::default()
@@ -1369,10 +1372,10 @@ mod dpi_limits_tests {
       }
     }
     #[test]
-    fn compx_registry_is_unambiguous_and_does_not_open_ff04_or_bitmouse(){
+    fn compx_registry_is_unambiguous_and_only_opens_its_exact_collection(){
       let mut keys=std::collections::HashSet::new();
       for spec in models(){assert!(keys.insert(spec.product),"future shared PID models need explicit plan identity");
-        for page in [0xff04,0xff05,1]{let info=HidInterfaceInfo{vendor_id:spec.vendor,product_id:spec.product,usage_page:page,usage:2,..Default::default()};assert!(!AtkDriver.probe(&info));}
+        for page in [0xff02,0xff04,0xff05,1].into_iter().filter(|page|*page!=spec.usage_page){let info=HidInterfaceInfo{vendor_id:spec.vendor,product_id:spec.product,usage_page:page,usage:2,..Default::default()};assert!(!AtkDriver.probe(&info));}
       }
       assert!(!supported(0x373b,0x124c));assert!(!supported(0xa8a4,0x2255));
     }
@@ -1476,3 +1479,7 @@ mod identity_tests;
 #[cfg(test)]
 #[path="atk_macro_transaction_tests.rs"]
 mod macro_transaction_tests;
+
+#[cfg(test)]
+#[path="atk_x1lite_tests.rs"]
+mod x1lite_tests;

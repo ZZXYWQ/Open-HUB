@@ -201,7 +201,7 @@ fn export_palette_native_ui_fixtures() {
             .iter()
             .filter(|v| v.capabilities.dpi_color_stages > 0)
             .count(),
-        5
+        crate::atk::models().iter().filter(|m|m.dpi_color_stages>0).count()
     );
     if let Some(path) = std::env::var_os("OPEN_HUB_COMPX_PALETTE_FIXTURE") {
         std::fs::write(path, serde_json::to_vec_pretty(&views).unwrap()).unwrap();

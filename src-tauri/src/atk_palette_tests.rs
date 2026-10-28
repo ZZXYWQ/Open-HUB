@@ -26,7 +26,7 @@ fn all_five_models_read_and_restore_eight_colors_without_touching_other_state() 
         .iter()
         .filter(|m| m.dpi_color_stages > 0)
         .collect::<Vec<_>>();
-    assert_eq!(eligible.len(), 5);
+    assert_eq!(eligible.len(), 6);
     for m in eligible {
         let (mut d, log) = memory_device(m.product).unwrap();
         let (mut other, _) = memory_device(m.product).unwrap();

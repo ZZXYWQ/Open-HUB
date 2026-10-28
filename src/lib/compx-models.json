@@ -270,5 +270,31 @@
       1000
     ],
     "native_buttons": true
+  },
+  {
+    "vendor": 14139,
+    "product": 4414,
+    "mids": [
+      89
+    ],
+    "brand": "atk",
+    "name": "ATK X1 Lite · USB",
+    "max_dpi": 30000,
+    "buttons": 6,
+    "indicator": true,
+    "wireless": false,
+    "rates": [
+      125,
+      250,
+      500,
+      1000
+    ],
+    "min_dpi": 100,
+    "max_stages": 8,
+    "separate_xy": true,
+    "native_macros": true,
+    "native_buttons": true,
+    "dpi_color_stages": 8,
+    "usage_page": 65284
   }
 ]

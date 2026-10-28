@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-28",
+  "new_partial_model": "ATK X1 Lite",
+  "vendor": 14139,
+  "product": 4414,
+  "CID": 2,
+  "MID": 89,
+  "usage_page": 65284,
+  "usage": 2,
+  "partial_compx_models": 9,
+  "compx_connections": 10,
+  "main_tests": {
+    "passed": 1007,
+    "failed": 0,
+    "ignored": 85
+  },
+  "explicit_bridges": [
+    "production view export: passed",
+    "built UI saved plan import and production readback: passed"
+  ],
+  "builds": {
+    "frontend": "passed",
+    "native": "passed"
+  },
+  "main_js_bytes": 837656,
+  "js_delta_bytes": 262,
+  "new_image_bytes": 0,
+  "new_runtime_dependencies": 0,
+  "hardware_tested": false,
+  "accepted_complete_models": 0,
+  "target": 100,
+  "installer_created": false,
+  "installed_release": "0.3.7"
+}

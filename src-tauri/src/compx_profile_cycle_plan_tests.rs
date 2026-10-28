@@ -60,7 +60,7 @@ fn profile_cycle_templates_compile_natively_and_unproved_models_or_keys_reject()
 #[test]
 fn export_compx_profile_cycle_ui_fixture() {
     let v = views();
-    assert_eq!(v.len(), 9);
+    assert_eq!(v.len(), crate::atk::native_test_count());
     if let Some(path) = std::env::var_os("OPEN_HUB_COMPX_PROFILE_CYCLE_FIXTURE") {
         std::fs::write(path, serde_json::to_vec_pretty(&v).unwrap()).unwrap();
     }

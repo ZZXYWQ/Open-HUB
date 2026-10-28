@@ -24,3 +24,5 @@ ATK 以生产驱动 + 内存 HID 模拟测试，没有 ATK 实机。原生回归
 独立 Rust 实现的协议事实核对自 [ATK HUB 3.2.27 官方脚本](https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js)，包括 go、Ct、E2、c8、D0、Fu、ko.setMacro 与 zv 的包结构/存储布局；辅助对照 [OpenMouse 公开 ATK 抓包](https://github.com/OpenMouse-Project/mouse-protocol/tree/main/captures/atk-a9-plus-nk)。没有复制或分发该项目的 AGPL 驱动库，也不把官方脚本、官方控制软件或研究安装包装进应用。未新增 npm/Cargo 依赖与后台运行库。
 
 官方脚本研究副本 SHA256：`71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5`。
+
+开发分支新增[ATK X1 Lite精确USB/FF04部分适配](docs/ATK-X1-LITE.md)，包含DPI、已知按键/宏、指示灯色表及型号UI；未进入0.3.7安装包，性能、原厂私有导入和实机尚未完成。

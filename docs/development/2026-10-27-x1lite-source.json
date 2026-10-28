@@ -1,0 +1,28 @@
+{
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "bytes": 5755795,
+  "static_only": true,
+  "model": "ATK X1 Lite",
+  "vid": 14139,
+  "pid": 4414,
+  "usage_page": 65284,
+  "usage": 2,
+  "controller": "ko extends JS",
+  "report_id": 8,
+  "cid": 2,
+  "mid": 89,
+  "sensor": "PAW3395",
+  "sensor_limits": {
+    "min": 100,
+    "max": 30000,
+    "step": 50
+  },
+  "skin": "V1, shared with X1 Pro Max OEM entry",
+  "noFarDistance": true,
+  "limits": [
+    "enabled polling subset 125/250/500/1000 is not an OEM maximum claim",
+    "performance layout not yet admitted for this model",
+    "no physical firmware or full OEM parity proof"
+  ]
+}

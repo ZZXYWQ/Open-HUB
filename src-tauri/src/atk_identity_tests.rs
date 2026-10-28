@@ -90,7 +90,7 @@ fn set_count(log: &Arc<Mutex<Vec<MockRecord>>>) -> usize {
 }
 #[test]
 fn full_unit_identity_pins_all_four_bytes_for_every_existing_compx_connection() {
-    assert_eq!(model_specs().count(), 9);
+    assert_eq!(model_specs().count(), native_test_count());
     for spec in model_specs() {
         for at in 6..10 {
             let (mut d, state, log) = open_with(spec, full(spec.mids[0], [1, 2, 3, 4])).unwrap();

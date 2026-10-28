@@ -72,7 +72,7 @@ fn pulsar_profiles_and_unknown_button_cannot_bypass_horizontal_model_gate() {
 #[test]
 fn export_compx_horizontal_ui_fixture() {
     let views = native_views();
-    assert_eq!(views.len(), 9);
+    assert_eq!(views.len(), crate::atk::native_test_count());
     if let Some(path) = std::env::var_os("OPEN_HUB_COMPX_HORIZONTAL_FIXTURE") {
         std::fs::write(path, serde_json::to_vec_pretty(&views).unwrap()).unwrap();
     }

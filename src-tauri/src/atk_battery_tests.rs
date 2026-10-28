@@ -87,7 +87,7 @@ fn all_nine_battery_transports_read_without_eeprom_or_other_mouse_changes() {
         .iter()
         .filter(|m| battery_supported(m.vendor, m.product))
         .collect::<Vec<_>>();
-    assert_eq!(eligible.len(), 9);
+    assert_eq!(eligible.len(), native_test_count());
     for m in eligible {
         let (mut d, log) = memory_device(m.product).unwrap();
         let (mut other, _) = memory_device(m.product).unwrap();

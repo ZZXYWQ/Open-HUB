@@ -131,3 +131,5 @@ Release 同时提供对应源码 ZIP、`SHA256SUMS.txt` 与公开验证摘要。
 构建和测试见 [BUILDING.md](BUILDING.md)，体积与安装机制见 [PACKAGING.md](PACKAGING.md)。
 
 Open GHub / 本衍生项目采用 [GPL-3.0-or-later](LICENSE)。原作者和第三方署名保留，组件包括 MIT 许可的 Gearwise、Sidearm Synapse parser、libratbag 协议参考，以及 GPL-2.0-or-later 的 OpenRGB。见 [来源与组件](NOTICE.md) 及随包许可。厂商名称和设备图片权利属于原权利人，仅用于型号识别与说明。
+
+开发分支新增[ATK X1 Lite精确USB/FF04部分适配](docs/ATK-X1-LITE.md)，包含DPI、已知按键/宏、指示灯色表及型号UI；未进入0.3.7安装包，性能、原厂私有导入和实机尚未完成。

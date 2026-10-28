@@ -31,7 +31,7 @@ fn views() -> Vec<View> {
 #[ignore = "exports production scroll macro DTOs for built UI"]
 fn native_compx_scroll_fixture_export() {
     let values = views();
-    assert_eq!(values.len(), 9);
+    assert_eq!(values.len(), crate::atk::native_test_count());
     std::fs::write(
         std::env::var_os("OPEN_HUB_COMPX_SCROLL_FIXTURE").unwrap(),
         serde_json::to_vec_pretty(&values).unwrap(),
@@ -79,3 +79,10 @@ fn browser_scroll_profiles_store_import_compile_and_native_replay() {
         assert_eq!(m.mode, MacroMode::Repeat(5));
     }
 }
+
+#[test]
+#[ignore="exports production X1 Lite view for full UI plan test"]
+fn export_x1lite_native_fixture(){let(mut d,_)=crate::atk::simulated(0x113e).unwrap();let m=Macro{id:"wheel".into(),name:"X1 Lite 原生宏".into(),mode:MacroMode::Once,steps:vec![MacroStep::Scroll(ScrollDirection::Up),MacroStep::Delay(37),MacroStep::Scroll(ScrollDirection::Down)]};d.set_macro_definitions(&[m]).unwrap();d.apply(&Setting::Button{id:4,action:ButtonAction::Macro("wheel".into())}).unwrap();std::fs::write(std::env::var_os("OPEN_HUB_X1LITE_FIXTURE").unwrap(),serde_json::to_vec_pretty(&view(d.as_mut()).unwrap()).unwrap()).unwrap();}
+#[test]
+#[ignore="requires actual X1 Lite UI saved profile"]
+fn browser_x1lite_saved_full_known_plan_imports_and_executes(){let mut profile:crate::profiles::Profile=serde_json::from_slice(&std::fs::read(std::env::var_os("OPEN_HUB_X1LITE_UI_PROFILE").unwrap()).unwrap()).unwrap();profile.id=crate::profiles::new_id();let mut store=crate::profiles::ProfileStore::default();crate::profile_transfer::merge(&mut store,vec![profile.clone()]).unwrap();let p=profile.multi.unwrap();assert_eq!((p.vendor,p.product),(0x373b,0x113e));let compiled=compile(&p).unwrap();assert!(!compiled.software_input);let(mut d,_)=crate::atk::simulated(p.product).unwrap();d.set_macro_definitions(&p.macros).unwrap();for s in &compiled.settings{d.apply(s).unwrap();}let state=d.read_state().unwrap();assert_eq!(state.dpi.unwrap().stages[0],gearwise_core::model::DpiStage{x:400,y:800});assert_eq!(state.report_rate,Some(500));assert_eq!(state.dpi_colors[&7],gearwise_core::model::Rgb{r:170,g:187,b:204});let ButtonAction::Macro(shortcut_id)=&state.buttons[&2]else{panic!("native shortcut macro lost")};let shortcut=d.macro_definitions().into_iter().find(|m|&m.id==shortcut_id).unwrap();assert_eq!(shortcut.mode,MacroMode::Once);assert_eq!(shortcut.steps.iter().filter(|s|!matches!(s,MacroStep::Delay(_))).cloned().collect::<Vec<_>>(),vec![MacroStep::KeyDown(224),MacroStep::KeyDown(6),MacroStep::KeyUp(6),MacroStep::KeyUp(224)]);let ButtonAction::Macro(id)=&state.buttons[&4]else{panic!("macro lost")};let m=d.macro_definitions().into_iter().find(|m|&m.id==id).unwrap();assert_eq!(m.mode,MacroMode::Repeat(5));assert_eq!(m.steps,vec![MacroStep::Scroll(ScrollDirection::Down),MacroStep::Delay(37),MacroStep::Scroll(ScrollDirection::Down),MacroStep::Scroll(ScrollDirection::Up)]);}
