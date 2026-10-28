@@ -536,6 +536,13 @@ impl Atk {
         if let Err(error)=operation{let restore=(||->Result<()>{self.identify()?;for(n,chunk)in before.chunks(10).enumerate(){self.write_verified(address+n as u16*10,chunk)?;}self.write_verified(target,&original)?;Ok(())})();return Err(Error::invalid(format!("{error}; Pulsar original shortcut restoration: {restore:?}")));}Ok(())
     }
     fn native_binding(&mut self, id: u16, action: &ButtonAction) -> Result<()> {
+        if let ButtonAction::Key{usage,mods}=action{if (4..=0xa4).contains(usage){
+            let payload=shortcuts::encode(*usage,*mods)?;
+            self.identify()?;
+            let original=self.read(96+(id-1)*4,4)?;
+            if self.read_action(id,&original).is_none(){return Err(Error::invalid("COMPX unknown original binding retained"));}
+            return self.commit_native_shortcut(id,&payload,&original);
+        }}
         let macro_def = if let Some(m) = native_macro::key_action(action) {
             m
         } else if let ButtonAction::Macro(key) = action {
@@ -1220,11 +1227,11 @@ mod native_macro_integration {
             },
         })
         .unwrap();
-        d.read_state().unwrap();
-        let m = &d.macro_definitions()[0];
-        assert_eq!(m.mode, MacroMode::Once);
-        assert!(m.steps.contains(&MacroStep::KeyDown(0xe0)));
-        assert!(m.steps.contains(&MacroStep::KeyUp(0xe1)));
+        let state=d.read_state().unwrap();
+        assert_eq!(state.buttons[&4],ButtonAction::Key{usage:4,mods:gearwise_core::model::Modifiers(3)});
+        assert!(d.macro_definitions().is_empty());
+        assert_eq!(d.read(108,4).unwrap(),vec![5,0,0,80]);
+        assert_eq!(d.read_blob(352,14).unwrap(),shortcuts::encode(4,gearwise_core::model::Modifiers(3)).unwrap());
     }
     #[test]
     fn atk_unbound_original_macros_are_never_overwritten() {

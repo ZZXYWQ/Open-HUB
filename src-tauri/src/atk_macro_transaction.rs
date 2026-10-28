@@ -9,7 +9,12 @@ struct Snapshot {
 impl Atk {
     fn capture_macro_state(&mut self, base: u16) -> Result<Snapshot> {
         self.identify()?;
-        let slot = self.read_blob(base, 384)?;
+        let size = if (256..448).contains(&base) && (base - 256) % 32 == 0 {
+            32
+        } else {
+            384
+        };
+        let slot = self.read_blob(base, size)?;
         let buttons = self.read_blob(96, usize::from(self.model.buttons) * 4)?;
         self.identify()?;
         Ok(Snapshot { slot, buttons })
@@ -56,6 +61,48 @@ impl Atk {
         {
             return Err(Error::invalid("COMPX macro transaction geometry"));
         }
+        self.commit_native_record(id, base, payload, original_binding, next_binding, false)
+    }
+    pub(super) fn commit_native_shortcut(
+        &mut self,
+        id: u16,
+        payload: &[u8],
+        original_binding: &[u8],
+    ) -> Result<()> {
+        if !self.model.native_macros
+            || !self.model.native_buttons
+            || !(2..=self.model.buttons).contains(&id)
+            || payload.is_empty()
+            || payload.len() > 20
+            || original_binding.len() != 4
+        {
+            return Err(Error::invalid("COMPX shortcut transaction geometry"));
+        }
+        let mut proof = vec![0u8; 32];
+        proof[..payload.len()].copy_from_slice(payload);
+        if payload.len() != 2 + usize::from(proof[0]) * 3 || shortcuts::decode(&proof).is_err() {
+            return Err(Error::invalid(
+                "COMPX shortcut payload is not a complete verified chord",
+            ));
+        }
+        self.commit_native_record(
+            id,
+            256 + (id - 1) * 32,
+            payload,
+            original_binding,
+            &[5, 0, 0, 80],
+            true,
+        )
+    }
+    fn commit_native_record(
+        &mut self,
+        id: u16,
+        base: u16,
+        payload: &[u8],
+        original_binding: &[u8],
+        next_binding: &[u8],
+        shortcut: bool,
+    ) -> Result<()> {
         let before = self.capture_macro_state(base)?;
         let target_at = usize::from(id - 1) * 4;
         if &before.buttons[target_at..target_at + 4] != original_binding {
@@ -63,21 +110,34 @@ impl Atk {
                 "COMPX target binding changed during allocation",
             ));
         }
-        let slot = ((base - 768) / 384) as u8;
+        let slot = if shortcut {
+            0
+        } else {
+            ((base - 768) / 384) as u8
+        };
         for (button, record) in before.buttons.chunks_exact(4).enumerate() {
             if sum(record) != 0x55 {
                 return Err(Error::invalid("COMPX allocation binding checksum"));
             }
-            if button != usize::from(id - 1) && record[0] == 6 && record[1] == slot {
+            if !shortcut && button != usize::from(id - 1) && record[0] == 6 && record[1] == slot {
                 return Err(Error::invalid(
                     "COMPX macro slot gained another current-bank reference",
                 ));
             }
         }
         let reusing = original_binding[0] == 6 && original_binding[1] == slot;
-        if !reusing && !matches!(before.slot[31], 0 | 255) {
+        if !shortcut && !reusing && !matches!(before.slot[31], 0 | 255) {
             return Err(Error::invalid(
                 "COMPX selected free slot is no longer empty",
+            ));
+        }
+        if shortcut
+            && !before.slot.iter().all(|b| *b == 0)
+            && !before.slot.iter().all(|b| *b == 255)
+            && shortcuts::decode(&before.slot).is_err()
+        {
+            return Err(Error::invalid(
+                "COMPX unknown shortcut table retained; no allocation or overwrite",
             ));
         }
         let mut wanted = before.clone();
@@ -155,7 +215,12 @@ impl Atk {
             return Err(Error::invalid(format!(
                 "{error}; {}",
                 match recovery {
-                    Ok(()) => "COMPX original macro and binding restored and verified".to_string(),
+                    Ok(()) =>
+                        if shortcut {
+                            "COMPX original shortcut and binding restored and verified".to_string()
+                        } else {
+                            "COMPX original macro and binding restored and verified".to_string()
+                        },
                     Err(e) =>
                         format!("COMPX state uncertain; keep backup and re-read without retry: {e}"),
                 }

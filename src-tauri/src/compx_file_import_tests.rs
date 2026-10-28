@@ -359,29 +359,14 @@ fn original_shortcut_file_chords_convert_and_execute_on_every_connection() {
             d.apply(s).unwrap();
         }
         let actual = d.read_state().unwrap();
-        let gearwise_core::model::ButtonAction::Macro(id) = &actual.buttons[&2] else {
-            panic!("expected native chord macro")
-        };
-        let defs = d.macro_definitions();
-        let definition = defs.iter().find(|m| &m.id == id).unwrap();
-        assert_eq!(definition.mode, gearwise_core::profile::MacroMode::Once);
-        let inputs = definition
-            .steps
-            .iter()
-            .filter(|s| !matches!(s, gearwise_core::profile::MacroStep::Delay(_)))
-            .cloned()
-            .collect::<Vec<_>>();
         assert_eq!(
-            inputs,
-            vec![
-                gearwise_core::profile::MacroStep::KeyDown(224),
-                gearwise_core::profile::MacroStep::KeyDown(231),
-                gearwise_core::profile::MacroStep::KeyDown(6),
-                gearwise_core::profile::MacroStep::KeyUp(6),
-                gearwise_core::profile::MacroStep::KeyUp(231),
-                gearwise_core::profile::MacroStep::KeyUp(224)
-            ]
+            actual.buttons[&2],
+            gearwise_core::model::ButtonAction::Key {
+                usage: 6,
+                mods: gearwise_core::model::Modifiers(129)
+            }
         );
+        assert!(d.macro_definitions().is_empty());
         cases.push(json!({"vendor":m.vendor,"product":m.product,"prepared":prepared}));
     }
     if let Some(path) = std::env::var_os("OPEN_HUB_COMPX_CHORD_FILE_FIXTURES") {
@@ -434,22 +419,13 @@ fn browser_chord_import_and_editor_saves_preserve_both_modifier_sides() {
             d.apply(&s).unwrap();
         }
         let state = d.read_state().unwrap();
-        let gearwise_core::model::ButtonAction::Macro(id) = &state.buttons[&2] else {
-            panic!("native macro binding")
-        };
-        let defs = d.macro_definitions();
-        let m = defs.iter().find(|m| &m.id == id).unwrap();
-        assert!(m
-            .steps
-            .contains(&gearwise_core::profile::MacroStep::KeyDown(224)));
-        assert!(m
-            .steps
-            .contains(&gearwise_core::profile::MacroStep::KeyDown(231)));
-        assert!(m
-            .steps
-            .contains(&gearwise_core::profile::MacroStep::KeyDown(usage)));
-        assert!(m
-            .steps
-            .contains(&gearwise_core::profile::MacroStep::KeyUp(usage)));
+        assert_eq!(
+            state.buttons[&2],
+            gearwise_core::model::ButtonAction::Key {
+                usage,
+                mods: gearwise_core::model::Modifiers(129)
+            }
+        );
+        assert!(d.macro_definitions().is_empty());
     }
 }

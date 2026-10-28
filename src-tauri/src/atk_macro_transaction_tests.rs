@@ -1,8 +1,8 @@
 //! Faults act at complete real COMPX reports; no HID or OS input.
 use super::*;
 use gearwise_core::profile::{Macro, MacroMode, MacroStep};
-struct FaultState {
-    sets: usize,
+pub(super) struct FaultState {
+    pub(super) sets: usize,
     failures: Vec<(usize, bool)>,
     mutate: Option<(usize, u16, Vec<u8>)>,
 }
@@ -71,7 +71,7 @@ fn specs() -> impl Iterator<Item = &'static Model> {
         .iter()
         .filter(|m| horizontal_scroll_supported(m.vendor, m.product))
 }
-fn instrument(
+pub(super) fn instrument(
     mut d: Atk,
     failures: Vec<(usize, bool)>,
     mutate: Option<(usize, u16, Vec<u8>)>,

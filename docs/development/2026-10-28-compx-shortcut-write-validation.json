@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-28",
+  "scope": "Native COMPX class5 keyboard chord writes with full-table conditional transactions",
+  "distinct_mice": 9,
+  "connections": 10,
+  "keyboard_usages": 161,
+  "modifier_masks": 256,
+  "main_tests": {
+    "passed": 1034,
+    "failed": 0,
+    "ignored": 89
+  },
+  "failure_before_or_after_effect_cases": 60,
+  "foreign_or_partial_change_refusals": 40,
+  "bank_change_refusals": 10,
+  "unknown_table_refusals": 10,
+  "stale_binding_refusals": 10,
+  "restore_failure_stop_cases": 10,
+  "complete_frame_golden_vectors": 3,
+  "UI_import_saves": 10,
+  "UI_editor_saves": 10,
+  "explicit_native_UI_replay": "passed",
+  "existing_X1_Lite_full_known_UI_profile_replay": "passed",
+  "ordinary_key_chords_consume_macro_slots": false,
+  "modifier_only_tap_macro_fallback": "preserved",
+  "macro_transaction_default_regression": "passed",
+  "builds": {
+    "frontend": "passed",
+    "native": "passed"
+  },
+  "new_runtime_dependencies": 0,
+  "physical_HID_access": false,
+  "hardware_tested": false,
+  "OEM_timing_equivalence_proven": false,
+  "atomic_or_inflight_execution_proof": false,
+  "accepted_complete_models": 0,
+  "target": 100,
+  "installer_created": false,
+  "installed_release": "0.3.7"
+}

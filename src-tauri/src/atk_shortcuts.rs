@@ -1,4 +1,4 @@
-//! COMPX class5 shortcut read / OEM-file chord conversion. No table writes here.
+//! COMPX class5 shortcut codec and OEM-file chord conversion.
 //! qn/V3 rows are [binary kind, state, value1, value2]; fixed maximum six.
 use gearwise_core::{
     model::{ButtonAction, Modifiers},
@@ -62,4 +62,28 @@ pub fn decode(raw: &[u8]) -> Result<ButtonAction> {
         rows.push([r[0] & 7, state, r[1], r[2]]);
     }
     chord(&rows)
+}
+
+/// Canonical finite class5 chord, with no delay fields or macro allocation.
+/// Modifier bitmasks are one record, as defined by qn/V3.
+pub fn encode(usage: u8, mods: Modifiers) -> Result<Vec<u8>> {
+    if !(4..=0xa4).contains(&usage) {
+        return Err(Error::invalid("COMPX shortcut keyboard usage"));
+    }
+    let mut rows = vec![];
+    if mods.0 != 0 {
+        rows.push([0x80, mods.0, 0]);
+    }
+    rows.push([0x81, usage, 0]);
+    rows.push([0x41, usage, 0]);
+    if mods.0 != 0 {
+        rows.push([0x40, mods.0, 0]);
+    }
+    let mut bytes = vec![rows.len() as u8];
+    for row in rows {
+        bytes.extend_from_slice(&row);
+    }
+    let crc = 0x55u8.wrapping_sub(bytes.iter().fold(0u8, |a, b| a.wrapping_add(*b)));
+    bytes.push(crc);
+    Ok(bytes)
 }
