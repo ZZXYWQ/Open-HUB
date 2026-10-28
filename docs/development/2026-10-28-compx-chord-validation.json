@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-28",
+  "scope": "COMPX complete single-key chords: live class5 read + OEM file logical conversion + full modifier UI",
+  "model_connections": 10,
+  "distinct_mice": 9,
+  "modifier_masks": 256,
+  "keyboard_usages": 161,
+  "pure_native_table_cases": 41216,
+  "class5_live_read_existing_binding_replacement_cases": 10,
+  "class5_table_preserved": true,
+  "file_conversion_native_driver_cases": 10,
+  "actual_UI_import_saves": 10,
+  "actual_UI_editor_saves": 10,
+  "explicit_UI_production_replay": "passed",
+  "ordinary_button_UI_regression_cases": 10,
+  "DPI_only_UI_regression_cases": 10,
+  "main_tests": {
+    "passed": 1027,
+    "failed": 0,
+    "ignored": 89
+  },
+  "builds": {
+    "frontend": "passed",
+    "native": "passed"
+  },
+  "main_js_bytes": 840937,
+  "js_delta_bytes": 202,
+  "new_runtime_dependencies": 0,
+  "hardware_tested": false,
+  "OEM_hardware_export_fixture": false,
+  "native_class5_writer": false,
+  "class5_timing_equivalence_proven": false,
+  "native_macro_event_minimum_ms": 1,
+  "complete_macro_file_import": false,
+  "accepted_complete_models": 0,
+  "target": 100,
+  "installer_created": false,
+  "installed_release": "0.3.7"
+}

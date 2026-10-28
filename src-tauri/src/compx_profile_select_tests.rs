@@ -103,12 +103,12 @@ fn direct_targets_cycle_and_unknown_rows_keep_distinct_semantics() {
     let (mut d, log) = memory_device(0x1017).unwrap();
     for (index, value, crc) in [(0, 161, 171), (1, 162, 170), (2, 163, 169), (3, 164, 168)] {
         assert_eq!(
-            d.read_action(&[9, value, 0, crc]).unwrap().0,
+            d.read_action(2,&[9, value, 0, crc]).unwrap().0,
             ButtonAction::ProfileSelect(index)
         );
     }
     assert_eq!(
-        d.read_action(&[9, 255, 0, 77]).unwrap().0,
+        d.read_action(2,&[9, 255, 0, 77]).unwrap().0,
         ButtonAction::ProfileCycle
     );
     for row in [
@@ -119,7 +119,7 @@ fn direct_targets_cycle_and_unknown_rows_keep_distinct_semantics() {
     ] {
         d.io.write(&frame(7, 108, 4, &row).unwrap()).unwrap();
         log.lock().unwrap().clear();
-        assert!(d.read_action(&row).is_none());
+        assert!(d.read_action(2,&row).is_none());
         assert!(d.apply(&select(4, 0)).is_err());
         assert!(sets(&log).is_empty());
     }

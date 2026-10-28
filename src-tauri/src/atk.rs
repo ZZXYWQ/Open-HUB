@@ -9,6 +9,8 @@ use gearwise_core::{
     Capabilities, Device, DeviceDescriptor, DeviceState, Driver, Error, HidBackend,
     HidInterfaceInfo, HidTransport, Result, Setting,
 };
+#[path="atk_shortcuts.rs"]
+pub(crate) mod shortcuts;
 #[path = "atk_macros.rs"]
 mod native_macro;
 #[path="atk_macro_transaction.rs"]
@@ -498,7 +500,13 @@ impl Atk {
         let raw = self.read_blob(base, 33 + count * 5)?;
         native_macro::decode(slot, play, &raw)
     }
-    fn read_action(&mut self, raw: &[u8]) -> Option<(ButtonAction, Option<Macro>)> {
+    fn read_action(&mut self, id:u16, raw: &[u8]) -> Option<(ButtonAction, Option<Macro>)> {
+        if self.model.native_macros&&(1..=self.model.buttons).contains(&id)&&raw==[5,0,0,80]{
+            self.identify().ok()?;
+            let data=self.read_blob(256+(id-1)*32,32).ok()?;
+            self.identify().ok()?;
+            return shortcuts::decode(&data).ok().map(|a|(a,None));
+        }
         let action=if profile_cycle_supported(self.model.vendor,self.model.product){compx_button_action(raw)}else{decode_button(raw)};
         if let Some(action)=action{return Some((action,None));}
         if raw.len() == 4 && sum(raw) == 0x55 && raw[0] == 6 {
@@ -541,7 +549,7 @@ impl Atk {
         let payload = native_macro::encode(&macro_def)?;
         let target = 96 + (id - 1) * 4;
         let original = self.read(target, 4)?;
-        if self.read_action(&original).is_none() {
+        if self.read_action(id,&original).is_none() {
             return Err(Error::invalid("ATK unknown original action is retained"));
         }
         let mut occupied = std::collections::HashSet::new();
@@ -598,7 +606,7 @@ impl Atk {
         self.read_macros.clear();
         for id in 1..=self.model.buttons {
             let raw = self.read(96 + (id - 1) * 4, 4)?;
-            let decoded = if self.model.native_macros{self.read_action(&raw)}else{self.pulsar_action(id,&raw)?.map(|a|(a,None))};
+            let decoded = if self.model.native_macros{self.read_action(id,&raw)}else{self.pulsar_action(id,&raw)?.map(|a|(a,None))};
             let known = decoded.is_some();
             if let Some((action, definition)) = decoded {
                 state.buttons.insert(id, action);
@@ -791,7 +799,7 @@ impl Device for Atk {
             }
             Setting::Button { id, action } => {
                 let old = self.read(96 + (id - 1) * 4, 4)?;
-                if (if self.model.native_macros{self.read_action(&old).map(|v|v.0)}else{self.pulsar_action(*id,&old)?}).is_none() {
+                if (if self.model.native_macros{self.read_action(*id,&old).map(|v|v.0)}else{self.pulsar_action(*id,&old)?}).is_none() {
                     return Err(Error::invalid("ATK unknown original action retained; native macro/shortcut is not overwritten"));
                 }
                 self.write_verified(96 + (id - 1) * 4, &button_bytes(action, *id)?)?;
@@ -1497,3 +1505,5 @@ mod x1lite_tests;
 #[cfg(test)]
 #[path="atk_tuning_transaction_tests.rs"]
 mod tuning_transaction_tests;
+
+#[cfg(test)]#[path="atk_shortcut_tests.rs"]mod shortcut_tests;

@@ -327,3 +327,129 @@ fn browser_button_file_imports_execute_all_saved_bindings() {
         }
     }
 }
+
+#[test]
+fn original_shortcut_file_chords_convert_and_execute_on_every_connection() {
+    let mut cases = vec![];
+    for m in models() {
+        let mut f = button_fixture(m, [[1, 2, 0], [1, 4, 0], [1, 8, 0], [1, 16, 0], [2, 1, 0]]);
+        f["keyActions"][0][0][4]["changeKey"] = json!([5, 0, 0]);
+        f["deviceConfig"]["mouseConfig"]["shortcutAction"] =
+            json!({"right":[["000",0,129,0],["001",0,6,0],["001",1,6,0],["000",1,129,0]]});
+        let prepared = prepare_with_buttons(
+            &encode(&serde_json::to_vec(&f).unwrap()),
+            m.vendor,
+            m.product,
+            true,
+        )
+        .unwrap();
+        let plan = prepared.profile.multi.as_ref().unwrap();
+        let wanted = gearwise_core::model::ButtonAction::Key {
+            usage: 6,
+            mods: gearwise_core::model::Modifiers(129),
+        };
+        assert!(plan.settings.contains(&Setting::Button {
+            id: 2,
+            action: wanted
+        }));
+        let c = crate::multibrand::compile(plan).unwrap();
+        assert!(!c.software_input);
+        let (mut d, _) = atk::simulated(m.product).unwrap();
+        for s in &c.settings {
+            d.apply(s).unwrap();
+        }
+        let actual = d.read_state().unwrap();
+        let gearwise_core::model::ButtonAction::Macro(id) = &actual.buttons[&2] else {
+            panic!("expected native chord macro")
+        };
+        let defs = d.macro_definitions();
+        let definition = defs.iter().find(|m| &m.id == id).unwrap();
+        assert_eq!(definition.mode, gearwise_core::profile::MacroMode::Once);
+        let inputs = definition
+            .steps
+            .iter()
+            .filter(|s| !matches!(s, gearwise_core::profile::MacroStep::Delay(_)))
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(
+            inputs,
+            vec![
+                gearwise_core::profile::MacroStep::KeyDown(224),
+                gearwise_core::profile::MacroStep::KeyDown(231),
+                gearwise_core::profile::MacroStep::KeyDown(6),
+                gearwise_core::profile::MacroStep::KeyUp(6),
+                gearwise_core::profile::MacroStep::KeyUp(231),
+                gearwise_core::profile::MacroStep::KeyUp(224)
+            ]
+        );
+        cases.push(json!({"vendor":m.vendor,"product":m.product,"prepared":prepared}));
+    }
+    if let Some(path) = std::env::var_os("OPEN_HUB_COMPX_CHORD_FILE_FIXTURES") {
+        std::fs::write(path, serde_json::to_vec_pretty(&cases).unwrap()).unwrap();
+    }
+}
+#[test]
+fn file_shortcut_missing_body_binary_kind_and_event_balance_are_validated() {
+    let value = json!([
+        ["000", 0, 3, 0],
+        ["001", 0, 6, 0],
+        ["001", 1, 6, 0],
+        ["000", 1, 3, 0]
+    ]);
+    assert!(shortcut_chord(&value).is_ok());
+    for bad in [
+        json!(null),
+        json!([]),
+        json!([["000", 0, 3, 0], ["001", 0, 6, 0]]),
+        json!([["1000", 0, 6, 0], ["001", 1, 6, 0]]),
+        json!([["001", 0, 6], ["001", 1, 6, 0]]),
+        json!([[1, 0, 6, 0], [1, 1, 5, 0]]),
+    ] {
+        assert!(shortcut_chord(&bad).is_err());
+    }
+}
+
+#[test]
+#[ignore = "requires actual browser chord import/editor output"]
+fn browser_chord_import_and_editor_saves_preserve_both_modifier_sides() {
+    let bytes =
+        std::fs::read(std::env::var_os("OPEN_HUB_COMPX_CHORD_FILE_UI_PROFILES").unwrap()).unwrap();
+    let profiles: Vec<Profile> = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(profiles.len(), atk::native_test_count() * 2);
+    for (index, p) in profiles.into_iter().enumerate() {
+        crate::profile_transfer::validate(&p).unwrap();
+        let plan = p.multi.unwrap();
+        let usage = if index % 2 == 0 { 6 } else { 7 };
+        assert!(plan.settings.contains(&Setting::Button {
+            id: 2,
+            action: gearwise_core::model::ButtonAction::Key {
+                usage,
+                mods: gearwise_core::model::Modifiers(129)
+            }
+        }));
+        let c = crate::multibrand::compile(&plan).unwrap();
+        assert!(!c.software_input);
+        let (mut d, _) = atk::simulated(plan.product).unwrap();
+        for s in c.settings {
+            d.apply(&s).unwrap();
+        }
+        let state = d.read_state().unwrap();
+        let gearwise_core::model::ButtonAction::Macro(id) = &state.buttons[&2] else {
+            panic!("native macro binding")
+        };
+        let defs = d.macro_definitions();
+        let m = defs.iter().find(|m| &m.id == id).unwrap();
+        assert!(m
+            .steps
+            .contains(&gearwise_core::profile::MacroStep::KeyDown(224)));
+        assert!(m
+            .steps
+            .contains(&gearwise_core::profile::MacroStep::KeyDown(231)));
+        assert!(m
+            .steps
+            .contains(&gearwise_core::profile::MacroStep::KeyDown(usage)));
+        assert!(m
+            .steps
+            .contains(&gearwise_core::profile::MacroStep::KeyUp(usage)));
+    }
+}

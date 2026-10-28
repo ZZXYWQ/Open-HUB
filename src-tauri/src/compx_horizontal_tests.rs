@@ -106,7 +106,7 @@ fn unknown_original_horizontal_records_remain_unreadable_and_unwritten() {
     for row in [[3, 3, 0, 79], [3, 1, 1, 80], [3, 1, 0, 0]] {
         let (mut d, log) = memory_device(0x1017).unwrap();
         d.io.write(&frame(7, 108, 4, &row).unwrap()).unwrap();
-        assert!(d.read_action(&row).is_none());
+        assert!(d.read_action(2,&row).is_none());
         log.lock().unwrap().clear();
         assert!(d.apply(&setting(4, MouseButton::WheelLeft)).is_err());
         assert!(sets(&log).is_empty());

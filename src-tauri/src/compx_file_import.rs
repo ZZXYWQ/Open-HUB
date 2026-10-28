@@ -188,7 +188,7 @@ pub fn prepare_with_buttons(
     };
     crate::profile_transfer::validate(&profile)?;
     let note = if include_buttons {
-        "本次转换活动 DPI 档位、独立 X/Y、回报率及已登记非左键的已解析动作；独立左键保持原值。文件中的宏、灯效、性能、省电和非活动 DPI 槽位未导入。未知动作或缺少宏内容时整份按键导入拒绝，未替换成默认键。导入不会自动应用。"
+        "本次转换活动 DPI 档位、独立 X/Y、回报率及已登记非左键的已解析动作；独立左键保持原值。单键/组合键保留修饰键和完整按下抬起；应用时使用本程序原生单次宏格式。文件中的其他宏、多键快捷序列、灯效、性能、省电和非活动 DPI 槽位未导入。未知动作或缺少宏内容时整份按键导入拒绝，未替换成默认键。导入不会自动应用。"
     } else {
         "本次仅转换活动 DPI 档位、独立 X/Y 和回报率。文件中的按键、宏、灯效、性能、省电及非活动 DPI 槽位未导入，应用后沿用鼠标现有设置。导入不会自动应用。"
     };
@@ -196,6 +196,33 @@ pub fn prepare_with_buttons(
         profile,
         note: note.into(),
     })
+}
+fn shortcut_chord(value: &Value) -> Result<gearwise_core::model::ButtonAction> {
+    let events = value
+        .as_array()
+        .filter(|a| (2..=6).contains(&a.len()))
+        .ok_or("缺少2–6条完整快捷键事件")?;
+    let mut rows = vec![];
+    for event in events {
+        let a = event
+            .as_array()
+            .filter(|a| a.len() == 4)
+            .ok_or("快捷键事件必须包含四个字段")?;
+        let bits = a[0]
+            .as_str()
+            .ok_or("快捷键类型必须是原厂三位二进制字符串")?;
+        if bits.len() != 3 || !bits.bytes().all(|b| matches!(b, b'0' | b'1')) {
+            return Err("快捷键类型不是原厂三位二进制编码".into());
+        }
+        let kind = u8::from_str_radix(bits, 2).map_err(|e| e.to_string())?;
+        rows.push([
+            kind,
+            integer(&a[1], "快捷键状态", 2)? as u8,
+            integer(&a[2], "快捷键值", 255)? as u8,
+            integer(&a[3], "快捷键附加值", 255)? as u8,
+        ]);
+    }
+    atk::shortcuts::chord(&rows).map_err(|e| e.to_string())
 }
 fn triplet(value: &Value) -> Result<[u8; 3]> {
     let a = value
@@ -250,7 +277,20 @@ fn buttons(root: &Value, count: u16) -> Result<Vec<Setting>> {
             .wrapping_sub(raw[0])
             .wrapping_sub(raw[1])
             .wrapping_sub(raw[2]);
-        let action=atk::compx_button_action(&[raw[0],raw[1],raw[2],crc]).ok_or_else(||format!("第 {} 个按键的动作尚未完整转换（类型 {}）；宏/快捷键必须具备已验证内容，未生成空动作",index+1,raw[0]))?;
+        let action = if raw == [5, 0, 0] {
+            let names = ["left", "right", "center", "side1", "side2", "bottom"];
+            let value = &root["deviceConfig"]["mouseConfig"]["shortcutAction"][names[index]];
+            shortcut_chord(value)
+                .map_err(|e| format!("第 {} 个按键快捷键未完整转换：{e}", index + 1))?
+        } else {
+            atk::compx_button_action(&[raw[0], raw[1], raw[2], crc]).ok_or_else(|| {
+                format!(
+                    "第 {} 个按键的动作尚未完整转换（类型 {}）；宏必须具备已验证内容，未生成空动作",
+                    index + 1,
+                    raw[0]
+                )
+            })?
+        };
         mapped.insert(index, action);
     }
     Ok(mapped

@@ -96,7 +96,7 @@ fn vertical_pulsar_left_unknown_id_and_unknown_raw_rows_are_protected() {
     ] {
         let (mut d, log) = memory_device(0x1017).unwrap();
         d.io.write(&frame(7, 108, 4, &row).unwrap()).unwrap();
-        assert!(d.read_action(&row).is_none());
+        assert!(d.read_action(2,&row).is_none());
         log.lock().unwrap().clear();
         assert!(d.apply(&vertical(4, ScrollDirection::Up)).is_err());
         assert!(sets(&log).is_empty());

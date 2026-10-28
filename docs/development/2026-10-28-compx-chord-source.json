@@ -1,0 +1,46 @@
+{
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "method": "static read only, OEM code never executed",
+  "offset_unit": "Python Unicode codepoints",
+  "facts": [
+    {
+      "pattern": "let ej=(xd=class extends D0",
+      "codepoint_offset": 2048401
+    },
+    {
+      "pattern": "const V3=class V3",
+      "codepoint_offset": 2049683
+    },
+    {
+      "pattern": "toArray(){return[this.keyType,this.keyStatus,this.value1,this.value2]}",
+      "codepoint_offset": 2051411
+    },
+    {
+      "pattern": "async _getShortcutAction(e){",
+      "codepoint_offset": 2124606
+    },
+    {
+      "pattern": "async setShortcutAction(e,n){",
+      "codepoint_offset": 2106496
+    },
+    {
+      "pattern": "async _handleShortcutAction(e){",
+      "codepoint_offset": 2125201
+    }
+  ],
+  "interpretation": [
+    "Class5 ej.create creates the canonical [5,0,0] binding.",
+    "Six physical table addresses begin at256 in increments of32.",
+    "_getShortcutAction reads count and exposes at most six qn events.",
+    "V3.keyType yields a three-digit binary string; keyStatus is Down0/Up1/Scroll2.",
+    "qn.toArray emits [keyType,keyStatus,value1,value2].",
+    "setShortcutAction packs count, three-byte events and a sum-to0x55 checksum.",
+    "shortcutAction is indexed by fixed physical names left/right/center/side1/side2/bottom, not custom labels."
+  ],
+  "limits": [
+    "Only complete balanced single-key chords recognized.",
+    "No native class5 writer enabled. Applying a logical chord uses existing native class6 macro conversion with its one-millisecond event defaults; OEM timing equivalence not established.",
+    "No hardware export sample or physical behavior evidence."
+  ]
+}

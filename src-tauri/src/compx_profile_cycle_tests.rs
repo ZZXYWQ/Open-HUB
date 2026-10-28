@@ -81,8 +81,8 @@ fn profile_cycle_complete_vector_and_noop_use_no_macro_or_bank_set() {
 #[test]
 fn profile_cycle_does_not_alias_direct_target_unknown_values_or_pulsar() {
     let (mut known,_)=memory_device(0x1017).unwrap();
-    assert_eq!(known.read_action(&[9,161,0,171]).unwrap().0,ButtonAction::ProfileSelect(0));
-    assert_eq!(known.read_action(&[9,164,0,168]).unwrap().0,ButtonAction::ProfileSelect(3));
+    assert_eq!(known.read_action(2,&[9,161,0,171]).unwrap().0,ButtonAction::ProfileSelect(0));
+    assert_eq!(known.read_action(2,&[9,164,0,168]).unwrap().0,ButtonAction::ProfileSelect(3));
     for row in [
         [9, 160, 0, 172],
         [9, 165, 0, 167],
@@ -92,7 +92,7 @@ fn profile_cycle_does_not_alias_direct_target_unknown_values_or_pulsar() {
     ] {
         let (mut d, log) = memory_device(0x1017).unwrap();
         d.io.write(&frame(7, 108, 4, &row).unwrap()).unwrap();
-        assert!(d.read_action(&row).is_none());
+        assert!(d.read_action(2,&row).is_none());
         log.lock().unwrap().clear();
         assert!(d.apply(&cycle(4)).is_err());
         assert!(sets(&log).is_empty());
