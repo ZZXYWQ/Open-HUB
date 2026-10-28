@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-28",
+  "main_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "main_sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "vendor_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/vendor-CekWQmMY.js",
+  "vendor_sha256": "891fe964986e017bed8e67f1ed4fbf4571958b6ba241e3947a67ac09386a8a1c",
+  "vendor_bytes": 2193253,
+  "static_only": true,
+  "no_vendor_execution": true,
+  "dependency": "Base64 library version3.7.8, export a3=YZe, imported as mV",
+  "envelope": "recursive DataView-to-tagged-object conversion, JSON string, UTF-8 Base64, ASCII bytes in .bin",
+  "DataView_shape": {
+    "__type": "DataView",
+    "data": "byte array"
+  },
+  "export_source": "current l.deviceData; selected custom item used for output filename",
+  "semantic_conversion": "not implemented by this evidence record",
+  "not_proven": [
+    "complete model/identity fields in an actual user export",
+    "all mouse action/macro layouts",
+    "all advanced settings and application equivalence",
+    "safe complete importer"
+  ],
+  "temporary_vendor_payload_deleted": true
+}

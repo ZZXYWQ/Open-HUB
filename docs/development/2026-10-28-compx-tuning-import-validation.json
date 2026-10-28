@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-28",
+  "scope": "Preserve actual board-read performance subset during ATK/VXE/VGN import",
+  "native_views": 10,
+  "additional_UI_boundary_cases": 3,
+  "actual_saved_profiles": 13,
+  "main_tests": {
+    "passed": 1015,
+    "failed": 0,
+    "ignored": 86
+  },
+  "explicit_import_merge_compile_and_native_replay": "passed",
+  "UI_regression": "27 repeat profiles + 3 brand board imports passed",
+  "builds": {
+    "frontend": "passed",
+    "native": "passed"
+  },
+  "main_js_bytes": 838497,
+  "js_delta_bytes": 841,
+  "new_runtime_dependencies": 0,
+  "hardware_tested": false,
+  "mock_physical_admission_flags": true,
+  "device_writes_during_UI_import": false,
+  "accepted_complete_models": 0,
+  "target": 100,
+  "installer_created": false,
+  "installed_release": "0.3.7",
+  "OEM_private_file_converter": false
+}
