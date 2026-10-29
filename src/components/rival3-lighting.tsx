@@ -1,10 +1,10 @@
-import {RIVAL3_SCHEMA,RIVAL3_LOOP_SCHEMA,defaultRival3Loop,defaultRival3Lights,rival3Modes,type Rival3Lights} from '@/lib/rival3';
+import {RIVAL3_SCHEMA,RIVAL3_LOOP_SCHEMA,RIVAL3_SEQUENCE_SCHEMA,defaultRival3Loop,defaultRival3Lights,rival3Modes,type Rival3Lights} from '@/lib/rival3';
 import type {MultiPlan,MultiView} from '@/lib/multi';
 import {Rival3LoopEditor,Rival3Playback} from '@/components/rival3-loop';
 import {Button} from '@/components/ui/button';
 export function Rival3Lighting({view,plan,onChange}:{view:MultiView;plan:MultiPlan;onChange:(p:MultiPlan)=>void}){
- const loop=plan.settings.find(s=>'VendorProfile'in s&&s.VendorProfile.schema===RIVAL3_LOOP_SCHEMA);
- if(loop&&'VendorProfile'in loop&&loop.VendorProfile.schema===RIVAL3_LOOP_SCHEMA){const loopValue=loop.VendorProfile.data;return <><Rival3LoopEditor value={loopValue} onChange={data=>onChange({...plan,settings:plan.settings.map(s=>s===loop?{VendorProfile:{schema:RIVAL3_LOOP_SCHEMA,data}}:s)})} onNative={()=>onChange({...plan,settings:plan.settings.map(s=>s===loop?{VendorProfile:{schema:RIVAL3_SCHEMA,data:{enabled:true,mode:4,zones:loopValue.colors.map(([r,g,b])=>({color:{r,g,b},brightness:100}))}}}:s)})}/><Rival3Playback view={view}/></>;}
+ const loop=plan.settings.find(s=>'VendorProfile'in s&&(s.VendorProfile.schema===RIVAL3_LOOP_SCHEMA||s.VendorProfile.schema===RIVAL3_SEQUENCE_SCHEMA));
+ if(loop&&'VendorProfile'in loop&&(loop.VendorProfile.schema===RIVAL3_LOOP_SCHEMA||loop.VendorProfile.schema===RIVAL3_SEQUENCE_SCHEMA)){const loopValue=loop.VendorProfile.data,loopSchema=loop.VendorProfile.schema;return <><Rival3LoopEditor value={loopValue} onChange={data=>onChange({...plan,settings:plan.settings.map(s=>s===loop?{VendorProfile:{schema:loopSchema===RIVAL3_SEQUENCE_SCHEMA||data.zones.some(z=>z&&z.repeat!==255)?RIVAL3_SEQUENCE_SCHEMA:RIVAL3_LOOP_SCHEMA,data}}:s)})} onNative={()=>onChange({...plan,settings:plan.settings.map(s=>s===loop?{VendorProfile:{schema:RIVAL3_SCHEMA,data:{enabled:true,mode:4,zones:loopValue.colors.map(([r,g,b])=>({color:{r,g,b},brightness:100}))}}}:s)})}/><Rival3Playback view={view}/></>;}
  const setting=plan.settings.find(s=>'VendorProfile'in s&&s.VendorProfile.schema===RIVAL3_SCHEMA);
  const value=setting&&'VendorProfile'in setting&&setting.VendorProfile.schema===RIVAL3_SCHEMA?setting.VendorProfile.data:null;
  const put=(data:Rival3Lights)=>onChange({...plan,settings:[...plan.settings.filter(s=>!('VendorProfile'in s)&&!('Lighting'in s)),{VendorProfile:{schema:RIVAL3_SCHEMA,data}}]});

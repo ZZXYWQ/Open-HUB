@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-29",
+  "scope": "Original1824 native finite-repeat import, sequence schema, UI, completion and scoped restart",
+  "partial_models": 43,
+  "complete_models": 0,
+  "hardware_tested": false,
+  "main_tests": {
+    "passed": 1100,
+    "failed": 0,
+    "ignored": 100
+  },
+  "shared_tests": {
+    "unit_passed": 399,
+    "doc_passed": 1,
+    "failed": 0
+  },
+  "new_application_test_groups": 4,
+  "new_shared_exhaustive_test_groups": 1,
+  "source_repeat_bytes_covered": 256,
+  "finite_cursor_repeat_bytes_covered": 255,
+  "finite_cursor_lengths": [
+    1,
+    2,
+    3,
+    17
+  ],
+  "new_schema": "openhub-rival3-sequence/1",
+  "legacy_loop_schema_still_rejects_finite": true,
+  "per_zone_finished_state_retained_on_pause_resume": true,
+  "completion_no_further_frames": true,
+  "completed_worker_restartable_and_joined_on_stop": true,
+  "actual_browser_profiles_reimported_and_worker_replayed": 2,
+  "other_explicit_replay_test_groups_passed": 4,
+  "UI_scenarios_passed": 5,
+  "live_UI_IPC_mocked": true,
+  "memory_HID_only": true,
+  "OS_input_injected": false,
+  "finite_flash_enabled": false,
+  "184C_dynamic_enabled": false,
+  "new_vendor_downloads": false,
+  "source_precise_timing_proven": false,
+  "installer_built": false,
+  "release_published": false,
+  "installed_app_changed": false
+}

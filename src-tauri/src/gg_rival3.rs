@@ -107,13 +107,8 @@ fn lights(s: &Value, pid: u16) -> Result<Setting, String> {
             .ok_or("GG Rival3 缺少灯区颜色序列")?;
         let sequence = gearwise_steelseries::rival3_sequence::Sequence::decode(sequence)
             .map_err(|e| e.to_string())?;
-        if !matches!(sequence.repeat, 0 | 255) {
-            return Err("GG Rival3 颜色序列播放方式尚未转换".into());
-        }
         if !sequence.frames.is_empty() {
-            if sequence.repeat != 255 {
-                return Err("GG Rival3 有限颜色序列的停止行为尚未转换".into());
-            }
+            dynamic |= sequence.repeat != 255;
             dynamic |= sequence
                 .frames
                 .iter()
@@ -135,7 +130,12 @@ fn lights(s: &Value, pid: u16) -> Result<Setting, String> {
         };
         config.validate()?;
         return Ok(Setting::VendorProfile {
-            schema: crate::multibrand::rival3_player::SCHEMA.into(),
+            schema: if config.zones.iter().flatten().any(|s| s.repeat != 255) {
+                crate::multibrand::rival3_player::SEQUENCE_SCHEMA
+            } else {
+                crate::multibrand::rival3_player::SCHEMA
+            }
+            .into(),
             data: serde_json::to_value(config).map_err(|e| e.to_string())?,
         });
     }
@@ -242,7 +242,7 @@ pub(super) fn convert(
     }
     buttons.remove(&1);
     let lighting = lights(s, pid)?;
-    let dynamic = matches!(&lighting,Setting::VendorProfile{schema,..}if schema==crate::multibrand::rival3_player::SCHEMA);
+    let dynamic = matches!(&lighting,Setting::VendorProfile{schema,..}if schema==crate::multibrand::rival3_player::SCHEMA||schema==crate::multibrand::rival3_player::SEQUENCE_SCHEMA);
     let levels = stages
         .iter()
         .map(|s| Level {
@@ -275,7 +275,7 @@ pub(super) fn convert(
         "原版有线 Rival 3 的八输入、专用 CPI 编码和四区颜色已转换；宏为逐鼠标软件宏。".into(),
     );
     if dynamic {
-        notes.push("四区循环颜色帧完整保留，按原厂描述的33ms步长由Open HUB持续播放；应用前可编辑、暂停或停止，不能保存到鼠标闪存。每只鼠标使用独立时钟，不保证与GG全局相位或实际硬件时序完全一致；有限播放仍未转换。".into());
+        notes.push("四区颜色帧与循环/有限次数完整保留，按原厂描述的33ms步长由Open HUB播放；应用前可编辑、暂停或停止，不能保存到鼠标闪存。有限播放按原厂规则省略最后一次的末帧，原厂次数0按一次处理。每只鼠标使用独立时钟，不保证与GG全局相位或实际硬件时序完全一致。".into());
     }
     Ok((plan, levels, active, rate))
 }
@@ -401,12 +401,93 @@ mod tests {
         assert!(wrong.candidates[0].issues[0].contains("184C"));
     }
     #[test]
+    fn rival3_finite_gg_import_preserves_every_native_repeat_byte_and_emits_ui_fixture() {
+        for repeat in 0..=255u8 {
+            let mut s = settings();
+            s["rival_z1_color_sequence"] =
+                json!({"repeat":repeat,"data":[[10,20,30],[40,50,60],[70,80,90]]});
+            let p = profile(&s, 0x1824);
+            let plan = p.multi.as_ref().unwrap();
+            let config = crate::multibrand::rival3_player::from_plan(plan)
+                .unwrap()
+                .unwrap();
+            assert_eq!(config.step_ms, 33);
+            assert_eq!(config.zones[0].as_ref().unwrap().repeat, repeat);
+            assert_eq!(
+                serde_json::to_value(config.zones[0].as_ref().unwrap()).unwrap(),
+                s["rival_z1_color_sequence"]
+            );
+            let schema = plan
+                .settings
+                .iter()
+                .find_map(|s| {
+                    if let Setting::VendorProfile { schema, .. } = s {
+                        Some(schema.as_str())
+                    } else {
+                        None
+                    }
+                })
+                .unwrap();
+            assert_eq!(
+                schema,
+                if repeat == 255 {
+                    crate::multibrand::rival3_player::SCHEMA
+                } else {
+                    crate::multibrand::rival3_player::SEQUENCE_SCHEMA
+                }
+            );
+            assert_eq!(
+                plan.settings
+                    .iter()
+                    .filter(|s| matches!(s, Setting::Button { .. }))
+                    .count(),
+                7
+            );
+            assert_eq!(p.active_level, 1);
+            assert_eq!(p.report_rate_hz, Some(1000));
+        }
+        let mut s = settings();
+        s["rival_z1_color_sequence"] =
+            json!({"repeat":2,"data":[[10,20,30],[40,50,60],[70,80,90]]});
+        s["rival_z2_color_sequence"] = json!({"repeat":1,"data":[[0,255,0],[0,0,255]]});
+        s["rival_z3_color_sequence"] = json!({"repeat":0,"data":[]});
+        s["rival_logo_color_sequence"] = json!({"repeat":0,"data":[[255,0,255]]});
+        let mut accepted = read(&fixture(&s, 0x1824)).unwrap().candidates.remove(0);
+        let plan = accepted.profile.as_ref().unwrap().multi.as_ref().unwrap();
+        let simulation = crate::multibrand::simulate(plan).unwrap();
+        assert_eq!(
+            simulation["animation"]["zone_phases"],
+            json!(["completed", "completed", "static", "completed"])
+        );
+        assert_eq!(
+            simulation["animation"]["frames"][11],
+            json!([[40, 50, 60], [0, 255, 0], [3, 34, 51], [4, 34, 51]])
+        );
+        if let Some(path) = std::env::var_os("OPEN_HUB_GG_RIVAL3_FINITE_PREVIEW") {
+            accepted.profile.as_mut().unwrap().name = "GG122 Rival3 有限灯效".into();
+            let mut candidates = vec![accepted];
+            candidates.extend(read(&fixture(&s, 0x184c)).unwrap().candidates);
+            s["rival_z1_color_sequence"]["repeat"] = json!(256);
+            candidates.extend(read(&fixture(&s, 0x1824)).unwrap().candidates);
+            std::fs::write(
+                path,
+                serde_json::to_vec_pretty(&Prepared {
+                    name: "Rival3 原厂格式有限序列".into(),
+                    source_kind: "GG SQLite",
+                    candidates,
+                })
+                .unwrap(),
+            )
+            .unwrap();
+        }
+    }
+    #[test]
     fn rival3_dynamic_invalid_zone_rejects_whole_profile_without_losing_other_data() {
         for case in 0..7 {
             let mut s = settings();
             s["rival_z1_color_sequence"]["data"] = json!([[1, 2, 3], [4, 5, 6]]);
             match case {
-                0 => s["rival_logo_color_sequence"]["repeat"] = json!(1),
+                0 => s["rival_logo_color_sequence"]["repeat"] = json!(-1),
                 1 => s["rival_logo_color_sequence"]["data"] = json!([[1, 2]]),
                 2 => s["rival_logo_color_sequence"]["repeat"] = json!(256),
                 3 => s["rival_logo_color_sequence"]["unknown"] = json!(1),
@@ -469,7 +550,7 @@ mod tests {
                 6 => s["button_mappings"]["buttons"][7]["function"] = json!(53),
                 7 => s["set_all_colors"]["zone_mask"] = json!(7),
                 8 => s["rival_logo_color_sequence"]["data"] = json!([[4, 34, 51], [7, 8]]),
-                9 => s["rival_z2_color_sequence"]["repeat"] = json!(1),
+                9 => s["rival_z2_color_sequence"]["repeat"] = json!(256),
                 10 => s["exact_aim"]["level"] = json!(2),
                 11 => s["unknown"] = json!(1),
                 12 => s["button_mappings"]["buttons"][1]["key_codes"] = json!([1]),
@@ -524,7 +605,7 @@ mod tests {
         }
         let mut bad = settings();
         bad["rival_logo_color_sequence"]["data"] = json!([[1, 2, 3], [4, 5, 6]]);
-        bad["rival_logo_color_sequence"]["repeat"] = json!(2);
+        bad["rival_logo_color_sequence"]["repeat"] = json!(256);
         candidates.push(read(&fixture(&bad, 0x1824)).unwrap().candidates.remove(0));
         if let Some(path) = std::env::var_os("OPEN_HUB_GG_RIVAL3_PREVIEW") {
             std::fs::write(
@@ -643,7 +724,7 @@ mod tests {
             let mut accepted = r.candidates.into_iter().next().unwrap();
             accepted.profile.as_mut().unwrap().name = "GG122 Rival3 原厂四区动态".into();
             let mut finite = s.clone();
-            finite["rival_logo_color_sequence"]["repeat"] = json!(1);
+            finite["rival_logo_color_sequence"]["repeat"] = json!(256);
             let mut candidates = vec![accepted];
             candidates.extend(read(&fixture(&finite, 0x1824)).unwrap().candidates);
             candidates.extend(read(&fixture(&s, 0x184c)).unwrap().candidates);

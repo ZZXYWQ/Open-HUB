@@ -1,6 +1,6 @@
 //! Bounded OEM color-sequence data and deterministic sequencer state.
 //! This models reviewed GG122 native state transitions. It opens no HID handle,
-//! owns no thread and does not claim that app playback has been connected.
+//! owns no thread; the application supplies connection ownership and lifetime.
 use gearwise_core::{Error, Result};
 use serde::{Deserialize,Serialize};
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -112,6 +112,15 @@ impl Cursor {
 mod tests {
     use super::*;
     use serde_json::json;
+    #[test]
+    fn every_finite_repeat_byte_completes_on_exact_boundary_and_suppresses_only_terminal_frame(){
+        for repeat in 0..255u8{for length in [1,2,3,17]{
+            let sequence=Sequence{repeat,frames:(0..length).map(|i|[i as u8,10,20]).collect()};
+            let mut c=Cursor::new(sequence,33).unwrap();let total=usize::from(repeat.max(1))*length;
+            for tick in 1..=total{let out=c.tick(tick as u64*33,1);assert_eq!(out.running,tick<total,"repeat{repeat} length{length} tick{tick}");assert_eq!(out.color,if tick==total{None}else{Some([((tick-1)%length)as u8,10,20])});}
+            assert!(!c.running());assert!(c.tick((total+1)as u64*33,1).color.is_none());
+        }}
+    }
     fn s(repeat: u8) -> Sequence {
         Sequence {
             repeat,

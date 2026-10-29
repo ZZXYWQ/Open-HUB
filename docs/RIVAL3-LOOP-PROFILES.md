@@ -25,4 +25,4 @@ Dynamic desired sessions report running/paused/stopped and cannot authorize hard
 
 Evidence: `development/2026-10-29-rival3-loop-validation.json`; scripts `test-rival3-loop-ui.cjs`, `test-rival3-ui.cjs`, `test-gg-rival3-import-ui.cjs`. Private logs, saved profiles, recorded IPC requests and rendered screenshot are retained in the task outputs directory. No physical HID, OS input, visible desktop or installed app was used.
 
-Still incomplete: finite sequence UI/policy, arbitrary unsupported GG options, precise OEM timing and output parity, complete simultaneous PC/dock/controller behavior, physical hardware readback and original/184C hardware validation. This increment does not make Rival 3 or any other model fully accepted.
+The later finite sequence schema adds counts and completion while preserving this loop-only schema. Still incomplete: arbitrary unsupported GG options, precise OEM timing and output parity, complete simultaneous PC/dock/controller behavior, physical hardware readback and original/184C hardware validation. This increment does not make Rival 3 or any other model fully accepted.

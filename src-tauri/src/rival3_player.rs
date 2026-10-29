@@ -1,5 +1,5 @@
-//! Connection-owned original Rival3 playback engine and persisted loop schema.
-//! Explicit Open HUB loop timelines; not automatic GG playback equivalence.
+//! Connection-owned original Rival3 playback and persisted loop/sequence schemas.
+//! Reviewed loop/finite timelines; not proof of exact OEM runtime equivalence.
 use super::Service;
 use gearwise_steelseries::{
     rival3,
@@ -32,10 +32,8 @@ impl Config {
             return Err("动态灯光需要33–1000ms帧间隔及至少一个明确灯区序列".into());
         }
         for s in self.zones.iter().flatten() {
-            if s.repeat != 255 || s.frames.is_empty() || s.frames.len() > 4096 {
-                return Err(
-                    "当前播放层只接受1–4096帧的显式循环序列；GG有限播放尚未完整接入".into(),
-                );
+            if s.frames.is_empty() || s.frames.len() > 4096 {
+                return Err("动态灯区需要1–4096帧的明确颜色序列".into());
             }
         }
         Ok(())
@@ -53,6 +51,7 @@ pub struct Status {
     pub target: Target,
     pub playback: String,
     pub phase: String,
+    pub zone_phases: [String; 4],
     pub frames: u64,
     pub writes: u64,
     pub colors: [[u8; 3]; 4],
@@ -140,6 +139,7 @@ impl Player {
             target: target.clone(),
             playback: crate::profiles::new_id(),
             phase: "running".into(),
+            zone_phases: zone_phases(&cursors, false),
             frames: 0,
             writes: 0,
             colors: config.colors,
@@ -200,6 +200,9 @@ impl Player {
     }
     pub fn control(&self, target: &Target, control: Control) -> R<Status> {
         let _op = self.operations.lock().map_err(|_| "灯光操作锁异常")?;
+        if self.status(target)?.phase == "completed" && !matches!(control, Control::Restart) {
+            return Err("灯效已播完，请重新开始".into());
+        }
         let (tx, rx) = mpsc::sync_channel(1);
         {
             let workers = self.workers.lock().map_err(|_| "灯光线程锁异常")?;
@@ -276,6 +279,17 @@ impl Drop for Player {
         }
     }
 }
+fn zone_phases(cursors: &[Option<Cursor>], paused: bool) -> [String; 4] {
+    std::array::from_fn(|i| {
+        match cursors.get(i).and_then(Option::as_ref) {
+            None => "static",
+            Some(c) if !c.running() => "completed",
+            Some(_) if paused => "paused",
+            _ => "running",
+        }
+        .into()
+    })
+}
 fn run(
     manager: Arc<Mutex<Option<gearwise_core::DeviceManager>>>,
     target: Target,
@@ -291,9 +305,10 @@ fn run(
     let mut due = epoch + step;
     let mut last_slot = 0;
     let mut paused = false;
+    let mut completed = false;
     let result = (|| -> R<()> {
         loop {
-            let wait = if paused {
+            let wait = if paused || completed {
                 Duration::from_secs(3600)
             } else {
                 due.saturating_duration_since(Instant::now())
@@ -302,20 +317,20 @@ fn run(
                 Ok(Message::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => return Ok(()),
                 Ok(Message::Control(control, ack)) => {
                     match control {
+                        // Pausing the scheduler must not resurrect already finished zones.
                         Control::Pause => {
-                            paused = true;
-                            for c in cursors.iter_mut().flatten() {
-                                c.stop();
+                            if !completed {
+                                paused = true;
                             }
                         }
                         Control::Resume => {
-                            paused = false;
-                            for c in cursors.iter_mut().flatten() {
-                                c.resume();
+                            if !completed {
+                                paused = false;
                             }
                         }
                         Control::Restart => {
                             paused = false;
+                            completed = false;
                             for c in cursors.iter_mut().flatten() {
                                 c.start();
                             }
@@ -323,14 +338,23 @@ fn run(
                     }
                     last_slot = epoch.elapsed().as_millis() / u128::from(config.step_ms);
                     due = Instant::now() + step;
-                    status.lock().map_err(|_| "灯光状态锁异常")?.phase =
-                        if paused { "paused" } else { "running" }.into();
+                    let mut state = status.lock().map_err(|_| "灯光状态锁异常")?;
+                    state.phase = if completed {
+                        "completed"
+                    } else if paused {
+                        "paused"
+                    } else {
+                        "running"
+                    }
+                    .into();
+                    state.zone_phases = zone_phases(&cursors, paused);
+                    drop(state);
                     let _ = ack.send(());
                     continue;
                 }
                 Err(mpsc::RecvTimeoutError::Timeout) => {}
             }
-            if paused {
+            if paused || completed {
                 continue;
             }
             let elapsed = epoch.elapsed().as_millis();
@@ -368,7 +392,12 @@ fn run(
                 }
             };
             palette = next;
+            completed = cursors.iter().flatten().all(|c| !c.running());
             let mut s = status.lock().map_err(|_| "灯光状态锁异常")?;
+            if completed {
+                s.phase = "completed".into();
+            }
+            s.zone_phases = zone_phases(&cursors, false);
             s.frames += 1;
             s.writes += u64::from(wrote);
             s.colors = palette
@@ -379,23 +408,36 @@ fn run(
     })();
     if let Ok(mut s) = status.lock() {
         match result {
-            Ok(()) => s.phase = "stopped".into(),
+            Ok(()) => {
+                s.phase = "stopped".into();
+                for phase in &mut s.zone_phases {
+                    if matches!(phase.as_str(), "running" | "paused") {
+                        *phase = "stopped".into();
+                    }
+                }
+            }
             Err(e) => {
                 s.phase = "failed".into();
                 s.error = Some(e);
+                for phase in &mut s.zone_phases {
+                    if matches!(phase.as_str(), "running" | "paused") {
+                        *phase = "failed".into();
+                    }
+                }
             }
         }
     }
 }
 
 pub const SCHEMA: &str = "openhub-rival3-loop/1";
+pub const SEQUENCE_SCHEMA: &str = "openhub-rival3-sequence/1";
 pub(crate) fn from_plan(plan: &super::Plan) -> R<Option<Config>> {
     let loops = plan
         .settings
         .iter()
         .filter_map(|s| {
             if let gearwise_core::Setting::VendorProfile { schema, data } = s {
-                (schema == SCHEMA).then_some(data)
+                (schema == SCHEMA || schema == SEQUENCE_SCHEMA).then_some((schema, data))
             } else {
                 None
             }
@@ -421,15 +463,19 @@ pub(crate) fn from_plan(plan: &super::Plan) -> R<Option<Config>> {
     {
         return Err("动态灯光方案只适用于原版Rival3 1824，不能与其他灯效重复".into());
     }
-    let config: Config = serde_json::from_value(loops[0].clone())
+    let config: Config = serde_json::from_value(loops[0].1.clone())
         .map_err(|e| format!("动态灯光方案格式无效：{e}"))?;
     config.validate()?;
+    if loops[0].0 == SCHEMA && config.zones.iter().flatten().any(|z| z.repeat != 255) {
+        return Err("旧循环配置仅接受repeat255；有限播放需使用明确的序列配置格式".into());
+    }
     Ok(Some(config))
 }
 pub(crate) fn native_plan(plan: &super::Plan, config: &Config) -> super::Plan {
     let mut p = plan.clone();
     for s in &mut p.settings {
-        if matches!(s,gearwise_core::Setting::VendorProfile{schema,..}if schema==SCHEMA) {
+        if matches!(s,gearwise_core::Setting::VendorProfile{schema,..}if schema==SCHEMA||schema==SEQUENCE_SCHEMA)
+        {
             *s = rival3::setting(&config.palette());
         }
     }
@@ -456,16 +502,20 @@ pub(crate) fn simulate_frames(
     let mut palette = config.palette();
     let mut frames = Vec::new();
     for tick in 1..=12u64 {
+        let mut next = palette.clone();
         for (i, c) in cursors.iter_mut().enumerate() {
             if let Some(c) = c {
                 if let Some([r, g, b]) = c.tick(tick * u64::from(config.step_ms), 1).color {
-                    palette.zones[i].color = gearwise_core::model::Rgb { r, g, b };
+                    next.zones[i].color = gearwise_core::model::Rgb { r, g, b };
                 }
             }
         }
-        device
-            .apply(&rival3::setting(&palette))
-            .map_err(|e| e.to_string())?;
+        if next != palette {
+            device
+                .apply(&rival3::setting(&next))
+                .map_err(|e| e.to_string())?;
+        }
+        palette = next;
         frames.push(
             palette
                 .zones
@@ -474,7 +524,7 @@ pub(crate) fn simulate_frames(
         );
     }
     Ok(Some(
-        serde_json::json!({"step_ms":config.step_ms,"frames":frames,"real_time":false,"hardware_tested":false}),
+        serde_json::json!({"step_ms":config.step_ms,"frames":frames,"zone_phases":zone_phases(&cursors,false),"real_time":false,"hardware_tested":false}),
     ))
 }
 
@@ -834,6 +884,138 @@ mod tests {
         }
         p
     }
+    fn finite_plan(service: &Service, target: &Target, repeat: u8) -> super::super::Plan {
+        let mut plan = full_plan(service, target);
+        for setting in &mut plan.settings {
+            if let gearwise_core::Setting::VendorProfile { schema, data } = setting {
+                *schema = SEQUENCE_SCHEMA.into();
+                data["step_ms"] = 33.into();
+                data["zones"] =
+                    serde_json::json!([{"repeat":repeat,"data":[[255,0,0]]},null,null,null]);
+            }
+        }
+        plan
+    }
+    #[test]
+    fn rival3_finite_one_frame_zero_and_one_complete_without_terminal_packet_and_restart() {
+        for repeat in [0, 1] {
+            let (service, t, log, count) = fixture(0x1824, usize::MAX);
+            let rt = runtime();
+            let root = Root::new();
+            let mut plan = finite_plan(&service, &t, repeat);
+            // An optional chosen input is not an armed macro and must not hide completion.
+            plan.source = Some(crate::host_macros::Source {
+                vendor: 0x1038,
+                product: 0x1824,
+                path: "simulation:unused-choice".into(),
+            });
+            service
+                .apply_context(&t.id, &plan, &rt, &root.0, None, None, Some(&t.connection))
+                .unwrap();
+            let end = wait(&service.4, &t, |s| s.phase == "completed");
+            assert_eq!(end.writes, 0);
+            assert_eq!(end.zone_phases, ["completed", "static", "static", "static"]);
+            let read = service.read(&t.id, &rt).unwrap();
+            let session = read.session.unwrap();
+            assert_eq!(session.software_state, "completed");
+            assert_eq!(session.plan, plan);
+            let done = count.load(Ordering::SeqCst);
+            thread::sleep(Duration::from_millis(70));
+            assert_eq!(count.load(Ordering::SeqCst), done);
+            assert!(service
+                .lighting_control(&t.id, &t.connection, &end.playback, "resume")
+                .unwrap_err()
+                .contains("已播完"));
+            assert!(service
+                .save_native_hardware_at(&t.id, &plan, &t.connection, &root.0)
+                .is_err());
+            let start = service
+                .lighting_control(&t.id, &t.connection, &end.playback, "restart")
+                .unwrap();
+            assert_eq!(start.phase, "running");
+            let restarted = wait(&service.4, &t, |s| {
+                s.phase == "completed" && s.frames > end.frames
+            });
+            assert_eq!(restarted.writes, 0);
+            service.shutdown_lighting().unwrap();
+            service.stop_software(&rt).unwrap();
+            assert!(log
+                .lock()
+                .unwrap()
+                .iter()
+                .all(|r| !matches!(r,gearwise_core::transport::MockRecord::Write(b)if b[1]==9)));
+        }
+    }
+    #[test]
+    fn rival3_finite_completed_zone_stays_finished_across_pause_resume_of_looping_peer_zone() {
+        let (service, t, _, count) = fixture(0x1824, usize::MAX);
+        let rt = runtime();
+        let root = Root::new();
+        let mut plan = finite_plan(&service, &t, 1);
+        for setting in &mut plan.settings {
+            if let gearwise_core::Setting::VendorProfile { data, .. } = setting {
+                data["zones"][1] = serde_json::json!({"repeat":255,"data":[[0,255,0],[0,0,255]]});
+            }
+        }
+        service
+            .apply_context(&t.id, &plan, &rt, &root.0, None, None, Some(&t.connection))
+            .unwrap();
+        let run = wait(&service.4, &t, |s| {
+            s.zone_phases[0] == "completed" && s.writes > 0
+        });
+        assert_eq!(run.phase, "running");
+        let paused = service
+            .lighting_control(&t.id, &t.connection, &run.playback, "pause")
+            .unwrap();
+        assert_eq!(
+            paused.zone_phases,
+            ["completed", "paused", "static", "static"]
+        );
+        let done = count.load(Ordering::SeqCst);
+        thread::sleep(Duration::from_millis(70));
+        assert_eq!(count.load(Ordering::SeqCst), done);
+        service
+            .lighting_control(&t.id, &t.connection, &run.playback, "resume")
+            .unwrap();
+        let resumed = wait(&service.4, &t, |s| s.writes > paused.writes);
+        assert_eq!(resumed.zone_phases[0], "completed");
+        assert_eq!(
+            resumed.colors[0],
+            from_plan(&plan).unwrap().unwrap().colors[0]
+        );
+        service.shutdown_lighting().unwrap();
+        service.stop_software(&rt).unwrap();
+    }
+    #[test]
+    fn rival3_finite_nominal_simulation_preserves_terminal_suppression_and_cycle_counts() {
+        let (service, t, _, _) = fixture(0x1824, usize::MAX);
+        let mut plan = finite_plan(&service, &t, 2);
+        for setting in &mut plan.settings {
+            if let gearwise_core::Setting::VendorProfile { data, .. } = setting {
+                data["zones"][0]["data"] = serde_json::json!([[10, 20, 30], [40, 50, 60]]);
+            }
+        }
+        let simulation = super::super::simulate(&plan).unwrap();
+        let frames = simulation["animation"]["frames"].as_array().unwrap();
+        assert_eq!(frames[0][0], serde_json::json!([10, 20, 30]));
+        assert_eq!(frames[1][0], serde_json::json!([40, 50, 60]));
+        assert_eq!(frames[2][0], serde_json::json!([10, 20, 30]));
+        for frame in &frames[3..] {
+            assert_eq!(frame[0], serde_json::json!([10, 20, 30]));
+        }
+        assert_eq!(
+            simulation["animation"]["zone_phases"],
+            serde_json::json!(["completed", "static", "static", "static"])
+        );
+        let mut legacy = plan.clone();
+        for setting in &mut legacy.settings {
+            if let gearwise_core::Setting::VendorProfile { schema, .. } = setting {
+                *schema = SCHEMA.into();
+            }
+        }
+        assert!(from_plan(&legacy).is_err());
+        assert!(from_plan(&plan).unwrap().is_some());
+    }
     #[test]
     fn rival3_loop_native_initialization_releases_registry_before_device_io() {
         let service = Service::default();
@@ -1026,6 +1208,71 @@ mod tests {
         let r = super::super::simulate(&base).unwrap();
         assert_eq!(r["animation"]["frames"].as_array().unwrap().len(), 12);
         assert_eq!(r["animation"]["real_time"], false);
+    }
+    #[test]
+    #[ignore = "requires saved finite GG-schema and authored browser profiles"]
+    fn rival3_finite_browser_saved_profiles_reimport_complete_and_replay_after_completion() {
+        let profiles = super::super::roundtrip_steelseries_browser_profiles(
+            "OPEN_HUB_GG_RIVAL3_FINITE_UI_PROFILES",
+        );
+        assert_eq!(profiles.len(), 2);
+        let preview: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(std::env::var_os("OPEN_HUB_GG_RIVAL3_FINITE_PREVIEW").unwrap()).unwrap(),
+        )
+        .unwrap();
+        let mut expected: super::super::Plan =
+            serde_json::from_value(preview["candidates"][0]["profile"]["multi"].clone()).unwrap();
+        for setting in &mut expected.settings {
+            if let gearwise_core::Setting::VendorProfile { data, .. } = setting {
+                data["zones"][0]["repeat"] = 3.into();
+                data["zones"][0]["data"][1] = serde_json::json!([171, 205, 239]);
+                data["zones"][3]["data"][0] = serde_json::json!([16, 32, 48]);
+            }
+        }
+        assert_eq!(profiles[0].multi.as_ref().unwrap(), &expected);
+        for (i, p) in profiles.iter().enumerate() {
+            let plan = p.multi.as_ref().unwrap();
+            let config = from_plan(plan).unwrap().unwrap();
+            assert_eq!(
+                config.zones[0].as_ref().unwrap().repeat,
+                if i == 0 { 3 } else { 2 }
+            );
+            if i == 0 {
+                assert_eq!(config.zones[3].as_ref().unwrap().repeat, 0);
+            }
+            let simulation = super::super::simulate(plan).unwrap();
+            assert_eq!(simulation["animation"]["zone_phases"][0], "completed");
+            let (service, t, log, count) = fixture(0x1824, usize::MAX);
+            let rt = runtime();
+            let root = Root::new();
+            service
+                .apply_context(&t.id, plan, &rt, &root.0, None, None, Some(&t.connection))
+                .unwrap();
+            let end = wait(&service.4, &t, |s| s.phase == "completed");
+            assert_eq!(
+                service.read(&t.id, &rt).unwrap().session.unwrap().plan,
+                *plan
+            );
+            assert!(service
+                .save_native_hardware_at(&t.id, plan, &t.connection, &root.0)
+                .is_err());
+            let done = count.load(Ordering::SeqCst);
+            thread::sleep(Duration::from_millis(70));
+            assert_eq!(count.load(Ordering::SeqCst), done);
+            service
+                .lighting_control(&t.id, &t.connection, &end.playback, "restart")
+                .unwrap();
+            wait(&service.4, &t, |s| {
+                s.phase == "completed" && s.frames > end.frames
+            });
+            service.shutdown_lighting().unwrap();
+            service.stop_software(&rt).unwrap();
+            assert!(log
+                .lock()
+                .unwrap()
+                .iter()
+                .all(|r| !matches!(r,gearwise_core::transport::MockRecord::Write(b)if b[1]==9)));
+        }
     }
     #[test]
     #[ignore = "requires browser-edited official GG Rival3 dynamic profile and preview"]

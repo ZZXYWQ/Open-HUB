@@ -69,7 +69,7 @@
     "value": 33
   },
   "repeat_property": "repeat",
-  "repeat_conversion": "source integer to native byte without enum remapping; only255 admitted for nonempty loops",
+  "repeat_conversion": "source integer reaches native byte without enum remapping; original1824 now admits0..254 finite and255 infinite sequences",
   "native_import": {
     "name": "Sequencer_NewSequence",
     "IAT_address": "0x14100be48"
@@ -204,7 +204,6 @@
   "limitations": [
     "published-phase scheduler model, not notification race or jitter equivalence",
     "per-device Open HUB epoch differs from GG shared global epoch",
-    "finite loops not enabled",
     "physical USB timing not tested",
     "184C dynamic transfer not reviewed"
   ],
@@ -242,5 +241,6 @@
         "meaning": "store final native step argument in sequence fieldac"
       }
     ]
-  }
+  },
+  "finite_followup": "../RIVAL3-FINITE-SEQUENCES.md"
 }

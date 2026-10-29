@@ -1,6 +1,6 @@
 # Original Rival 3: GG looping color-sequence import
 
-Development increment, 2026-10-29. Original wired1038:1824 only. The source-backed loop subset now reaches the production importer, editor, saved profile and connection-owned player. This does not establish exact OEM runtime equivalence or complete Rival3 compatibility.43 models remain partial;0 are fully accepted. No release, installer, installed app or physical HID is changed.
+Development increment, 2026-10-29. Original wired1038:1824 only. The source-backed loop subset reaches the production importer, editor, saved profile and connection-owned player. The [finite sequence follow-up](RIVAL3-FINITE-SEQUENCES.md) adds native counts0–254 and completion without changing the legacy loop-only schema. This does not establish exact OEM runtime equivalence or complete Rival3 compatibility.43 models remain partial;0 are fully accepted. No release, installer, installed app or physical HID is changed.
 
 ## Source parameters now resolved
 
@@ -16,7 +16,7 @@ REA native analysis was checked and remains unconfigured for Ghidra/Java on this
 
 Four complete source initial colors remain mandatory. Each source sequence is parsed with the strict bounded RGB decoder. A nonempty sequence must explicitly use repeat255 and contain at most4096 three-byte frames. Empty source records with the previously admitted0/255 marker stay stationary. A fully static matching palette retains the native steady schema and184C static behavior.
 
-When any loop color differs from its initial color,1824 uses `openhub-rival3-loop/1`: original initial colors, original zone order and every nonempty zone's frame sequence remain unchanged, with step33. Constant animated zones and independently sized sequences are preserved too. A malformed or unsupported zone rejects the entire profile; no DPI-only fallback. Finite playback and184C dynamic transfer remain explicitly blocked.
+When any loop color differs from its initial color,1824 uses `openhub-rival3-loop/1`: original initial colors, original zone order and every nonempty zone's frame sequence remain unchanged, with step33. Constant animated zones and independently sized sequences are preserved too. A malformed or unsupported zone rejects the entire profile; no DPI-only fallback. This initial increment blocked finite playback; the later sequence schema now handles it.184C dynamic transfer remains blocked.
 
 The import preview explains that Open HUB must keep running, cannot save the timeline to flash, and uses an independent per-mouse clock rather than claiming GG global-phase parity. The editor reuses the existing four-zone loop controls and adds direct bounded page selection for long sequences. The official default has303 frames in each zone,1212 total; page38 exposes frame303 without rendering the whole timeline. Editing and quick save use the same complete profile. Import/save do not apply hardware.
 
@@ -34,4 +34,4 @@ A separately selected Rust test takes the actual saved browser profile through p
 
 The existing authored-loop UI, both-firmware native UI and static GG import UI regressions pass. Their three explicit Rust saved-profile replay tests also pass. Source evidence and test counts are recorded in `development/2026-10-29-gg-rival3-dynamic-validation.json`.
 
-Remaining: finite sequences and complete GG options, exact shared global phase/publication race and physical timing, function53 meta actions, nondefault exact_accel/exact_aim/free_move, unknown later settings, full PC/dock/controller coexistence, hardware readback and actual1824/184C hardware validation. No complete model count is added.
+Remaining: complete unsupported GG options, exact shared global phase/publication race and physical timing, function53 meta actions, nondefault exact_accel/exact_aim/free_move, unknown later settings, full PC/dock/controller coexistence, hardware readback and actual1824/184C hardware validation. No complete model count is added.

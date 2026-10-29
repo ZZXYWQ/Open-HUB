@@ -57,7 +57,7 @@ impl Service {
   let software_state=if !session.needs_software{"hardware"}else if animation{
       let target=super::rival3_player::Target{id:out.descriptor.id.clone(),connection:out.connection_key.clone().unwrap_or_default()};
       let state=self.4.find_status(&target)?;
-      if plan.source.is_some()&&!macro_running{"stopped"}else{match state.as_ref().map(|s|s.phase.as_str()){Some("running")=>"running",Some("paused")=>"paused",_=>"stopped"}}
+      if plan.settings.iter().any(|s|matches!(s,Setting::Button{action:ButtonAction::Macro(_),..}))&&!macro_running{"stopped"}else{match state.as_ref().map(|s|s.phase.as_str()){Some("running")=>"running",Some("paused")=>"paused",Some("completed")=>if macro_running{"running"}else{"completed"},_=>"stopped"}}
   }else if macro_running{"running"}else{"stopped"};
   out.session=Some(SessionView{hardware_save_attempted:session.save_attempted,plan,software_state,temporary_dpi});Ok(())
  }
