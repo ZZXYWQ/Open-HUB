@@ -48,7 +48,8 @@
     "native_cgo_wrapper": "0x1403fc380",
     "write_sequence": "0x14047abc0",
     "step_length_setter": "0x140490d40",
-    "go_argument_layout_and_default_step_not_fully_resolved": true
+    "go_argument_layout_and_default_step_not_fully_resolved": false,
+    "loop_source_followup": "gg122-rival3-loop-source.json"
   },
   "native_fields": {
     "repeat": "u8@0x14",
@@ -136,9 +137,9 @@
   ],
   "limits": [
     "Native phase is published after notifying writer; publication race and exact thread scheduling remain unresolved",
-    "Raw GG repeat/default step mapping across Go ABI still requires review",
     "No DLL/device execution, physical timing or USB measurement",
-    "No host animation worker, init/shutdown ownership or model UI connected"
+    "Go/native repeat and33ms source path verified for admitted original1824 loops; finite UI and complete OEM parity remain incomplete",
+    "Connection worker, profile editor, shutdown and reviewed GG loop import are connected; see follow-up docs"
   ],
   "vendor_pseudocode_distributed": false,
   "artifact_analyzer": "Local Ghidra12.1.4 and instruction listing; REA native provider not configured"

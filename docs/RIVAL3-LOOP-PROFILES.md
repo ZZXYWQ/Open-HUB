@@ -1,6 +1,6 @@
 # Rival 3 authored loop profiles and managed playback
 
-Development increment, 2026-10-29. Original wired Rival 3, VID/PID1038:1824 only. This is an explicit Open HUB looping timeline, not conversion of arbitrary GG animations or proof of OEM timing parity. Model counts remain43 partial /0 complete. No installer, release, installed application or physical device is changed.
+Development increment, 2026-10-29. Original wired Rival 3, VID/PID1038:1824 only. This is an explicit Open HUB looping timeline, not proof of arbitrary GG playback or OEM timing parity. The [later GG import increment](GG-RIVAL3-DYNAMIC-IMPORT.md) connects reviewed original1824 repeat255 loops at the descriptor-backed33ms nominal interval. Model counts remain43 partial /0 complete. No installer, release, installed application or physical device is changed.
 
 ## Application integration
 
@@ -25,4 +25,4 @@ Dynamic desired sessions report running/paused/stopped and cannot authorize hard
 
 Evidence: `development/2026-10-29-rival3-loop-validation.json`; scripts `test-rival3-loop-ui.cjs`, `test-rival3-ui.cjs`, `test-gg-rival3-import-ui.cjs`. Private logs, saved profiles, recorded IPC requests and rendered screenshot are retained in the task outputs directory. No physical HID, OS input, visible desktop or installed app was used.
 
-Still incomplete: original GG dynamic migration and full Go argument mapping, finite sequence UI/policy, precise OEM timing and output parity, complete simultaneous PC/dock/controller behavior, physical hardware readback and original/184C hardware validation. This increment does not make Rival 3 or any other model fully accepted.
+Still incomplete: finite sequence UI/policy, arbitrary unsupported GG options, precise OEM timing and output parity, complete simultaneous PC/dock/controller behavior, physical hardware readback and original/184C hardware validation. This increment does not make Rival 3 or any other model fully accepted.

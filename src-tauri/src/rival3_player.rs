@@ -1028,6 +1028,76 @@ mod tests {
         assert_eq!(r["animation"]["real_time"], false);
     }
     #[test]
+    #[ignore = "requires browser-edited official GG Rival3 dynamic profile and preview"]
+    fn rival3_gg_dynamic_browser_profile_preserves_1212_frames_and_reaches_scoped_worker() {
+        let profiles = super::super::roundtrip_steelseries_browser_profiles(
+            "OPEN_HUB_GG_RIVAL3_DYNAMIC_UI_PROFILES",
+        );
+        assert_eq!(profiles.len(), 1);
+        let preview: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(std::env::var_os("OPEN_HUB_GG_RIVAL3_DYNAMIC_PREVIEW").unwrap())
+                .unwrap(),
+        )
+        .unwrap();
+        let mut original: super::super::Plan =
+            serde_json::from_value(preview["candidates"][0]["profile"]["multi"].clone()).unwrap();
+        let before = from_plan(&original).unwrap().unwrap();
+        assert_eq!(before.step_ms, 33);
+        assert_eq!(
+            before
+                .zones
+                .iter()
+                .flatten()
+                .map(|s| s.frames.len())
+                .collect::<Vec<_>>(),
+            vec![303; 4]
+        );
+        for setting in &mut original.settings {
+            if let gearwise_core::Setting::VendorProfile { schema, data } = setting {
+                if schema == SCHEMA {
+                    data["zones"][3]["data"][302] = serde_json::json!([18, 52, 86]);
+                    data["colors"][1] = serde_json::json!([171, 205, 239]);
+                }
+            }
+        }
+        let plan = profiles[0].multi.as_ref().unwrap();
+        assert_eq!(plan, &original);
+        let simulation = super::super::simulate(plan).unwrap();
+        assert_eq!(
+            simulation["animation"]["frames"].as_array().unwrap().len(),
+            12
+        );
+        let (service, t, log, count) = fixture(0x1824, usize::MAX);
+        let rt = runtime();
+        let root = Root::new();
+        service
+            .apply_context(&t.id, plan, &rt, &root.0, None, None, Some(&t.connection))
+            .unwrap();
+        wait(&service.4, &t, |s| s.writes > 0);
+        let state = service.4.status(&t).unwrap();
+        service
+            .lighting_control(&t.id, &t.connection, &state.playback, "pause")
+            .unwrap();
+        let read = service.read(&t.id, &rt).unwrap();
+        assert_eq!(read.session.unwrap().plan, *plan);
+        assert!(service
+            .save_native_hardware_at(&t.id, plan, &t.connection, &root.0)
+            .is_err());
+        service
+            .lighting_control(&t.id, &t.connection, &state.playback, "stop")
+            .unwrap();
+        let done = count.load(Ordering::SeqCst);
+        thread::sleep(Duration::from_millis(70));
+        assert_eq!(count.load(Ordering::SeqCst), done);
+        service.shutdown_lighting().unwrap();
+        service.stop_software(&rt).unwrap();
+        assert!(log
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|r| !matches!(r,gearwise_core::transport::MockRecord::Write(b)if b[1]==9)));
+    }
+    #[test]
     #[ignore = "requires saved Rival3 loop browser profile"]
     fn rival3_loop_browser_profile_store_import_and_live_worker_replay() {
         let profiles = super::super::roundtrip_steelseries_browser_profiles(

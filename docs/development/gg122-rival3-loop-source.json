@@ -1,0 +1,246 @@
+{
+  "source": "Official GG122 inert device descriptions and Go/native ABI machine instructions; target not executed",
+  "engine_sha256": "c1b8e182e62c8bb6667a3c678394c4d6363a532409f3de5a8fd7a31fdf0c0ec1",
+  "includes": [
+    [
+      "rival-3",
+      "multi-zone-write-device"
+    ],
+    [
+      "rival-3",
+      "prism-sync-boilerplate"
+    ],
+    [
+      "multi-zone-write-device",
+      "standard-boilerplate"
+    ],
+    [
+      "multi-zone-write-device",
+      "multi-zone-write-device-interface"
+    ]
+  ],
+  "descriptors": [
+    {
+      "file": "rival-3.edevice",
+      "encrypted_sha256": "7dc4cbd8bfd778cf374f4c935abe9dccf8607026a4850e330ddd07e12c6cedc6",
+      "decoded_sha256": "1057127f3eeeb30e2215e11e45e346bae2e68103b0307df9422af8637b9c2ab4",
+      "decoded_bytes": 26555,
+      "MDC_verified": true,
+      "executed": false
+    },
+    {
+      "file": "multi-zone-write-device.edevice",
+      "encrypted_sha256": "319a5818f67cfb615eddd4523c31de0744521f77321938d9b3a75fc2c74786c1",
+      "decoded_sha256": "c18865716c8508a1e7953e3a9cad1c124abbc7746087c217585f7a77c411fbe2",
+      "decoded_bytes": 196,
+      "MDC_verified": true,
+      "executed": false
+    },
+    {
+      "file": "multi-zone-write-device-interface.edevice",
+      "encrypted_sha256": "104a8357a6efb824bdd6d8105fdcb2f2819e1ca78a810c3755cc1fb6ff93cf2d",
+      "decoded_sha256": "8bfaf576aa9a5d3776ff4520480e7d0fc2273927bd254efa88e7c64e5d9e9e0e",
+      "decoded_bytes": 839,
+      "MDC_verified": true,
+      "executed": false
+    },
+    {
+      "file": "prism-sync-boilerplate.edevice",
+      "encrypted_sha256": "4fc487f7ade94c8d73ef5a448aa5400b343197e1c193ff59a0530d868e063c0d",
+      "decoded_sha256": "d24b2ccaff6a3a12877fa7995dc0adccd5c46681f31604d06d8ec693aa4c0a33",
+      "decoded_bytes": 3843,
+      "MDC_verified": true,
+      "executed": false
+    },
+    {
+      "file": "standard-boilerplate.edevice",
+      "encrypted_sha256": "11d231502c076b922ed59987226f8c61ad7e42c2e9a25ea888399415c72379d4",
+      "decoded_sha256": "a3f44979282a049636928501bf457b1651b8e6a9095d26abb4a2c98fcd6ba536",
+      "decoded_bytes": 36914,
+      "MDC_verified": true,
+      "executed": false
+    }
+  ],
+  "step_ms": 33,
+  "step_declaration": {
+    "file": "standard-boilerplate.edevice",
+    "decoded_line": 18,
+    "operation": "sequence-step-length-ms",
+    "value": 33
+  },
+  "repeat_property": "repeat",
+  "repeat_conversion": "source integer to native byte without enum remapping; only255 admitted for nonempty loops",
+  "native_import": {
+    "name": "Sequencer_NewSequence",
+    "IAT_address": "0x14100be48"
+  },
+  "anchors": [
+    {
+      "address": "0x14047a0ad",
+      "bytes": "488d0dad135300",
+      "instruction": "lea\trcx, [rip + 0x5313ad]   # 0x1409ab461",
+      "meaning": "repeat property name reference"
+    },
+    {
+      "address": "0x14047b261",
+      "bytes": "e81aeeffff",
+      "instruction": "call\t0x14047a080 <.text+0x479080>",
+      "meaning": "read repeat from source setting"
+    },
+    {
+      "address": "0x14047b2e6",
+      "bytes": "4189c0",
+      "instruction": "mov\tr8d, eax",
+      "meaning": "repeat return enters interface R8D"
+    },
+    {
+      "address": "0x1403fd6eb",
+      "bytes": "4489c6",
+      "instruction": "mov\tesi, r8d",
+      "meaning": "interface wrapper forwards repeat to value wrapper ESI"
+    },
+    {
+      "address": "0x1403fc3ba",
+      "bytes": "89b424e0000000",
+      "instruction": "mov\tdword ptr [rsp + 0xe0], esi",
+      "meaning": "value wrapper saves repeat"
+    },
+    {
+      "address": "0x1403fc625",
+      "bytes": "8b8424e0000000",
+      "instruction": "mov\teax, dword ptr [rsp + 0xe0]",
+      "meaning": "value wrapper reloads repeat"
+    },
+    {
+      "address": "0x1403fc62c",
+      "bytes": "89442410",
+      "instruction": "mov\tdword ptr [rsp + 0x10], eax",
+      "meaning": "pack repeat into native-call argument block offset10"
+    },
+    {
+      "address": "0x140780571",
+      "bytes": "448b6010",
+      "instruction": "mov\tr12d, dword ptr [rax + 0x10]",
+      "meaning": "native thunk reads packed repeat"
+    },
+    {
+      "address": "0x1407805ab",
+      "bytes": "4589e1",
+      "instruction": "mov\tr9d, r12d",
+      "meaning": "native thunk forwards repeat into R9D fourth Windows argument"
+    },
+    {
+      "address": "0x1407805b4",
+      "bytes": "488b058db88800",
+      "instruction": "mov\trax, qword ptr [rip + 0x88b88d] # 0x14100be48",
+      "meaning": "native thunk calls bound Sequencer_NewSequence import"
+    },
+    {
+      "address": "0x14048fcb2",
+      "bytes": "488bb678010000",
+      "instruction": "mov\trsi, qword ptr [rsi + 0x178]",
+      "meaning": "capture current device sequence step field178"
+    },
+    {
+      "address": "0x1404902e6",
+      "bytes": "899080000000",
+      "instruction": "mov\tdword ptr [rax + 0x80], edx",
+      "meaning": "store captured step in Sequence field80"
+    },
+    {
+      "address": "0x14047b2a4",
+      "bytes": "8b9b80000000",
+      "instruction": "mov\tebx, dword ptr [rbx + 0x80]",
+      "meaning": "load captured Sequence field80"
+    },
+    {
+      "address": "0x14047b2dc",
+      "bytes": "895c2430",
+      "instruction": "mov\tdword ptr [rsp + 0x30], ebx",
+      "meaning": "place step on interface-call stack"
+    },
+    {
+      "address": "0x1403fd6f7",
+      "bytes": "448b9c24b0000000",
+      "instruction": "mov\tr11d, dword ptr [rsp + 0xb0]",
+      "meaning": "interface wrapper forwards step into R11D"
+    },
+    {
+      "address": "0x1403fc3c1",
+      "bytes": "44899c2400010000",
+      "instruction": "mov\tdword ptr [rsp + 0x100], r11d",
+      "meaning": "value wrapper saves step"
+    },
+    {
+      "address": "0x1403fc663",
+      "bytes": "8b842400010000",
+      "instruction": "mov\teax, dword ptr [rsp + 0x100]",
+      "meaning": "value wrapper reloads step"
+    },
+    {
+      "address": "0x1403fc66a",
+      "bytes": "89442444",
+      "instruction": "mov\tdword ptr [rsp + 0x44], eax",
+      "meaning": "pack step at native argument block offset44"
+    },
+    {
+      "address": "0x14078053b",
+      "bytes": "8b7044",
+      "instruction": "mov\tesi, dword ptr [rax + 0x44]",
+      "meaning": "native thunk reads packed step"
+    },
+    {
+      "address": "0x14078058a",
+      "bytes": "89742450",
+      "instruction": "mov\tdword ptr [rsp + 0x50], esi",
+      "meaning": "native thunk sets final step argument on Windows stack"
+    },
+    {
+      "address": "0x1409ab461",
+      "bytes": "726570656174",
+      "meaning": "source repeat property bytes"
+    }
+  ],
+  "limitations": [
+    "published-phase scheduler model, not notification race or jitter equivalence",
+    "per-device Open HUB epoch differs from GG shared global epoch",
+    "finite loops not enabled",
+    "physical USB timing not tested",
+    "184C dynamic transfer not reviewed"
+  ],
+  "native_dll": {
+    "sha256": "50284715f971c6daea99bbe714caad9de329a681eb8f54915081777c4ce1264a",
+    "anchors": [
+      {
+        "address": "0x180006b80",
+        "bytes": "405355565741544155415641574883ec48",
+        "instruction": "push8 saved registers; sub rsp,48h",
+        "meaning": "eight pushes and48-byte local stack allocation, total88-byte constructor frame"
+      },
+      {
+        "address": "0x180006b91",
+        "bytes": "418be9",
+        "instruction": "mov\tebp, r9d",
+        "meaning": "native fourth argument R9D becomes repeat local"
+      },
+      {
+        "address": "0x180006bd0",
+        "bytes": "40886f14",
+        "instruction": "mov\tbyte ptr [rdi + 0x14], bpl",
+        "meaning": "repeat local truncated to native byte field14"
+      },
+      {
+        "address": "0x180006dab",
+        "bytes": "8b8424e0000000",
+        "instruction": "mov\teax, dword ptr [rsp + 0xe0]",
+        "meaning": "constructor step load at currentSP+e0 corresponds to callerSP+50"
+      },
+      {
+        "address": "0x180006dc2",
+        "bytes": "8987ac000000",
+        "instruction": "mov\tdword ptr [rdi + 0xac], eax",
+        "meaning": "store final native step argument in sequence fieldac"
+      }
+    ]
+  }
+}

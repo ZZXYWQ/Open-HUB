@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-29",
+  "scope": "Original1824 GG122 repeat255 source loop migration through editor/profile and worker",
+  "partial_models": 43,
+  "complete_models": 0,
+  "hardware_tested": false,
+  "main_tests": {
+    "passed": 1096,
+    "failed": 0,
+    "ignored": 99
+  },
+  "shared_tests": {
+    "unit_passed": 398,
+    "doc_passed": 1,
+    "failed": 0
+  },
+  "new_default_converter_groups": 2,
+  "official_SQL_source_test_passed": true,
+  "official_SQL_sha256": "e7d8a8cf140bddbd1c6a4d1b06a68d29c9a830b2e61d481c68e9b1e2f5329307",
+  "source_engine_anchors": 21,
+  "source_DLL_constructor_anchors": 5,
+  "MDC_verified_descriptors": 5,
+  "original_step_ms": 33,
+  "original_zone_frames": [
+    303,
+    303,
+    303,
+    303
+  ],
+  "saved_browser_profile_worker_replay_passed": true,
+  "other_saved_profile_replays_passed": 3,
+  "browser_IPC_mocked": true,
+  "native_memory_transport_only": true,
+  "OS_input_injected": false,
+  "physical_timing_proven": false,
+  "GG_global_phase_equivalence_proven": false,
+  "finite_playback_enabled": false,
+  "184C_dynamic_enabled": false,
+  "source_plaintext_copies_removed": true,
+  "installer_built": false,
+  "release_published": false,
+  "installed_app_changed": false
+}
