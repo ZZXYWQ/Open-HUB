@@ -2,8 +2,8 @@
 //! This models reviewed GG122 native state transitions. It opens no HID handle,
 //! owns no thread and does not claim that app playback has been connected.
 use gearwise_core::{Error, Result};
-use serde::Deserialize;
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+use serde::{Deserialize,Serialize};
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Sequence {
     pub repeat: u8,

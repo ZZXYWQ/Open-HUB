@@ -214,6 +214,9 @@ pub trait Device: Send {
     /// only; neither is a durable physical mouse serial or a profile owner.
     fn control_path(&self)->Option<&str>{None}
     fn connection_key(&self)->Option<&str>{None}
+    /// Process-local lighting write-attempt revision, opt-in. This is neither
+    /// hardware readback nor persistent identity. Pair it with connection_key.
+    fn lighting_revision(&self)->Option<u64>{None}
     fn descriptor(&self) -> &DeviceDescriptor;
     fn capabilities(&self) -> &Capabilities;
 

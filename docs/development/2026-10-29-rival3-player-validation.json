@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-29",
+  "scope": "Original1824 connection-owned authored RGB loop player; no RPC/UI enabled",
+  "partial_models": 43,
+  "complete_models": 0,
+  "hardware_tested": false,
+  "main_tests": {
+    "passed": 1090,
+    "failed": 0,
+    "ignored": 97
+  },
+  "shared_tests": {
+    "unit_passed": 398,
+    "doc_passed": 1,
+    "failed": 0
+  },
+  "new_application_player_groups": 7,
+  "new_native_revision_test": 1,
+  "memory_transport_only": true,
+  "OS_input_injected": false,
+  "connection_key_checked_each_frame": true,
+  "lighting_attempt_revision_checked_each_frame": true,
+  "pause_control_acknowledged": true,
+  "stop_and_drop_join_threads": true,
+  "old_hardware_save_session_removed": true,
+  "flash_commands_sent": false,
+  "source_GG_dynamic_migration_enabled": false,
+  "UI_enabled": false,
+  "profile_persistence_integrated": false,
+  "app_shutdown_integrated": false,
+  "installer_created": false,
+  "release_created": false
+}

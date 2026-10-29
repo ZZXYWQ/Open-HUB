@@ -34,6 +34,7 @@ pub struct SteelSeriesDevice {
     /// When the battery was last asked for; `None` before the first time.
     battery_asked: Option<Instant>,
     rival3_lighting_written: bool,
+    lighting_revision:u64,
 }
 
 impl SteelSeriesDevice {
@@ -77,6 +78,7 @@ impl SteelSeriesDevice {
             link,
             battery_asked: None,
             rival3_lighting_written: false,
+            lighting_revision:0,
         }
     }
 
@@ -241,6 +243,7 @@ fn factory_state(spec: &Spec) -> DeviceState {
 impl Device for SteelSeriesDevice {
     fn control_path(&self)->Option<&str>{Some(&self.control_path)}
     fn connection_key(&self)->Option<&str>{Some(&self.connection_key)}
+    fn lighting_revision(&self)->Option<u64>{crate::rival3::supported(self.desc.product_id).then_some(self.lighting_revision)}
     fn descriptor(&self) -> &DeviceDescriptor {
         &self.desc
     }
@@ -259,6 +262,7 @@ impl Device for SteelSeriesDevice {
 
     fn apply(&mut self, setting: &Setting) -> Result<()> {
         let (applied, packets) = self.plan(setting)?;
+        if crate::rival3::supported(self.desc.product_id)&&matches!(applied,Setting::VendorProfile{..}){self.lighting_revision=self.lighting_revision.wrapping_add(1);}
         for packet in &packets {
             if let Err(error)=self.link.send(packet){
                 if crate::rival3::supported(self.desc.product_id)&&matches!(applied,Setting::VendorProfile{..}){
@@ -360,6 +364,12 @@ mod tests {
             dev.apply(s).unwrap();
         }
         drain(&log)
+    }
+
+    #[test]
+    fn lighting_revision_is_local_opt_in_and_counts_only_valid_lighting_attempts(){
+        for pid in [0x1824,0x184c]{let(mut d,_)=silent(pid);assert_eq!(d.lighting_revision(),Some(0));d.apply(&Setting::ReportRate(500)).unwrap();assert_eq!(d.lighting_revision(),Some(0));let invalid=Setting::VendorProfile{schema:"foreign".into(),data:serde_json::json!({})};assert!(d.apply(&invalid).is_err());assert_eq!(d.lighting_revision(),Some(0));let s=crate::rival3::setting(&crate::rival3::Profile::default());d.apply(&s).unwrap();assert_eq!(d.lighting_revision(),Some(1));d.apply(&s).unwrap();assert_eq!(d.lighting_revision(),Some(2));let(fresh,_)=silent(pid);assert_eq!(fresh.lighting_revision(),Some(0));assert_ne!(fresh.connection_key(),d.connection_key());}
+        for pid in [0x1720,0x1724,0x1832]{let(d,_)=silent(pid);assert_eq!(d.lighting_revision(),None);}
     }
 
     // -- Rival 3 (golden bytes from rivalcfg) -------------------------------

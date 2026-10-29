@@ -32,3 +32,5 @@ The native scheduler notifies the writer before publishing the phase field. The 
 A real Open HUB worker still needs per-connection ownership, target revalidation on every frame, stop/join rules, coordination with manual light edits and PC/dock effects, startup handling, fault cancellation, and explicit exit behavior. The OEM shutdown path writes a flash fallback; that must not be silently copied into ordinary app exit. Sequence UI, dynamic GG import/application and physical tests remain unfinished. Counts stay43 partial /0 complete.
 
 Temporary Ghidra projects containing vendor artifact copies and the one-off analysis launchers were removed after evidence extraction. Existing source research files owned by earlier work were not modified. Vendor pseudocode, binary bodies, decrypt keys and a decompiler runtime are not distributed with this change.
+
+Follow-up: [connection-owned device playback layer](RIVAL3-CONNECTION-PLAYER.md) now exercises the actual driver through memory transports, with per-frame connection/revision checks. UI, profile activation and app shutdown integration are still required before end-user enablement.
