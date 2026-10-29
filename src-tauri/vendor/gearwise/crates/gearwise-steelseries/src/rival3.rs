@@ -34,6 +34,18 @@ pub fn plan(pid:u16,schema:&str,data:&serde_json::Value)->Result<(Setting,Vec<Pa
  packets.push(Packet::output(vec![6,0,if p.enabled{p.mode}else{4}]));
  Ok((setting(&p),packets))
 }
+/// GG122 original1824 set_all_colors, admitted only after this connection has
+/// successfully established full-brightness steady state. The command has no
+/// brightness field, so templates and dimmed/disabled palettes cannot prime it.
+pub(crate) fn plan_after_write(pid:u16,schema:&str,data:&serde_json::Value,previous:Option<&serde_json::Value>)->Result<(Setting,Vec<Packet>)>{
+ let full=plan(pid,schema,data)?;
+ let eligible=|p:&Profile|p.enabled&&p.mode==4&&p.zones.iter().all(|z|z.brightness==100);
+ let want=parse(schema,data)?;
+ if pid!=0x1824||!eligible(&want)||!previous.and_then(|v|parse(SCHEMA,v).ok()).is_some_and(|p|eligible(&p)){return Ok(full);}
+ let mut bytes=vec![0x0a,0,15];for z in &want.zones{bytes.extend([z.color.r,z.color.g,z.color.b]);}bytes.resize(32,0);
+ let mut mode=vec![6,0,4];mode.resize(32,0);
+ Ok((full.0,vec![Packet::output(bytes),Packet::output(mode)]))
+}
 /// Screen/music synchronisation may choose one static zone. This switches the
 /// shared mode to steady; the complete desired palette is sent explicitly.
 pub fn static_zone(current:&serde_json::Value,zone:u8,want:&ZoneState)->Result<Setting>{

@@ -33,6 +33,7 @@ pub struct SteelSeriesDevice {
     link: Link,
     /// When the battery was last asked for; `None` before the first time.
     battery_asked: Option<Instant>,
+    rival3_lighting_written: bool,
 }
 
 impl SteelSeriesDevice {
@@ -75,6 +76,7 @@ impl SteelSeriesDevice {
             spec,
             link,
             battery_asked: None,
+            rival3_lighting_written: false,
         }
     }
 
@@ -84,11 +86,11 @@ impl SteelSeriesDevice {
         let spec = self.spec;
         match setting {
             Setting::DpiColor{..} | Setting::DpiIndicator(_) | Setting::SensorCalibration(_) | Setting::Tuning(_) => return Err(Error::Unsupported("mouse performance")),
-            Setting::VendorProfile{schema,data}=>crate::rival3::plan(self.desc.product_id,schema,data),
+            Setting::VendorProfile{schema,data}=>crate::rival3::plan_after_write(self.desc.product_id,schema,data,self.state.vendor_profile.as_ref().filter(|_|self.rival3_lighting_written)),
             Setting::Lighting{zone,state} if crate::rival3::supported(self.desc.product_id)=>{
                 let current=self.state.vendor_profile.as_ref().ok_or(Error::invalid("Rival3 lighting state uncertain; load a complete lighting plan"))?;
                 let Setting::VendorProfile{schema,data}=crate::rival3::static_zone(current,*zone,state)?else{unreachable!()};
-                crate::rival3::plan(self.desc.product_id,&schema,&data)
+                crate::rival3::plan_after_write(self.desc.product_id,&schema,&data,self.state.vendor_profile.as_ref().filter(|_|self.rival3_lighting_written))
             }
             Setting::Dpi(want) => {
                 let (applied, packets) = dpi::plan(&spec.dpi, want)?;
@@ -260,13 +262,13 @@ impl Device for SteelSeriesDevice {
         for packet in &packets {
             if let Err(error)=self.link.send(packet){
                 if crate::rival3::supported(self.desc.product_id)&&matches!(applied,Setting::VendorProfile{..}){
-                    self.state.vendor_profile=None;self.state.lighting.clear();
+                    self.state.vendor_profile=None;self.state.lighting.clear();self.rival3_lighting_written=false;
                     return Err(Error::invalid(format!("{error}; Rival3 lighting state uncertain; load and explicitly apply a complete plan; no retry")));
                 }
                 return Err(error);
             }
         }
-        if let Setting::VendorProfile{data,..}=&applied{crate::rival3::cache(&mut self.state,data)?;}
+        if let Setting::VendorProfile{data,..}=&applied{crate::rival3::cache(&mut self.state,data)?;self.rival3_lighting_written=true;}
         else{applied.apply_to(&mut self.state);}
         Ok(())
     }
@@ -381,25 +383,22 @@ mod tests {
                 button(5, ButtonAction::Disabled),
             ],
         );
-        assert_eq!(written.len(),17);
+        assert_eq!(written.len(),14);
         assert_eq!(&written[..3],&[
-            output(&[0x0b,0,2,1,0x12,0x24]),
-            output(&[0x0b,0,2,2,0x1b,0x49]),
-            output(&[4,0,2]),
+            output(&[0x0b,0,2,1,0x12,0x24]),output(&[0x0b,0,2,2,0x1b,0x49]),output(&[4,0,2]),
         ]);
-        // Each static-zone change explicitly writes the complete desired palette
-        // and the shared steady mode. The second preserves the first three zones.
-        for start in [3,8]{
-            assert_eq!(written[start],output(&[5,0,1,255,0,0,100]));
-            assert_eq!(written[start+1],output(&[5,0,2,0,255,0,100]));
-            assert_eq!(written[start+2],output(&[5,0,3,0,0,255,100]));
-            assert_eq!(written[start+4],output(&[6,0,4]));
-        }
+        // First application establishes all four brightness values explicitly.
+        assert_eq!(written[3],output(&[5,0,1,255,0,0,100]));
+        assert_eq!(written[4],output(&[5,0,2,0,255,0,100]));
+        assert_eq!(written[5],output(&[5,0,3,0,0,255,100]));
         assert_eq!(written[6],output(&[5,0,4,128,0,128,100]));
-        assert_eq!(written[11],output(&[5,0,4,16,32,48,100]));
-        assert_eq!(written[13],output(&hex("07 00 01 00 02 00 03 00 33 04 05 00 30 00 31 00 32 00")));
-        assert_eq!(written[14],output(&hex("07 00 01 00 02 00 03 00 33 04 05 00 34 e9 31 00 32 00")));
-        assert_eq!(written[16],output(&hex("07 00 01 00 03 00 03 00 33 04 00 00 34 e9 31 00 32 00")));
+        assert_eq!(written[7],output(&[6,0,4]));
+        // Next full-brightness steady palette uses the exact OEM batch layout.
+        let mut colors=hex("0a 00 0f ff 00 00 00 ff 00 00 00 ff 10 20 30");colors.resize(32,0);
+        assert_eq!(written[8],output(&colors));let mut mode=vec![6,0,4];mode.resize(32,0);assert_eq!(written[9],output(&mode));
+        assert_eq!(written[10],output(&hex("07 00 01 00 02 00 03 00 33 04 05 00 30 00 31 00 32 00")));
+        assert_eq!(written[11],output(&hex("07 00 01 00 02 00 03 00 33 04 05 00 34 e9 31 00 32 00")));
+        assert_eq!(written[13],output(&hex("07 00 01 00 03 00 03 00 33 04 00 00 34 e9 31 00 32 00")));
 
     }
 

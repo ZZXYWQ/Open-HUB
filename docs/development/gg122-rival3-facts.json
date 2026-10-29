@@ -362,7 +362,6 @@
     ]
   ],
   "lighting": {
-    "host_frame_interval_ms": 33,
     "hardware_colors": [
       "z1",
       "z2",
@@ -387,7 +386,9 @@
       "rival_z2_color_sequence": 303,
       "rival_z3_color_sequence": 303
     },
-    "native_preset_equivalence_proven": false
+    "native_preset_equivalence_proven": false,
+    "renderer_simulation_step_ms": 33,
+    "backend_scheduler_verified": false
   },
   "vendor_code_distributed": false,
   "physical_device_tested": false

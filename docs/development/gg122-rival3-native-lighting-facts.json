@@ -1,0 +1,98 @@
+{
+  "source": "Official GG122 inert original rival-3.edevice, statically decoded with OpenPGP MDC validation; no vendor executable, SQL or Lisp evaluated",
+  "vendor_descriptor": {
+    "file": "rival-3.edevice",
+    "bytes": 26555,
+    "sha256": "1057127f3eeeb30e2215e11e45e346bae2e68103b0307df9422af8637b9c2ab4",
+    "source_sha256": "7dc4cbd8bfd778cf374f4c935abe9dccf8607026a4850e330ddd07e12c6cedc6",
+    "mdc_verified": true,
+    "source_executed": false
+  },
+  "main_product": "1038:1824",
+  "declared_firmware": "0.81.x.x",
+  "native_batch": {
+    "report_bytes": 33,
+    "command": [
+      0,
+      10,
+      0,
+      15
+    ],
+    "rgb_order": [
+      "z1",
+      "z2",
+      "z3",
+      "logo"
+    ],
+    "rgb_bytes": 12,
+    "reserved_tail_bytes": 17,
+    "brightness_field": false,
+    "cache_exempt": true
+  },
+  "native_mode": {
+    "report_bytes": 33,
+    "command": [
+      0,
+      6,
+      0
+    ],
+    "effect": "uint8",
+    "speed": "uint8",
+    "effect7_speed_selector_present": true,
+    "implemented_speed_extension": false
+  },
+  "sequence": {
+    "independent_names": [
+      "logo_color",
+      "z1_led_color",
+      "z2_led_color",
+      "z3_led_color"
+    ],
+    "single_zone_report_template": [
+      0,
+      5,
+      0,
+      "zone1..4",
+      "red",
+      "green",
+      "blue",
+      100
+    ],
+    "packet_bytes": 33,
+    "custom_init": [
+      0,
+      6,
+      0,
+      7,
+      0
+    ],
+    "shutdown": "stop four sequence names; if any saved color sequence data is nonempty, switch to rainbow effect0 speed0 and issue save_to_flash",
+    "renderer_sampling_ms": 33,
+    "backend_scheduler_and_repeat_count_not_yet_verified": true
+  },
+  "additional_unadmitted_protocols": {
+    "button_table_serialized_slots": 15,
+    "known_UI_inputs": 8,
+    "debounce_set_command": [
+      0,
+      8,
+      0,
+      "make",
+      "break"
+    ],
+    "debounce_get_command": [
+      0,
+      24,
+      0
+    ],
+    "effect_query": [
+      0,
+      22,
+      0
+    ],
+    "meta53_not_in_this_descriptor_enum": true
+  },
+  "code_reused": false,
+  "physical_tested": false,
+  "remaining": "Host playback timing/repeat semantics, init and shutdown integration, firmware coverage including184C, advanced controls and physical tests"
+}

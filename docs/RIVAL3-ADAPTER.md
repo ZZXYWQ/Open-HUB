@@ -31,3 +31,5 @@ Still missing: physical device tests; complete hardware settings readback; full 
 Reproduce: npm run build; node scripts/test-rival3-ui.cjs after generating ../outputs/100-model-development/rival3-native-views.json with the Rust DTO test using OPEN_HUB_RIVAL3_VIEWS. Replay with OPEN_HUB_RIVAL3_UI_PROFILES pointing to the browser output and cargo test rival3_browser_saved_profiles -- --ignored. Full validation uses the main Cargo manifest and the vendored gearwise workspace manifest.
 
 GG original-format import follow-up: [source schema, implemented conversion and animation gaps](GG-RIVAL3-IMPORT.md). This does not increase the complete model count.
+
+Native lighting follow-up: [batch palette path and host-animation research](RIVAL3-NATIVE-STREAM-PREPARATION.md). After an explicit successful full-brightness steady write on original1824, subsequent equivalent palettes use two commands; other brightness/mode/firmware cases use the complete path. Arbitrary GG animation playback remains unimplemented.

@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-29",
+  "scope": "Original1824 native batch palette preparation for host stream; arbitrary sequence runtime still unfinished",
+  "partial_models": 43,
+  "complete_models": 0,
+  "hardware_tested": false,
+  "main_tests": {
+    "passed": 1083,
+    "failed": 0,
+    "ignored": 97
+  },
+  "shared_tests": {
+    "unit_passed": 393,
+    "doc_passed": 1,
+    "failed": 0
+  },
+  "browser_saved_profile_native_replay": {
+    "passed": 2,
+    "profiles": 5
+  },
+  "new_test_groups": [
+    "original1824 exact33-byte batch after established state;184C unchanged",
+    "prior and target brightness/off/mode exclusion",
+    "both batch failure positions and complete explicit recovery",
+    "separate device priming, reconnect and single-zone color preservation"
+  ],
+  "commands_before": 5,
+  "commands_after_eligible_only": 2,
+  "physical_latency_measured": false,
+  "vendor_source_executed": false,
+  "temporary_decoded_vendor_text_removed": true,
+  "temporary_research_helper_removed": true,
+  "key_distributed": false,
+  "firmware_coverage_not_complete": true,
+  "animation_runtime_complete": false,
+  "installer_created": false,
+  "release_created": false
+}
