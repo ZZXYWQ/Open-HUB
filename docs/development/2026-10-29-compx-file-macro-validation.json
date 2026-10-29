@@ -1,0 +1,42 @@
+{
+  "started": "2026-10-28",
+  "validated": "2026-10-29",
+  "scope": "Referenced OEM macro library bodies with explicit per-key playback confirmation",
+  "model_connections": 10,
+  "distinct_partial_mice_in_scope": 9,
+  "native_macro_binding_roundtrips": 20,
+  "ambiguous_code_and_confirmed_mode_combinations": 16,
+  "UI_actual_saved_profiles": 10,
+  "UI_confirmed_bindings": 20,
+  "UI_no_default_playback": "passed",
+  "UI_full_events_preview": "passed",
+  "UI_changed_file_refusal": "passed",
+  "UI_cancel_clears_review": "passed",
+  "source_sha256_revalidation": "passed",
+  "explicit_UI_production_replay": "passed",
+  "UI_ordered_sequence_regression_saves": 20,
+  "UI_lighting_performance_regression_saves": 10,
+  "UI_chord_import_editor_regression_saves": 20,
+  "main_tests": {
+    "passed": 1047,
+    "failed": 0,
+    "ignored": 92
+  },
+  "builds": {
+    "frontend": "passed",
+    "native": "passed"
+  },
+  "main_js_bytes": 850744,
+  "js_delta_bytes": 3925,
+  "new_runtime_dependencies": 0,
+  "new_images": 0,
+  "hardware_tested": false,
+  "physical_HID_access": false,
+  "unbound_macro_library_import": false,
+  "arbitrary_media_holds_or_scroll_export_import": false,
+  "complete_OEM_export_recovery": false,
+  "all_explicit_partial_model_groups": 42,
+  "complete_accepted_models": 0,
+  "target": 100,
+  "installer_created": false
+}

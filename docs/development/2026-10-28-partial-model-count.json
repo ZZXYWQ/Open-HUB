@@ -1,0 +1,116 @@
+{
+  "date": "2026-10-28",
+  "branch": "feature/100-model-compatibility",
+  "conservative_explicit_partial_model_groups": 42,
+  "named_non_logitech_brand_groups": 23,
+  "complete_accepted_models": 0,
+  "target_complete_models": 100,
+  "groups": {
+    "MCHOSE": [
+      "A7 V3 Ultra+"
+    ],
+    "Razer": [
+      "Naga V2 HyperSpeed",
+      "DeathAdder V2",
+      "Viper Ultimate",
+      "Viper V2 Pro",
+      "Viper V3 Pro",
+      "Basilisk V3 Pro",
+      "DeathAdder V3 Pro"
+    ],
+    "Corsair": [
+      "M65 PRO RGB"
+    ],
+    "SteelSeries": [
+      "Rival 300",
+      "Rival 310",
+      "Sensei 310",
+      "Sensei Ten",
+      "Rival 600"
+    ],
+    "HyperX": [
+      "Pulsefire Haste",
+      "Pulsefire Haste Wireless"
+    ],
+    "Pulsar": [
+      "X2 V2 Mini"
+    ],
+    "ATK": [
+      "A9 Plus NK",
+      "X1 Pro Max",
+      "X1 Lite"
+    ],
+    "VXE": [
+      "R1",
+      "R1 Pro",
+      "MAD R",
+      "MAD R+"
+    ],
+    "VGN": [
+      "F1 Pro",
+      "F1 Pro Max"
+    ],
+    "Attack Shark": [
+      "X11"
+    ],
+    "ASUS": [
+      "ROG Strix Impact"
+    ],
+    "Roccat": [
+      "Kone Pure"
+    ],
+    "G.Skill": [
+      "MX-780"
+    ],
+    "Etekcity": [
+      "Scroll Alpha"
+    ],
+    "Mars Gaming": [
+      "MM4"
+    ],
+    "Glorious": [
+      "Model O/O- (conservative shared group)",
+      "Model D",
+      "Model O Eternal"
+    ],
+    "G-Wolves": [
+      "Hati HT-M Wired"
+    ],
+    "DreamMachines": [
+      "DM5 Blink"
+    ],
+    "Genesis": [
+      "Xenon 770"
+    ],
+    "Machenike": [
+      "M620"
+    ],
+    "Mad Dog": [
+      "GM905"
+    ],
+    "T-Dagger": [
+      "Imperial T-TGM310"
+    ],
+    "Marvo": [
+      "Scorpion G961"
+    ]
+  },
+  "rules": [
+    "Exclude dynamic upstream Logitech HID++ catalog from this explicit-model count.",
+    "Exclude MagDock and RGB-only catalog entries.",
+    "Merge cable/receiver PID pairs and duplicate firmware records.",
+    "Glorious Model O/O- shared entry conservatively counts as one; old Model O firmware entry is not a second mouse.",
+    "SC620 and SC580 research-only shared identities are not admitted or counted.",
+    "These are development scopes, not42 complete mouse adaptations or42 features in the old0.3.7 installer."
+  ],
+  "sources": [
+    "src/lib/compx-models.json",
+    "src/lib/legacy-models.json",
+    "src/lib/native-models.ts",
+    "src/lib/steelseries.ts",
+    "src-tauri/src/multibrand.rs",
+    "src-tauri/src/sinowealth.rs",
+    "src-tauri/src/x11.rs",
+    "docs/100-MODEL-ACCEPTANCE.md"
+  ]
+}

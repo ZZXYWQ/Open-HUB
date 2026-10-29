@@ -1,0 +1,55 @@
+{
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "offset_unit": "Python Unicode codepoints",
+  "method": "static read, OEM application code not executed",
+  "facts": [
+    {
+      "pattern": "async getCurrentKeyMatrix(){const e=[Ct.Address.key0",
+      "codepoint_offset": 2105560
+    },
+    {
+      "pattern": "changeKey:[r,l,c]",
+      "codepoint_offset": 2105923
+    },
+    {
+      "pattern": "async setKey(e){const{defKey:n,changeKey:o}=e",
+      "codepoint_offset": 2106002
+    },
+    {
+      "pattern": "r===6&&(c=this.macroType[c]??c-Zn.LoopCount)",
+      "codepoint_offset": 2106328
+    },
+    {
+      "pattern": "async setMacro(e,n){",
+      "codepoint_offset": 1854015
+    },
+    {
+      "pattern": "const $Se={};",
+      "codepoint_offset": 1826521
+    },
+    {
+      "pattern": "function v_(a){",
+      "codepoint_offset": 1826534
+    },
+    {
+      "pattern": "X.value.deviceConfig.macroList=St",
+      "codepoint_offset": 4245317
+    }
+  ],
+  "findings": [
+    "getCurrentKeyMatrix exports native class/value/playback bytes.",
+    "setKey remaps UI enum0/1/2 to254/253/255, other UI counts subtract3; the input array itself is not rewritten.",
+    "Therefore stored_code1 can be native Once or UI Toggle; import does not infer mode from the number.",
+    "setMacro consumes library actions typed0 modifier(HID224..231),1 keyboard,2 media,4 mouse and delay values.",
+    "The pinned empty sensor delay map gives zero sensor minimum; ko.setMacro maps a zero event delay to1ms.",
+    "Source getMacro does not retain every event kind: it labels non-scroll readback as Normal_Key. Files already missing that information cannot be reconstructed from bytes absent from JSON."
+  ],
+  "limits": [
+    "User confirms per physical binding; raw/UI values are shown without automatic mode selection.",
+    "Only bound macro bodies are converted.",
+    "Power/movement/scroll ambiguity and noncanonical media holds reject the whole selected binding conversion.",
+    "Names remain profile metadata, not an assertion of firmware-name storage.",
+    "No physical OEM export or playback verification added."
+  ]
+}

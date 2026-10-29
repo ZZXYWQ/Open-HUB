@@ -14,9 +14,26 @@ use serde::Serialize;
 use serde_json::Value;
 #[path = "compx_file_extras.rs"]
 mod extras;
+#[path = "compx_file_macros.rs"]
+mod macro_file;
+pub type MacroModes = std::collections::BTreeMap<u16, gearwise_core::profile::MacroMode>;
+#[derive(Serialize)]
+pub struct MacroRef {
+    pub button: u16,
+    pub slot: u8,
+    pub name: String,
+    pub stored_code: u8,
+    pub steps: usize,
+    pub events: Vec<gearwise_core::profile::MacroStep>,
+}
+#[derive(Serialize)]
+pub struct Inspection {
+    pub sha256: String,
+    pub refs: Vec<MacroRef>,
+}
 type Result<T> = std::result::Result<T, String>;
 const MAX: usize = 8 * 1024 * 1024;
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct Prepared {
     pub profile: Profile,
     pub note: String,
@@ -67,6 +84,7 @@ fn integer(v: &Value, name: &str, max: u64) -> Result<u64> {
         .filter(|n| *n <= max)
         .ok_or_else(|| format!("原厂配置 {name} 必须是有效整数"))
 }
+#[cfg(test)]
 pub fn prepare_file(
     path: &std::path::Path,
     vendor: u16,
@@ -103,6 +121,7 @@ pub fn prepare_with_buttons(
 ) -> Result<Prepared> {
     prepare_selected(bytes, vendor, product, include_buttons, false, false)
 }
+#[cfg(test)]
 pub fn prepare_selected(
     bytes: &[u8],
     vendor: u16,
@@ -110,6 +129,25 @@ pub fn prepare_selected(
     include_buttons: bool,
     include_tuning: bool,
     include_lighting: bool,
+) -> Result<Prepared> {
+    prepare_selected_modes(
+        bytes,
+        vendor,
+        product,
+        include_buttons,
+        include_tuning,
+        include_lighting,
+        &MacroModes::new(),
+    )
+}
+pub fn prepare_selected_modes(
+    bytes: &[u8],
+    vendor: u16,
+    product: u16,
+    include_buttons: bool,
+    include_tuning: bool,
+    include_lighting: bool,
+    modes: &MacroModes,
 ) -> Result<Prepared> {
     let model = atk::model(vendor, product)
         .filter(|m| m.native_macros && matches!(m.brand.as_str(), "atk" | "vxe" | "vgn"))
@@ -171,8 +209,11 @@ pub fn prepare_selected(
         })
         .collect();
     let mut settings = vec![Setting::Dpi(dpi), Setting::ReportRate(rate)];
+    let mut macros = vec![];
     if include_buttons {
-        settings.extend(buttons(&root, model.buttons)?);
+        let (bindings, definitions) = buttons_with_modes(&root, model.buttons, modes)?;
+        settings.extend(bindings);
+        macros = definitions;
     }
     if include_tuning {
         settings.push(extras::tuning(mouse, model)?);
@@ -200,7 +241,7 @@ pub fn prepare_selected(
             vendor,
             product,
             settings,
-            macros: vec![],
+            macros,
             source: None,
         }),
         app_path: None,
@@ -235,6 +276,12 @@ pub fn prepare_selected(
             excluded.push("DPI 灯效与色表");
         }
         format!("本次转换{}。独立左键保持原值；单键/组合键使用原厂快捷键表。未导入：{}。未选择或未开放的设置保留鼠标原值；未知或无效的已选字段会拒绝导入。导入不会自动应用。",included.join("、"),excluded.join("、"))
+    };
+    let count = profile.multi.as_ref().map(|p| p.macros.len()).unwrap_or(0);
+    let note = if count > 0 {
+        format!("{note} 本次导入 {count} 份按键宏方案，名称保存在配置中心，播放方式按逐键确认。零延时按此原厂版本实际写入规则转为 1 ms。未绑定宏条目不在本次范围；已绑定宏含不支持事件时拒绝整份按键转换。")
+    } else {
+        note
     };
     Ok(Prepared {
         profile,
@@ -279,7 +326,15 @@ fn triplet(value: &Value) -> Result<[u8; 3]> {
         integer(&a[2], "按键附加值", 255)? as u8,
     ])
 }
+#[cfg(test)]
 fn buttons(root: &Value, count: u16) -> Result<Vec<Setting>> {
+    buttons_with_modes(root, count, &MacroModes::new()).map(|v| v.0)
+}
+fn buttons_with_modes(
+    root: &Value,
+    count: u16,
+    modes: &MacroModes,
+) -> Result<(Vec<Setting>, Vec<gearwise_core::profile::Macro>)> {
     let layers = root["keyActions"]
         .as_array()
         .filter(|a| a.len() == 1)
@@ -300,6 +355,7 @@ fn buttons(root: &Value, count: u16) -> Result<Vec<Setting>> {
         [1, 16, 0],
         [2, 1, 0],
     ];
+    let mut definitions = vec![];
     let mut mapped = std::collections::BTreeMap::new();
     for item in items {
         let def = triplet(&item["defaultKey"])?;
@@ -321,7 +377,19 @@ fn buttons(root: &Value, count: u16) -> Result<Vec<Setting>> {
             .wrapping_sub(raw[0])
             .wrapping_sub(raw[1])
             .wrapping_sub(raw[2]);
-        let action = if raw == [5, 0, 0] {
+        let action = if raw[0] == 6 {
+            if raw[1] >= 12 {
+                return Err("未知原厂宏槽".into());
+            }
+            let button = index as u16 + 1;
+            let mode = modes.get(&button).copied().ok_or_else(|| {
+                format!("请先确认按键 {button} 的宏播放方式；文件编码存在歧义，未自动选择")
+            })?;
+            let m = macro_file::parse(root, raw[1], button, mode)?;
+            let action = gearwise_core::model::ButtonAction::Macro(m.id.clone());
+            definitions.push(m);
+            action
+        } else if raw == [5, 0, 0] {
             let names = ["left", "right", "center", "side1", "side2", "bottom"];
             let value = &root["deviceConfig"]["mouseConfig"]["shortcutAction"][names[index]];
             shortcut_chord(value)
@@ -337,15 +405,99 @@ fn buttons(root: &Value, count: u16) -> Result<Vec<Setting>> {
         };
         mapped.insert(index, action);
     }
-    Ok(mapped
-        .into_iter()
-        .filter(|(index, _)| *index != 0 && *index < usize::from(count))
-        .map(|(index, action)| Setting::Button {
-            id: index as u16 + 1,
-            action,
-        })
-        .collect())
+    Ok((
+        mapped
+            .into_iter()
+            .filter(|(index, _)| *index != 0 && *index < usize::from(count))
+            .map(|(index, action)| Setting::Button {
+                id: index as u16 + 1,
+                action,
+            })
+            .collect(),
+        definitions,
+    ))
 }
 #[cfg(test)]
 #[path = "compx_file_import_tests.rs"]
 mod tests;
+
+fn digest(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    format!("{:x}", Sha256::digest(bytes))
+}
+fn source_file(path: &std::path::Path) -> Result<Vec<u8>> {
+    if !path
+        .extension()
+        .is_some_and(|v| v.eq_ignore_ascii_case("bin"))
+    {
+        return Err("请选择 ATK HUB 导出的 .bin 文件".into());
+    }
+    crate::mhub_full::read_explicit_file(path)
+}
+pub fn prepare_reviewed_file(
+    path: &std::path::Path,
+    v: u16,
+    p: u16,
+    b: bool,
+    t: bool,
+    l: bool,
+    modes: &MacroModes,
+    expected: Option<&str>,
+) -> Result<Prepared> {
+    let bytes = source_file(path)?;
+    if expected.is_some_and(|hash| hash != digest(&bytes)) {
+        return Err("所选文件在核对后已改变，请重新选择并确认宏播放方式".into());
+    }
+    prepare_selected_modes(&bytes, v, p, b, t, l, modes)
+}
+pub fn inspect_macros(path: &std::path::Path, v: u16, p: u16) -> Result<Inspection> {
+    let bytes = source_file(path)?;
+    let modes = (2..=6)
+        .map(|i| (i, gearwise_core::profile::MacroMode::Once))
+        .collect();
+    let draft = prepare_selected_modes(&bytes, v, p, true, false, false, &modes)?;
+    let StrictValue(root) = serde_json::from_slice(&decode(&bytes)?).map_err(|e| e.to_string())?;
+    let plan = draft.profile.multi.unwrap();
+    let mut refs = vec![];
+    let defaults = [
+        [1, 1, 0],
+        [1, 2, 0],
+        [1, 4, 0],
+        [1, 8, 0],
+        [1, 16, 0],
+        [2, 1, 0],
+    ];
+    for item in root["keyActions"][0][0]
+        .as_array()
+        .ok_or("缺少实体按键表")?
+    {
+        let def = triplet(&item["defaultKey"])?;
+        let raw = triplet(&item["changeKey"])?;
+        if raw[0] != 6 {
+            continue;
+        }
+        let button = defaults
+            .iter()
+            .position(|v| v == &def)
+            .ok_or("未知实体按键")? as u16
+            + 1;
+        let m = plan
+            .macros
+            .iter()
+            .find(|m| m.id == format!("atk-file:slot:{}:button:{button}", raw[1]))
+            .ok_or("宏正文未完整转换")?;
+        refs.push(MacroRef {
+            button,
+            slot: raw[1],
+            name: m.name.clone(),
+            stored_code: raw[2],
+            steps: m.steps.len(),
+            events: m.steps.clone(),
+        });
+    }
+    refs.sort_by_key(|r| r.button);
+    Ok(Inspection {
+        sha256: digest(&bytes),
+        refs,
+    })
+}

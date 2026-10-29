@@ -800,3 +800,277 @@ fn browser_ordered_sequence_import_and_edit_preserve_every_event() {
         assert!(d.macro_definitions().is_empty());
     }
 }
+
+fn macro_fixture(m: &atk::Model) -> Value {
+    let mut f = extras_fixture(m);
+    f["keyActions"][0][0][4]["changeKey"] = json!([6, 0, 1]);
+    f["keyActions"][0][0][2]["changeKey"] = json!([6, 0, 254]);
+    f["deviceConfig"]["macroList"] = json!([{"name":"原厂连招","type":0,"frequency":0,"actions":[{"type":0,"keyStatus":0,"keyCode":224,"delay":37},{"type":1,"keyStatus":0,"keyCode":6,"delay":45},{"type":0,"keyStatus":1,"keyCode":224,"delay":15},{"type":1,"keyStatus":1,"keyCode":6,"delay":0}]}]);
+    f
+}
+fn confirmed_modes() -> MacroModes {
+    [
+        (2, gearwise_core::profile::MacroMode::Once),
+        (4, gearwise_core::profile::MacroMode::Repeat(3)),
+    ]
+    .into_iter()
+    .collect()
+}
+#[test]
+fn reviewed_macro_bodies_keep_names_event_order_delays_and_per_binding_modes() {
+    let mut cases = vec![];
+    for m in models() {
+        let f = macro_fixture(m);
+        let bytes = encode(&serde_json::to_vec(&f).unwrap());
+        assert!(prepare_selected_modes(
+            &bytes,
+            m.vendor,
+            m.product,
+            true,
+            false,
+            false,
+            &MacroModes::new()
+        )
+        .unwrap_err()
+        .contains("确认"));
+        let prepared = prepare_selected_modes(
+            &bytes,
+            m.vendor,
+            m.product,
+            true,
+            false,
+            false,
+            &confirmed_modes(),
+        )
+        .unwrap();
+        let plan = prepared.profile.multi.as_ref().unwrap();
+        assert_eq!(plan.macros.len(), 2);
+        assert_eq!(plan.macros[0].name, "原厂连招");
+        assert_eq!(plan.macros[1].name, "原厂连招");
+        assert!(plan
+            .macros
+            .iter()
+            .any(|m| m.mode == gearwise_core::profile::MacroMode::Repeat(3)));
+        assert!(plan.macros.iter().all(|m| m
+            .steps
+            .contains(&gearwise_core::profile::MacroStep::Delay(37))
+            && m.steps.last() == Some(&gearwise_core::profile::MacroStep::Delay(1))));
+        let c = crate::multibrand::compile(plan).unwrap();
+        assert!(!c.software_input);
+        let (mut d, _) = atk::simulated(m.product).unwrap();
+        d.set_macro_definitions(&plan.macros).unwrap();
+        for s in c.settings {
+            d.apply(&s).unwrap();
+        }
+        let state = d.read_state().unwrap();
+        for (id, mode) in confirmed_modes() {
+            let gearwise_core::model::ButtonAction::Macro(key) = &state.buttons[&id] else {
+                panic!("macro binding missing")
+            };
+            let defs = d.macro_definitions();
+            let actual = defs.iter().find(|m| &m.id == key).unwrap();
+            assert_eq!(actual.mode, mode);
+            assert_eq!(actual.steps, plan.macros[0].steps);
+        }
+        let json = serde_json::to_vec(&prepared.profile).unwrap();
+        crate::profile_transfer::validate(&serde_json::from_slice(&json).unwrap()).unwrap();
+        let path =
+            std::env::temp_dir().join(format!("macro-inspect-{}.bin", crate::profiles::new_id()));
+        std::fs::write(&path, &bytes).unwrap();
+        let inspected = inspect_macros(&path, m.vendor, m.product).unwrap();
+        assert_eq!(inspected.refs.len(), 2);
+        assert_eq!(inspected.refs[0].stored_code, 1);
+        assert_eq!(inspected.refs[1].stored_code, 254);
+        assert_eq!(inspected.refs[0].events, plan.macros[0].steps);
+        let inspection = serde_json::to_value(&inspected).unwrap();
+        std::fs::remove_file(path).unwrap();
+        cases.push(json!({"vendor":m.vendor,"product":m.product,"prepared":prepared,"inspection":inspection}));
+    }
+    if let Some(path) = std::env::var_os("OPEN_HUB_COMPX_MACRO_FILE_FIXTURES") {
+        std::fs::write(path, serde_json::to_vec_pretty(&cases).unwrap()).unwrap();
+    }
+}
+#[test]
+fn macro_file_fingerprint_prevents_stale_review_and_invalid_or_missing_bodies_reject() {
+    let m = models().next().unwrap();
+    let f = macro_fixture(m);
+    let root = std::env::temp_dir().join(format!("macro-review-{}.bin", crate::profiles::new_id()));
+    std::fs::write(&root, encode(&serde_json::to_vec(&f).unwrap())).unwrap();
+    let inspection = inspect_macros(&root, m.vendor, m.product).unwrap();
+    assert!(prepare_reviewed_file(
+        &root,
+        m.vendor,
+        m.product,
+        true,
+        false,
+        false,
+        &confirmed_modes(),
+        Some(&inspection.sha256)
+    )
+    .is_ok());
+    let mut changed = f.clone();
+    changed["deviceConfig"]["macroList"][0]["name"] = json!("changed");
+    std::fs::write(&root, encode(&serde_json::to_vec(&changed).unwrap())).unwrap();
+    assert!(prepare_reviewed_file(
+        &root,
+        m.vendor,
+        m.product,
+        true,
+        false,
+        false,
+        &confirmed_modes(),
+        Some(&inspection.sha256)
+    )
+    .unwrap_err()
+    .contains("已改变"));
+    std::fs::remove_file(root).unwrap();
+    for (pointer, bad) in [
+        ("/deviceConfig/macroList", json!(null)),
+        ("/deviceConfig/macroList/0/actions", json!([])),
+        ("/deviceConfig/macroList/0/actions/0/type", json!(3)),
+        ("/deviceConfig/macroList/0/actions/0/keyCode", json!(1)),
+        ("/deviceConfig/macroList/0/actions/0/delay", json!(65536)),
+        ("/deviceConfig/macroList/0/actions/0/keyStatus", json!(3)),
+    ] {
+        let mut v = f.clone();
+        *v.pointer_mut(pointer).unwrap() = bad;
+        let bytes = encode(&serde_json::to_vec(&v).unwrap());
+        assert!(
+            prepare_selected_modes(
+                &bytes,
+                m.vendor,
+                m.product,
+                true,
+                false,
+                false,
+                &confirmed_modes()
+            )
+            .is_err(),
+            "{pointer}"
+        );
+        assert!(prepare_selected_modes(
+            &bytes,
+            m.vendor,
+            m.product,
+            false,
+            false,
+            false,
+            &MacroModes::new()
+        )
+        .is_ok());
+    }
+}
+#[test]
+fn canonical_media_body_keeps_release_delay_and_noncanonical_hold_is_not_shortened() {
+    let m = models().next().unwrap();
+    let mut f = macro_fixture(m);
+    f["deviceConfig"]["macroList"][0]["actions"] = json!([{"type":2,"keyStatus":0,"keyCode":205,"delay":1},{"type":2,"keyStatus":1,"keyCode":205,"delay":37}]);
+    let p = prepare_selected_modes(
+        &encode(&serde_json::to_vec(&f).unwrap()),
+        m.vendor,
+        m.product,
+        true,
+        false,
+        false,
+        &confirmed_modes(),
+    )
+    .unwrap();
+    assert_eq!(
+        p.profile.multi.unwrap().macros[0].steps,
+        vec![
+            gearwise_core::profile::MacroStep::Media(205),
+            gearwise_core::profile::MacroStep::Delay(37)
+        ]
+    );
+    f["deviceConfig"]["macroList"][0]["actions"][0]["delay"] = json!(40);
+    assert!(prepare_selected_modes(
+        &encode(&serde_json::to_vec(&f).unwrap()),
+        m.vendor,
+        m.product,
+        true,
+        false,
+        false,
+        &confirmed_modes()
+    )
+    .is_err());
+}
+#[test]
+#[ignore = "requires current reviewed macro file UI saves"]
+fn browser_reviewed_macro_file_profiles_execute_all_confirmed_modes_and_original_events() {
+    let profiles: Vec<Profile> = serde_json::from_slice(
+        &std::fs::read(std::env::var_os("OPEN_HUB_COMPX_MACRO_FILE_UI_PROFILES").unwrap()).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(profiles.len(), atk::native_test_count());
+    for p in profiles {
+        crate::profile_transfer::validate(&p).unwrap();
+        let plan = p.multi.unwrap();
+        assert_eq!(plan.macros.len(), 2);
+        assert!(plan.macros.iter().all(|m| m.name == "原厂连招"));
+        let c = crate::multibrand::compile(&plan).unwrap();
+        let (mut d, _) = atk::simulated(plan.product).unwrap();
+        d.set_macro_definitions(&plan.macros).unwrap();
+        for s in c.settings {
+            d.apply(&s).unwrap();
+        }
+        let state = d.read_state().unwrap();
+        for (id, mode) in confirmed_modes() {
+            let gearwise_core::model::ButtonAction::Macro(key) = &state.buttons[&id] else {
+                panic!("macro missing")
+            };
+            let defs = d.macro_definitions();
+            let m = defs.iter().find(|m| &m.id == key).unwrap();
+            assert_eq!(m.mode, mode);
+            assert_eq!(m.steps, plan.macros[0].steps);
+        }
+    }
+}
+
+#[test]
+fn all_supported_confirmed_modes_override_ambiguous_file_numbers_without_guessing() {
+    let m = models().find(|m| m.product == 0x113e).unwrap();
+    for code in [0, 1, 254, 255] {
+        for mode in [
+            gearwise_core::profile::MacroMode::Once,
+            gearwise_core::profile::MacroMode::WhileHeld,
+            gearwise_core::profile::MacroMode::Toggle,
+            gearwise_core::profile::MacroMode::Repeat(7),
+        ] {
+            let mut f = macro_fixture(m);
+            f["keyActions"][0][0][4]["changeKey"][2] = json!(code);
+            let mut modes = confirmed_modes();
+            modes.insert(2, mode);
+            let p = prepare_selected_modes(
+                &encode(&serde_json::to_vec(&f).unwrap()),
+                m.vendor,
+                m.product,
+                true,
+                false,
+                false,
+                &modes,
+            )
+            .unwrap();
+            let plan = p.profile.multi.unwrap();
+            let setting = plan
+                .settings
+                .iter()
+                .find(|s| matches!(s, Setting::Button { id: 2, .. }))
+                .unwrap();
+            let (mut d, _) = atk::simulated(m.product).unwrap();
+            d.set_macro_definitions(&plan.macros).unwrap();
+            d.apply(setting).unwrap();
+            let state = d.read_state().unwrap();
+            let gearwise_core::model::ButtonAction::Macro(key) = &state.buttons[&2] else {
+                panic!("missing")
+            };
+            assert_eq!(
+                d.macro_definitions()
+                    .iter()
+                    .find(|m| &m.id == key)
+                    .unwrap()
+                    .mode,
+                mode
+            );
+        }
+    }
+}
