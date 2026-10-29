@@ -19,6 +19,8 @@ mod macro_transaction;
 mod tuning;
 #[path="atk_tuning_transaction.rs"]
 mod tuning_transaction;
+#[path="atk_lighting_transaction.rs"]
+mod lighting_transaction;
 #[path="atk_indicator.rs"]
 mod indicator;
 #[path="atk_battery.rs"]
@@ -833,38 +835,8 @@ impl Device for Atk {
                 }
                 self.write_verified(96 + (id - 1) * 4, &button_bytes(action, *id)?)?;
             }
-            Setting::DpiColor {stage,color}=>{
-                let address=44+u16::from(*stage)*4;
-                let current=self.read(address,4)?;
-                if sum(&current)!=0x55 {return Err(Error::invalid("COMPX original DPI color checksum; unknown row retained"));}
-                let next=[color.r,color.g,color.b,0x55u8.wrapping_sub(color.r).wrapping_sub(color.g).wrapping_sub(color.b)];
-                self.write_verified(address,&next)?;
-            }
-            Setting::Lighting { state, .. } => {
-                let mut row = self.read(76, 8)?;
-                if let LightingEffect::Static { color } = state.effect {
-                    let sys = self.read(0, 10)?;
-                    let active = checked_pair(&sys[4..6])?;
-                    if active >= checked_pair(&sys[2..4])? {
-                        return Err(Error::invalid("ATK active DPI color index"));
-                    }
-                    let p = [
-                        color.r,
-                        color.g,
-                        color.b,
-                        0x55u8
-                            .wrapping_sub(color.r)
-                            .wrapping_sub(color.g)
-                            .wrapping_sub(color.b),
-                    ];
-                    self.write_verified(44 + u16::from(active) * 4, &p)?;
-                    row[..2].copy_from_slice(&pair(1));
-                    row[6..8].copy_from_slice(&pair(1));
-                } else {
-                    row[6..8].copy_from_slice(&pair(0));
-                }
-                self.write_verified(76, &row)?;
-            }
+            Setting::DpiColor {stage,color}=>self.apply_palette_color(*stage,*color)?,
+            Setting::Lighting { state, .. } =>self.apply_legacy_light(state)?,
             _ => unreachable!(),
         }
         Ok(())
@@ -1536,3 +1508,5 @@ mod x1lite_tests;
 mod tuning_transaction_tests;
 
 #[cfg(test)]#[path="atk_shortcut_tests.rs"]mod shortcut_tests;
+
+#[cfg(test)]#[path="atk_lighting_transaction_tests.rs"]mod lighting_transaction_tests;

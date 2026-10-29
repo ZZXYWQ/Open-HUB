@@ -207,8 +207,9 @@ fn damaged_readback_restores_only_original_eight_bytes() {
     assert_eq!(&writes[1][6..14], before.as_slice());
 }
 #[test]
-fn short_write_returns_uncertain_error_without_automatic_resend() {
+fn short_write_restores_original_only_after_complete_lighting_state_check() {
     let (mut d, log) = memory_device(0x1017).unwrap();
+    let before = d.read_blob(0, 768 + 12 * 384).unwrap();
     d.io = Box::new(Fault {
         inner: d.io,
         identity: false,
@@ -217,8 +218,12 @@ fn short_write_returns_uncertain_error_without_automatic_resend() {
         used: false,
     });
     log.lock().unwrap().clear();
-    assert!(d.apply(&Setting::DpiIndicator(value())).is_err());
-    assert_eq!(sets(&log).len(), 1);
+    let error = d.apply(&Setting::DpiIndicator(value())).unwrap_err().to_string();
+    assert!(error.contains("original lighting rows restored and verified"));
+    let writes = sets(&log);
+    assert_eq!(writes.len(), 2);
+    assert_eq!(&writes[1][6..14], &before[76..84]);
+    assert_eq!(d.read_blob(0, before.len()).unwrap(), before);
 }
 #[test]
 fn legacy_lighting_off_static_keeps_original_levels() {

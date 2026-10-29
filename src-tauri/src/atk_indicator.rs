@@ -70,9 +70,6 @@ pub(super) fn encode(value: &DpiIndicatorState) -> [u8; 8] {
 impl Atk {
     pub(super) fn apply_indicator(&mut self, value: &DpiIndicatorState) -> Result<()> {
         validate_indicator_state(self.model.vendor, self.model.product, value)?;
-        self.identify()?;
-        decode(&self.read(76, 8)?)?;
-        // write_verified compares the complete eight-byte row before accepting it.
-        self.write_verified(76, &encode(value))
+        self.apply_indicator_row(value)
     }
 }

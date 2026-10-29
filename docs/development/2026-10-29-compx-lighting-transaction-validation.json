@@ -1,0 +1,115 @@
+{
+  "date": "2026-10-29",
+  "model_scope": {
+    "legacy_off_static": [
+      {
+        "vendor": 14139,
+        "product": 4119,
+        "name": "ATK X1 Pro Max · USB"
+      },
+      {
+        "vendor": 13652,
+        "product": 62863,
+        "name": "VXE 蜻蜓 R1 · USB"
+      },
+      {
+        "vendor": 13652,
+        "product": 62860,
+        "name": "VXE 蜻蜓 R1 Pro · USB"
+      },
+      {
+        "vendor": 13652,
+        "product": 62722,
+        "name": "VGN 蜻蜓 F1 Pro · USB"
+      },
+      {
+        "vendor": 13652,
+        "product": 62726,
+        "name": "VGN 蜻蜓 F1 Pro Max · USB"
+      },
+      {
+        "vendor": 13652,
+        "product": 62727,
+        "name": "Pulsar X2 V2 Mini · USB"
+      },
+      {
+        "vendor": 13652,
+        "product": 62728,
+        "name": "Pulsar X2 V2 Mini · 1K receiver"
+      },
+      {
+        "vendor": 14139,
+        "product": 4414,
+        "name": "ATK X1 Lite · USB"
+      }
+    ],
+    "palette_and_indicator": [
+      {
+        "vendor": 14139,
+        "product": 4119,
+        "name": "ATK X1 Pro Max · USB"
+      },
+      {
+        "vendor": 13652,
+        "product": 62863,
+        "name": "VXE 蜻蜓 R1 · USB"
+      },
+      {
+        "vendor": 13652,
+        "product": 62860,
+        "name": "VXE 蜻蜓 R1 Pro · USB"
+      },
+      {
+        "vendor": 13652,
+        "product": 62722,
+        "name": "VGN 蜻蜓 F1 Pro · USB"
+      },
+      {
+        "vendor": 13652,
+        "product": 62726,
+        "name": "VGN 蜻蜓 F1 Pro Max · USB"
+      },
+      {
+        "vendor": 14139,
+        "product": 4414,
+        "name": "ATK X1 Lite · USB"
+      }
+    ]
+  },
+  "models_added": 0,
+  "full_accepted": 0,
+  "guarded_rows": {
+    "system": [
+      0,
+      10
+    ],
+    "palette": [
+      44,
+      32
+    ],
+    "indicator": [
+      76,
+      8
+    ]
+  },
+  "new_default_tests": 6,
+  "default_results": {
+    "passed": 1058,
+    "failed": 0,
+    "ignored": 92
+  },
+  "explicit_replay": {
+    "test": "browser_selected_extras_saved_profiles_import_and_execute_exact_categories",
+    "passed": 1
+  },
+  "ui": "headless Edge; ten OEM-selected light/performance saved profiles; mocked IPC, devices and dialog",
+  "build": "native development passed, six existing warnings",
+  "private_logs": "outputs/100-model-development/2026-10-29-compx-lighting-transaction-{focused,all,ui,replay,build}.log",
+  "limitations": [
+    "No physical HID or OS input",
+    "No verified physical lighting timing",
+    "No atomic or race-free firmware claim",
+    "Nonlighting write_verified paths unchanged",
+    "No new installer, version or release"
+  ]
+}

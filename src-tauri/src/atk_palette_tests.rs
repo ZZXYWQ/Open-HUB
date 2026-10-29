@@ -258,8 +258,9 @@ fn bad_readback_attempts_only_original_row_restore() {
     assert_eq!(d.read(44, 4).unwrap(), original);
 }
 #[test]
-fn uncertain_short_write_is_error_without_automatic_retry() {
+fn short_write_restores_original_color_only_after_complete_lighting_state_check() {
     let (mut d, log) = memory_device(0x1017).unwrap();
+    let before = d.read_blob(0, 768 + 12 * 384).unwrap();
     d.io = Box::new(Fault {
         inner: d.io,
         identity: false,
@@ -268,11 +269,10 @@ fn uncertain_short_write_is_error_without_automatic_retry() {
         used: false,
     });
     log.lock().unwrap().clear();
-    assert!(d
-        .apply(&Setting::DpiColor {
-            stage: 0,
-            color: rgb(0)
-        })
-        .is_err());
-    assert_eq!(sets(&log).len(), 1);
+    let error = d.apply(&Setting::DpiColor { stage: 0, color: rgb(0) }).unwrap_err().to_string();
+    assert!(error.contains("original lighting rows restored and verified"));
+    let writes = sets(&log);
+    assert_eq!(writes.len(), 2);
+    assert_eq!(&writes[1][6..10], &before[44..48]);
+    assert_eq!(d.read_blob(0, before.len()).unwrap(), before);
 }
