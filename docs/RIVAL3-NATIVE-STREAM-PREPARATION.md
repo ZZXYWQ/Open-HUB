@@ -27,3 +27,5 @@ The descriptor also serializes15 button slots while the actual frontend exposes 
 ## Verification
 
 Production memory transports verify independent full batch bytes and padding, ordinary path for184C, first-apply template exclusion, previous/next dimmed/off/dynamic exclusions, both partial batch failures with no retries and complete recovery, separate identical device sessions, reconnect priming reset, and generic static-zone color preservation. The existing shared Rival3 command test is updated to verify the complete initial writes followed by the source-backed batch packet. Full test results are recorded in development/2026-10-29-rival3-batch-validation.json.
+
+Follow-up: [native sequencer rules and bounded state core](RIVAL3-SEQUENCE-CLOCK.md) now have instruction-level evidence. The playback worker and complete GG dynamic application remain unfinished.

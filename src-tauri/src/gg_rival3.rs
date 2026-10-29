@@ -103,31 +103,19 @@ fn lights(s: &Value) -> Result<Setting, String> {
         let sequence = s
             .get(format!("rival_{name}_color_sequence"))
             .ok_or("GG Rival3 缺少灯区颜色序列")?;
-        shape(sequence, &["data", "repeat"])?;
-        let frames = sequence
-            .get("data")
-            .and_then(Value::as_array)
-            .ok_or("GG Rival3 颜色序列格式无效")?;
-        let repeat = field(sequence, "repeat")?;
-        if !matches!(repeat, 0 | 255) || frames.len() > 4096 {
+        let sequence = gearwise_steelseries::rival3_sequence::Sequence::decode(sequence)
+            .map_err(|e| e.to_string())?;
+        if !matches!(sequence.repeat, 0 | 255) {
             return Err("GG Rival3 颜色序列播放方式尚未转换".into());
         }
-        for frame in frames {
-            let arr = frame.as_array().ok_or("GG Rival3 颜色帧不是 RGB")?;
-            if arr.len() != 3 {
-                return Err("GG Rival3 颜色帧长度无效".into());
-            }
-            let expected = [rgb.r, rgb.g, rgb.b];
-            for (a, b) in arr.iter().zip(expected) {
-                if number(a)? != u32::from(b) {
-                    return Err(
-                        "GG Rival3 动态主机颜色序列尚未完整移植，不能冒充原生预设或只导入 DPI"
-                            .into(),
-                    );
-                }
+        for frame in &sequence.frames {
+            if *frame != [rgb.r, rgb.g, rgb.b] {
+                return Err(
+                    "GG Rival3 动态主机颜色序列尚未完整移植，不能冒充原生预设或只导入 DPI".into(),
+                );
             }
         }
-        if !frames.is_empty() && repeat != 255 {
+        if !sequence.frames.is_empty() && sequence.repeat != 255 {
             return Err("GG Rival3 有限颜色序列的停止行为尚未转换".into());
         }
     }

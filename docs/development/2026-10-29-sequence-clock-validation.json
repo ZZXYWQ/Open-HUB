@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-29",
+  "scope": "Reviewed native sequencer state core and shared GG color-frame decoder; no live animation worker",
+  "partial_models": 43,
+  "complete_models": 0,
+  "hardware_tested": false,
+  "main_tests": {
+    "passed": 1083,
+    "failed": 0,
+    "ignored": 97
+  },
+  "shared_tests": {
+    "unit_passed": 397,
+    "doc_passed": 1,
+    "failed": 0
+  },
+  "new_sequence_test_groups": 4,
+  "independent_native_instruction_anchors_verified": 10,
+  "original_default_source_rejection_test": 1,
+  "saved_browser_profile_replay_test": 1,
+  "vendor_executed": false,
+  "live_HID_opened": false,
+  "native_clock_race_reproduced": false,
+  "go_argument_mapping_complete": false,
+  "dynamic_application_enabled": false,
+  "temporary_Ghidra_projects_removed": true,
+  "installer_created": false,
+  "release_created": false
+}

@@ -1,0 +1,145 @@
+{
+  "source": "Local official SteelSeries GG122 static native/Go analysis; target never executed",
+  "native_dll": {
+    "name": "SSEdevice.dll",
+    "sha256": "50284715f971c6daea99bbe714caad9de329a681eb8f54915081777c4ce1264a",
+    "image_base": "0x180000000",
+    "exports": [
+      {
+        "name": "Sequencer_DeleteSequence",
+        "address": "0x1800071b0"
+      },
+      {
+        "name": "Sequencer_Initialize",
+        "address": "0x180006ab0"
+      },
+      {
+        "name": "Sequencer_LockoutDeviceForPrismSyncV2",
+        "address": "0x1800077a0"
+      },
+      {
+        "name": "Sequencer_NewSequence",
+        "address": "0x180006b80"
+      },
+      {
+        "name": "Sequencer_ResumeSequence",
+        "address": "0x180007480"
+      },
+      {
+        "name": "Sequencer_StartSequence",
+        "address": "0x1800072a0"
+      },
+      {
+        "name": "Sequencer_StopDevice",
+        "address": "0x180007780"
+      },
+      {
+        "name": "Sequencer_StopSequence",
+        "address": "0x180007650"
+      },
+      {
+        "name": "Sequencer_UnlockDeviceForPrismSyncV2",
+        "address": "0x1800079b0"
+      }
+    ]
+  },
+  "go_engine": {
+    "sha256": "c1b8e182e62c8bb6667a3c678394c4d6363a532409f3de5a8fd7a31fdf0c0ec1",
+    "native_cgo_wrapper": "0x1403fc380",
+    "write_sequence": "0x14047abc0",
+    "step_length_setter": "0x140490d40",
+    "go_argument_layout_and_default_step_not_fully_resolved": true
+  },
+  "native_fields": {
+    "repeat": "u8@0x14",
+    "frame_index": "u32@0x98",
+    "completed": "u8@0x9c",
+    "frame_count": "u32@0xa0",
+    "bytes_per_frame": "u32@0xa4",
+    "clock_phase": "u32@0xa8",
+    "step_ms": "u32@0xac",
+    "last_tick_ms": "u64@0xb0",
+    "running": "u8@0xb8",
+    "terminate": "u8@0xb9",
+    "pending": "u32@0xbc"
+  },
+  "worker": "0x18003d100",
+  "scheduler": "0x18003d420",
+  "anchors": [
+    {
+      "address": "0x18003d22b",
+      "bytes": "807b14ff",
+      "instruction": "CMP byte ptr [RBX + 0x14],0xff",
+      "meaning": "native repeat byte255 chooses shared-clock phase path"
+    },
+    {
+      "address": "0x18003d237",
+      "bytes": "3983a8000000",
+      "instruction": "CMP dword ptr [RBX + 0xa8],EAX",
+      "meaning": "shared phase compared against previous frame for end notification"
+    },
+    {
+      "address": "0x18003d256",
+      "bytes": "898398000000",
+      "instruction": "MOV dword ptr [RBX + 0x98],EAX",
+      "meaning": "frame index replaced by observed scheduler phase"
+    },
+    {
+      "address": "0x18003d269",
+      "bytes": "018398000000",
+      "instruction": "ADD dword ptr [RBX + 0x98],EAX",
+      "meaning": "finite frame index increases by pending tick count"
+    },
+    {
+      "address": "0x18003d27d",
+      "bytes": "fe839c000000",
+      "instruction": "INC byte ptr [RBX + 0x9c]",
+      "meaning": "finite completed-cycle counter increases by one at a boundary"
+    },
+    {
+      "address": "0x18003d28a",
+      "bytes": "3a4314",
+      "instruction": "CMP AL,byte ptr [RBX + 0x14]",
+      "meaning": "completed cycles compared with repeat byte"
+    },
+    {
+      "address": "0x18003d28f",
+      "bytes": "c7839800000000000000",
+      "instruction": "MOV dword ptr [RBX + 0x98],0x0",
+      "meaning": "another cycle resets frame index to zero"
+    },
+    {
+      "address": "0x18003d29d",
+      "bytes": "8683b8000000",
+      "instruction": "XCHG byte ptr [RBX + 0xb8],AL",
+      "meaning": "final cycle clears running flag"
+    },
+    {
+      "address": "0x18003d2b4",
+      "bytes": "0fb683b8000000",
+      "instruction": "MOVZX EAX,byte ptr [RBX + 0xb8]",
+      "meaning": "running flag tested before hardware output"
+    },
+    {
+      "address": "0x18003d2e4",
+      "bytes": "e827b6fcff",
+      "instruction": "CALL 0x180008910",
+      "meaning": "native SendCommand occurs after running gate"
+    }
+  ],
+  "observed_semantics": [
+    "repeat255 uses published shared phase floor(elapsed_ms/step_ms) modulo frame_count",
+    "finite runs advance by queued ticks, increment one cycle at boundary and may skip frames",
+    "finite zero and one repeat both stop at first cycle boundary",
+    "worker builds the old frame before advancing state; final finite packet is suppressed by running gate",
+    "stop clears running without resetting index; start resets index and completed; resume retains them"
+  ],
+  "limits": [
+    "Native phase is published after notifying writer; publication race and exact thread scheduling remain unresolved",
+    "Raw GG repeat/default step mapping across Go ABI still requires review",
+    "No DLL/device execution, physical timing or USB measurement",
+    "No host animation worker, init/shutdown ownership or model UI connected"
+  ],
+  "vendor_pseudocode_distributed": false,
+  "artifact_analyzer": "Local Ghidra12.1.4 and instruction listing; REA native provider not configured"
+}
