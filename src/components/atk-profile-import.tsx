@@ -93,6 +93,7 @@ function macroStepLabel(s:MultiStep):string{
  if('KeyDown'in s||'KeyUp'in s){const down='KeyDown'in s,code='KeyDown'in s?s.KeyDown:s.KeyUp;if(code>=224&&code<=231)return shortcutEventLabel({kind:'Modifier',down,value:1<<(code-224)});return `${KEY_NAMES.find(([v])=>v===code)?.[1]??`HID 0x${code.toString(16)}`} · ${down?'按下':'抬起'}`;}
  if('MouseDown'in s||'MouseUp'in s){const down='MouseDown'in s,name='MouseDown'in s?s.MouseDown:s.MouseUp;return shortcutEventLabel({kind:'Mouse',down,value:({Left:1,Right:2,Middle:4,Back:8,Forward:16})[name]});}
  if('Media'in s)return `媒体键 0x${s.Media.toString(16).toUpperCase()} · 点按`;
+ if('ScrollTimed'in s)return `${s.ScrollTimed.direction==='Up'?'向上滚动':'向下滚动'} · 脉冲 ${s.ScrollTimed.pulse_ms} ms · 归零 ${s.ScrollTimed.settle_ms} ms`;
  if('Scroll'in s)return s.Scroll==='Up'?'向上滚动':'向下滚动';
  return '其他事件（请在宏编辑器核对）';
 }

@@ -132,6 +132,11 @@ impl Playback {
             MacroStep::MouseUp(button) => self.mouse_up(*button),
             MacroStep::Media(usage) => Ok(self.sink().media(*usage)?),
             MacroStep::Scroll(direction) => Ok(self.sink().scroll(0, if matches!(direction, gearwise_core::model::ScrollDirection::Up) {1} else {-1})?),
+            MacroStep::ScrollTimed(v) => {
+                self.sink().scroll(0, if matches!(v.direction, gearwise_core::model::ScrollDirection::Up) {1} else {-1})?;
+                self.delay(Duration::from_millis(u64::from(v.pulse_ms)))?;
+                self.delay(Duration::from_millis(u64::from(v.settle_ms)))
+            },
             MacroStep::Delay(ms) => self.delay(Duration::from_millis(u64::from(*ms))),
             MacroStep::Text(text) => Ok(self.sink().text(text)?),
             MacroStep::WaitForRelease => if self.ctl.wait_release(){Err(Halt::Aborted)}else{Ok(())},
@@ -458,6 +463,13 @@ mod tests {
     #[test]
     fn vertical_macro_scroll_is_one_tick_without_held_input_state(){
         let(p,rec)=setup();p.press(&mac(MacroMode::Once,vec![MacroStep::Scroll(gearwise_core::model::ScrollDirection::Up),MacroStep::Scroll(gearwise_core::model::ScrollDirection::Down)]),"scroll");wait_idle(&p,"scroll");assert_eq!(rec.events(),vec![Event::Scroll(0,1),Event::Scroll(0,-1)]);
+    }
+
+    #[test]
+    fn timed_wheel_emits_one_tick_and_waits_both_intervals_before_the_next_event(){
+        let(p,rec)=setup();let start=std::time::Instant::now();
+        p.press(&mac(MacroMode::Once,vec![MacroStep::ScrollTimed(gearwise_core::profile::TimedScroll{direction:gearwise_core::model::ScrollDirection::Down,pulse_ms:23,settle_ms:29}),MacroStep::KeyDown(4),MacroStep::KeyUp(4)]),"timed-wheel");
+        wait_idle(&p,"timed-wheel");assert!(start.elapsed()>=Duration::from_millis(52));assert_eq!(rec.events(),vec![Event::Scroll(0,-1),Event::KeyDown(4),Event::KeyUp(4)]);
     }
 
     #[test]

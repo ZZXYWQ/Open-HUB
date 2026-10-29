@@ -1,0 +1,49 @@
+{
+  "source_url": "https://bpcdn.atkgear.com/hub-v3/production/3.2.27/static/index-DBE__Npj.js",
+  "sha256": "71a1ba1f86721609328c02ab3e69bfe8acf9e1aed84f328a94eeb1b2955b64b5",
+  "method": "static reading only; no vendor code executed",
+  "offset_unit": "Python Unicode codepoints",
+  "facts": [
+    {
+      "pattern": "async getMacro(){const e=[Ct.Address.macro0",
+      "codepoint_offset": 2114241
+    },
+    {
+      "pattern": "async setMacro(e,n){var m;const o=[Ct.Address.macro0",
+      "codepoint_offset": 2115264
+    },
+    {
+      "pattern": "case Te.Scroll:x=Ct.KeyType.Scroll",
+      "codepoint_offset": 2116180
+    },
+    {
+      "pattern": "g({keyStatus:T,type:Te.Scroll,keyCode:Math.abs(p)})",
+      "codepoint_offset": 3769644
+    },
+    {
+      "pattern": "const $Se={};",
+      "codepoint_offset": 1826521
+    },
+    {
+      "pattern": "a[a.KeyWheelUp=2]",
+      "codepoint_offset": 1599012
+    },
+    {
+      "pattern": "a[a.KeyWheelDown=3]",
+      "codepoint_offset": 1599043
+    }
+  ],
+  "findings": [
+    "COMPX ko.setMacro is at 2115264; generic earlier setMacro overloads belong to other protocol families and are not used as mouse evidence.",
+    "Recorder creates a positive magnitude, direction state2 Up or3 Down.",
+    "COMPX writer ignores magnitude and emits exactly one direction row (value1=1 Up,255 Down), then one neutral row (value1=0). Both rows use f(k.delay,S).",
+    "Pinned sensor map is empty: normalized delay is at least1ms for both rows, including the last source event.",
+    "getMacro separately exports each native row: Up uses negative keyCode; neutral0 is labeled Up. These readback entries cannot be fed back into the typed recorder importer without ambiguity or double expansion.",
+    "Importer admits only positive recorder magnitude and explicit wheel direction; zero/negative, down/up key states and nonintegral magnitudes refuse whole selected button import."
+  ],
+  "limits": [
+    "No physical OEM export or playback evidence",
+    "Only retained pinned COMPX implementation, not all ATK families",
+    "Raw readback neutral coalescing remains unimplemented"
+  ]
+}

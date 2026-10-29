@@ -1076,3 +1076,69 @@ fn all_supported_confirmed_modes_override_ambiguous_file_numbers_without_guessin
         }
     }
 }
+
+#[test]
+fn typed_recorded_wheel_files_preserve_both_native_intervals_and_reviewed_modes() {
+    use gearwise_core::{model::ScrollDirection, profile::{MacroStep,TimedScroll}};
+    let mut cases=vec![];
+    for m in models() {
+        let mut f=macro_fixture(m);
+        f["deviceConfig"]["macroList"][0]["actions"]=json!([
+            {"type":6,"keyStatus":2,"keyCode":120,"delay":37},
+            {"type":6,"keyStatus":3,"keyCode":1,"delay":257},
+            {"type":6,"keyStatus":2,"keyCode":2,"delay":0}
+        ]);
+        let bytes=encode(&serde_json::to_vec(&f).unwrap());
+        let prepared=prepare_selected_modes(&bytes,m.vendor,m.product,true,false,false,&confirmed_modes()).unwrap();
+        let plan=prepared.profile.multi.as_ref().unwrap();
+        let expected=vec![MacroStep::ScrollTimed(TimedScroll{direction:ScrollDirection::Up,pulse_ms:37,settle_ms:37}),MacroStep::ScrollTimed(TimedScroll{direction:ScrollDirection::Down,pulse_ms:257,settle_ms:257}),MacroStep::Scroll(ScrollDirection::Up),MacroStep::Delay(1)];
+        assert!(plan.macros.iter().all(|v|v.steps==expected));
+        let restored: Profile=serde_json::from_slice(&serde_json::to_vec(&prepared.profile).unwrap()).unwrap();
+        crate::profile_transfer::validate(&restored).unwrap();
+        let c=crate::multibrand::compile(plan).unwrap();assert!(!c.software_input);
+        let (mut d,_)=atk::simulated(m.product).unwrap();d.set_macro_definitions(&plan.macros).unwrap();
+        for setting in c.settings {d.apply(&setting).unwrap();}
+        let state=d.read_state().unwrap();
+        for (id,mode) in confirmed_modes() {
+            let gearwise_core::model::ButtonAction::Macro(key)=&state.buttons[&id] else{panic!("wheel macro missing")};
+            assert_eq!(key,&format!("atk-native:0:{}",if id==2{1}else{3}));
+            let actual=d.macro_definitions().into_iter().find(|v|&v.id==key).unwrap();
+            assert_eq!(actual.steps,expected);assert_eq!(actual.mode,mode);
+        }
+        let path=std::env::temp_dir().join(format!("wheel-inspection-{}.bin",crate::profiles::new_id()));
+        std::fs::write(&path,&bytes).unwrap();let inspection=inspect_macros(&path,m.vendor,m.product).unwrap();std::fs::remove_file(path).unwrap();
+        assert!(inspection.refs.iter().all(|r|r.events==expected));
+        cases.push(json!({"vendor":m.vendor,"product":m.product,"prepared":prepared,"inspection":inspection}));
+    }
+    if let Some(path)=std::env::var_os("OPEN_HUB_COMPX_TIMED_SCROLL_FIXTURES"){std::fs::write(path,serde_json::to_vec_pretty(&cases).unwrap()).unwrap();}
+}
+#[test]
+fn wheel_file_readback_neutral_ambiguity_and_unrepresentable_timing_refuse_whole_import() {
+    let m=models().next().unwrap();
+    for bad in [json!({"type":6,"keyStatus":2,"keyCode":0,"delay":37}),json!({"type":6,"keyStatus":2,"keyCode":-1,"delay":37}),json!({"type":6,"keyStatus":2,"keyCode":1.5,"delay":37}),json!({"type":6,"keyStatus":2,"keyCode":65536,"delay":37}),json!({"type":6,"keyStatus":0,"keyCode":1,"delay":37}),json!({"type":6,"keyStatus":3,"keyCode":1,"delay":10001}),json!({"type":1,"keyStatus":2,"keyCode":4,"delay":37})] {
+        let mut f=macro_fixture(m);f["deviceConfig"]["macroList"][0]["actions"]=json!([{"type":6,"keyStatus":3,"keyCode":1,"delay":37},bad]);
+        let bytes=encode(&serde_json::to_vec(&f).unwrap());assert!(prepare_selected_modes(&bytes,m.vendor,m.product,true,false,false,&confirmed_modes()).is_err());
+        assert!(prepare_selected_modes(&bytes,m.vendor,m.product,false,false,false,&MacroModes::new()).is_ok());
+    }
+    for count in [36,70] {let mut f=macro_fixture(m);f["deviceConfig"]["macroList"][0]["actions"]=json!(vec![json!({"type":6,"keyStatus":2,"keyCode":1,"delay":2});count]);let bytes=encode(&serde_json::to_vec(&f).unwrap());assert!(prepare_selected_modes(&bytes,m.vendor,m.product,true,false,false,&confirmed_modes()).is_err());}
+}
+#[test]
+#[ignore="requires current timed wheel UI saves"]
+fn browser_timed_wheel_file_saves_replay_exact_pulse_and_settle_intervals() {
+    let profiles:Vec<Profile>=serde_json::from_slice(&std::fs::read(std::env::var_os("OPEN_HUB_COMPX_TIMED_SCROLL_UI_PROFILES").unwrap()).unwrap()).unwrap();
+    assert_eq!(profiles.len(),atk::native_test_count()*2);
+    for (index,p) in profiles.into_iter().enumerate() {
+        crate::profile_transfer::validate(&p).unwrap();let plan=p.multi.unwrap();
+        if index%2==1 { assert_eq!(plan.macros[0].steps[0],gearwise_core::profile::MacroStep::ScrollTimed(gearwise_core::profile::TimedScroll{direction:gearwise_core::model::ScrollDirection::Down,pulse_ms:73,settle_ms:89})); }
+        let c=crate::multibrand::compile(&plan).unwrap();let(mut d,_)=atk::simulated(plan.product).unwrap();d.set_macro_definitions(&plan.macros).unwrap();
+        for s in c.settings{d.apply(&s).unwrap();}let state=d.read_state().unwrap();
+        for(id,mode)in confirmed_modes(){
+            let gearwise_core::model::ButtonAction::Macro(key)=&state.buttons[&id]else{panic!("missing wheel binding")};
+            let actual=d.macro_definitions().into_iter().find(|m|&m.id==key).unwrap();
+            let expected_key=plan.settings.iter().find_map(|s|if let Setting::Button{id:bid,action:gearwise_core::model::ButtonAction::Macro(key)}=s{(*bid==id).then_some(key)}else{None}).unwrap();
+            let expected=plan.macros.iter().find(|m|&m.id==expected_key).unwrap();
+            assert_eq!(actual.mode,mode);assert_eq!(actual.steps,expected.steps);
+            let slot=if index%2==1&&id==4{1}else{0};assert_eq!(key,&format!("atk-native:{slot}:{}",if id==2{1}else{3}));
+        }
+    }
+}

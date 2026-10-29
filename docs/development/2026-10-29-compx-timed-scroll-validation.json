@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-29",
+  "models_added": 0,
+  "partially_integrated_models": 42,
+  "fully_accepted_models": 0,
+  "native_scope": "ten existing COMPX connection entries, nine distinct mice",
+  "main_tests": {
+    "passed": 1063,
+    "failed": 0,
+    "ignored": 93
+  },
+  "shared_workspace": {
+    "unit_passed": 387,
+    "doc_passed": 1,
+    "failed": 0
+  },
+  "explicit_ui_replay": {
+    "passed": 1,
+    "profiles": 20,
+    "macro_bindings": 40,
+    "includes": "ten reviewed imports plus ten edited and reopened plans; shared programs split only for independently edited binding"
+  },
+  "ui": "current production React in headless Edge, mocked IPC/device inventory/dialog, no physical HID or OS input",
+  "builds": [
+    "frontend TypeScript/Vite passed",
+    "native development passed with six existing warnings"
+  ],
+  "frontend_js_bytes": 852097,
+  "source_audit": "2026-10-29-compx-file-scroll-source.json",
+  "private_logs": "outputs/100-model-development/2026-10-29-compx-timed-scroll-{wheel,all,shared,ui-build,ui,replay,build,old-macro-regression}.log",
+  "limits": [
+    "Typed recorded library wheel events only; negative or zero-magnitude readback records reject",
+    "Power/movement and noncanonical media holds still not imported",
+    "No physical timing or playback equivalence claim",
+    "No installer, release or version update"
+  ]
+}

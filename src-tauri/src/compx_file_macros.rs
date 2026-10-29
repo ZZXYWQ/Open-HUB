@@ -29,8 +29,29 @@ pub(super) fn parse(root: &Value, slot: u8, button: u16, mode: MacroMode) -> Res
         let state = integer(&a["keyStatus"], "宏事件状态", 3)?;
         let delay = integer(&a["delay"], "宏事件延时", 65535)? as u32;
         let delay = delay.max(1);
+        if kind == 6 {
+            // The recorder supplies a positive wheel magnitude. COMPX setMacro
+            // ignores that magnitude and writes one direction/neutral pair.
+            a["keyCode"].as_u64().filter(|n| (1..=65535).contains(n))
+                .ok_or("滚轮记录幅度无效；原厂读回的负数/归零条目尚未自动转换")?;
+            let direction = match state {
+                2 => gearwise_core::model::ScrollDirection::Up,
+                3 => gearwise_core::model::ScrollDirection::Down,
+                _ => return Err("滚轮宏缺少明确方向，未猜测或替换".into()),
+            };
+            if delay == 1 {
+                steps.push(MacroStep::Scroll(direction));
+                steps.push(MacroStep::Delay(1));
+            } else {
+                steps.push(MacroStep::ScrollTimed(gearwise_core::profile::TimedScroll {
+                    direction, pulse_ms: delay as u16, settle_ms: delay as u16,
+                }));
+            }
+            at += 1;
+            continue;
+        }
         if !matches!(state, 0 | 1) {
-            return Err("滚轮方向/中性记录仍需核对，尚未完整转换此宏".into());
+            return Err("非滚轮事件含滚轮状态，未猜测类型".into());
         }
         let key = integer(&a["keyCode"], "宏键值", 255)? as u8;
         let step = match kind {

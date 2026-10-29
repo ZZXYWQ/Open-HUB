@@ -63,6 +63,12 @@ pub fn validate(m: &Macro) -> Result<(), String> {
                 }
             }
             MacroStep::Media(usage) if !gearwise_core::model::media::ALL.iter().any(|(code,_)|code==usage)=>return Err("未知多媒体键码".into()),
+            MacroStep::ScrollTimed(v) => {
+                delay += u64::from(v.pulse_ms) + u64::from(v.settle_ms);
+                if !(2..=10000).contains(&v.pulse_ms) || v.settle_ms > 10000 || delay > 60000 {
+                    return Err("滚轮脉冲为 2–10000 ms，归零延时最多 10000 ms，总延时最多 60 秒".into());
+                }
+            }
             MacroStep::Delay(ms) => {
                 delay += u64::from(*ms);
                 if *ms > 10000 || delay > 60000 {

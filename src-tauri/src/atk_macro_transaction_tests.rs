@@ -413,3 +413,13 @@ fn shared_macro_edit_allocates_separate_body_and_mode_only_edit_stays_in_place()
         assert_eq!(d.read_blob(1152, payload.len()).unwrap(), payload);
     }
 }
+
+#[test]
+fn timed_wheel_long_body_final_data_and_binding_faults_restore_complete_native_state() {
+    use gearwise_core::{model::ScrollDirection,profile::TimedScroll};
+    let mut m=definition();m.steps=vec![MacroStep::ScrollTimed(TimedScroll{direction:ScrollDirection::Down,pulse_ms:37,settle_ms:41});3];
+    for spec in specs(){for nth in [7,8]{for after_effect in [false,true]{
+        let(mut d,_)=memory_device(spec.product).unwrap();let before=d.read_blob(0,768+12*384).unwrap();d.set_macro_definitions(&[m.clone()]).unwrap();
+        let(mut d,count)=instrument(d,vec![(nth,after_effect)],None);let error=d.apply(&action()).unwrap_err().to_string();assert!(error.contains("restored and verified"),"{} {nth} {after_effect}: {error}",spec.name);assert!(count.lock().unwrap().sets>=nth);assert_eq!(d.read_blob(0,before.len()).unwrap(),before);
+    }}}
+}
