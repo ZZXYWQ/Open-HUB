@@ -1274,3 +1274,19 @@ fn dav3pro_name_cannot_bypass_brand_model_or_transport_identity_gate() {
         assert!(convert(&parsed).err().unwrap().contains("仅适配 Naga"));
     }
 }
+
+fn horizontal_payload()->Value{
+    let mut source=payload();for row in source["mappings"].as_array_mut().unwrap(){let second=row["isHyperShift"]==true;let output=match row["inputID"].as_str().unwrap(){"Button4"=>Some(if second{"ScrollRight"}else{"ScrollLeft"}),"Button5"=>Some(if second{"ScrollLeft"}else{"ScrollRight"}),_=>None};if let Some(output)=output{*row=mapping(row["inputID"].as_str().unwrap(),second,"mouseGroup",Some(json!({"mouseAssignment":output})));}}source
+}
+#[test]
+fn horizontal_synapse_outputs_preserve_both_layers_through_native_import_and_store(){
+    let mut cases=vec![];
+    for pid in[0xb6,0xb7]{let source=horizontal_payload();let file=v4(pid,source.clone());let bytes=std::fs::read(&file.0).unwrap();let prepared=prepare(&file.0).unwrap();let profile=prepared.candidates[0].profile.as_ref().unwrap();let plan=profile.multi.as_ref().unwrap();crate::profile_transfer::validate(profile).unwrap();crate::multibrand::validate(plan).unwrap();let(mut d,_)=gearwise_razer::simulated_dav3pro(pid).unwrap();for s in &plan.settings{d.apply(s).unwrap();}let state=d.read_state().unwrap();for(id,code)in[(4,0x68),(5,0x69),(260,0x69),(261,0x68)]{assert_eq!(gearwise_razer::dav3pro_buttons::encode(id,&state.buttons[&id]).unwrap(),[1,1,code,0,0,0,0]);}assert_eq!(std::fs::read(&file.0).unwrap(),bytes);assert!(plan.source.is_none()&&plan.macros.is_empty());cases.push(prepared);}
+    if let Some(path)=std::env::var_os("OPEN_HUB_DAV3PRO_HORIZONTAL_PREPARED"){std::fs::write(path,serde_json::to_vec_pretty(&cases).unwrap()).unwrap();}
+}
+#[test]
+#[ignore="requires horizontal import/editor UI saves"]
+fn browser_horizontal_dav3pro_source_and_editor_saves_execute_each_exact_layer(){
+    let profiles:Vec<Profile>=serde_json::from_slice(&std::fs::read(std::env::var_os("OPEN_HUB_DAV3PRO_HORIZONTAL_UI_PROFILES").unwrap()).unwrap()).unwrap();assert_eq!(profiles.len(),4);
+    for(index,p)in profiles.into_iter().enumerate(){crate::profile_transfer::validate(&p).unwrap();let plan=p.multi.unwrap();crate::multibrand::validate(&plan).unwrap();let(mut d,_)=gearwise_razer::simulated_dav3pro(plan.product).unwrap();for s in &plan.settings{d.apply(s).unwrap();}let state=d.read_state().unwrap();for(id,code)in[(4,if index%2==0{0x68}else{0x69}),(5,0x69),(260,0x69),(261,0x68)]{assert_eq!(gearwise_razer::dav3pro_buttons::encode(id,&state.buttons[&id]).unwrap(),[1,1,code,0,0,0,0]);}assert!(plan.source.is_none()&&plan.macros.is_empty());}
+}

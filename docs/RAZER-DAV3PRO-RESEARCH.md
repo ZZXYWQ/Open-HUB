@@ -73,3 +73,5 @@ Hypershift 后续增量使用独立原生层选择器：普通层为 0，第二�
 后续校准已按B6/B7各自原厂原生实现接通等级与双阈值，不以毫米猜测等级；严格读取、所有权和有条件恢复及实际UI方案回放已覆盖。Synapse4的已证明子集改为保留原始来源并严格转换，稀疏按键不补默认值、未知字段不丢弃，设备级省电/校准在导出中的覆盖规则仍未确认。
 
 独立X/Y狙击DPI后续增量已分别核对B6/B7原生serializer与来源桥；增加明确的ShiftXY动作、两层对应UI和完整来源/存储/生产驱动回放，旧等轴Shift保持兼容，其他型号不自动开放。软件宏的实际事件来源、Fn3/Fn4分配到事件码的关系与接收器逐鼠标身份仍有缺口。[独立XY静态证据](development/razer-dav3pro-shiftxy-static-facts.json)与[本轮验证](development/2026-10-26-shiftxy-waveform-validation.json)分别记录范围。
+
+2026-10-29继续补充[原厂横向滚动输出](DAV3PRO-HORIZONTAL-OUTPUTS.md)：核对B6/B7各自serializer，接通普通/Hypershift两层与严格Synapse导入、编辑保存和原生回放。新研究确认16位宏编号与默认能力标志边界，宏库/输入桥接未因此开放。完整验收数不增加。

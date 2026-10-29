@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-29",
+  "status": "static primary source research; no new macro playback enabled",
+  "official_archive": {
+    "url": "https://cdn.razersynapse.com/1728899625Euq9w9FwRazer_182_0_Setup_v3.9.1130.101413.exe",
+    "sha256": "d5ee1fb1b293e2c8f5a92357494f9c15874970dd89d30d9ff26e4699ecfaaa62"
+  },
+  "b6_native": {
+    "sha256": "caffd8cf48986e3559aca551d9069a36563b77c01e3061373d8b5a4ee223c217",
+    "bytes": 499000,
+    "image_base": "0x10000000"
+  },
+  "horizontal": {
+    "B6_serializer": "0x1004B110 group1 subtype8/9 -> [1,1,0x68/0x69,0,0,0,0]",
+    "B7_serializer": "0x10051780 group1 subtype8/9, retained independent B7 decompilation",
+    "B7_sha256": "a9eb216514f15d8b51db7ffeeffba28b905024d5522863353810a6ae559ceb28",
+    "B7_private_evidence": "ghidra-razer-shiftxy-b7-wire.json",
+    "ui_source": "https://apps.razer.com/synapse/products/182/ui/static/js/main.998a1822.js",
+    "ui_sha256": "c5f739f700e7e1613a7ef27fb862f2b49a727f90dcdb9f6d3d130d8a2a1eccf7",
+    "ui_offsets_codepoints": {
+      "mouse_outputs": 4123600,
+      "onboard_mouseGroup_enabled": 109000,
+      "source_aliases": 4044513
+    }
+  },
+  "new_native_macro_findings": {
+    "protocol_class": "RTTI CProtocol25 vtable0x10061E38 and Storage_Protocol25 vtable0x10063E08; setter slot+0x248 points0x1002E2D0",
+    "storage_conversion": "0x1004BD50 calls0x1004B110 for seven-byte encoding; 100494b0 calls0x100484A0 for inverse conversion.",
+    "macro_records": {
+      "group": "middleware group2",
+      "Count": "03 03 ID_hi ID_lo count 00 00",
+      "Held": "04 02 ID_hi ID_lo 00 00 00",
+      "Toggle": "05 02 ID_hi ID_lo 00 00 00",
+      "Sequence": "0F 02 ID_hi ID_lo 00 00 00"
+    },
+    "id_boundary": "Native macro IDs are16bit. Only GUID-based fallback hashing after failed library lookup at0x100492F0 limits to15bits; this is not a safe allocation/identity algorithm.",
+    "library_cache": "0x1004A8E0 enumerates firmware hybrid-storage macro IDs/names;0x100492F0 resolves GUID metadata to IDs;0x10049290 resolves IDs to cached metadata.",
+    "default_gate": "GetProductConfig export0x10001ED0 returns0x10071308; default product-info pointer at+0x1C is0x10070690, count at+0x20 is1. Default B6 row has flags0x30 at+0x10. CStorage init0x1004A7A0 stores controller vtable+0x64 product-info atthis+0x58; load0x1004A8E0 and GUID lookup0x100492F0 skip when flags bit0x10 is set.",
+    "gate_limit": "Controller getter0x10003E80 can return an override atthis+0x458; default data alone does not establish every runtime configuration or B7 capability. Shared generic firmware methods do not prove this model supports storing macro bodies.",
+    "generic_protocol_methods": {
+      "0x1002CC70": "GET06/80 size2 macro count big endian",
+      "0x1002C710": "GET06/8B chunked macro ID list",
+      "0x1002C880": "GET06/8C chunked macro name/metadata",
+      "0x10029DF0": "SET06/08 ID and32bit length; researched only, not sent"
+    }
+  },
+  "method": "Vendor bytes never executed; REA verified artifact identity but deep provider unavailable. Existing local Ghidra12.1.4/JDK21 statically analyzed the selected DLL.",
+  "private_evidence_prefixes": [
+    "razer-b6-seven-byte-conversion",
+    "razer-b6-protocol-assignment-callers",
+    "razer-b6-macro-id-storage",
+    "razer-b6-macro-firmware-cache",
+    "razer-b6-macro-command-wrappers",
+    "razer-b6-product-storage-capabilities",
+    "razer-b6-storage-info-gates",
+    "razer-b6-control-product-info"
+  ],
+  "limits": [
+    "No physical input or HID capture",
+    "Fn3/Fn4 ID to standalone report/code linkage still unproven",
+    "Default capability excludes blindly enabling firmware macro writes",
+    "B7 per-paired-mouse host input identity remains unproven"
+  ],
+  "new_fully_accepted_models": 0
+}

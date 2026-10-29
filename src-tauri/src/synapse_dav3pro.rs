@@ -648,6 +648,8 @@ fn action(row: &Value, _id: u16, path: &str) -> Result<ButtonAction, String> {
                 "Next" => ButtonAction::Mouse(MouseButton::Forward),
                 "ScrollUp" => ButtonAction::Scroll(ScrollDirection::Up),
                 "ScrollDown" => ButtonAction::Scroll(ScrollDirection::Down),
+                "ScrollLeft" => ButtonAction::Mouse(MouseButton::WheelLeft),
+                "ScrollRight" => ButtonAction::Mouse(MouseButton::WheelRight),
                 other => return Err(format!("{group_path}/mouseAssignment: 未支持动作 {other}")),
             }
         }

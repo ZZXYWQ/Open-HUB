@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-29",
+  "existing_model": "Razer DeathAdder V3 Pro",
+  "products": [
+    "1532:00B6",
+    "1532:00B7"
+  ],
+  "models_added": 0,
+  "complete_accepted": 0,
+  "new_outputs": [
+    "WheelLeft",
+    "WheelRight"
+  ],
+  "native_vectors": 64,
+  "driver_new_tests": 3,
+  "main_default_tests": {
+    "passed": 1064,
+    "failed": 0,
+    "ignored": 94
+  },
+  "shared_workspace": {
+    "unit_passed": 390,
+    "doc_passed": 1,
+    "failed": 0
+  },
+  "ui_saved_profiles": 4,
+  "explicit_ui_replay_passed": 1,
+  "ui_coverage": "two connections and both layers; source import, independent edit and save/reopen; mocked IPC/inventory/dialogs; no physical HID or OS input",
+  "builds": [
+    "TypeScript/Vite passed",
+    "native development passed, six preexisting warnings"
+  ],
+  "main_js_bytes": 852177,
+  "source_audit": "2026-10-29-dav3pro-native-assignment-research.json",
+  "private_logs": "outputs/100-model-development/2026-10-29-dav3pro-horizontal-{focused,shared,all,ui,ui-build,replay,build}.log",
+  "payload_cleanup": {
+    "archives_removed": true,
+    "analysis_DLL_removed": true,
+    "analysis_database_removed": true,
+    "REA_target_closed": true
+  },
+  "limits": [
+    "No new physical capture or playback proof",
+    "Existing macro bindings stay protected",
+    "Software/native macro library writes remain disabled pending complete model evidence",
+    "No installer, release or installed version change"
+  ]
+}

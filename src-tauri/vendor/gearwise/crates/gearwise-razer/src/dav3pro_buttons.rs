@@ -63,14 +63,6 @@ pub fn encode(id: u16, action: &ButtonAction) -> Result<[u8; 7]> {
         ));
     }
     let (physical, _) = wire(id).unwrap();
-    if matches!(
-        action,
-        ButtonAction::Mouse(MouseButton::WheelLeft | MouseButton::WheelRight)
-    ) {
-        return Err(Error::Unsupported(
-            "DeathAdder horizontal scroll output not enabled",
-        ));
-    }
     if matches!(physical, 9 | 10) && matches!(action, ButtonAction::Dpi(_)) {
         return Err(Error::Unsupported(
             "DeathAdder wheel assignment does not offer sensitivity actions",
@@ -156,10 +148,7 @@ pub fn decode(id: u16, raw: &[u8]) -> Option<ButtonAction> {
         );
     }
     let action = basilisk::decode(u16::from(physical), raw)?;
-    if matches!(
-        action,
-        ButtonAction::Mouse(MouseButton::WheelLeft | MouseButton::WheelRight)
-    ) || (matches!(physical, 9 | 10) && matches!(action, ButtonAction::Dpi(_)))
+    if matches!(physical, 9 | 10) && matches!(action, ButtonAction::Dpi(_))
     {
         return None;
     }
@@ -1120,4 +1109,37 @@ mod tests {
         }
         assert!(basilisk::decode(2, &[6,5,5,3,32,6,64]).is_none());
     }
+    #[test]
+    fn horizontal_outputs_match_full_oem_native_records_on_both_layers_and_connections() {
+        for pid in [0xb6,0xb7] {for (id,_) in controls() {for (button,code) in [(MouseButton::WheelLeft,0x68),(MouseButton::WheelRight,0x69)] {
+            let (mut d,state)=rig(pid,Fault::None);
+            if id==1 {d.apply(&Setting::Button{id:2,action:ButtonAction::Mouse(MouseButton::Left)}).unwrap();}
+            let before=state.lock().unwrap().blocks.clone();
+            let action=ButtonAction::Mouse(button);let block=[1,1,code,0,0,0,0];
+            assert_eq!(encode(id,&action).unwrap(),block);assert_eq!(decode(id,&block),Some(action.clone()));
+            let (physical,layer)=wire(id).unwrap();let mut golden=[0;91];golden[..19].copy_from_slice(&[0,0,31,0,0,0,10,2,12,1,physical,layer,1,1,code,0,0,0,0]);golden[89]=10^2^12^1^physical^layer^1^1^code;
+            let mut report=Report::new(2,12,10,&[1,physical,layer,1,1,code,0,0,0,0]);report.transaction_id=31;assert_eq!(report.to_wire(),golden);
+            d.apply(&Setting::Button{id,action:action.clone()}).unwrap();assert_eq!(d.read_state().unwrap().buttons[&id],action);
+            let state=state.lock().unwrap();assert_eq!(state.blocks[&id],block);for(other,original)in before{if other!=id{assert_eq!(state.blocks[&other],original);}}
+        }}}
+    }
+    #[test]
+    fn horizontal_output_faults_reconcile_only_owned_original_record() {
+        for pid in [0xb6,0xb7] {for id in [2,258] {for fault in [Fault::SetterFailure,Fault::Busy,Fault::BadReadback,Fault::Foreign,Fault::RestoreFailure,Fault::OtherLayer] {
+            let(mut d,state)=rig(pid,fault);let action=ButtonAction::Mouse(MouseButton::WheelLeft);
+            let error=d.apply(&Setting::Button{id,action:action.clone()}).unwrap_err().to_string();assert!(error.contains("not retried"));
+            let state=state.lock().unwrap();let wanted=encode(id,&action).unwrap();assert_eq!(state.writes.iter().filter(|(_,b)|*b==wanted).count(),1);
+            if fault==Fault::Foreign{assert_eq!(state.writes.len(),1);assert_eq!(state.blocks[&id],[2,2,0,5,0,0,0]);}else{assert_eq!(state.writes.len(),2);assert_eq!(state.blocks[&id],default_block(id).unwrap());}
+            for(other,_)in controls(){if other!=id{assert_eq!(state.blocks[&other],default_block(other).unwrap());}}
+        }}}
+    }
+    #[test]
+    fn horizontal_mapping_keeps_existing_oem_macro_records_locked() {
+        for pid in [0xb6,0xb7] {for original in [[3,3,0x12,0x34,3,0,0],[4,2,0x12,0x34,0,0,0],[5,2,0x12,0x34,0,0,0],[15,2,0x12,0x34,0,0,0]]{
+            let(mut d,state)=rig(pid,Fault::None);state.lock().unwrap().blocks.insert(2,original);
+            assert!(!d.read_state().unwrap().buttons.contains_key(&2));assert!(d.apply(&Setting::Button{id:2,action:ButtonAction::Mouse(MouseButton::WheelRight)}).is_err());
+            let state=state.lock().unwrap();assert!(state.writes.is_empty());assert_eq!(state.blocks[&2],original);
+        }}
+    }
+
 }
