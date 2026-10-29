@@ -867,6 +867,7 @@ fn reviewed_macro_bodies_keep_names_event_order_delays_and_per_binding_modes() {
             let gearwise_core::model::ButtonAction::Macro(key) = &state.buttons[&id] else {
                 panic!("macro binding missing")
             };
+            assert_eq!(key, &format!("atk-native:0:{}", if id == 2 { 1 } else { 3 }));
             let defs = d.macro_definitions();
             let actual = defs.iter().find(|m| &m.id == key).unwrap();
             assert_eq!(actual.mode, mode);
@@ -1018,6 +1019,7 @@ fn browser_reviewed_macro_file_profiles_execute_all_confirmed_modes_and_original
             let gearwise_core::model::ButtonAction::Macro(key) = &state.buttons[&id] else {
                 panic!("macro missing")
             };
+            assert_eq!(key, &format!("atk-native:0:{}", if id == 2 { 1 } else { 3 }));
             let defs = d.macro_definitions();
             let m = defs.iter().find(|m| &m.id == key).unwrap();
             assert_eq!(m.mode, mode);

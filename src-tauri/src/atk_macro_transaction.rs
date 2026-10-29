@@ -115,18 +115,27 @@ impl Atk {
         } else {
             ((base - 768) / 384) as u8
         };
+        let immutable = before.slot[..payload.len()] == *payload;
+        let mut other_reference = false;
         for (button, record) in before.buttons.chunks_exact(4).enumerate() {
             if sum(record) != 0x55 {
                 return Err(Error::invalid("COMPX allocation binding checksum"));
             }
             if !shortcut && button != usize::from(id - 1) && record[0] == 6 && record[1] == slot {
-                return Err(Error::invalid(
-                    "COMPX macro slot gained another current-bank reference",
-                ));
+                other_reference = true;
+                if !immutable {
+                    return Err(Error::invalid(
+                        "COMPX macro slot gained another current-bank reference",
+                    ));
+                }
             }
         }
         let reusing = original_binding[0] == 6 && original_binding[1] == slot;
-        if !shortcut && !reusing && !matches!(before.slot[31], 0 | 255) {
+        if !shortcut
+            && !reusing
+            && !(immutable && other_reference)
+            && !matches!(before.slot[31], 0 | 255)
+        {
             return Err(Error::invalid(
                 "COMPX selected free slot is no longer empty",
             ));

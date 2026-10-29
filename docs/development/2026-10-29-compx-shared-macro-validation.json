@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-29",
+  "scope": "existing native COMPX models only",
+  "models_added": 0,
+  "accepted_complete": 0,
+  "connections": 10,
+  "distinct_models": 9,
+  "unit_tests": {
+    "passed": 1052,
+    "failed": 0,
+    "ignored": 92
+  },
+  "new_tests": [
+    "shared_macro_body_uses_one_slot_with_independent_modes_even_when_all_slots_full",
+    "shared_macro_binding_only_failures_restore_without_program_writes",
+    "shared_macro_external_mutation_blocks_recovery_without_overwriting_foreign_bytes",
+    "shared_macro_commit_rechecks_body_and_live_reference_and_retains_unbound_orphans",
+    "shared_macro_edit_allocates_separate_body_and_mode_only_edit_stays_in_place"
+  ],
+  "ui": "headless Edge; ten profiles and twenty independently confirmed macro bindings; mocked IPC/device inventory",
+  "replay": "production compiler and native memory transport; assert slot 0 shared, Once/Repeat3 independent, original event order and effective delays",
+  "logs_private": "outputs/100-model-development/2026-10-29-compx-shared-macro-{focused,all,ui,replay,build}.log",
+  "limits": [
+    "No physical playback validation",
+    "No cross-bank ownership or in-flight quiescence proof",
+    "No completion claim",
+    "No new installer or release"
+  ]
+}

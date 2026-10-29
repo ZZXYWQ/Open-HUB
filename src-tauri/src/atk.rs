@@ -576,9 +576,23 @@ impl Atk {
                 occupied.insert(b[1]);
             }
         }
-        // A known current slot owned only by this button is an explicit edit,
-        // not a free-standing factory macro. Reuse it before consuming free slots.
-        let mut selected=(original[0]==6&&original[1]<12&&!occupied.contains(&original[1])).then_some(original[1]);
+        // Share only an identical body that already has a current-bank reference.
+        // Playback belongs to each binding; never rewrite shared program bytes.
+        let mut candidates = Vec::new();
+        if original[0] == 6 && original[1] < 12 { candidates.push(original[1]); }
+        for slot in 0..12u8 {
+            if occupied.contains(&slot) && !candidates.contains(&slot) { candidates.push(slot); }
+        }
+        let mut selected = None;
+        for slot in candidates {
+            if self.read_blob(768 + u16::from(slot) * 384, payload.len())? == payload {
+                selected = Some(slot);
+                break;
+            }
+        }
+        if selected.is_none() && original[0] == 6 && original[1] < 12 && !occupied.contains(&original[1]) {
+            selected = Some(original[1]);
+        }
         for slot in 0..12u8 {
             if selected.is_some(){break;}
             if occupied.contains(&slot) {
