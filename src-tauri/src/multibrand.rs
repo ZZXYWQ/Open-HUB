@@ -1150,3 +1150,6 @@ mod compx_scroll_plan_tests;
 #[cfg(test)]
 #[path="rival3_models.rs"]
 mod rival3_models;
+
+#[cfg(test)]
+pub(crate) use steelseries_models::roundtrip_browser_profiles as roundtrip_steelseries_browser_profiles;

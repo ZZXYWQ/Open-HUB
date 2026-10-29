@@ -5,6 +5,8 @@ use gearwise_core::{DeviceState,Error,Result,Setting};
 use gearwise_core::model::{LightingEffect,Rgb,ZoneState};
 use serde::{Deserialize,Serialize};
 pub const SCHEMA:&str="steelseries-rival3-lighting/1";
+/// Exact inverse of the reviewed TrueMove Core encoding; unknown codes stay invalid.
+pub fn dpi_from_code(code:u8)->Option<u16>{(200..=8500).step_by(100).find(|dpi|crate::cpi::CORE.resolve(*dpi).is_ok_and(|(_,c)|c==u16::from(code)))}
 pub fn supported(pid:u16)->bool{matches!(pid,0x1824|0x184c)}
 #[derive(Clone,Debug,PartialEq,Eq,Serialize,Deserialize)]
 #[serde(deny_unknown_fields)]

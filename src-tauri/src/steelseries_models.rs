@@ -69,7 +69,7 @@ fn steelseries_browser_native_gradients_roundtrip_and_compile_into_exact_selecte
 
 // Uses the same id assignment, production profile store and import merger as
 // a real save/export/import, including a separate reloaded store. No AppData.
-pub(super) fn roundtrip_browser_profiles(env:&str)->Vec<crate::profiles::Profile>{
+pub(crate) fn roundtrip_browser_profiles(env:&str)->Vec<crate::profiles::Profile>{
  let path=std::env::var_os(env).unwrap();let profiles:Vec<crate::profiles::Profile>=serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();let mut store=crate::profiles::ProfileStore::default();for mut p in profiles{crate::profile_transfer::validate(&p).unwrap();if p.id.is_empty(){p.id=crate::profiles::new_id();}store.upsert(p);}
  let dir=std::env::temp_dir().join(format!("open-hub-steel-store-{}",crate::profiles::new_id()));std::fs::create_dir(&dir).unwrap();let state=dir.join("profiles.json");store.save(&state).unwrap();let loaded=crate::profiles::ProfileStore::load(&state);let profiles=loaded.profiles.into_iter().filter(|p|p.id!=crate::profiles::DESKTOP_ID).collect::<Vec<_>>();let pack=dir.join("export.json");std::fs::write(&pack,serde_json::to_vec(&serde_json::json!({"format":"open-hub-profiles/1","profiles":profiles})).unwrap()).unwrap();let preview=crate::profile_transfer::preview("openhub",Some(pack.display().to_string())).unwrap();let mut dest=crate::profiles::ProfileStore::default();crate::profile_transfer::merge(&mut dest,preview.profiles).unwrap();dest.save(&state).unwrap();let imported=crate::profiles::ProfileStore::load(&state).profiles.into_iter().filter(|p|p.id!=crate::profiles::DESKTOP_ID).collect();std::fs::remove_file(pack).unwrap();std::fs::remove_file(state).unwrap();std::fs::remove_dir(dir).unwrap();imported
 }

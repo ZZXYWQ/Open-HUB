@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-29",
+  "scope": "Original wired Rival3 GG private-format import, known native and steady-color subset; complete adaptation remains unaccepted",
+  "partial_models": 43,
+  "complete_models": 0,
+  "hardware_tested": false,
+  "main_tests": {
+    "passed": 1079,
+    "failed": 0,
+    "ignored": 97
+  },
+  "shared_tests": {
+    "unit_passed": 393,
+    "doc_passed": 1,
+    "failed": 0
+  },
+  "source_and_browser": {
+    "unmodified_official_default_rejection_test": 1,
+    "headless_import_edit_save_cases": 3,
+    "production_store_transfer_native_replay_test": 1,
+    "existing_rival600_ui_cases": 3
+  },
+  "independent_oem_cpi_pairs_checked": 84,
+  "malformed_cases": 17,
+  "native_action_input_cases": 77,
+  "vendor_executable_run": false,
+  "source_sql_executed": false,
+  "artifacts": [
+    "gg-rival3-native-preview.json",
+    "gg-rival3-ui-profiles.json",
+    "gg-rival3-import-ui.png"
+  ],
+  "private_artifact_directory": "../outputs/100-model-development",
+  "remaining": [
+    "dynamic GG host color sequences including original default",
+    "function53 meta and optional modifier masks",
+    "nondefault OEM kernel behaviors",
+    "full hardware readback and physical testing"
+  ],
+  "installer_created": false,
+  "release_created": false
+}

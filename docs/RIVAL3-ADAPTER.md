@@ -26,6 +26,8 @@ Production memory-transport tests cover exact sensor/rate/table bytes, all seven
 
 Headless Edge runs the actual production built UI using native DTOs, edits five CPI stages and all four zones, selects seven modes and saves each firmware profile. Browser IPC is mocked and does not prove driver success. A separate Rust test imports those saved profiles through the production profile transfer/store path and replays the native compiler. No HID or OS input is used.
 
-Still missing: physical device tests; complete hardware settings readback; verified original GG profile parser/migration for this model; native macro library parity and OEM advanced behaviors not established by the public profile. Initial values are templates/session cache, never observed hardware state. These gaps prevent full acceptance under the 100-model goal.
+Still missing: physical device tests; complete hardware settings readback; full original GG profile migration (a strict steady-color subset is now implemented; see GG-RIVAL3-IMPORT.md); native macro library parity and OEM advanced behaviors not established by the public profile. Initial values are templates/session cache, never observed hardware state. These gaps prevent full acceptance under the 100-model goal.
 
 Reproduce: npm run build; node scripts/test-rival3-ui.cjs after generating ../outputs/100-model-development/rival3-native-views.json with the Rust DTO test using OPEN_HUB_RIVAL3_VIEWS. Replay with OPEN_HUB_RIVAL3_UI_PROFILES pointing to the browser output and cargo test rival3_browser_saved_profiles -- --ignored. Full validation uses the main Cargo manifest and the vendored gearwise workspace manifest.
+
+GG original-format import follow-up: [source schema, implemented conversion and animation gaps](GG-RIVAL3-IMPORT.md). This does not increase the complete model count.
