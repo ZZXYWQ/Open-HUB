@@ -68,7 +68,7 @@ pub struct View {
     pub session: Option<SessionView>,
 }
 #[derive(Clone,Default)]
-pub struct Service(Arc<Mutex<Option<DeviceManager>>>,Arc<Mutex<std::collections::HashMap<String,Cleanup>>>,Arc<AtomicBool>,Arc<Mutex<std::collections::HashMap<String,session_plan::Session>>>);
+pub struct Service(Arc<Mutex<Option<DeviceManager>>>,Arc<Mutex<std::collections::HashMap<String,Cleanup>>>,Arc<AtomicBool>,Arc<Mutex<std::collections::HashMap<String,session_plan::Session>>>,Arc<rival3_player::Player>,Arc<Mutex<()>>,Arc<AtomicBool>);
 #[derive(Clone)]struct Cleanup{input_proof:Option<crate::macro_runtime::PreparedProof>,source:crate::host_macros::Source,settings:Vec<Setting>,expected:std::collections::HashMap<u16,ButtonAction>,software_input:bool,cancelled:Arc<AtomicBool>,shift:Arc<Mutex<Option<gearwise_core::model::DpiState>>>,journal:Option<Arc<crate::macro_recovery::Journal>>,serial:Option<String>}
 pub fn choose_profile_device(ids:&[String],selected:Option<&str>)->Result<String,String>{
  if selected.is_some_and(|id|id.len()>4096){return Err("设备标识过长".into());}
@@ -168,14 +168,25 @@ impl Service {
     pub fn apply_profile(&self,id:&str,plan:&Plan,runtime:&crate::macro_runtime::Runtime,expected_identity:&str)->Result<View,String>{self.apply_at_identity(id,plan,runtime,&rate_reconnect::root()?,None,Some(expected_identity))}
     fn apply_at(&self,id:&str,plan:&Plan,runtime:&crate::macro_runtime::Runtime,root:&std::path::Path,resume:Option<(&str,&str,&str)>)->Result<View,String>{self.apply_at_identity(id,plan,runtime,root,resume,None)}
     fn apply_at_identity(&self,id:&str,plan:&Plan,runtime:&crate::macro_runtime::Runtime,root:&std::path::Path,resume:Option<(&str,&str,&str)>,expected_identity:Option<&str>)->Result<View,String>{
+        self.apply_context(id,plan,runtime,root,resume,expected_identity,None)
+    }
+    pub fn apply_selected(&self,id:&str,plan:&Plan,runtime:&crate::macro_runtime::Runtime,connection:Option<&str>)->Result<View,String>{self.apply_context(id,plan,runtime,&rate_reconnect::root()?,None,None,connection)}
+    fn apply_context(&self,id:&str,plan:&Plan,runtime:&crate::macro_runtime::Runtime,root:&std::path::Path,resume:Option<(&str,&str,&str)>,expected_identity:Option<&str>,expected_connection:Option<&str>)->Result<View,String>{
+        let _gate=self.5.lock().map_err(|_|"设备应用锁异常")?;
+        if self.6.load(Ordering::Acquire){return Err("应用正在退出，未启动新操作".into());}
+        let animation=rival3_player::from_plan(plan)?;
+        if animation.is_some()&&expected_connection.is_none()&&expected_identity.is_none(){return Err("动态灯光需要明确选中的当前鼠标连接".into());}
         validate(plan)?;
         let mut compiled=compile(plan)?;
         let peer=self.peers().into_iter().find(|d|d.id==raw_id(id)).ok_or("鼠标已断开")?;
         if (peer.vendor_id,peer.product_id)!=(plan.vendor,plan.product){return Err("方案与当前鼠标的品牌/型号不一致".into());}
         if expected_identity.is_some_and(|key| key != crate::profile_routing::serial_key(peer.vendor_id,peer.product_id,peer.serial.as_deref())) { return Err("鼠标身份在配置预览后已变化；未应用配置".into()); }
         let (source,input_proof)=if compiled.bindings.is_empty()&&!compiled.software_input{(None,None)}else{let source=plan.source.clone().ok_or("软件宏需要选择此鼠标的具体输入来源")?;let proof=self.prepare_input_target(id,&source,runtime)?;(Some(source),Some(proof))};
-        self.with(|manager|{
+        if let Some(expected)=expected_connection{self.with(|m|{let d=m.device_mut(raw_id(id)).ok_or("鼠标已断开")?;if d.connection_key()!=Some(expected){return Err("鼠标连接已变化，未应用旧页面方案".into());}Ok(())})?;}
+        self.4.stop_device_id(raw_id(id))?;
+        let mut output=self.with(|manager|{
             rate_reconnect::guard_apply(root,manager,id,resume)?;
+            if let Some(expected)=expected_connection{if manager.device_mut(raw_id(id)).and_then(|d|d.connection_key())!=Some(expected){return Err("鼠标连接已变化，未应用旧页面方案".into());}}
             let current=manager.device_mut(raw_id(id)).ok_or("鼠标已断开")?.descriptor();
             if (current.vendor_id,current.product_id)!=(plan.vendor,plan.product){return Err("方案与当前鼠标的品牌/型号不一致".into());}
             if peer.serial.as_deref().filter(|s|!s.trim().is_empty()).is_some_and(|serial|current.serial.as_deref()!=Some(serial)){return Err("鼠标序列号已改变，请重新选择设备".into());}
@@ -231,7 +242,13 @@ impl Service {
             self.attach_session(&mut result,runtime)?;
             if let Some((key,_,_))=resume{rate_reconnect::finish(root,key)?;}
             Ok(result)
-        })
+        })?;
+        if let Some(config)=animation{
+            let target=rival3_player::Target{id:raw_id(id).into(),connection:output.connection_key.clone().ok_or("动态灯光连接缺失")?};
+            if let Err(e)=self.4.start(self.clone(),target,config){let restored=self.with(|m|self.restore_one(m,raw_id(id),runtime));self.3.lock().map_err(|_|"会话方案锁异常")?.remove(raw_id(id));return Err(format!("{e}；软件触发恢复：{restored:?}"));}
+            self.remember_session(&output,plan,true)?;self.attach_session(&mut output,runtime)?;
+        }
+        Ok(output)
     }
     fn restore_one(&self,manager:&mut DeviceManager,id:&str,runtime:&crate::macro_runtime::Runtime)->Result<(),String>{
         let cleanup=self.1.lock().map_err(|_|"宏恢复记录锁异常")?.get(id).cloned();
@@ -263,11 +280,20 @@ impl Service {
         }Ok(())
     }
     pub fn stop_software(&self,runtime:&crate::macro_runtime::Runtime)->Result<(),String>{
+        let _gate=self.5.lock().map_err(|_|"设备应用锁异常")?;self.4.stop_all()?;
         let ids=self.1.lock().map_err(|_|"宏恢复记录锁异常")?.keys().cloned().collect::<Vec<_>>();
         let mut errors=Vec::new();
         for id in ids{if let Err(e)=self.with(|m|self.restore_one(m,&id,runtime)){errors.push(e);}}
         if !runtime.has_quiescing(){runtime.shutdown();}else if let Err(e)=self.schedule_release_restore(runtime){errors.push(e);}
         if errors.is_empty(){Ok(())}else{Err(errors.join("；"))}
+    }
+    pub fn shutdown_lighting(&self)->Result<(),String>{self.6.store(true,Ordering::Release);let _gate=self.5.lock().map_err(|_|"设备应用锁异常")?;self.4.stop_all()}
+    pub fn lighting_status(&self,id:&str,connection:&str)->Result<Option<rival3_player::Status>,String>{self.4.find_status(&rival3_player::Target{id:raw_id(id).into(),connection:connection.into()})}
+    pub fn lighting_control(&self,id:&str,connection:&str,playback:&str,action:&str)->Result<rival3_player::Status,String>{
+        let _gate=self.5.lock().map_err(|_|"设备应用锁异常")?;if self.6.load(Ordering::Acquire){return Err("应用正在退出".into());}
+        self.with(|m|{if m.device_mut(raw_id(id)).and_then(|d|d.connection_key())!=Some(connection){return Err("鼠标连接已变化，未控制旧页面灯效".into());}Ok(())})?;
+        let target=rival3_player::Target{id:raw_id(id).into(),connection:connection.into()};let state=self.4.status(&target)?;if state.playback!=playback{return Err("灯效方案已变化，未控制新的播放".into());}
+        match action{"pause"=>self.4.control(&target,rival3_player::Control::Pause),"resume"=>self.4.control(&target,rival3_player::Control::Resume),"restart"=>self.4.control(&target,rival3_player::Control::Restart),"stop"=>self.4.stop(&target),_=>Err("未知灯效控制".into())}
     }
     pub fn stop_device_software(&self,id:&str,runtime:&crate::macro_runtime::Runtime)->Result<(),String>{
         let result=self.with(|m|self.restore_one(m,raw_id(id),runtime));
@@ -371,6 +397,7 @@ impl gearwise_core::HidBackend for ExactBackend {
 }
 fn validate_native_shortcuts(p:&Plan)->Result<(),String>{for s in &p.settings{if let Setting::Button{id,action:ButtonAction::Shortcut(events)}=s{let model=crate::atk::model(p.vendor,p.product).filter(|m|m.native_macros&&m.native_buttons).ok_or("此具体型号未接通原生快捷序列")?;if !(2..=model.buttons).contains(id){return Err("保留独立左键或未知实体按键".into());}crate::atk::shortcuts::encode_events(events).map_err(|e|e.to_string())?;}}Ok(())}
 pub fn validate(p: &Plan) -> Result<(), String> {
+    if let Some(config)=rival3_player::from_plan(p)?{return validate(&rival3_player::native_plan(p,&config));}
     validate_native_shortcuts(p)?;crate::steelseries::validate_lighting_plan(p)?;
     if crate::x11::supported(p.vendor,p.product){return crate::x11::validate_plan(p);}
     if p.settings.iter().any(|s|matches!(s,Setting::Lighting{state:gearwise_core::model::ZoneState{effect:gearwise_core::model::LightingEffect::Gradient{..},..},..}))&&!matches!((p.vendor,p.product),(0x1038,0x1720|0x1722|0x1832|0x1724)){return Err("此具体型号尚未实现原生自定义渐变".into());}
@@ -672,6 +699,7 @@ pub fn simulate(plan: &Plan) -> Result<serde_json::Value, String> {
     let mut dpi_traces=Vec::new();
     for (button,action) in &compiled.dpi_actions{software_dpi(device.as_mut(),action,true,&saved)?;let pressed=device.read_state().map_err(|e|e.to_string())?.dpi;software_dpi(device.as_mut(),action,false,&saved)?;dpi_traces.push(serde_json::json!({"button":button,"action":action,"pressed":pressed,"released":device.read_state().map_err(|e|e.to_string())?.dpi}));if let Some(original)=&original{device.apply(&Setting::Dpi(original.clone())).map_err(|e|e.to_string())?;}}
     if compiled.software_input{device.stop_software_actions().map_err(|e|e.to_string())?;}
+    let animation=rival3_player::simulate_frames(plan,device.as_mut())?;
     let ops = log.lock().map_err(|_| "Mock log lock")?;
     let packets = ops
         .iter()
@@ -690,7 +718,7 @@ pub fn simulate(plan: &Plan) -> Result<serde_json::Value, String> {
         return Err("模拟驱动没有产生报文".into());
     }
     Ok(
-        serde_json::json!({"simulated":true,"hardware_tested":false,"packet_count":packets.len(),"packets":packets,"software_macros":software_traces,"dpi_actions":dpi_traces,"software_mode_restored":compiled.software_input,"note":"运行真实驱动代码与内存 HID 传输，不访问 USB；无法证明实机兼容性。"}),
+        serde_json::json!({"simulated":true,"hardware_tested":false,"packet_count":packets.len(),"packets":packets,"software_macros":software_traces,"dpi_actions":dpi_traces,"software_mode_restored":compiled.software_input,"animation":animation,"note":"运行真实驱动代码与内存 HID 传输，不访问 USB；无法证明实机兼容性。"}),
     )
 }
 #[cfg(test)]
@@ -742,6 +770,7 @@ fn validate_viper_button(id:u16,action:&ButtonAction)->Result<(),String>{
  if !matches!(action,ButtonAction::Default|ButtonAction::Disabled|ButtonAction::Mouse(gearwise_core::model::MouseButton::Left|gearwise_core::model::MouseButton::Right|gearwise_core::model::MouseButton::Back|gearwise_core::model::MouseButton::Forward)){return Err("蝰蛇 V3 Pro 键盘和宏协议仍待验证".into());}Ok(())
 }
 pub fn compile(plan:&Plan)->Result<Compiled,String>{
+ if let Some(config)=rival3_player::from_plan(plan)?{return compile(&rival3_player::native_plan(plan,&config));}
  validate_native_shortcuts(plan)?;crate::steelseries::validate_lighting_plan(plan)?;
  use gearwise_core::profile::{Macro,MacroMode,MacroStep};
  let pulsar=crate::atk::is_pulsar(plan.vendor,plan.product);

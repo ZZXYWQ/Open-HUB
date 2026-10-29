@@ -1,6 +1,6 @@
 # Original Rival3: connection-owned device playback layer
 
-Development increment, 2026-10-29. This layer is implemented and exercised with the production native driver on memory transports. It is not registered as a Tauri command or enabled in the UI yet. Dynamic GG import remains blocked; no fully compatible model, installer or release is added.
+Development increment, 2026-10-29. This layer is implemented and exercised with the production native driver on memory transports. The follow-up [persisted loop integration](RIVAL3-LOOP-PROFILES.md) now connects it to the profile editor, connection-aware Tauri commands and application shutdown. Dynamic GG import remains blocked; no fully compatible model, installer or release is added.
 
 ## Implemented
 
@@ -20,10 +20,10 @@ A stale control target cannot stop a newer connection. Reopening the same device
 
 Seven application test groups cover real native output bytes/padding and no flash, joined stop without subsequent writes, identical manual-lighting handoff, same-ID reconnect with no replacement writes, two identical devices paused/restarted/stopped independently, first-frame short write without retry/cache success, invalid firmware/target/config rejection, earlier flash-session withdrawal, and Drop joining its worker. A separate shared-driver test checks revision opt-in, new-connection reset, valid-lighting attempts and exclusion of report-rate/invalid-profile actions. Hardware, OS input and the installed app are not accessed.
 
-Full main suite:1090 passed,0 failed,97 ignored. Shared workspace:398 unit plus1 doc test passed. No frontend code changed in this increment. Evidence is in development/2026-10-29-rival3-player-validation.json.
+The original player-only increment had1090 main tests passed,0 failed,97 ignored and398 shared unit plus1 doc test passed. Its frontend was unchanged; the later loop integration has separate validation. Evidence is in development/2026-10-29-rival3-player-validation.json.
 
 ## Still required
 
-Integrate this engine into managed app lifetime and explicit shutdown, exact connection-aware RPC and the lighting/profile editor. Define the persisted authored timeline schema, source-aware desired session state, and coordination with the existing PC/dock effect controls before exposing an application entry point. Connect saved timelines to profile activation and verify actual UI requests against the worker. The current generic per-device host clock is an explicit Open HUB policy, not proof of exact native global-thread scheduling.
+The managed app lifetime, explicit shutdown, connection-aware RPC, authored schema and lighting/profile editor are integrated in the follow-up increment. Saved browser profiles have been reimported and run through the worker on memory transport. The live UI command boundary is tested with mocked IPC; it is not physical hardware or a full desktop IPC round-trip. Further PC/dock sync policy and simultaneous-controller behavior still need full application validation. The current generic per-device host clock is an explicit Open HUB policy, not proof of exact native global-thread scheduling.
 
 Go argument mapping, original GG dynamic migration, finite playback UI/policy, hardware readback, physical timing and actual Rival3 hardware tests remain incomplete. Firmware184C is not enabled for this new player, and other brands retain their own drivers/UI. Counts stay43 partial /0 complete.

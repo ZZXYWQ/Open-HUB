@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-29",
+  "scope": "Original wired Rival3 1038:1824 authored looping profile/editor/application lifecycle integration",
+  "partial_models": 43,
+  "complete_models": 0,
+  "hardware_tested": false,
+  "main_tests": {
+    "passed": 1094,
+    "failed": 0,
+    "ignored": 98
+  },
+  "shared_tests": {
+    "unit_passed": 398,
+    "doc_passed": 1,
+    "failed": 0
+  },
+  "new_default_integration_groups": 4,
+  "explicit_browser_loop_replay_passed": 1,
+  "native_and_GG_browser_replays_passed": 2,
+  "frontend_build_passed": true,
+  "headless_edge_ui": [
+    "loop save/reload",
+    "independent zones",
+    "nine-frame pagination and deletion",
+    "native/custom switch",
+    "pause/resume/restart/stop",
+    "current connection and playback token request scope",
+    "dynamic flash disabled",
+    "two firmware native editor regression",
+    "GG import regression"
+  ],
+  "live_UI_IPC_mocked": true,
+  "saved_browser_plan_replayed_in_production_store_and_worker": true,
+  "memory_transports_only": true,
+  "OS_input_injected": false,
+  "managed_shutdown_and_start_gate": true,
+  "worker_owns_manager_not_service": true,
+  "registry_released_before_native_initialization": true,
+  "dynamic_GG_migration_enabled": false,
+  "finite_repeat_enabled": false,
+  "installer_built": false,
+  "release_published": false,
+  "installed_app_changed": false,
+  "remaining": [
+    "GG dynamic migration/full Go arguments",
+    "finite playback UI/policy",
+    "exact OEM timing",
+    "PC/dock simultaneous-controller application coverage",
+    "hardware readback and physical testing",
+    "184C loop support"
+  ]
+}

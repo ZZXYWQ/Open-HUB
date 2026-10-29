@@ -12,6 +12,7 @@ fn complete(plan: &Plan) -> Result<(), String> {
     if !crate::steelseries::supported(plan.vendor, plan.product) {
         return Err("此型号尚未开放明确板载保存".into());
     }
+    if super::rival3_player::from_plan(plan)?.is_some(){return Err("动态灯光由Open HUB运行，不能保存到鼠标闪存".into());}
     validate(plan)?;
     let compiled = compile(plan)?;
     if !compiled.bindings.is_empty() || compiled.software_input {
@@ -82,7 +83,7 @@ impl Service {
                 .to_path_buf(),
         )
     }
-    fn save_native_hardware_at(
+    pub(super) fn save_native_hardware_at(
         &self,
         id: &str,
         plan: &Plan,

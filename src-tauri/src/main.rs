@@ -135,7 +135,11 @@ fn multi_read(service:State<multibrand::Service>,runtime:State<macro_runtime::Ru
 #[tauri::command(async)]
 fn multi_battery(service:State<multibrand::Service>,id:String)->Result<Option<gearwise_core::model::Battery>,String>{service.battery(&id)}
 #[tauri::command(async)]
-fn multi_apply(service:State<multibrand::Service>,runtime:State<macro_runtime::Runtime>,id:String,plan:multibrand::Plan)->Result<multibrand::View,String>{service.apply(&id,&plan,&runtime)}
+fn multi_apply(service:State<multibrand::Service>,runtime:State<macro_runtime::Runtime>,id:String,plan:multibrand::Plan,expected_connection:Option<String>)->Result<multibrand::View,String>{service.apply_selected(&id,&plan,&runtime,expected_connection.as_deref())}
+#[tauri::command(async)]
+fn multi_lighting_status(service:State<multibrand::Service>,id:String,expected_connection:String)->Result<Option<multibrand::rival3_player::Status>,String>{service.lighting_status(&id,&expected_connection)}
+#[tauri::command(async)]
+fn multi_lighting_control(service:State<multibrand::Service>,id:String,expected_connection:String,playback:String,action:String)->Result<multibrand::rival3_player::Status,String>{service.lighting_control(&id,&expected_connection,&playback,&action)}
 #[tauri::command(async)]
 fn multi_templates()->Result<Vec<multibrand::View>,String>{multibrand::templates()}
 #[tauri::command(async)]
@@ -989,6 +993,7 @@ fn probe() {
 
 // The Windows updater exits directly; share cleanup with ordinary app exit.
 pub(crate) fn prepare_shutdown(app:&AppHandle){
+ let _=app.state::<multibrand::Service>().shutdown_lighting();
  let _=app.state::<multibrand::Service>().stop_software(&app.state::<macro_runtime::Runtime>());
  app.state::<macro_runtime::Runtime>().shutdown();let _=app.state::<effects::Engine>().stop();let _=app.state::<magdock::Controller>().stop();app.state::<rgb::Server>().shutdown();
 }
@@ -1219,7 +1224,7 @@ fn main() {
             activate_profile,
             import_ghub_profiles,
             import_mhub_profiles,
-            sino_read,sino_apply,sino_models,sino_simulate,multi_read,multi_battery,multi_apply,multi_templates,multi_simulate,multi_macro_simulate,multi_input_sources,multi_save_hardware,multi_macro_status,multi_stop_macros,multi_stop_device_macros,multi_recovery_list,multi_recovery_observe,multi_recovery_restore,multi_reconnect_list,multi_reconnect_candidates,multi_reconnect_resume,multi_reconnect_retry,multi_reconnect_discard,edit_sc620_source,preview_sc620_source,export_sc620_source,preview_synapse_import,prepare_synapse_import,prepare_icue_import,prepare_gg_import,
+            sino_read,sino_apply,sino_models,sino_simulate,multi_lighting_status,multi_lighting_control,multi_read,multi_battery,multi_apply,multi_templates,multi_simulate,multi_macro_simulate,multi_input_sources,multi_save_hardware,multi_macro_status,multi_stop_macros,multi_stop_device_macros,multi_recovery_list,multi_recovery_observe,multi_recovery_restore,multi_reconnect_list,multi_reconnect_candidates,multi_reconnect_resume,multi_reconnect_retry,multi_reconnect_discard,edit_sc620_source,preview_sc620_source,export_sc620_source,preview_synapse_import,prepare_synapse_import,prepare_icue_import,prepare_gg_import,
             inspect_compx_macro_refs,prepare_compx_file_import,prepare_mhub_local_import,prepare_mhub_import,prepare_mchose_profile,preview_profile_import,commit_profile_import,export_profile_pack,
             onboard_snapshot,
             save_onboard_backup,

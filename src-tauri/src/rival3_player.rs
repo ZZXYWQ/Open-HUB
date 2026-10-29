@@ -1,4 +1,4 @@
-//! Connection-owned original Rival3 playback engine. No RPC/UI is enabled yet.
+//! Connection-owned original Rival3 playback engine and persisted loop schema.
 //! Explicit Open HUB loop timelines; not automatic GG playback equivalence.
 use super::Service;
 use gearwise_steelseries::{
@@ -40,7 +40,7 @@ impl Config {
         }
         Ok(())
     }
-    fn palette(&self) -> rival3::Profile {
+    pub(crate) fn palette(&self) -> rival3::Profile {
         let mut p = rival3::Profile::default();
         for (z, [r, g, b]) in p.zones.iter_mut().zip(self.colors) {
             z.color = gearwise_core::model::Rgb { r, g, b };
@@ -51,6 +51,7 @@ impl Config {
 #[derive(Clone, Debug, Serialize)]
 pub struct Status {
     pub target: Target,
+    pub playback: String,
     pub phase: String,
     pub frames: u64,
     pub writes: u64,
@@ -120,7 +121,6 @@ impl Player {
             device(&mut manager, &target)?;
         }
         self.stop_id(&target.id)?;
-        let mut workers = self.workers.lock().map_err(|_| "灯光线程锁异常")?;
         let palette = config.palette();
         let revision = {
             let mut manager = service.0.lock().map_err(|_| "设备锁异常")?;
@@ -138,6 +138,7 @@ impl Player {
         };
         let initial = Status {
             target: target.clone(),
+            playback: crate::profiles::new_id(),
             phase: "running".into(),
             frames: 0,
             writes: 0,
@@ -148,11 +149,15 @@ impl Player {
         let state = status.clone();
         let bound = target.clone();
         let (tx, rx) = mpsc::channel();
+        let manager = service.0.clone();
+        // Read/attach_session holds manager before consulting this registry.
+        // Never retain the registry lock while initializing or joining device IO.
+        let mut workers = self.workers.lock().map_err(|_| "灯光线程锁异常")?;
         let handle = thread::Builder::new()
             .name("openhub-rival3-lighting".into())
             .spawn(move || {
                 run(
-                    service, bound, config, palette, revision, cursors, rx, state,
+                    manager, bound, config, palette, revision, cursors, rx, state,
                 )
             })
             .map_err(|e| format!("灯光初始色已写入，但播放线程未启动：{e}"))?;
@@ -166,6 +171,19 @@ impl Player {
             },
         );
         Ok(initial)
+    }
+    pub(crate) fn find_status(&self, target: &Target) -> R<Option<Status>> {
+        let workers = self.workers.lock().map_err(|_| "灯光线程锁异常")?;
+        match workers.get(&target.id) {
+            None => Ok(None),
+            Some(w) if w.target != *target => Err("灯光连接已变化".into()),
+            Some(w) => Ok(Some(w.status.lock().map_err(|_| "灯光状态锁异常")?.clone())),
+        }
+    }
+    pub(crate) fn stop_device_id(&self, id: &str) -> R<()> {
+        let _op = self.operations.lock().map_err(|_| "灯光操作锁异常")?;
+        self.stop_id(id)?;
+        Ok(())
     }
     pub fn status(&self, target: &Target) -> R<Status> {
         let workers = self.workers.lock().map_err(|_| "灯光线程锁异常")?;
@@ -259,7 +277,7 @@ impl Drop for Player {
     }
 }
 fn run(
-    service: Service,
+    manager: Arc<Mutex<Option<gearwise_core::DeviceManager>>>,
     target: Target,
     config: Config,
     mut palette: rival3::Profile,
@@ -335,7 +353,7 @@ fn run(
                 }
             }
             let wrote = {
-                let mut manager = service.0.lock().map_err(|_| "设备锁异常")?;
+                let mut manager = manager.lock().map_err(|_| "设备锁异常")?;
                 let d = device(&mut manager, &target)?;
                 if d.lighting_revision() != Some(revision) {
                     return Err("此连接的灯光写入归属已改变，旧播放已停止".into());
@@ -370,6 +388,96 @@ fn run(
     }
 }
 
+pub const SCHEMA: &str = "openhub-rival3-loop/1";
+pub(crate) fn from_plan(plan: &super::Plan) -> R<Option<Config>> {
+    let loops = plan
+        .settings
+        .iter()
+        .filter_map(|s| {
+            if let gearwise_core::Setting::VendorProfile { schema, data } = s {
+                (schema == SCHEMA).then_some(data)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    if loops.is_empty() {
+        return Ok(None);
+    }
+    if (plan.vendor, plan.product) != (0x1038, 0x1824)
+        || loops.len() != 1
+        || plan
+            .settings
+            .iter()
+            .filter(|s| {
+                matches!(
+                    s,
+                    gearwise_core::Setting::VendorProfile { .. }
+                        | gearwise_core::Setting::Lighting { .. }
+                )
+            })
+            .count()
+            != 1
+    {
+        return Err("动态灯光方案只适用于原版Rival3 1824，不能与其他灯效重复".into());
+    }
+    let config: Config = serde_json::from_value(loops[0].clone())
+        .map_err(|e| format!("动态灯光方案格式无效：{e}"))?;
+    config.validate()?;
+    Ok(Some(config))
+}
+pub(crate) fn native_plan(plan: &super::Plan, config: &Config) -> super::Plan {
+    let mut p = plan.clone();
+    for s in &mut p.settings {
+        if matches!(s,gearwise_core::Setting::VendorProfile{schema,..}if schema==SCHEMA) {
+            *s = rival3::setting(&config.palette());
+        }
+    }
+    p
+}
+
+pub(crate) fn simulate_frames(
+    plan: &super::Plan,
+    device: &mut dyn gearwise_core::Device,
+) -> R<Option<serde_json::Value>> {
+    let Some(config) = from_plan(plan)? else {
+        return Ok(None);
+    };
+    let mut cursors = config
+        .zones
+        .iter()
+        .map(|s| {
+            s.clone()
+                .map(|s| Cursor::new(s, config.step_ms))
+                .transpose()
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    let mut palette = config.palette();
+    let mut frames = Vec::new();
+    for tick in 1..=12u64 {
+        for (i, c) in cursors.iter_mut().enumerate() {
+            if let Some(c) = c {
+                if let Some([r, g, b]) = c.tick(tick * u64::from(config.step_ms), 1).color {
+                    palette.zones[i].color = gearwise_core::model::Rgb { r, g, b };
+                }
+            }
+        }
+        device
+            .apply(&rival3::setting(&palette))
+            .map_err(|e| e.to_string())?;
+        frames.push(
+            palette
+                .zones
+                .clone()
+                .map(|z| [z.color.r, z.color.g, z.color.b]),
+        );
+    }
+    Ok(Some(
+        serde_json::json!({"step_ms":config.step_ms,"frames":frames,"real_time":false,"hardware_tested":false}),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::MockLog;
@@ -383,9 +491,17 @@ mod tests {
         inner: MockTransport,
         count: Arc<AtomicUsize>,
         fail: usize,
+        probe: Option<std::sync::Weak<Player>>,
     }
     impl HidTransport for Fault {
         fn write(&mut self, data: &[u8]) -> gearwise_core::Result<usize> {
+            if let Some(player) = self.probe.as_ref().and_then(std::sync::Weak::upgrade) {
+                assert!(
+                    std::thread::current().name() == Some("openhub-rival3-lighting")
+                        || player.workers.try_lock().is_ok(),
+                    "native IO must not hold worker registry"
+                );
+            }
             let n = self.inner.write(data)?;
             let count = self.count.fetch_add(1, Ordering::SeqCst) + 1;
             Ok(n - usize::from(count == self.fail))
@@ -401,6 +517,14 @@ mod tests {
         }
     }
     fn opened(pid: u16, unit: &str, fail: usize) -> (Box<dyn Device>, MockLog, Arc<AtomicUsize>) {
+        opened_with_probe(pid, unit, fail, None)
+    }
+    fn opened_with_probe(
+        pid: u16,
+        unit: &str,
+        fail: usize,
+        probe: Option<std::sync::Weak<Player>>,
+    ) -> (Box<dyn Device>, MockLog, Arc<AtomicUsize>) {
         let info = HidInterfaceInfo {
             path: format!("simulation:player:{unit}"),
             vendor_id: 0x1038,
@@ -418,6 +542,7 @@ mod tests {
             inner,
             count: count.clone(),
             fail,
+            probe,
         }));
         let backend = MockBackend::new(vec![info.clone()], move |_| {
             Ok(Box::new(slot.lock().unwrap().take().unwrap()))
@@ -641,5 +766,294 @@ mod tests {
         let done = count.load(Ordering::SeqCst);
         thread::sleep(Duration::from_millis(70));
         assert_eq!(count.load(Ordering::SeqCst), done);
+    }
+    struct Silent;
+    impl gearwise_input::InputSink for Silent {
+        fn key_down(&mut self, _: u8) -> gearwise_core::Result<()> {
+            panic!("no OS input")
+        }
+        fn key_up(&mut self, _: u8) -> gearwise_core::Result<()> {
+            panic!("no OS input")
+        }
+        fn mouse_down(
+            &mut self,
+            _: gearwise_core::model::MouseButton,
+        ) -> gearwise_core::Result<()> {
+            panic!("no OS input")
+        }
+        fn mouse_up(&mut self, _: gearwise_core::model::MouseButton) -> gearwise_core::Result<()> {
+            panic!("no OS input")
+        }
+        fn scroll(&mut self, _: i32, _: i32) -> gearwise_core::Result<()> {
+            panic!("no OS input")
+        }
+        fn media(&mut self, _: u16) -> gearwise_core::Result<()> {
+            panic!("no OS input")
+        }
+    }
+    struct Root(std::path::PathBuf);
+    impl Root {
+        fn new() -> Self {
+            Self(std::env::temp_dir().join(format!("openhub-loop-{}", crate::profiles::new_id())))
+        }
+    }
+    impl Drop for Root {
+        fn drop(&mut self) {
+            for name in ["backups", "recovery"] {
+                let dir = self.0.join(name);
+                if let Ok(items) = std::fs::read_dir(&dir) {
+                    for item in items {
+                        let p = item.unwrap().path();
+                        assert!(p.is_file());
+                        std::fs::remove_file(p).unwrap();
+                    }
+                    std::fs::remove_dir(dir).unwrap();
+                }
+            }
+            if self.0.exists() {
+                std::fs::remove_dir(&self.0).unwrap();
+            }
+        }
+    }
+    fn runtime() -> crate::macro_runtime::Runtime {
+        crate::macro_runtime::Runtime::simulation(Arc::new(Mutex::new(Silent)))
+    }
+    fn full_plan(service: &Service, t: &Target) -> super::super::Plan {
+        let out = {
+            let mut manager = service.0.lock().unwrap();
+            super::super::view(device(&mut manager, t).unwrap().as_mut()).unwrap()
+        };
+        let mut p = super::super::template_plan(&out).unwrap();
+        for s in &mut p.settings {
+            if matches!(s, gearwise_core::Setting::VendorProfile { .. }) {
+                *s = gearwise_core::Setting::VendorProfile {
+                    schema: SCHEMA.into(),
+                    data: serde_json::to_value(config()).unwrap(),
+                };
+            }
+        }
+        p
+    }
+    #[test]
+    fn rival3_loop_native_initialization_releases_registry_before_device_io() {
+        let service = Service::default();
+        let (d, _, _) = opened_with_probe(
+            0x1824,
+            "lock-probe",
+            usize::MAX,
+            Some(Arc::downgrade(&service.4)),
+        );
+        let t = target(d.as_ref());
+        *service.0.lock().unwrap() = Some(manager(vec![d]));
+        let rt = runtime();
+        let root = Root::new();
+        let plan = full_plan(&service, &t);
+        service
+            .apply_context(&t.id, &plan, &rt, &root.0, None, None, Some(&t.connection))
+            .unwrap();
+        wait(&service.4, &t, |s| s.writes > 0);
+        service.read(&t.id, &rt).unwrap();
+        service.shutdown_lighting().unwrap();
+        service.stop_software(&rt).unwrap();
+    }
+    #[test]
+    fn rival3_loop_profile_applies_preserves_desired_session_and_rejects_flash() {
+        let (service, t, log, count) = fixture(0x1824, usize::MAX);
+        let rt = runtime();
+        let root = Root::new();
+        let plan = full_plan(&service, &t);
+        super::super::validate(&plan).unwrap();
+        assert!(service
+            .apply_context(&t.id, &plan, &rt, &root.0, None, None, None)
+            .is_err());
+        assert!(log.lock().unwrap().is_empty());
+        let out = service
+            .apply_context(&t.id, &plan, &rt, &root.0, None, None, Some(&t.connection))
+            .unwrap();
+        assert_eq!(out.session.unwrap().plan, plan);
+        let state = service
+            .lighting_status(&t.id, &t.connection)
+            .unwrap()
+            .unwrap();
+        wait(&service.4, &t, |s| s.writes > 0);
+        let paused = service
+            .lighting_control(&t.id, &t.connection, &state.playback, "pause")
+            .unwrap();
+        assert_eq!(paused.phase, "paused");
+        let read = service.read(&t.id, &rt).unwrap();
+        let session = read.session.unwrap();
+        assert_eq!(session.software_state, "paused");
+        assert_eq!(session.plan, plan);
+        assert!(service
+            .save_native_hardware_at(&t.id, &plan, &t.connection, &root.0)
+            .unwrap_err()
+            .contains("动态灯光"));
+        service
+            .lighting_control(&t.id, &t.connection, &state.playback, "resume")
+            .unwrap();
+        let descriptor = service.peers().into_iter().find(|d| d.id == t.id).unwrap();
+        let identity = crate::profile_routing::serial_key(
+            descriptor.vendor_id,
+            descriptor.product_id,
+            descriptor.serial.as_deref(),
+        );
+        let activated = service
+            .apply_at_identity(&t.id, &plan, &rt, &root.0, None, Some(&identity))
+            .unwrap();
+        assert_eq!(activated.session.unwrap().plan, plan);
+        assert_ne!(service.4.status(&t).unwrap().playback, state.playback);
+        service.shutdown_lighting().unwrap();
+        let done = count.load(Ordering::SeqCst);
+        assert!(service
+            .apply_context(&t.id, &plan, &rt, &root.0, None, None, Some(&t.connection))
+            .is_err());
+        assert_eq!(count.load(Ordering::SeqCst), done);
+        service.stop_software(&rt).unwrap();
+        assert!(log
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|r| !matches!(r,gearwise_core::transport::MockRecord::Write(b)if b[1]==9)));
+    }
+    #[test]
+    fn rival3_loop_new_plan_rejects_old_playback_and_stale_connection_without_canceling_current() {
+        let (service, t, _log, count) = fixture(0x1824, usize::MAX);
+        let rt = runtime();
+        let root = Root::new();
+        let plan = full_plan(&service, &t);
+        service
+            .apply_context(&t.id, &plan, &rt, &root.0, None, None, Some(&t.connection))
+            .unwrap();
+        let old = service
+            .lighting_status(&t.id, &t.connection)
+            .unwrap()
+            .unwrap();
+        service
+            .apply_context(&t.id, &plan, &rt, &root.0, None, None, Some(&t.connection))
+            .unwrap();
+        let current = service
+            .lighting_status(&t.id, &t.connection)
+            .unwrap()
+            .unwrap();
+        assert_ne!(old.playback, current.playback);
+        assert!(service
+            .lighting_control(&t.id, &t.connection, &old.playback, "pause")
+            .unwrap_err()
+            .contains("方案已变化"));
+        assert!(service
+            .apply_context(
+                &t.id,
+                &plan,
+                &rt,
+                &root.0,
+                None,
+                None,
+                Some("stale-connection")
+            )
+            .is_err());
+        assert_eq!(
+            service
+                .lighting_status(&t.id, &t.connection)
+                .unwrap()
+                .unwrap()
+                .playback,
+            current.playback
+        );
+        let mut native = rival3::Profile::default();
+        native.zones[0].color = gearwise_core::model::Rgb { r: 9, g: 8, b: 7 };
+        let static_plan = super::super::Plan {
+            settings: vec![rival3::setting(&native)],
+            ..plan
+        };
+        service
+            .apply_context(
+                &t.id,
+                &static_plan,
+                &rt,
+                &root.0,
+                None,
+                None,
+                Some(&t.connection),
+            )
+            .unwrap();
+        assert!(service
+            .lighting_status(&t.id, &t.connection)
+            .unwrap()
+            .is_none());
+        let done = count.load(Ordering::SeqCst);
+        thread::sleep(Duration::from_millis(70));
+        assert_eq!(count.load(Ordering::SeqCst), done);
+        service.stop_software(&rt).unwrap();
+    }
+    #[test]
+    fn rival3_loop_malformed_foreign_mixed_and_finite_plans_fail_before_any_packets() {
+        let (service, t, log, _) = fixture(0x1824, usize::MAX);
+        let base = full_plan(&service, &t);
+        for case in 0..8 {
+            let mut p = base.clone();
+            let data = p
+                .settings
+                .iter_mut()
+                .find_map(|s| {
+                    if let gearwise_core::Setting::VendorProfile { data, .. } = s {
+                        Some(data)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap();
+            match case {
+                0 => data["step_ms"] = 1.into(),
+                1 => data["zones"][0]["repeat"] = 2.into(),
+                2 => data["colors"] = serde_json::json!([]),
+                3 => data["zones"][0]["data"] = serde_json::json!([]),
+                4 => data["unknown"] = 1.into(),
+                5 => p.product = 0x184c,
+                6 => p
+                    .settings
+                    .push(rival3::setting(&rival3::Profile::default())),
+                _ => p.settings.push(gearwise_core::Setting::Lighting {
+                    zone: 0,
+                    state: gearwise_core::model::ZoneState {
+                        effect: gearwise_core::model::LightingEffect::Off,
+                        brightness: 100,
+                    },
+                }),
+            }
+            assert!(super::super::validate(&p).is_err(), "case {case}");
+        }
+        assert!(log.lock().unwrap().is_empty());
+        let r = super::super::simulate(&base).unwrap();
+        assert_eq!(r["animation"]["frames"].as_array().unwrap().len(), 12);
+        assert_eq!(r["animation"]["real_time"], false);
+    }
+    #[test]
+    #[ignore = "requires saved Rival3 loop browser profile"]
+    fn rival3_loop_browser_profile_store_import_and_live_worker_replay() {
+        let profiles = super::super::roundtrip_steelseries_browser_profiles(
+            "OPEN_HUB_RIVAL3_LOOP_UI_PROFILES",
+        );
+        assert_eq!(profiles.len(), 1);
+        let (service, t, _log, _) = fixture(0x1824, usize::MAX);
+        let rt = runtime();
+        let root = Root::new();
+        let p = profiles[0].multi.as_ref().unwrap();
+        assert!(from_plan(p).unwrap().is_some());
+        assert_eq!(from_plan(p).unwrap().unwrap().step_ms, 77);
+        assert_eq!(
+            super::super::simulate(p).unwrap()["animation"]["frames"]
+                .as_array()
+                .unwrap()
+                .len(),
+            12
+        );
+        service
+            .apply_context(&t.id, p, &rt, &root.0, None, None, Some(&t.connection))
+            .unwrap();
+        wait(&service.4, &t, |s| s.writes > 0);
+        let out = service.read(&t.id, &rt).unwrap();
+        assert_eq!(out.session.unwrap().plan, *p);
+        service.shutdown_lighting().unwrap();
+        service.stop_software(&rt).unwrap();
     }
 }

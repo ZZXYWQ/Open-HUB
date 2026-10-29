@@ -1,0 +1,28 @@
+# Rival 3 authored loop profiles and managed playback
+
+Development increment, 2026-10-29. Original wired Rival 3, VID/PID1038:1824 only. This is an explicit Open HUB looping timeline, not conversion of arbitrary GG animations or proof of OEM timing parity. Model counts remain43 partial /0 complete. No installer, release, installed application or physical device is changed.
+
+## Application integration
+
+The persisted VendorProfile schema `openhub-rival3-loop/1` contains four initial RGB values, four optional independently animated RGB sequences and a shared nominal frame interval33–1000ms. At least one zone must animate; each enabled sequence has1–4096 frames and loop marker255. Unknown fields, finite-repeat values, empty sequences, other models and a duplicate/mixed lighting setting are rejected before packets. The schema lowers to the reviewed native full-brightness steady palette for capability checks and application; the complete desired timeline remains in the session and saved profile. `multi_simulate` also drives12 nominal ticks through the actual native codec and reports `real_time:false` and `hardware_tested:false`.
+
+The existing lighting UI offers a custom-loop editor only for1824. Each zone has an initial color, an independent loop switch, editable color frames, red/blue and rainbow sequence presets, addition/deletion and eight-frame pagination. It can return to the seven native global modes. Firmware184C retains the native editor and does not gain the loop entry. Presets are authored frame sequences, not claims about native OEM presets.
+
+The normal Apply command passes the current connection key. Profile activation follows the existing exact brand/model and observed serial-identity checks, then binds the worker to the connection actually written. Every start creates a fresh playback token. Pause/resume/restart/stop RPCs check current connection and playback token; an old page cannot control a replacement connection or newer playback. Status polling is read-only and its UI ignores responses from superseded views. Stopping leaves the last successful color; it does not flash or synthesize a hardware restoration.
+
+Service owns the player and serializes plan application, playback controls and global stop. Workers own only the device-manager Arc, avoiding a Service/player/thread reference cycle. Explicit application shutdown rejects later starts, cancels and joins the workers before existing macro/effect cleanup. The registry lock is released before native device initialization; session reads may hold the device manager while consulting the registry. A memory transport probe checks this lock order. A newly applied plan stops the previous loop before writing; a partial plan without the loop schema also stops it. Applying a full edited loop plan starts its timeline again.
+
+Dynamic desired sessions report running/paused/stopped and cannot authorize hardware flash, including after pause/stop. Native hardware-only plans retain their existing explicit apply-then-save path. Macro stop keeps its own label and behavior; global software stop and application exit also join all loop workers. The loop mode does not start PC/dock synchronization. A driver lighting revision prevents a former worker from overwriting another controller's lighting attempt; complete cross-controller UX remains pending.
+
+## Verification and limits
+
+- Production frontend build passes. The new editor uses existing controls, without new runtime packages or image assets.
+- Main suite1094 passed,0 failed,98 ignored; shared workspace398 unit plus1 documentation test passed.
+- Four added default integration groups cover persistence of desired sessions, explicit connection and profile-identity activation, pause/resume/shutdown, flash rejection, replacement playback and stale connection refusal, malformed/foreign/mixed/finite plans and native-IO registry lock order. The prior seven worker groups remain in the full suite.
+- Headless Edge runs the built production React UI with native model DTOs: save/reload, nine-frame pagination and deletion, independent second-zone colors, native/custom switching, live control actions, current connection/playback request scope and disabled flash. Live IPC replies are mocked, so this alone is not driver or hardware proof.
+- The exact saved browser profile passes production ProfileStore save/load, configuration pack transfer, native12-tick simulation and connection-owned worker application on memory HID transport. The ignored replay is selected explicitly with `OPEN_HUB_RIVAL3_LOOP_UI_PROFILES`.
+- Existing two-firmware native UI and GG Rival3 import UI pass; their saved production profiles also pass two Rust native-codec replay tests.184C has no custom-loop entry.
+
+Evidence: `development/2026-10-29-rival3-loop-validation.json`; scripts `test-rival3-loop-ui.cjs`, `test-rival3-ui.cjs`, `test-gg-rival3-import-ui.cjs`. Private logs, saved profiles, recorded IPC requests and rendered screenshot are retained in the task outputs directory. No physical HID, OS input, visible desktop or installed app was used.
+
+Still incomplete: original GG dynamic migration and full Go argument mapping, finite sequence UI/policy, precise OEM timing and output parity, complete simultaneous PC/dock/controller behavior, physical hardware readback and original/184C hardware validation. This increment does not make Rival 3 or any other model fully accepted.

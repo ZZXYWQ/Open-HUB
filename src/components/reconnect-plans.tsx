@@ -15,6 +15,7 @@ interface Candidates{record:Item;devices:Candidate[];needs_source:boolean;warnin
 interface SourceInfo{source:MultiSource;kind:string;serial:string|null}
 function settingLabel(s:MultiSetting,plan:MultiPlan){
  if('VendorProfile'in s&&s.VendorProfile.schema==='steelseries-rival3-lighting/1')return 'Rival 3：四区颜色、亮度与全局原生灯效';
+ if('VendorProfile'in s&&s.VendorProfile.schema==='openhub-rival3-loop/1')return `Rival 3：四区独立循环灯效，每帧 ${s.VendorProfile.data.step_ms} ms，由 Open HUB 运行`;
  if('VendorProfile'in s)return 'X11 完整原生配置：DPI、性能、灯效、八个控制项和板载宏';
  if('Dpi'in s)return `DPI：${s.Dpi.stages.map(v=>`${v.x} × ${v.y}`).join(' / ')}，活动档位 ${s.Dpi.active+1}`;
  if('ReportRate'in s)return `目标回报率：${s.ReportRate} Hz`;
