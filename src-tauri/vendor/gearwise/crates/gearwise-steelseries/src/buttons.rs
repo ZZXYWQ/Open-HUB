@@ -78,6 +78,7 @@ fn encode(spec: &ButtonSpec, action: &ButtonAction) -> Result<Vec<u8>> {
         ButtonAction::Default => Err(Error::invalid("a default mapping has no slot value")),
         ButtonAction::Disabled => Ok(vec![DISABLED]),
         ButtonAction::Mouse(b) => Ok(vec![mouse_button(*b)?]),
+        ButtonAction::Scroll(d) if spec.cmd==[7,0]&&spec.width==2=>Ok(vec![if matches!(d,gearwise_core::model::ScrollDirection::Up){0x31}else{0x32}]),
         ButtonAction::Scroll(_) => Err(Error::Unsupported("vertical scroll output")),
         ButtonAction::Key { usage, mods } => key(spec, *usage, *mods),
         ButtonAction::Media(usage) => {

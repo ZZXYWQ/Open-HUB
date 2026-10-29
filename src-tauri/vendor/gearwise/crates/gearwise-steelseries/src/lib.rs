@@ -27,6 +27,7 @@ pub mod cpi;
 mod device;
 mod dpi;
 mod light;
+pub mod rival3;
 mod link;
 mod proximity;
 pub mod models;
@@ -198,6 +199,7 @@ pub fn validate_setting(pid:u16,setting:&gearwise_core::Setting)->Result<()>{
  use gearwise_core::Setting;
  let spec=models::find(pid).ok_or(Error::Unsupported("unknown SteelSeries model"))?.spec;
  match setting{
+  Setting::VendorProfile{schema,data}=>{rival3::plan(pid,schema,data)?;},
   Setting::Dpi(want)=>{let(applied,_)=dpi::plan(&spec.dpi,want)?;if applied!=*want{return Err(Error::invalid("DPI must exactly match a native sensor step"));}},
   Setting::LiftOff(index) if pid==0x1724=>{proximity::packet(*index)?;},
   Setting::ReportRate(hz)=>{if !spec.rate.codes.iter().any(|(r,_)|r==hz){return Err(Error::invalid("native SteelSeries report rate"));}},
@@ -208,5 +210,5 @@ pub fn validate_setting(pid:u16,setting:&gearwise_core::Setting)->Result<()>{
 }
 #[cfg(feature="simulation")]
 pub fn simulated_model(pid:u16)->Result<(Box<dyn Device>,std::sync::Arc<std::sync::Mutex<Vec<gearwise_core::transport::MockRecord>>>)>{
- if !matches!(pid,0x1710|0x1720|0x1722|0x1832|0x1724){return Err(Error::Unsupported("unreviewed bridge SteelSeries simulation"));}Ok(testutil::silent(pid))
+ if !matches!(pid,0x1710|0x1720|0x1722|0x1832|0x1724|0x1824|0x184c){return Err(Error::Unsupported("unreviewed bridge SteelSeries simulation"));}Ok(testutil::silent(pid))
 }

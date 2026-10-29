@@ -371,7 +371,7 @@ impl gearwise_core::HidBackend for ExactBackend {
 }
 fn validate_native_shortcuts(p:&Plan)->Result<(),String>{for s in &p.settings{if let Setting::Button{id,action:ButtonAction::Shortcut(events)}=s{let model=crate::atk::model(p.vendor,p.product).filter(|m|m.native_macros&&m.native_buttons).ok_or("此具体型号未接通原生快捷序列")?;if !(2..=model.buttons).contains(id){return Err("保留独立左键或未知实体按键".into());}crate::atk::shortcuts::encode_events(events).map_err(|e|e.to_string())?;}}Ok(())}
 pub fn validate(p: &Plan) -> Result<(), String> {
-    validate_native_shortcuts(p)?;
+    validate_native_shortcuts(p)?;crate::steelseries::validate_lighting_plan(p)?;
     if crate::x11::supported(p.vendor,p.product){return crate::x11::validate_plan(p);}
     if p.settings.iter().any(|s|matches!(s,Setting::Lighting{state:gearwise_core::model::ZoneState{effect:gearwise_core::model::LightingEffect::Gradient{..},..},..}))&&!matches!((p.vendor,p.product),(0x1038,0x1720|0x1722|0x1832|0x1724)){return Err("此具体型号尚未实现原生自定义渐变".into());}
     if p.vendor==0x1532&&matches!(p.product,0x00b6|0x00b7)&&(!p.macros.is_empty()||p.source.is_some()){return Err("DeathAdder V3 Pro 的软件宏与输入来源仍未核实，当前只开放已核对的原生设置".into());}
@@ -389,6 +389,7 @@ pub fn validate(p: &Plan) -> Result<(), String> {
             Setting::DpiColor{stage,..}=>format!("dpi-color:{stage}"),
             Setting::DpiIndicator(_)=>"dpi-indicator".into(),
             Setting::ReportRate(_) => "rate".into(),
+            Setting::VendorProfile{schema,..}=>format!("vendor-profile:{schema}"),
             Setting::Tuning(_) => "tuning".into(),
             Setting::SensorCalibration(_) => "sensor-calibration".into(),
             Setting::LiftOff(_)=>"lift-off".into(),Setting::AngleSnapping(_)=>"angle-snapping".into(),
@@ -410,6 +411,7 @@ pub fn validate(p: &Plan) -> Result<(), String> {
         if let Some(model)=crate::legacy::model(p.vendor,p.product){crate::legacy::validate_setting(model,s).map_err(|e|e.to_string())?;continue;}
         if crate::hyperx::supported(p.vendor,p.product){crate::hyperx::validate_setting(s).map_err(|e|e.to_string())?;continue;}
         match s {
+            Setting::VendorProfile{..}=>return Err("此具体型号不接受该完整配置类型".into()),
             Setting::Dpi(d) => {
                 if crate::atk::supported(p.vendor,p.product){crate::atk::validate_dpi(d,p.product).map_err(|e|e.to_string())?;}
                 let (max, step, count, xy) = if let Some(model)=crate::atk::model(p.vendor,p.product){(model.max_dpi,50,8,true)}else{match p.vendor {
@@ -643,7 +645,8 @@ pub fn template_plan(v:&View)->Result<Plan,String>{
  let settings=if crate::steelseries::supported(v.descriptor.vendor_id,v.descriptor.product_id){
   let mut settings=vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500)];
   settings.extend(v.capabilities.buttons.iter().filter(|b|b.remappable&&b.id!=1).map(|b|Setting::Button{id:b.id,action:v.state.buttons.get(&b.id).cloned().unwrap_or_else(||b.default_action.clone())}));
-  settings.extend(v.capabilities.lighting.iter().filter_map(|z|v.state.lighting.get(&z.id).map(|state|Setting::Lighting{zone:z.id,state:state.clone()})));
+  if gearwise_steelseries::rival3::supported(v.descriptor.product_id){settings.push(Setting::VendorProfile{schema:gearwise_steelseries::rival3::SCHEMA.into(),data:v.state.vendor_profile.clone().ok_or("Rival3 缺少完整灯效方案")?});}
+  else{settings.extend(v.capabilities.lighting.iter().filter_map(|z|v.state.lighting.get(&z.id).map(|state|Setting::Lighting{zone:z.id,state:state.clone()})));}
   if let Some(level)=v.state.lift_off{settings.push(Setting::LiftOff(level));}settings
  }else if v.descriptor.vendor_id==0x1532&&matches!(v.descriptor.product_id,0x00b6|0x00b7){let mut settings=vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500),Setting::Tuning(gearwise_core::tuning::MouseTuning{device_sleep_seconds:Some(60),low_power_percent:Some(5),..Default::default()})];if v.capabilities.calibration.is_some(){if let Some(value)=v.state.calibration{settings.push(Setting::SensorCalibration(value));}}settings.extend(v.capabilities.buttons.iter().filter(|b|b.remappable).filter_map(|b|v.state.buttons.get(&b.id).map(|action|Setting::Button{id:b.id,action:action.clone()})));settings}else if crate::x11::supported(v.descriptor.vendor_id,v.descriptor.product_id){vec![Setting::VendorProfile{schema:crate::x11::SCHEMA.into(),data:v.state.vendor_profile.clone().ok_or("离线模板缺少完整配置")?}]}else{vec![Setting::Dpi(v.state.dpi.clone().ok_or("模拟设备未报告 DPI")?),Setting::ReportRate(500)]};
  let plan=Plan{vendor:v.descriptor.vendor_id,product:v.descriptor.product_id,settings,macros:vec![],source:None};validate(&plan)?;Ok(plan)
@@ -739,7 +742,7 @@ fn validate_viper_button(id:u16,action:&ButtonAction)->Result<(),String>{
  if !matches!(action,ButtonAction::Default|ButtonAction::Disabled|ButtonAction::Mouse(gearwise_core::model::MouseButton::Left|gearwise_core::model::MouseButton::Right|gearwise_core::model::MouseButton::Back|gearwise_core::model::MouseButton::Forward)){return Err("蝰蛇 V3 Pro 键盘和宏协议仍待验证".into());}Ok(())
 }
 pub fn compile(plan:&Plan)->Result<Compiled,String>{
- validate_native_shortcuts(plan)?;
+ validate_native_shortcuts(plan)?;crate::steelseries::validate_lighting_plan(plan)?;
  use gearwise_core::profile::{Macro,MacroMode,MacroStep};
  let pulsar=crate::atk::is_pulsar(plan.vendor,plan.product);
  let basilisk=gearwise_razer::basilisk::supported(plan.vendor,plan.product);
@@ -1143,3 +1146,7 @@ mod compx_horizontal_plan_tests;
 #[cfg(test)]
 #[path="compx_scroll_plan_tests.rs"]
 mod compx_scroll_plan_tests;
+
+#[cfg(test)]
+#[path="rival3_models.rs"]
+mod rival3_models;

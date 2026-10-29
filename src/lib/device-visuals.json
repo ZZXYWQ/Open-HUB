@@ -894,5 +894,23 @@
         "src": "/devices/razer-deathadder-v3-pro.png"
       }
     ]
+  },
+  {
+    "id": "steelseries-rival3",
+    "label": "SteelSeries Rival 3",
+    "vendor": 4152,
+    "products": [
+      6180,
+      6220
+    ],
+    "names": [
+      "SteelSeries Rival 3"
+    ],
+    "images": [
+      {
+        "label": "Rival 3 · 控制示意图",
+        "src": "/devices/rivalcfg/steelseries-rival3.svg"
+      }
+    ]
   }
 ]

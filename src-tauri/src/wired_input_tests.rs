@@ -45,7 +45,7 @@ fn opened(pid: u16, unit: &str) -> (Box<dyn Device>, MockLog) {
         path: format!("simulation:control:{unit}"),
         vendor_id: 0x1038,
         product_id: pid,
-        interface_number: 0,
+        interface_number: if gearwise_steelseries::rival3::supported(pid){3}else{0},
         usage_page: 0xffc0,
         usage: 1,
         serial: None,
@@ -145,7 +145,7 @@ impl Case {
                     4 => ButtonAction::Macro("unit-macro".into()),
                     5 => ButtonAction::Key {
                         usage: 7,
-                        mods: Modifiers(2),
+                        mods: Modifiers(if gearwise_steelseries::rival3::supported(view.descriptor.product_id){0}else{2}),
                     },
                     _ => b.default_action.clone(),
                 },
@@ -241,9 +241,13 @@ fn serialless_same_model_pairs_apply_only_to_own_collection_and_stop_one_without
         let table = c.logs[0].lock().unwrap().clone();
         assert_eq!(table.len(), 1);
         let table=match &table[0]{MockRecord::Write(v) if pid!=0x1724=>v,MockRecord::SetFeature(v) if pid==0x1724=>v,_=>panic!("wrong native button transport")};
-        assert_eq!(&table[8..13], &[0x61, 0xea, 0, 0, 0]);
-        assert_eq!(&table[18..23], &[4, 0, 0, 0, 0]);
-        assert_eq!(&table[23..28], &[0x51, 0xe1, 7, 0, 0]);
+        if gearwise_steelseries::rival3::supported(pid){
+            assert_eq!(table,&vec![0,7,0,1,0,0x34,0xea,3,0,4,0,0x33,7,0x30,0,0x31,0,0x32,0]);
+        }else{
+            assert_eq!(&table[8..13], &[0x61, 0xea, 0, 0, 0]);
+            assert_eq!(&table[18..23], &[4, 0, 0, 0, 0]);
+            assert_eq!(&table[23..28], &[0x51, 0xe1, 7, 0, 0]);
+        }
         assert!(c.logs[1].lock().unwrap().is_empty());
         assert_eq!(c.runtime.status().source_count, 1);
         c.press(0);

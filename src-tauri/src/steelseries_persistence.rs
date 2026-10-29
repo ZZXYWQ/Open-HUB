@@ -44,6 +44,13 @@ fn complete(plan: &Plan) -> Result<(), String> {
             }
         })
         .collect::<Vec<_>>();
+    if gearwise_steelseries::rival3::supported(plan.product){
+        let profiles=plan.settings.iter().filter_map(|s|if let Setting::VendorProfile{schema,data}=s{Some((schema,data))}else{None}).collect::<Vec<_>>();
+        if !crate::steelseries::complete_table(plan.product,&buttons)||dpi.len()!=1||rates!=1||!zones.is_empty()||profiles.len()!=1||plan.settings.len()!=buttons.len()+3{return Err("Rival3 板载保存需要完整 DPI、回报率、全部八个已知控制与完整灯效方案".into());}
+        let lighting=gearwise_steelseries::rival3::parse(profiles[0].0,profiles[0].1).map_err(|e|e.to_string())?;
+        if lighting.enabled&&lighting.mode!=4{return Err("Rival3 原厂仅确认全区常亮或全区关闭可保存到板载；动态灯效保存在 Open HUB 配置中".into());}
+        return Ok(());
+    }
     let lift=plan.settings.iter().filter(|s|matches!(s,Setting::LiftOff(_))).count();
     if !crate::steelseries::complete_table(plan.product, &buttons)
         || dpi.len() != 1
@@ -172,7 +179,7 @@ mod tests {
             path: format!("simulation:steel-persist:{pid:04x}{suffix}"),
             vendor_id: 0x1038,
             product_id: pid,
-            interface_number: 0,
+            interface_number: if gearwise_steelseries::rival3::supported(pid) {3} else {0},
             usage_page: 0xffc0,
             usage: 1,
             serial: None,
@@ -261,6 +268,12 @@ mod tests {
                     },
                 });
             }
+            if gearwise_steelseries::rival3::supported(pid) {
+                plan.settings.retain(|s| !matches!(s,Setting::Lighting{..}));
+                let mut lights=gearwise_steelseries::rival3::Profile::default();
+                for (i,z) in lights.zones.iter_mut().enumerate(){z.color=Rgb{r:10+i as u8,g:20,b:30};z.brightness=80;}
+                plan.settings.push(gearwise_steelseries::rival3::setting(&lights));
+            }
             if pid==0x1724 {plan.settings.push(Setting::LiftOff(4));}
             if pid==0x1832 {
                 plan.settings.retain(|s|!matches!(s,Setting::Dpi(_)));
@@ -314,7 +327,7 @@ mod tests {
         }
     }
     #[test]
-    fn exact_five_models_save_only_after_complete_apply_and_one_explicit_native_command() {
+    fn exact_supported_models_save_only_after_complete_apply_and_one_explicit_native_command() {
         let mut fixtures = Vec::new();
         for pid in crate::steelseries::PRODUCTS {
             let c = Case::new(pid);
@@ -328,7 +341,7 @@ mod tests {
             assert_eq!(c.saves(), 1);
             assert_eq!(
                 c.log.lock().unwrap().last().unwrap(),
-                &MockRecord::Write(if matches!(pid,0x1710|0x1724) {
+                &MockRecord::Write(if matches!(pid,0x1710|0x1724|0x1824|0x184c) {
                     vec![0, 9, 0]
                 } else {
                     vec![0, 0x59, 0]
@@ -340,6 +353,10 @@ mod tests {
         if let Some(path) = std::env::var_os("OPEN_HUB_STEELSERIES_SAVE_FIXTURE") {
             std::fs::write(path, serde_json::to_vec_pretty(&fixtures).unwrap()).unwrap();
         }
+    }
+    #[test]
+    fn rival3_only_complete_steady_or_disabled_palette_is_eligible_for_explicit_flash(){
+        for pid in [0x1824,0x184c]{for enabled in [false,true]{for mode in 0..=6{let mut c=Case::new(pid);c.plan.settings.retain(|s|!matches!(s,Setting::VendorProfile{..}));let lights=gearwise_steelseries::rival3::Profile{enabled,mode,..Default::default()};c.plan.settings.push(gearwise_steelseries::rival3::setting(&lights));assert_eq!(complete(&c.plan).is_ok(),!enabled||mode==4);assert_eq!(c.saves(),0);}}}
     }
     #[test]
     fn sensei_ten_complete_five_stage_plan_persists_current_stage_once_and_rejects_invalid_sixth() {
@@ -629,7 +646,7 @@ mod tests {
             assert!(saved.command_sent && !saved.readback_confirmed);
             assert_eq!(
                 c.log.lock().unwrap().as_slice(),
-                &[MockRecord::Write(if matches!(pid,0x1710|0x1724) {
+                &[MockRecord::Write(if matches!(pid,0x1710|0x1724|0x1824|0x184c) {
                     vec![0, 9, 0]
                 } else {
                     vec![0, 0x59, 0]

@@ -2,10 +2,10 @@
 //! rivalcfg native profiles and byte vectors. Settings are write-only cached.
 use gearwise_core::{Setting,model::{ButtonAction,Modifiers,MouseButton}};
 pub const FIXED_PRODUCTS:[u16;3]=[0x1710,0x1720,0x1722];
-pub const PRODUCTS:[u16;5]=[0x1710,0x1720,0x1722,0x1832,0x1724];
-pub fn button_count(product:u16)->Option<u16>{match product{0x1710|0x1720=>Some(6),0x1722|0x1832=>Some(8),0x1724=>Some(7),_=>None}}
+pub const PRODUCTS:[u16;7]=[0x1710,0x1720,0x1722,0x1832,0x1724,0x1824,0x184c];
+pub fn button_count(product:u16)->Option<u16>{match product{0x1710|0x1720=>Some(6),0x1824|0x184c=>Some(8),0x1722|0x1832=>Some(8),0x1724=>Some(7),_=>None}}
 pub fn fixed_dpi_stages(product:u16)->Option<usize>{matches!(product,0x1710|0x1720|0x1722|0x1724).then_some(2)}
-pub fn zone_count(product:u16)->Option<u8>{match product{0x1724=>Some(8),0x1710|0x1720|0x1722|0x1832=>Some(2),_=>None}}
+pub fn zone_count(product:u16)->Option<u8>{match product{0x1824|0x184c=>Some(4),0x1724=>Some(8),0x1710|0x1720|0x1722|0x1832=>Some(2),_=>None}}
 pub fn supported(v:u16,p:u16)->bool{v==0x1038&&PRODUCTS.contains(&p)}
 pub fn validate_setting(product:u16,setting:&Setting)->Result<(),String>{
  if !PRODUCTS.contains(&product){return Err("此赛睿具体型号尚未核对".into());}
@@ -28,4 +28,8 @@ pub fn restore_table(device:&mut dyn gearwise_core::Device,settings:&[Setting])-
  for s in settings{validate_setting(d.product_id,s)?;}
  let actions=settings.iter().map(|s|if let Setting::Button{id,action}=s{(*id,action.clone())}else{unreachable!()}).collect::<Vec<_>>();
  device.apply_button_table(&actions).map_err(|e|format!("完整原始按键恢复失败，记录已保留：{e}"))
+}
+
+pub fn validate_lighting_plan(p:&crate::multibrand::Plan)->Result<(),String>{
+ if p.vendor==0x1038&&gearwise_steelseries::rival3::supported(p.product)&&p.settings.iter().any(|s|matches!(s,Setting::VendorProfile{..}))&&p.settings.iter().any(|s|matches!(s,Setting::Lighting{..})){return Err("Rival3 全局灯效不能与单独灯区设置混合，请在同一灯效编辑器核对".into());}Ok(())
 }

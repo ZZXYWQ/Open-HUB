@@ -214,6 +214,7 @@ impl Light {
 pub enum Preset {
     Click(MouseButton),
     DpiCycle,
+    Scroll(gearwise_core::model::ScrollDirection),
     Disabled,
     /// A keyboard key (HID usage).
     Key(u8),
@@ -223,6 +224,7 @@ impl Preset {
     pub fn action(self) -> ButtonAction {
         match self {
             Preset::Click(b) => ButtonAction::Mouse(b),
+            Preset::Scroll(d)=>ButtonAction::Scroll(d),
             Preset::DpiCycle => ButtonAction::Dpi(DpiFunction::Cycle),
             Preset::Disabled => ButtonAction::Disabled,
             Preset::Key(usage) => ButtonAction::Key {
@@ -486,7 +488,9 @@ const RIVAL_3: Spec = Spec {
         width: 2,
         keyboard: 0x33,
         consumer: 0x34,
-        fields: SIX_BUTTONS_AND_WHEEL,
+        fields: &[B1,B2,B3,B4,B5,B6_DPI,
+            button(7,"滚轮向上",Preset::Scroll(gearwise_core::model::ScrollDirection::Up),(0.5,0.14)),
+            button(8,"滚轮向下",Preset::Scroll(gearwise_core::model::ScrollDirection::Down),(0.5,0.20))],
     }),
     battery: None,
     save: SAVE_09_00,

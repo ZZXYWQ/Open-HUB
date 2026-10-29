@@ -48,6 +48,11 @@ impl SteelSeriesDevice {
         let connection_key=format!("steel-open:{:x}:{}",std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d|d.as_nanos()).unwrap_or(0),NEXT_CONNECTION.fetch_add(1,std::sync::atomic::Ordering::Relaxed));
         let mut caps=capabilities(spec);let mut state=factory_state(spec);
         if model.pid==0x1724 {caps.lift_off=crate::proximity::labels();state.lift_off=Some(4);}
+        if crate::rival3::supported(model.pid){
+            caps.vendor_profile=Some(crate::rival3::SCHEMA.into());
+            let data=serde_json::to_value(crate::rival3::Profile::default()).expect("Rival3 factory lighting");
+            crate::rival3::cache(&mut state,&data).expect("bounded factory lighting");
+        }
         Self {
             control_path:iface.path.clone(),connection_key,
             desc: DeviceDescriptor {
@@ -78,7 +83,13 @@ impl SteelSeriesDevice {
     fn plan(&self, setting: &Setting) -> Result<(Setting, Vec<Packet>)> {
         let spec = self.spec;
         match setting {
-            Setting::DpiColor{..} | Setting::DpiIndicator(_) | Setting::SensorCalibration(_) | Setting::VendorProfile{..} | Setting::Tuning(_) => return Err(Error::Unsupported("mouse performance")),
+            Setting::DpiColor{..} | Setting::DpiIndicator(_) | Setting::SensorCalibration(_) | Setting::Tuning(_) => return Err(Error::Unsupported("mouse performance")),
+            Setting::VendorProfile{schema,data}=>crate::rival3::plan(self.desc.product_id,schema,data),
+            Setting::Lighting{zone,state} if crate::rival3::supported(self.desc.product_id)=>{
+                let current=self.state.vendor_profile.as_ref().ok_or(Error::invalid("Rival3 lighting state uncertain; load a complete lighting plan"))?;
+                let Setting::VendorProfile{schema,data}=crate::rival3::static_zone(current,*zone,state)?else{unreachable!()};
+                crate::rival3::plan(self.desc.product_id,&schema,&data)
+            }
             Setting::Dpi(want) => {
                 let (applied, packets) = dpi::plan(&spec.dpi, want)?;
                 Ok((Setting::Dpi(applied), packets))
@@ -247,9 +258,16 @@ impl Device for SteelSeriesDevice {
     fn apply(&mut self, setting: &Setting) -> Result<()> {
         let (applied, packets) = self.plan(setting)?;
         for packet in &packets {
-            self.link.send(packet)?;
+            if let Err(error)=self.link.send(packet){
+                if crate::rival3::supported(self.desc.product_id)&&matches!(applied,Setting::VendorProfile{..}){
+                    self.state.vendor_profile=None;self.state.lighting.clear();
+                    return Err(Error::invalid(format!("{error}; Rival3 lighting state uncertain; load and explicitly apply a complete plan; no retry")));
+                }
+                return Err(error);
+            }
         }
-        applied.apply_to(&mut self.state);
+        if let Setting::VendorProfile{data,..}=&applied{crate::rival3::cache(&mut self.state,data)?;}
+        else{applied.apply_to(&mut self.state);}
         Ok(())
     }
 
@@ -363,30 +381,26 @@ mod tests {
                 button(5, ButtonAction::Disabled),
             ],
         );
-        assert_eq!(
-            written[..7],
-            [
-                output(&[0x0b, 0x00, 2, 1, 0x12, 0x24]),
-                output(&[0x0b, 0x00, 2, 2, 0x1b, 0x49]),
-                output(&[0x04, 0x00, 0x02]),
-                output(&[0x05, 0x00, 0x01, 0xff, 0x00, 0x00, 0x64]),
-                output(&[0x05, 0x00, 0x04, 0x10, 0x20, 0x30, 0x64]),
-                // First button change: only button 4 differs from the factory table.
-                output(&hex(
-                    "07 00 01 00 02 00 03 00 33 04 05 00 30 00 31 00 32 00"
-                )),
-                // Button 6 now sends VolumeUp as a two-byte media slot.
-                output(&hex(
-                    "07 00 01 00 02 00 03 00 33 04 05 00 34 e9 31 00 32 00"
-                )),
-            ]
-        );
-        assert_eq!(
-            written[8],
-            output(&hex(
-                "07 00 01 00 03 00 03 00 33 04 00 00 34 e9 31 00 32 00"
-            ))
-        );
+        assert_eq!(written.len(),17);
+        assert_eq!(&written[..3],&[
+            output(&[0x0b,0,2,1,0x12,0x24]),
+            output(&[0x0b,0,2,2,0x1b,0x49]),
+            output(&[4,0,2]),
+        ]);
+        // Each static-zone change explicitly writes the complete desired palette
+        // and the shared steady mode. The second preserves the first three zones.
+        for start in [3,8]{
+            assert_eq!(written[start],output(&[5,0,1,255,0,0,100]));
+            assert_eq!(written[start+1],output(&[5,0,2,0,255,0,100]));
+            assert_eq!(written[start+2],output(&[5,0,3,0,0,255,100]));
+            assert_eq!(written[start+4],output(&[6,0,4]));
+        }
+        assert_eq!(written[6],output(&[5,0,4,128,0,128,100]));
+        assert_eq!(written[11],output(&[5,0,4,16,32,48,100]));
+        assert_eq!(written[13],output(&hex("07 00 01 00 02 00 03 00 33 04 05 00 30 00 31 00 32 00")));
+        assert_eq!(written[14],output(&hex("07 00 01 00 02 00 03 00 33 04 05 00 34 e9 31 00 32 00")));
+        assert_eq!(written[16],output(&hex("07 00 01 00 03 00 03 00 33 04 00 00 34 e9 31 00 32 00")));
+
     }
 
     #[test]

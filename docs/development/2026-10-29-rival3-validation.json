@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-29",
+  "model": "SteelSeries Rival 3 original wired",
+  "firmware_products": [
+    "1038:1824",
+    "1038:184c"
+  ],
+  "distinct_models_added": 1,
+  "accepted_complete": false,
+  "partial_model_count": 43,
+  "complete_model_count": 0,
+  "hardware_tested": false,
+  "protocol_source_commit": "779ea52c68cbf8d21234d9e0d81718225f680819",
+  "protocol_file_sha256": "0e2f7b2a4f890ad48b74170e20d0c16c436347cc36be8f3c38bb7dd4f60a40eb",
+  "tests": {
+    "main_passed": 1071,
+    "main_failed": 0,
+    "main_ignored": 95,
+    "shared_unit_passed": 393,
+    "shared_doc_passed": 1,
+    "browser_profile_native_replay": 1,
+    "production_ui_firmware_views": 2,
+    "x11_ui_regression": true
+  },
+  "assets": {
+    "original_svg_bytes": 25904,
+    "main_js_bytes": 856297
+  },
+  "gaps": [
+    "physical tests",
+    "hardware readback",
+    "original GG profile import",
+    "native macro parity",
+    "unproven OEM advanced settings"
+  ],
+  "installer_created": false,
+  "release_created": false
+}

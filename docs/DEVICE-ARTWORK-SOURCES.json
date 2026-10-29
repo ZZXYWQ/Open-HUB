@@ -270,5 +270,12 @@
     "bytes": 36407,
     "sha256": "c234168f5423cb1278938c0b6c0bbb10126688d7dbab952d568c72ca0b2aa268",
     "modified": false
+  },
+  {
+    "file": "/devices/rivalcfg/steelseries-rival3.svg",
+    "source": "https://github.com/flozz/rivalcfg/blob/779ea52c68cbf8d21234d9e0d81718225f680819/doc/devices/images/rival_3_buttons.svg",
+    "bytes": 25904,
+    "sha256": "4cadc4f5f7fa3ace0cf4e5713ed41bd71d3047ffeb5495c68348d2f2d17ee8f5",
+    "license": "WTFPL v2; docs/RIVALCFG-ARTWORK-LICENSE.txt"
   }
 ]

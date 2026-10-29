@@ -22,7 +22,7 @@ export function X11Controls({plan,onChange,view,onRecording}:{plan:MultiPlan;onC
   return()=>{current=false;clearInterval(timer);};
  },[view.descriptor.id,view.descriptor.simulated,view.state.battery,plan.product]);
  const eventsRef=useRef<X11Event[]>([]),held=useRef(new Set<number>()),last=useRef(0);
- const item=plan.settings.find(s=>'VendorProfile'in s),profile=item&&'VendorProfile'in item?item.VendorProfile.data:null;
+ const item=plan.settings.find(s=>'VendorProfile'in s),profile=item&&'VendorProfile'in item&&item.VendorProfile.schema===X11_SCHEMA?item.VendorProfile.data:null;
  const put=(data:X11Profile)=>onChange({...plan,settings:[{VendorProfile:{schema:X11_SCHEMA,data}}],macros:[],source:null});
  const macro=profile?.macros.find(m=>m.id===selected)??profile?.macros[0];
  const putMacro=(value:X11Macro)=>{if(profile)put({...profile,macros:profile.macros.map(m=>m.id===value.id?value:m)});};

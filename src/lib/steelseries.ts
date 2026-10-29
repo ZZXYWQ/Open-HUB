@@ -1,6 +1,6 @@
 import {KEY_NAMES} from './sino';
 // Mirrors the exact native bridge scope, checked by production DTO UI tests.
-export const steelseriesProducts=[0x1710,0x1720,0x1722,0x1832,0x1724];
+export const steelseriesProducts=[0x1710,0x1720,0x1722,0x1832,0x1724,0x1824,0x184c];
 export function isSteelseries(v:number,p:number){return v===0x1038&&steelseriesProducts.includes(p);}
 export function steelseriesFixedStages(p:number){return [0x1710,0x1720,0x1722,0x1724].includes(p)?2:null;}
 export function steelseriesBreathPeriods(p:number){return p===0x1710?[3000,5000,7000]:null;}

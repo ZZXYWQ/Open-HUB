@@ -292,6 +292,9 @@ fn scroll_outputs_and_reverse_cycle_follow_exact_native_model_allowlists_without
                 // enable reverse DPI or independent clutches on those models.
                 validate(&p).unwrap();let compiled=compile(&p).unwrap();assert!(compiled.bindings.is_empty()&&!compiled.software_input);
                 let(mut d,_)=crate::atk::simulated(p.product).unwrap();for setting in &compiled.settings{d.apply(setting).unwrap();}assert_eq!(d.read_state().unwrap().buttons.get(&2),Some(&action));
+            }else if matches!(action,ButtonAction::Scroll(_))&&p.vendor==0x1038&&gearwise_steelseries::rival3::supported(p.product){
+                validate(&p).unwrap();let compiled=compile(&p).unwrap();assert!(compiled.bindings.is_empty()&&!compiled.software_input);
+                let(mut d,_)=gearwise_steelseries::simulated_model(p.product).unwrap();for s in &compiled.settings{d.apply(s).unwrap();}assert_eq!(d.read_state().unwrap().buttons.get(&2),Some(&action));
             }else{assert!(validate(&p).is_err(),"new native action leaked to {}: {action:?}",v.descriptor.name);}
         }
     }
