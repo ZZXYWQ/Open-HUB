@@ -20,7 +20,6 @@
   "admitted_lighting": "14-record source layout: type1/mask0 colorshift; type2/mask0 breathe up to7 colors; type0/mask1 steady with0 active colors",
   "remaining": [
     "motion fields in original files",
-    "wheel macro trigger format",
     "nondefault driver performance",
     "Host stream,override and reactive masks",
     "Physical timing and midpoint/quantization parity"
@@ -33,5 +32,6 @@
     "reactive": 8
   },
   "breathe_expansion": "Color/black pairs and closing initial color;2*n+1 records; split each position interval at integer midpoint, then truncate weight*2.55",
-  "multi_usage_chords": "Function81 four-byte source records use shared GG keyboard compiler: native single usage+mods, source-scoped held software macro for multiple ordinary usages/modifier-only"
+  "multi_usage_chords": "Function81 four-byte source records use shared GG keyboard compiler: native single usage+mods, source-scoped held software macro for multiple ordinary usages/modifier-only",
+  "wheel_macro_trigger_source": "MDC/hash-verified prime_base get-binding-triggers explicitly lists49/50,page1,type1; physical inputs use type0. Imported playback_options direction still requires1."
 }

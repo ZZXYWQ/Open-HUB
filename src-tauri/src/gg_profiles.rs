@@ -117,7 +117,7 @@ fn apply_bindings(conn:&Connection,id:&str,pid:u16,physical_buttons:usize,button
  if bindings.len()>32{return Err("GG 自定义绑定过多".into());}let mut seen=HashSet::new();
  for(kind,trigger,macro_id,playback,passthrough)in bindings{
   let trigger=json(&trigger)?;let code=field(&trigger,"hidCode")?;let kind_code=field(&trigger,"type")?;
-  let button=if gearwise_steelseries::rival3::supported(pid)&&kind_code==1&&matches!(code,49|50){code-42}else if kind_code==0&&(1..=physical_buttons as u32).contains(&code){code}else{return Err("GG 绑定不是此型号已核对的物理输入触发".into())};
+  let button=if (gearwise_steelseries::rival3::supported(pid)||pid==gearwise_steelseries::prime::PID)&&kind_code==1&&matches!(code,49|50){code-42}else if kind_code==0&&(1..=physical_buttons as u32).contains(&code){code}else{return Err("GG 绑定不是此型号已核对的物理输入触发".into())};
   if field(&trigger,"page")?!=1||field(&trigger,"direction")?!=1{return Err("GG 触发页面或方向未核对".into());}
   if !seen.insert(button)||passthrough!=0{return Err("GG 绑定重复或含保留原键输出，尚不能无损转换".into());}
   if kind!="macro"&& !kind.is_empty(){return Err(format!("GG 自定义绑定 {kind} 尚未转换"));}let reference=macro_id.filter(|v|!v.is_empty()).ok_or("GG 宏引用缺失")?;

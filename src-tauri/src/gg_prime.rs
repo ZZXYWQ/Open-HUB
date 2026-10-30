@@ -418,7 +418,7 @@ mod tests {
         );
         c.execute(
             "UPDATE bindings SET trigger_data=?1",
-            [json!({"hidCode":49,"page":1,"type":1,"direction":1}).to_string()],
+            [json!({"hidCode":6,"page":1,"type":0,"direction":1}).to_string()],
         )
         .unwrap();
         assert!(super::super::read(&c).unwrap().candidates[0]
@@ -719,6 +719,93 @@ mod tests {
         let out = super::super::read(&fixture(&s)).unwrap();
         assert!(out.candidates[0].profile.is_some());
         if let Some(path) = std::env::var_os("OPEN_HUB_GG_PRIME_CHORD_PREVIEW") {
+            std::fs::write(path, serde_json::to_vec_pretty(&out).unwrap()).unwrap();
+        }
+    }
+
+    #[test]
+    fn prime_descriptor_wheel_macro_triggers_preserve_modes_and_reject_wrong_kinds() {
+        for (code, logical) in [(49, 7), (50, 8)] {
+            for mode in [0, 1, 2, 3] {
+                let c = fixture(&source());
+                c.execute(
+                    "INSERT INTO bindings VALUES('macro','source-guid',?1,'source-macro',?2,0)",
+                    rusqlite::params![
+                        json!({"hidCode":code,"page":1,"type":1,"direction":1}).to_string(),
+                        json!({"type":mode,"num_repeat":if mode==1{2}else{1},"repeat_delay":0})
+                            .to_string()
+                    ],
+                )
+                .unwrap();
+                let out = super::super::read(&c).unwrap();
+                let p = out.candidates[0].profile.as_ref().unwrap();
+                let plan = p.multi.as_ref().unwrap();
+                assert_eq!(plan.macros.len(), 1);
+                let m = &plan.macros[0];
+                assert_eq!(
+                    m.mode,
+                    match mode {
+                        2 => MacroMode::WhileHeld,
+                        3 => MacroMode::Toggle,
+                        _ => MacroMode::Once,
+                    }
+                );
+                assert_eq!(m.steps.len(), if mode == 1 { 10 } else { 5 });
+                assert!(plan.settings.iter().any(|s|matches!(s,Setting::Button{id,action:ButtonAction::Macro(reference)}if *id==logical && reference==&m.id)));
+                assert_eq!(
+                    crate::multibrand::simulate(plan).unwrap()["software_macros"]
+                        .as_array()
+                        .unwrap()
+                        .len(),
+                    1
+                );
+                for trigger in [
+                    json!({"hidCode":code,"page":1,"type":0,"direction":1}),
+                    json!({"hidCode":code,"page":2,"type":1,"direction":1}),
+                    json!({"hidCode":code,"page":1,"type":1,"direction":0}),
+                    json!({"hidCode":6,"page":1,"type":0,"direction":1}),
+                ] {
+                    c.execute("UPDATE bindings SET trigger_data=?1", [trigger.to_string()])
+                        .unwrap();
+                    assert!(super::super::read(&c).unwrap().candidates[0]
+                        .profile
+                        .is_none());
+                }
+            }
+        }
+    }
+    #[test]
+    fn prime_two_wheel_references_stay_independent_and_export_actual_preview() {
+        let c = fixture(&source());
+        for code in [49, 50] {
+            c.execute(
+                "INSERT INTO bindings VALUES('macro','source-guid',?1,'source-macro',?2,0)",
+                rusqlite::params![
+                    json!({"hidCode":code,"page":1,"type":1,"direction":1}).to_string(),
+                    json!({"type":0,"num_repeat":1,"repeat_delay":0}).to_string()
+                ],
+            )
+            .unwrap();
+        }
+        let out = super::super::read(&c).unwrap();
+        let plan = out.candidates[0]
+            .profile
+            .as_ref()
+            .unwrap()
+            .multi
+            .as_ref()
+            .unwrap();
+        assert_eq!(plan.macros.len(), 2);
+        assert_ne!(plan.macros[0].id, plan.macros[1].id);
+        assert_eq!(plan.macros[0].steps, plan.macros[1].steps);
+        assert_eq!(
+            crate::multibrand::simulate(plan).unwrap()["software_macros"]
+                .as_array()
+                .unwrap()
+                .len(),
+            2
+        );
+        if let Some(path) = std::env::var_os("OPEN_HUB_GG_PRIME_WHEEL_PREVIEW") {
             std::fs::write(path, serde_json::to_vec_pretty(&out).unwrap()).unwrap();
         }
     }

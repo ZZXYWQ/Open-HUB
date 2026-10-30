@@ -1,0 +1,24 @@
+{
+  "main_passed": 1120,
+  "main_failed": 0,
+  "main_ignored": 106,
+  "prime_gg_focused_passed": 12,
+  "wheel_playback_cases": 8,
+  "two_wheel_browser_saved_profile_replay_passed": 1,
+  "ui_regressions": [
+    "Prime default",
+    "Rival3 import"
+  ],
+  "hardware_tested": false,
+  "native_macro_upload_enabled": false,
+  "source_cleanup": "8 descriptor files and2 temporary reports hash-checked and deleted",
+  "partial_models": 44,
+  "complete_models": 0,
+  "installer_created": false,
+  "remaining": [
+    "native macro memory allocation/tail handling",
+    "complete readback and persistence",
+    "physical wheel event timing",
+    "physical source association and OEM parity"
+  ]
+}

@@ -663,3 +663,12 @@ fn prime_gg_three_modes_browser_native_replay(){
 fn prime_gg_chord_browser_native_replay(){
  let ps=roundtrip_steelseries_browser_profiles("OPEN_HUB_GG_PRIME_CHORD_UI_PROFILES");assert_eq!(ps.len(),1);let plan=ps[0].multi.as_ref().unwrap();assert_eq!(ps[0].levels[0].x,600);assert_eq!(plan.macros.len(),1);assert_eq!(plan.macros[0].mode,MacroMode::WhileHeld);assert_eq!(plan.macros[0].steps,vec![MacroStep::KeyDown(224),MacroStep::KeyDown(4),MacroStep::KeyDown(5),MacroStep::WaitForRelease,MacroStep::KeyUp(5),MacroStep::KeyUp(4),MacroStep::KeyUp(224)]);assert_eq!(simulate(plan).unwrap()["software_macros"].as_array().unwrap().len(),1);
 }
+
+#[test]
+#[ignore="requires actual GG Prime two-wheel importer UI saved profile"]
+fn prime_gg_wheel_browser_two_independent_bindings_native_replay(){
+ let ps=roundtrip_steelseries_browser_profiles("OPEN_HUB_GG_PRIME_WHEEL_UI_PROFILES");assert_eq!(ps.len(),1);let plan=ps[0].multi.as_ref().unwrap();assert_eq!(ps[0].levels[0].x,600);assert_eq!(plan.macros.len(),2);
+ let ids=[7,8].map(|wanted|plan.settings.iter().find_map(|s|if let Setting::Button{id,action:ButtonAction::Macro(reference)}=s{if *id==wanted{Some(reference.clone())}else{None}}else{None}).unwrap());assert_ne!(ids[0],ids[1]);
+ for reference in ids{let m=plan.macros.iter().find(|m|m.id==reference).unwrap();assert_eq!(m.mode,MacroMode::Once);assert_eq!(m.steps.len(),5);assert!(matches!(m.steps[2],MacroStep::Delay(23)));}
+ assert_eq!(simulate(plan).unwrap()["software_macros"].as_array().unwrap().len(),2);
+}

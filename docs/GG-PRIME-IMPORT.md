@@ -58,3 +58,15 @@ A separate Service/actual driver/memory input runtime test configures two serial
 Legacy GG import UI and Rival3 import UI regressions pass after correcting a stale M HUB button name in the old test. Full main suite:1118 passed,0 failed,105 ignored; these ignored artifact/physical tests are not counted as passed. Physical held-key behavior, exact wheel pulse/hold timing, actual identity association and native onboard macros remain open.
 
 Reproduce: OPEN_HUB_GG_PRIME_CHORD_PREVIEW plus cargo test gg_profiles emits the chord preview. OPEN_HUB_GG_PRIME_CHORD_UI=1 node scripts/test-gg-prime-import-ui.cjs saves the profile. OPEN_HUB_GG_PRIME_CHORD_UI_PROFILES plus cargo test prime_gg_chord_browser -- --ignored replays it. The source/runtime isolation test is prime_two_scoped_held_chords.
+
+## Descriptor-backed wheel macro bindings
+
+Hash/MDC-verified prime_base get-binding-triggers explicitly lists hidCode49/50 with page1/type1, separately from the physical type0 triggers. The shared GG binding decoder now admits precisely these two Prime wheel inputs as logical7/8. Existing direction1, unique-trigger, no-passthrough, original-macro-reference and event/playback validation still applies. The fixed bottom CPI6 is not accepted as a new physical binding.
+
+Eight wheel/direction playback cases cover each wheel with once, finite repeat, while-held and toggle. Wrong trigger type/page/direction and bottom CPI are refused. Referencing the same original macro from both wheels creates independent logical references while preserving identical original event content. These are software macro modes, not evidence of native firmware playback or a physical wheel hold signal.
+
+A real native two-wheel preview enters the production importer. Both bound macro IDs and complete original keyboard/mouse/delay event sequences survive editor save and quick save. The actual saved JSON passes independent production store/export/import and native compiler simulation. Prime default and Rival3 import UI regressions pass. For physical wheel event pulse length, held-mode usability and actual device association, further device testing remains necessary.
+
+The same descriptor review records native macro function71, memory-write Feature5e, read Featurede, declared1280-byte data and512-byte chunks. The integer chunk-loop division yields2 and does not explain the last256 bytes. The encoder's allocation format and whether that tail is intentionally unused remain unresolved; no upload plan or readback is fabricated. Native macro write/readback and verified persistence remain gaps. Sources and this distinction are in gg122-prime-native-facts.json. Temporary decoded source files were hash-verified and removed.
+
+Reproduce: OPEN_HUB_GG_PRIME_WHEEL_PREVIEW with cargo test gg_profiles::prime; OPEN_HUB_GG_PRIME_WHEEL_UI=1 node scripts/test-gg-prime-import-ui.cjs; OPEN_HUB_GG_PRIME_WHEEL_UI_PROFILES with cargo test prime_gg_wheel_browser -- --ignored.

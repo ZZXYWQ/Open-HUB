@@ -183,5 +183,34 @@
     "DF": "brightness u16 after report ID",
     "EC": "enable u8 after report ID",
     "caution": "Replies described without echoed request command; existing query accept-by-command is insufficient. No live readback enabled."
+  },
+  "macro_research": {
+    "binding_triggers": {
+      "physical": "interval num-remap-buttons, page1/type0",
+      "wheel": [
+        {
+          "hidCode": 49,
+          "page": 1,
+          "type": 1
+        },
+        {
+          "hidCode": 50,
+          "page": 1,
+          "type": 1
+        }
+      ]
+    },
+    "onboard_macro_function": "71",
+    "declared_data_bytes": 1280,
+    "declared_chunk_bytes": 512,
+    "write_feature_command": "5e",
+    "write_offset_and_count": "u16 little endian, units of4 bytes",
+    "feature_report_bytes": 643,
+    "read_feature_command": "de",
+    "read_selector": "loopcount byte",
+    "read_button_command": "db",
+    "firmware_button_records": 6,
+    "do_deploy_macros": false,
+    "gap": "1280/512 truncates to2 under verified integer division. The unused256-byte tail and encoder allocation/layout must be explained before native upload. No native memory encoder or writes enabled."
   }
 }
