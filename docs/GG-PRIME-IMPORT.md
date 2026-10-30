@@ -26,3 +26,15 @@ Focused Rust tests convert the actual extracted original default, check exact na
 No physical mouse, real input or live vendor database is touched. Actual user database variants, broader OEM mode conversion, wheel trigger identities, multi-normal-key shortcut conversion, native macro library, full hardware readback, original PC synchronization and physical timing remain open. The original source's has_onboard_macros flag does not prove that Open HUB implements those macros.
 
 Reproduce: cargo test gg_profiles::prime with OPEN_HUB_GG_PRIME_PREVIEW pointing to gg-prime-native-preview.json; npm run build; node scripts/test-gg-prime-import-ui.cjs; cargo test prime_gg_import_browser -- --ignored with OPEN_HUB_GG_PRIME_UI_PROFILES pointing to gg-prime-ui-profiles.json.
+
+## Steady and breathe follow-up
+
+Common descriptor constants independently confirm effect0, steady1, host-stream2, override4 and reactive8 masks, and disabled0/colorshift1/breathe2 types. The adapter now also admits type0/mask1 with zero active colors as an exact steady initial_color, retaining raw brightness and enable state. Authored source-schema records exercise this combination; it is not described as an observed user database.
+
+Type2/mask0 expands each source color into color/black transitions and appends the initial color. Integer midpoint interval splitting and truncated2.55 weights follow the inspected descriptor expression. The default three stop positions0/33/66 expand to weights0/40/43/40/43/43/43; the native program has seven sections. At most seven source colors fit; eight would require17 sections and the entire candidate is withheld. Seven colors are explicitly tested to generate all15 records without truncation. The effect minimum duration retains the source mask-effect rule max(speed,(count+1)*33)*10.
+
+Host-stream, override, reactive and invalid type/mask pairs remain refused. The adapter does not guess a trigger response from an ordinary gradient. Physical timing, integer-midpoint/quantization phase parity and actual OEM database variations are still unverified.
+
+Six focused tests include exact steady RGB/raw37 brightness/disabled state, odd interval breathing weights, capacity boundaries, rejected masks and the existing default/macro/malformed cases. Three separately identified native converter previews enter the production React importer. Browser editing changes CPI and initial/static RGB; ordinary save and quick save are identical. All three actual saved profiles then pass independent production storage/export/import and native simulation replay. Test source IDs are distinct, matching the source database identity requirement; the UI intentionally keeps edits per profile ID. Existing single-default Prime and Rival3 import regressions remain covered.
+
+Use OPEN_HUB_GG_PRIME_MODES_PREVIEW with cargo test gg_profiles::prime to emit the three native previews; OPEN_HUB_GG_PRIME_MODES_UI=1 node scripts/test-gg-prime-import-ui.cjs saves all three. Replay using OPEN_HUB_GG_PRIME_MODES_UI_PROFILES and cargo test prime_gg_three_modes_browser -- --ignored.

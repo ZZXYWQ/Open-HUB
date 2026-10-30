@@ -171,8 +171,10 @@ pub(super) fn convert(
             "settings_mask",
         ],
     )?;
-    if field(light, "type")? != 1 || field(light, "settings_mask")? != 0 {
-        return Err("GG Prime 当前仅迁移已核对的原厂渐变模式；呼吸、响应与常亮字段仍需核对".into());
+    let kind = field(light, "type")?;
+    let mask = field(light, "settings_mask")?;
+    if !matches!((kind, mask), (1 | 2, 0) | (0, 1)) {
+        return Err("GG Prime 主机流、覆盖、响应或未核对灯效组合尚未转换".into());
     }
     let colors = light["colors"]
         .as_array()
@@ -183,7 +185,7 @@ pub(super) fn convert(
         .filter(|a| a.len() == 14)
         .ok_or("GG Prime 原厂位置表不是14项")?;
     let n = field(light, "num_colors")? as usize;
-    if !(1..=14).contains(&n) {
+    if (mask == 0 && !(1..=if kind == 2 { 7 } else { 14 }).contains(&n)) || (mask == 1 && n != 0) {
         return Err("GG Prime 颜色数量超出已核对容量".into());
     }
     let mut cs = vec![];
@@ -197,34 +199,57 @@ pub(super) fn convert(
         }
         ps.push(pos);
     }
-    if ps[0] != 0 || ps[..n].windows(2).any(|p| p[0] > p[1]) {
+    if mask == 0 && (ps[0] != 0 || ps[..n].windows(2).any(|p| p[0] > p[1])) {
         return Err("GG Prime 位置必须有序并从零开始".into());
     }
     let speed = field(light, "speed")?;
     if speed > 65535 {
         return Err("GG Prime 速度越界".into());
     }
-    let _initial = rgb(&light["initial_color"])?;
-    let mut prev = 0;
-    let mut sections = vec![];
-    for i in 0..n {
+    let initial = rgb(&light["initial_color"])?;
+    let program = if mask == 1 {
+        None
+    } else {
+        let mut sections = vec![];
+        let weight = |n: u32| (n as f64 * 2.55) as u8;
+        for i in 0..n {
+            let prev = if i == 0 { 0 } else { ps[i - 1] };
+            if kind == 1 {
+                sections.push(Section {
+                    color: cs[i],
+                    weight: weight(ps[i] - prev),
+                });
+            } else {
+                let next = if i + 1 == n { 100 } else { ps[i + 1] };
+                sections.push(Section {
+                    color: cs[i],
+                    weight: weight(ps[i] - (prev + (ps[i] - prev) / 2)),
+                });
+                sections.push(Section {
+                    color: Rgb::new(0, 0, 0),
+                    weight: weight((next - ps[i]) / 2),
+                });
+            }
+        }
+        let prev = ps[n - 1];
+        let remaining = if kind == 2 {
+            100 - (prev + (100 - prev) / 2)
+        } else {
+            100 - prev
+        };
         sections.push(Section {
-            color: cs[i],
-            weight: ((ps[i] - prev) as f64 * 2.55) as u8,
+            color: cs[0],
+            weight: weight(remaining),
         });
-        prev = ps[i];
-    }
-    sections.push(Section {
-        color: cs[0],
-        weight: ((100 - prev) as f64 * 2.55) as u8,
-    });
-    let program = Program {
-        initial: cs[0],
-        duration: speed.max((n as u32 + 1) * 33) * 10,
-        motion: Motion::default(),
-        sections,
+        let p = Program {
+            initial: cs[0],
+            duration: speed.max((n as u32 + 1) * 33) * 10,
+            motion: Motion::default(),
+            sections,
+        };
+        p.packet().map_err(|e| e.to_string())?;
+        Some(p)
     };
-    program.packet().map_err(|e| e.to_string())?;
     shape(&s["led_brightness"], &["level"])?;
     let brightness = field(&s["led_brightness"], "level")?
         .try_into()
@@ -237,9 +262,9 @@ pub(super) fn convert(
     };
     let lighting = prime::Profile {
         enabled,
-        color: cs[0],
+        color: if mask == 1 { initial } else { cs[0] },
         brightness,
-        program: Some(program),
+        program,
     };
     let levels = stages
         .iter()
@@ -269,7 +294,7 @@ pub(super) fn convert(
         source: None,
     };
     crate::multibrand::validate(&plan)?;
-    notes.push("Prime 原厂五档CPI、五实体键/双滚轮和渐变已转换；宏为逐鼠标软件宏。原厂14项色表按原始位置展开并保留闭环，不静默截断。实机节奏、原厂驱动性能及板载宏仍待核实。".into());
+    notes.push("Prime 原厂五档CPI、五实体键/双滚轮和常亮或动态灯效已转换；宏为逐鼠标软件宏。原厂14项色表按原始位置展开并保留闭环，不静默截断。实机节奏、原厂驱动性能及板载宏仍待核实。".into());
     Ok((plan, levels, active, rate))
 }
 
@@ -342,7 +367,7 @@ mod tests {
     #[test]
     fn prime_invalid_unknown_wrong_model_and_unsupported_effects_withhold_whole_profile() {
         let cases = [
-            ("/lighting_config/type", json!(2)),
+            ("/lighting_config/type", json!(3)),
             ("/lighting_config/settings_mask", json!(1)),
             ("/lighting_config/num_colors", json!(16)),
             ("/lighting_config/positions/1/pos", json!(101)),
@@ -403,5 +428,143 @@ mod tests {
         assert!(super::super::read(&c).unwrap().candidates[0]
             .profile
             .is_none());
+    }
+
+    #[test]
+    fn prime_steady_and_breathe_preserve_raw_color_brightness_and_native_expansion() {
+        let mut s = source();
+        s["lighting_config"]["type"] = 0.into();
+        s["lighting_config"]["settings_mask"] = 1.into();
+        s["lighting_config"]["num_colors"] = 0.into();
+        s["led_brightness"]["level"] = 37.into();
+        s["lighting_enable"]["enable"] = 0.into();
+        let out = super::super::read(&fixture(&s)).unwrap();
+        let plan = out.candidates[0]
+            .profile
+            .as_ref()
+            .unwrap()
+            .multi
+            .as_ref()
+            .unwrap();
+        let profile = plan
+            .settings
+            .iter()
+            .find_map(|s| {
+                if let Setting::VendorProfile { schema, data } = s {
+                    Some(prime::Profile::decode(prime::PID, schema, data).unwrap())
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+        assert_eq!(profile.color, Rgb::new(255, 0, 0));
+        assert_eq!(profile.brightness, 37);
+        assert!(!profile.enabled);
+        assert!(profile.program.is_none());
+        assert_eq!(
+            crate::multibrand::simulate(plan).unwrap()["hardware_tested"],
+            false
+        );
+        s = source();
+        s["lighting_config"]["type"] = 2.into();
+        let out = super::super::read(&fixture(&s)).unwrap();
+        let plan = out.candidates[0]
+            .profile
+            .as_ref()
+            .unwrap()
+            .multi
+            .as_ref()
+            .unwrap();
+        let p = plan
+            .settings
+            .iter()
+            .find_map(|s| {
+                if let Setting::VendorProfile { schema, data } = s {
+                    Some(
+                        prime::Profile::decode(prime::PID, schema, data)
+                            .unwrap()
+                            .program
+                            .unwrap(),
+                    )
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+        assert_eq!(p.sections.len(), 7);
+        assert_eq!(
+            p.sections.iter().map(|s| s.weight).collect::<Vec<_>>(),
+            [0, 40, 43, 40, 43, 43, 43]
+        );
+        for i in [1, 3, 5] {
+            assert_eq!(p.sections[i].color, Rgb::new(0, 0, 0));
+        }
+        assert_eq!(p.sections[6].color, p.initial);
+        assert_eq!(p.duration, 10000);
+        assert_eq!(
+            crate::multibrand::simulate(plan).unwrap()["hardware_tested"],
+            false
+        );
+    }
+    #[test]
+    fn prime_breathe_capacity_and_unsupported_masks_never_truncate() {
+        let mut s = source();
+        s["lighting_config"]["type"] = 2.into();
+        s["lighting_config"]["num_colors"] = 7.into();
+        for i in 0..14 {
+            s["lighting_config"]["positions"][i]["pos"] = (if i < 7 { i * 14 } else { 0 }).into();
+        }
+        let out = super::super::read(&fixture(&s)).unwrap();
+        let plan = out.candidates[0]
+            .profile
+            .as_ref()
+            .unwrap()
+            .multi
+            .as_ref()
+            .unwrap();
+        let data = plan
+            .settings
+            .iter()
+            .find_map(|s| {
+                if let Setting::VendorProfile { data, .. } = s {
+                    Some(data)
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+        assert_eq!(data["program"]["sections"].as_array().unwrap().len(), 15);
+        s["lighting_config"]["num_colors"] = 8.into();
+        assert!(super::super::read(&fixture(&s)).unwrap().candidates[0]
+            .profile
+            .is_none());
+        for mask in [2, 4, 8, 16, 255] {
+            let mut bad = source();
+            bad["lighting_config"]["settings_mask"] = mask.into();
+            assert!(super::super::read(&fixture(&bad)).unwrap().candidates[0]
+                .profile
+                .is_none());
+        }
+    }
+
+    #[test]
+    fn prime_three_reviewed_modes_export_native_import_preview() {
+        let mut out = super::super::read(&fixture(&source())).unwrap();
+        for steady in [false, true] {
+            let mut s = source();
+            s["lighting_config"]["type"] = (if steady { 0 } else { 2 }).into();
+            if steady {
+                s["lighting_config"]["settings_mask"] = 1.into();
+                s["lighting_config"]["num_colors"] = 0.into();
+            }
+            let c=fixture(&s);c.execute("UPDATE configurations SET id=?1",[if steady{"steady-source"}else{"breathe-source"}]).unwrap();
+            let mut next = super::super::read(&c).unwrap();
+            assert!(next.candidates[0].profile.is_some());
+            out.candidates.append(&mut next.candidates);
+        }
+        assert_eq!(out.candidates.len(), 3);
+        if let Some(path) = std::env::var_os("OPEN_HUB_GG_PRIME_MODES_PREVIEW") {
+            std::fs::write(path, serde_json::to_vec_pretty(&out).unwrap()).unwrap();
+        }
     }
 }

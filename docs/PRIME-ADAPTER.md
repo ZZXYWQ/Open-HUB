@@ -22,10 +22,10 @@ Reproduce: npm run build; generate native DTO using OPEN_HUB_PRIME_VIEWS and car
 
 ## Remaining OEM parity work
 
-Exact OEM dynamic conversion and verified motion/timing, plus complete Prism/PC synchronization; onboard macro memory and playback; full readback and persistence verification; complete original GG private profile import (a strict colorshift subset is connected); other advanced OEM settings and real-device validation. Initial UI values are templates/session cache, not hardware observations. These gaps keep this model out of complete acceptance.
+Exact OEM dynamic conversion and verified motion/timing, plus complete Prism/PC synchronization; onboard macro memory and playback; full readback and persistence verification; complete original GG private profile import (strict steady/colorshift/breathe subsets are connected); other advanced OEM settings and real-device validation. Initial UI values are templates/session cache, not hardware observations. These gaps keep this model out of complete acceptance.
 
 Rival110 was also investigated, but its OEM ordinary button/wheel mapping relies on a kernel path rather than this native table protocol. [Research gap](development/2026-10-29-rival110-protocol-gap.json) records this; it has no newly admitted device entry and is not counted.
 
 Follow-up: [native gradient codec and source conversion limits](PRIME-NATIVE-GRADIENT-PREPARATION.md). Static lighting shares the reviewed codec; dynamic schema/UI are connected for authored programs, with original GG conversion and physical timing still pending.
 
-[GG original-profile migration follow-up](GG-PRIME-IMPORT.md) connects the evidenced default colorshift configuration and physical macro subset; unverified modes are withheld.
+[GG original-profile migration follow-up](GG-PRIME-IMPORT.md) connects the evidenced default colorshift and authored steady/breathe schema variants, plus physical macro subset; unverified modes are withheld.

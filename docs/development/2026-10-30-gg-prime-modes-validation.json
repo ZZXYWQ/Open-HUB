@@ -1,0 +1,26 @@
+{
+  "main_passed": 1113,
+  "main_failed": 0,
+  "main_ignored": 104,
+  "gg_prime_focused_passed": 6,
+  "three_modes_browser_replay_passed": 1,
+  "ui": [
+    "colorshift",
+    "authored source-schema breathe",
+    "authored source-schema steady",
+    "single-default regression",
+    "Rival3 import regression"
+  ],
+  "source_files": "same8 decoded descriptor hashes checked and temporary plaintext removed",
+  "hardware_tested": false,
+  "partial_models": 44,
+  "complete_models": 0,
+  "installer_created": false,
+  "remaining": [
+    "host stream and reactive masks",
+    "physical integer-midpoint and quantization phase",
+    "wheel macro trigger format",
+    "onboard macros",
+    "full readback and physical parity"
+  ]
+}

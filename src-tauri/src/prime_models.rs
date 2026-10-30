@@ -648,3 +648,12 @@ fn prime_gg_import_browser_saved_profile_native_replay(){
  let profile=plan.settings.iter().find_map(|s|if let Setting::VendorProfile{schema,data}=s{Some(Profile::decode(prime::PID,schema,data).unwrap())}else{None}).unwrap();
  let program=profile.program.unwrap();assert_eq!(program.initial,Rgb::new(18,52,86));assert_eq!(program.duration,10000);assert_eq!(program.sections.iter().map(|s|s.weight).collect::<Vec<_>>(),[0,84,84,86]);assert_eq!(simulate(plan).unwrap()["hardware_tested"],false);
 }
+
+#[test]
+#[ignore="requires all three modes saved by actual GG Prime UI"]
+fn prime_gg_three_modes_browser_native_replay(){
+ let ps=roundtrip_steelseries_browser_profiles("OPEN_HUB_GG_PRIME_MODES_UI_PROFILES");assert_eq!(ps.len(),3);
+ for(i,p)in ps.iter().enumerate(){let plan=p.multi.as_ref().unwrap();assert_eq!(p.levels[0].x,600);let profile=plan.settings.iter().find_map(|s|if let Setting::VendorProfile{schema,data}=s{Some(Profile::decode(prime::PID,schema,data).unwrap())}else{None}).unwrap();
+ if i==2{assert!(profile.program.is_none());assert_eq!(profile.color,Rgb::new(18,52,86));}else{let program=profile.program.unwrap();assert_eq!(program.initial,Rgb::new(18,52,86));assert_eq!(program.sections.iter().map(|s|s.weight).collect::<Vec<_>>(),if i==0{vec![0,84,84,86]}else{vec![0,40,43,40,43,43,43]});}
+ assert_eq!(simulate(plan).unwrap()["hardware_tested"],false);}
+}
