@@ -1,0 +1,17 @@
+{
+  "firmware_sha256": "205faae43e6a0109167c1f301b5825ab55bc2aa14d0d2f508001dfc92e264662",
+  "dispatch_read_cases": 2919,
+  "dispatch_write_cases": 415,
+  "chunk_sequence_cases": 2,
+  "device_io": false,
+  "physical_capacity_validated": false,
+  "playback_validated": false,
+  "configured_contexts": 3,
+  "synthetic_context_bytes": true,
+  "rust_coverage_frames_validated": true,
+  "emulator": "unicorn 2.1.4",
+  "date": "2026-10-30",
+  "steelseries_unit_tests_passed": 110,
+  "main_prime_tests_passed": 20,
+  "main_prime_tests_ignored": 6
+}

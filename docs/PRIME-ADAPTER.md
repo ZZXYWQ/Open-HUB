@@ -30,4 +30,4 @@ Follow-up: [native gradient codec and source conversion limits](PRIME-NATIVE-GRA
 
 [GG original-profile migration follow-up](GG-PRIME-IMPORT.md) connects the evidenced default colorshift and authored steady/breathe schema variants, plus physical/wheel software macro subset; unverified modes are withheld.
 
-[Onboard macro header research](PRIME-ONBOARD-MACRO-RESEARCH.md) pins native encoder/metadata evidence and adds a structural memory reader; full event encoding and upload remain unimplemented.
+[Onboard macro header research](PRIME-ONBOARD-MACRO-RESEARCH.md) pins native encoder/metadata evidence, canonical event/block codecs and an offline transfer planner. Original firmware dispatcher/read/write/context-reset instructions now pass isolated emulation with Rust-generated frames; playback semantics and safe live upload remain incomplete.

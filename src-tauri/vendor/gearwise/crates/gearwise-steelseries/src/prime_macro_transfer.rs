@@ -1,5 +1,8 @@
 //! Pinned GG122 Prime macro transfer coverage, offline planning only.
 //! This is not a slot allocator, ownership proof or hardware upload API.
+//! Pinned firmware resets all macro contexts BEFORE checking write bounds.
+//! Validate the complete transaction before I/O; an invalid probe write is
+//! not side-effect-free. See docs/PRIME-ONBOARD-MACRO-RESEARCH.md.
 use crate::{
     link::Packet,
     models::Report,

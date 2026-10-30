@@ -1,0 +1,87 @@
+{
+  "source": "Retained official GG122 engine firmware/272111662/firmware-prime-v1.0.15+4244c08.bin",
+  "firmware_bytes": 47104,
+  "firmware_sha256": "205faae43e6a0109167c1f301b5825ab55bc2aa14d0d2f508001dfc92e264662",
+  "load_base": "0x8005400",
+  "initial_sp": "0x20005000",
+  "reset_vector": "0x800b215",
+  "device_descriptor_offset": "0x7088",
+  "device_descriptor_hex": "120100020000004038102e18000101020001",
+  "command_table_address": "0x0800c11c",
+  "command_table_entries": 25,
+  "command_table_stride": 12,
+  "macro_command": 94,
+  "macro_read": "0x08008a85",
+  "macro_write": "0x08008a35",
+  "macro_memory_base": "0x20001e73",
+  "handler_max_end_words": 1280,
+  "word_bytes": 4,
+  "caveat": "Handler range checks are not proof of safely owned physical macro capacity or complete playback semantics. No device I/O or native-macro capability is enabled.",
+  "regions": [
+    {
+      "name": "command_dispatch",
+      "entry": "0x80091d0",
+      "end": "0x800920c",
+      "sha256": "cf955f8e09480adf7d8b18d4ddef2432ecd73d5a6b7b3fa3d53582037c02f801"
+    },
+    {
+      "name": "dispatch_next_and_unknown",
+      "entry": "0x80097ee",
+      "end": "0x80097fe",
+      "sha256": "c01b7e9930eb1c6a8ba8b5093ddf4635df48986e007de212ad19267df8528256"
+    },
+    {
+      "name": "macro_write",
+      "entry": "0x8008a34",
+      "end": "0x8008a84",
+      "sha256": "ce81df9545ad2d9934b00984c7c6834059b77d99f9c3504d090ee8309efe8fab"
+    },
+    {
+      "name": "macro_read",
+      "entry": "0x8008a84",
+      "end": "0x8008ac4",
+      "sha256": "f03db71793f69fd0dd07e26f2b420edd938f90632322b0aea10f31f174b03551"
+    },
+    {
+      "name": "byte_copy",
+      "entry": "0x800bf32",
+      "end": "0x800bf48",
+      "sha256": "426bbcd6c6fd951a5c680ab7890eac2ec7e3f032fb7eefc36c5ecf29e8ae1187"
+    },
+    {
+      "name": "startup_data_and_bss",
+      "entry": "0x800b214",
+      "end": "0x800b25c",
+      "sha256": "fe863bb2cff081b9e77b707997ec492cbf8c440a4a70d3689eb1c1ce99e95a13"
+    },
+    {
+      "name": "context_reset",
+      "entry": "0x800891a",
+      "end": "0x8008934",
+      "sha256": "d6fd81ce4c8eaacd3530efab334c7a30cd1e5e03dd7c3a5ebf10e92d6a2040c2"
+    },
+    {
+      "name": "byte_fill",
+      "entry": "0x800bed0",
+      "end": "0x800bee0",
+      "sha256": "24ed9be9c89b9e8eb6f294da30fd6be04e2da04317b378716ef077ad890b74d3"
+    }
+  ],
+  "startup": {
+    "data_source": "0x0800c404",
+    "data_start": "0x20000000",
+    "data_end": "0x200002ec",
+    "bss_start": "0x200002f0",
+    "bss_end": "0x20003278"
+  },
+  "initialized_macro_descriptor": {
+    "memory_pointer_address": "0x20000108",
+    "word_count_address": "0x2000010c",
+    "contexts_pointer_address": "0x20000110",
+    "contexts_count_address": "0x20000114",
+    "contexts_pointer": "0x20001c00",
+    "contexts_count": 3,
+    "context_bytes": 60
+  },
+  "write_side_effect": "Before bounds validation, reset all configured macro contexts: byte+13=255, bytes+20..+60=0. Out-of-range writes still do this."
+}
