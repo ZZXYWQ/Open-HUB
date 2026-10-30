@@ -1,0 +1,17 @@
+{
+  "steelseries_driver_passed": 101,
+  "steelseries_driver_failed": 0,
+  "new_header_tests": 3,
+  "main_prime_regression_passed": 20,
+  "main_prime_regression_ignored": 6,
+  "pinned_native_function_digests": 2,
+  "typed_header_fields": 6,
+  "machine_instruction_anchors": 4,
+  "vendor_executed": false,
+  "device_io_enabled": false,
+  "event_semantics_decoded": false,
+  "hardware_tested": false,
+  "partial_models": 44,
+  "complete_models": 0,
+  "installer_created": false
+}

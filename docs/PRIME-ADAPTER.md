@@ -29,3 +29,5 @@ Rival110 was also investigated, but its OEM ordinary button/wheel mapping relies
 Follow-up: [native gradient codec and source conversion limits](PRIME-NATIVE-GRADIENT-PREPARATION.md). Static lighting shares the reviewed codec; dynamic schema/UI are connected for authored programs, with original GG conversion and physical timing still pending.
 
 [GG original-profile migration follow-up](GG-PRIME-IMPORT.md) connects the evidenced default colorshift and authored steady/breathe schema variants, plus physical/wheel software macro subset; unverified modes are withheld.
+
+[Onboard macro header research](PRIME-ONBOARD-MACRO-RESEARCH.md) pins native encoder/metadata evidence and adds a structural memory reader; full event encoding and upload remain unimplemented.

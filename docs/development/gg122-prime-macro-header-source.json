@@ -1,0 +1,84 @@
+{
+  "engine_sha256": "c1b8e182e62c8bb6667a3c678394c4d6363a532409f3de5a8fd7a31fdf0c0ec1",
+  "pclntab_offset": "0xb2fd60",
+  "metadata_type_address": "0x140960040",
+  "metadata_fields": [
+    {
+      "name": "magic",
+      "offset": 0,
+      "size": 1
+    },
+    {
+      "name": "playbackType",
+      "offset": 1,
+      "size": 1
+    },
+    {
+      "name": "length",
+      "offset": 2,
+      "size": 2
+    },
+    {
+      "name": "direction",
+      "offset": 4,
+      "size": 1
+    },
+    {
+      "name": "numRepeats",
+      "offset": 5,
+      "size": 1
+    },
+    {
+      "name": "repeatDelay",
+      "offset": 6,
+      "size": 2
+    }
+  ],
+  "functions": [
+    {
+      "name": "github.com/steelseries/engine/pkg/models/macro/convert.libsteelTranslateMacroToOnboard",
+      "entry": "0x1404e37c0",
+      "end": "0x1404e4800",
+      "bytes": 4160,
+      "sha256": "1ca2e9f42f660cd1ee2d4e4effe94b049564192e42ebaa8c87dfcb6b5a2dd132"
+    },
+    {
+      "name": "github.com/steelseries/engine/pkg/models/macro/convert.libsteelMacroMetadataModel",
+      "entry": "0x1404e4800",
+      "end": "0x1404e4a40",
+      "bytes": 576,
+      "sha256": "6b41880e32cdefa0fedba37885d3e24456a29457e1a96941c037676647fcf7d3"
+    }
+  ],
+  "anchors": [
+    {
+      "address": "0x1404e382c",
+      "bytes": "48c744244277000000",
+      "meaning": "encoder initializes header with marker77"
+    },
+    {
+      "address": "0x1404e386e",
+      "bytes": "80fa01771284d27507c644244301eb2cc644244302eb2580fa027507c644244303eb1980fa03750ac644244304eb0d0f1f0080fa04751ec644244305",
+      "meaning": "source playback code branch sequence maps0..4 to1..5"
+    },
+    {
+      "address": "0x1404e48e2",
+      "bytes": "807c2428777530488d1497488d52084839d37e230fb654",
+      "meaning": "parser marker77 and strict event bound"
+    },
+    {
+      "address": "0x1404e41c1",
+      "bytes": "4c8d049a4d8d40084c8b8c24a80100004d39c10f8e09010000",
+      "meaning": "encoder bounds count times4 plus8 and writes count"
+    }
+  ],
+  "vendor_executed": false,
+  "method": "Read-only Go pclntab function bounds, reflection metadata and GNU objdump machine instructions; no vendor calls or native decompiler",
+  "limits": [
+    "Four-byte event payloads remain opaque",
+    "Raw playback codes1..5 are structural, not a full host-mode semantic proof",
+    "Metadata parser requires offset+8+4*length < total memory length",
+    "1280-byte memory /512-byte chunks and tail remain unresolved",
+    "No device read/write/upload enabled"
+  ]
+}
