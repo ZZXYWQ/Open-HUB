@@ -1,0 +1,141 @@
+{
+  "engine_sha256": "c1b8e182e62c8bb6667a3c678394c4d6363a532409f3de5a8fd7a31fdf0c0ec1",
+  "pclntab_offset": "0xb2fd60",
+  "metadata_type_address": "0x140960040",
+  "metadata_fields": [
+    {
+      "name": "magic",
+      "offset": 0,
+      "size": 1
+    },
+    {
+      "name": "playbackType",
+      "offset": 1,
+      "size": 1
+    },
+    {
+      "name": "length",
+      "offset": 2,
+      "size": 2
+    },
+    {
+      "name": "direction",
+      "offset": 4,
+      "size": 1
+    },
+    {
+      "name": "numRepeats",
+      "offset": 5,
+      "size": 1
+    },
+    {
+      "name": "repeatDelay",
+      "offset": 6,
+      "size": 2
+    }
+  ],
+  "functions": [
+    {
+      "name": "github.com/steelseries/engine/pkg/models/macro/convert.libsteelTranslateMacroToOnboard",
+      "entry": "0x1404e37c0",
+      "end": "0x1404e4800",
+      "bytes": 4160,
+      "sha256": "1ca2e9f42f660cd1ee2d4e4effe94b049564192e42ebaa8c87dfcb6b5a2dd132"
+    },
+    {
+      "name": "github.com/steelseries/engine/pkg/models/macro/convert.libsteelMacroMetadataModel",
+      "entry": "0x1404e4800",
+      "end": "0x1404e4a40",
+      "bytes": 576,
+      "sha256": "6b41880e32cdefa0fedba37885d3e24456a29457e1a96941c037676647fcf7d3"
+    },
+    {
+      "name": "github.com/steelseries/engine/pkg/models/macro/convert.libsteelGetMacroDataFromOnboard",
+      "entry": "0x1404e5780",
+      "end": "0x1404e6500",
+      "bytes": 3456,
+      "sha256": "d9a3ad60bff33d50a7c9bb6d397aa548d61444ba36d1bb8bccef5de854990d8d"
+    }
+  ],
+  "anchors": [
+    {
+      "address": "0x1404e382c",
+      "bytes": "48c744244277000000",
+      "meaning": "encoder initializes header with marker77"
+    },
+    {
+      "address": "0x1404e386e",
+      "bytes": "80fa01771284d27507c644244301eb2cc644244302eb2580fa027507c644244303eb1980fa03750ac644244304eb0d0f1f0080fa04751ec644244305",
+      "meaning": "source playback code branch sequence maps0..4 to1..5"
+    },
+    {
+      "address": "0x1404e48e2",
+      "bytes": "807c2428777530488d1497488d52084839d37e230fb654",
+      "meaning": "parser marker77 and strict event bound"
+    },
+    {
+      "address": "0x1404e41c1",
+      "bytes": "4c8d049a4d8d40084c8b8c24a80100004d39c10f8e09010000",
+      "meaning": "encoder bounds count times4 plus8 and writes count"
+    },
+    {
+      "address": "0x1404e3ade",
+      "bytes": "c600020fb74c244a8848018b4c244c8848028b4c2464884803",
+      "meaning": "keyboard record type2, usage low byte, normalized page, state"
+    },
+    {
+      "address": "0x1404e3bde",
+      "bytes": "c600008b542460885001c64002008b542464885003",
+      "meaning": "mouse record type0, one-hot mask, reserved0,state"
+    },
+    {
+      "address": "0x1404e46ca",
+      "bytes": "66c70004008b4c245088480281e100ff0000c1e908884803",
+      "meaning": "delay record type4,reserved0,little-endian16 duration"
+    },
+    {
+      "address": "0x1404e4500",
+      "bytes": "81feffff00000f8619010000",
+      "meaning": "long-delay unsigned65535 boundary"
+    },
+    {
+      "address": "0x1404e44ca",
+      "bytes": "8b74245081c60100ffff",
+      "meaning": "long-delay subtract65535 and continue"
+    },
+    {
+      "address": "0x1404e58e4",
+      "bytes": "470fb65c290344885c2443470fb75c29026644895c2444",
+      "meaning": "decoder reads fourth byte and little-endian16 from bytes2/3"
+    }
+  ],
+  "vendor_executed": false,
+  "method": "Read-only Go pclntab function bounds, reflection metadata and GNU objdump machine instructions; no vendor calls or native decompiler",
+  "limits": [
+    "Only canonical keyboard,consumer-page key,mouse-button and16-bit delay records admitted",
+    "Scroll/pan/system/transparent source transformations remain outside this codec",
+    "Allocation,binding offsets,native upload,readback and1280/512 tail unresolved",
+    "Raw numeric playback-to-host semantic mapping still incomplete",
+    "No device I/O or native macro capability enabled"
+  ],
+  "canonical_event_records": {
+    "keyboard": [
+      2,
+      "usage u8",
+      "page1 or12",
+      "state0 or1"
+    ],
+    "mouse": [
+      0,
+      "single-bit mask for button1..8",
+      0,
+      "state0 or1"
+    ],
+    "delay": [
+      4,
+      0,
+      "duration low8",
+      "duration high8"
+    ]
+  }
+}

@@ -3,8 +3,9 @@ from pathlib import Path
 import argparse, hashlib, json, struct
 parser=argparse.ArgumentParser()
 parser.add_argument('engine',type=Path)
+parser.add_argument('--events',action='store_true',help='verify extended canonical-event evidence')
 args=parser.parse_args()
-facts=json.loads((Path(__file__).resolve().parents[1]/'docs/development/gg122-prime-macro-header-source.json').read_text(encoding='utf8'))
+facts=json.loads((Path(__file__).resolve().parents[1]/('docs/development/gg122-prime-macro-events-source.json' if args.events else 'docs/development/gg122-prime-macro-header-source.json')).read_text(encoding='utf8'))
 b=args.engine.read_bytes()
 assert hashlib.sha256(b).hexdigest()==facts['engine_sha256'],'engine build changed'
 u16=lambda at:struct.unpack_from('<H',b,at)[0]
@@ -46,4 +47,4 @@ for i,f in enumerate(facts['metadata_fields']):
 for anchor in facts['anchors']:
     expected=bytes.fromhex(anchor['bytes'])
     assert read(int(anchor['address'],16),len(expected))==expected,anchor['meaning']
-print('Verified pinned engine, two Go function ranges/digests, six typed header fields and four instruction anchors. Vendor not executed.')
+print(f"Verified pinned engine, {len(facts['functions'])} Go function ranges/digests, {len(facts['metadata_fields'])} typed header fields and {len(facts['anchors'])} instruction anchors. Vendor not executed.")

@@ -15,3 +15,13 @@ Tests:101 SteelSeries driver unit tests pass, including three new header/bounds 
 Remaining work: reconstruct four-byte event semantics and allocation/binding offsets; verify the1280-byte memory versus512-byte chunk tail; prove preservation/readback of existing slots; implement explicit failure/recovery transactions and device-scoped persistence; connect UI and actual hardware validation. Do not upload fabricated records to bridge these gaps.
 
 Reproduce: python scripts/verify-gg-prime-macro-header-source.py <SteelSeriesEngine.exe>; cargo test --manifest-path src-tauri/vendor/gearwise/Cargo.toml -p gearwise-steelseries; cargo test --manifest-path src-tauri/Cargo.toml prime_.
+
+## Canonical event-record follow-up
+
+Static encoder instructions and reverse-parser instructions now establish a canonical record subset. Keyboard records are [2,usage8,page1-or12,state0-or1]; the source keyboard page7 is normalized to native1 by its encoder. Mouse button1–8 uses [0,single-bit-mask,0,state]. Delay uses [4,0,low8,high8]. Native encoder loops split unsigned long delays at65535 and subtract65535 before continuing. These are observed byte operations, not an assertion about physical delay timing.
+
+Added typed encode/decode for this exact subset plus bounded long-delay splitting. The record budget and uint16 header-count capacity are checked before allocation. The codec refuses unknown pages/types, noncanonical reserved fields, multiple-button masks, invalid state flags and truncated/extra-length records. It retains explicit zero delays and does not merge or rewrite arbitrary records. Existing inspect() still exposes opaque event ranges for unknown data.
+
+Three new tests cover1020 keyboard combinations,16 mouse states, every65536 possible16-bit delay, original instruction-derived golden records, long-delay boundaries and budget failures. SteelSeries driver tests:104 passed/0 failed. Main Prime regressions:20 passed/0 failed,6 ignored. The extended verifier checks three complete Go function ranges/digests, six reflection fields and ten instruction anchors. Reproduce with the existing verifier's --events flag.
+
+Not implemented: whole-macro event/hold balance validation, higher-level source transformations, scroll/pan/system events, conversion into application native-macro capability, library slot allocation and binding-address ownership, actual GET/SET transactions, existing-memory preservation/recovery, or persistence and physical playback. Consumer-page down/up records are a raw protocol representation; they are not wired to the application's atomic MediaTap as if parity were proven. The1280/512 tail question remains open. No device I/O or installer is enabled.

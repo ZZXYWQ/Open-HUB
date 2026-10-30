@@ -1,0 +1,19 @@
+{
+  "steelseries_driver_passed": 104,
+  "steelseries_driver_failed": 0,
+  "new_event_tests": 3,
+  "keyboard_record_cases": 1020,
+  "mouse_record_cases": 16,
+  "delay_record_cases": 65536,
+  "main_prime_regression_passed": 20,
+  "main_prime_regression_ignored": 6,
+  "verified_function_digests": 3,
+  "verified_instruction_anchors": 10,
+  "native_macro_allocation_enabled": false,
+  "native_macro_upload_enabled": false,
+  "hardware_tested": false,
+  "vendor_executed": false,
+  "partial_models": 44,
+  "complete_models": 0,
+  "installer_created": false
+}
