@@ -157,5 +157,31 @@
     "onboard macros and preserved firmware macro slots",
     "complete GG original format conversion",
     "physical device testing"
-  ]
+  ],
+  "native_program_layout": {
+    "command": "62",
+    "report_bytes_including_id": 643,
+    "section_count": "u8, encoded16-record capacity; only1..16 admitted",
+    "initial_rgb_bytes": 3,
+    "duration": "u32 little endian, OEM uint16 speed times10",
+    "initial_tick": "u32 little endian,0",
+    "motion": [
+      "enable u8",
+      "increase u8",
+      "decrease u8",
+      "minimum movement u8"
+    ],
+    "sections": "16 records RGB u8x3,weight u8; unused records zero",
+    "oem_conversion_gaps": [
+      "Colorshift appends initial color, so16 original stops would imply17 native sections; do not silently truncate",
+      "Breathe expands each color to color/black plus return, exceeding capacity above7 original colors",
+      "OEM position quantization and minimum-speed logic need independently verified vectors before user-facing conversion"
+    ]
+  },
+  "readback_review": {
+    "DD": "poll rate u8 after report ID",
+    "DF": "brightness u16 after report ID",
+    "EC": "enable u8 after report ID",
+    "caution": "Replies described without echoed request command; existing query accept-by-command is insufficient. No live readback enabled."
+  }
 }

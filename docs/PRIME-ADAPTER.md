@@ -25,3 +25,5 @@ Reproduce: npm run build; generate native DTO using OPEN_HUB_PRIME_VIEWS and car
 Native libsteel dynamic gradients/acceleration and complete Prism/PC synchronization; onboard macro memory and playback; full readback and persistence verification; original GG private profile import; other advanced OEM settings and real-device validation. Initial UI values are templates/session cache, not hardware observations. These gaps keep this model out of complete acceptance.
 
 Rival110 was also investigated, but its OEM ordinary button/wheel mapping relies on a kernel path rather than this native table protocol. [Research gap](development/2026-10-29-rival110-protocol-gap.json) records this; it has no newly admitted device entry and is not counted.
+
+Follow-up: [native gradient codec and source conversion limits](PRIME-NATIVE-GRADIENT-PREPARATION.md). Static lighting shares the reviewed codec; dynamic schema/UI remain pending.

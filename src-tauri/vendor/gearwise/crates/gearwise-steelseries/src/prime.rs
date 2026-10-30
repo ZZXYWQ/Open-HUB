@@ -60,17 +60,7 @@ pub(crate) fn plan(
     data: &serde_json::Value,
 ) -> Result<(Setting, Vec<Packet>)> {
     let p = Profile::decode(pid, schema, data)?;
-    let Rgb { r, g, b } = p.color;
-    // Static libsteel program:1 section, explicit initial RGB, zero duration/tick/
-    // motion fields, RGB/weight255 then15 reserved section records. Report643.
-    let mut bytes = vec![0x62, 1, r, g, b];
-    bytes.extend_from_slice(&[0; 12]);
-    bytes.extend_from_slice(&[r, g, b, 255]);
-    bytes.resize(642, 0);
-    let config = Packet {
-        report: Report::Feature,
-        bytes,
-    };
+    let config = crate::prime_gradient::Program::steady(p.color).packet()?;
     let mut bright = vec![0x5f];
     bright.extend_from_slice(&p.brightness.to_le_bytes());
     let enable = Packet::output(vec![0x6c, u8::from(p.enabled)]);

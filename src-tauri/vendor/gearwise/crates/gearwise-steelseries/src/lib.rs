@@ -29,6 +29,7 @@ mod dpi;
 mod light;
 pub mod rival3;
 pub mod prime;
+pub mod prime_gradient;
 pub mod rival3_sequence;
 mod link;
 mod proximity;
