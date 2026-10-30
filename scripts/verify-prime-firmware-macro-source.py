@@ -44,6 +44,11 @@ def verify(path):
     assert u32(0x08009424) + 0x178 == table
     assert u32(0x08009428) == u32(0x08009418) + 0xf4
     assert u32(0x08008a80) == u32(0x08008ac0) == int(facts['macro_memory_base'], 16)
+    tables = facts['binding_tables']
+    assert u32(0x08008b04) == int(tables['physical_base'], 16)
+    assert u32(0x08008ae0) == int(tables['wheel_base'], 16)
+    assert tables['physical_bytes'] == tables['physical_slots'] * tables['slot_bytes'] == 30
+    assert tables['wheel_bytes'] == tables['wheel_slots'] * tables['slot_bytes'] == 10
     startup = facts['startup']
     for address, field in ((0x0800b248, 'data_source'), (0x0800b24c, 'data_start'),
                            (0x0800b250, 'data_end'), (0x0800b254, 'bss_start'),

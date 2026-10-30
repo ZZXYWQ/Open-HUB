@@ -1,0 +1,19 @@
+{
+  "firmware_sha256": "205faae43e6a0109167c1f301b5825ab55bc2aa14d0d2f508001dfc92e264662",
+  "storage_scenarios": 3,
+  "completed_restorations": 7,
+  "noops_keep_running_context": 3,
+  "native_original_or_edited_program_replays": 18,
+  "observations_for_rust": 30,
+  "device_io": false,
+  "fresh_usb_readback_validated": false,
+  "physical_identity_validated": false,
+  "live_upload_enabled": false,
+  "emulator": "unicorn 2.1.4",
+  "date": "2026-10-30",
+  "rust_observations_recognized": 15,
+  "rust_observations_refused": 15,
+  "steelseries_unit_tests_passed": 121,
+  "main_prime_tests_passed": 20,
+  "main_prime_tests_ignored": 6
+}

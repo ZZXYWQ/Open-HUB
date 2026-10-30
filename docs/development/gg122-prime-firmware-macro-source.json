@@ -65,6 +65,18 @@
       "entry": "0x800bed0",
       "end": "0x800bee0",
       "sha256": "24ed9be9c89b9e8eb6f294da30fd6be04e2da04317b378716ef077ad890b74d3"
+    },
+    {
+      "name": "wheel_mapping_write",
+      "entry": "0x8008ac4",
+      "end": "0x8008ae4",
+      "sha256": "58e67467caf3b3cb97a9e041c75a2d47f0782681e94aaf023b33b08487ec887f"
+    },
+    {
+      "name": "physical_mapping_write",
+      "entry": "0x8008ae4",
+      "end": "0x8008b08",
+      "sha256": "1ca91ee720d2281729d0d0c0f45e0c51031680310418073b6a6c9bd4ee41a70d"
     }
   ],
   "startup": {
@@ -83,5 +95,14 @@
     "contexts_count": 3,
     "context_bytes": 60
   },
-  "write_side_effect": "Before bounds validation, reset all configured macro contexts: byte+13=255, bytes+20..+60=0. Out-of-range writes still do this."
+  "write_side_effect": "Before bounds validation, reset all configured macro contexts: byte+13=255, bytes+20..+60=0. Out-of-range writes still do this.",
+  "binding_tables": {
+    "physical_base": "0x20001cb6",
+    "physical_bytes": 30,
+    "physical_slots": 6,
+    "wheel_base": "0x20001cd4",
+    "wheel_bytes": 10,
+    "wheel_slots": 2,
+    "slot_bytes": 5
+  }
 }

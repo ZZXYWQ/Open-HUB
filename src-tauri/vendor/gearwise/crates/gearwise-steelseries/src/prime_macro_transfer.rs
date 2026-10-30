@@ -21,7 +21,9 @@ pub struct CoveragePlan {
 }
 /// Reproduce the two reviewed Feature5e chunks without claiming they cover the
 /// whole declared image. Caller must separately establish snapshot identity,
-/// all binding ownership, a complete desired macro-offset set, mode semantics
+/// all binding ownership, coverage for every changed/new macro offset, mode semantics
+/// and byte-for-byte preservation of all other referenced blocks, including
+/// unchanged foreign blocks beyond the transferred prefix,
 /// and a failure/readback transaction.
 pub fn plan(before: &[u8], desired: &[u8], macro_offsets: &[usize]) -> Result<CoveragePlan> {
     if before.len() != DECLARED_BYTES || desired.len() != DECLARED_BYTES {

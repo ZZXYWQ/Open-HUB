@@ -97,3 +97,8 @@ python scripts/test-prime-firmware-playback-emulation.py <firmware.bin> --fixtur
 ```
 
 Remaining: complete slot/binding ownership and foreign-data preservation, stable real readback, transport/identity/failure recovery, whole-plan concurrency, all playback modes/directions, physical timing/USB release, flash persistence and corresponding guarded application/UI integration. Native macros remain disabled until these conditions are addressed.
+
+
+## Existing macro storage and restoration follow-up
+
+[Macro image protection](PRIME-MACRO-STORAGE.md) adds complete supplied-image binding census, exclusive in-place one-shot replacement, exact foreign-byte preservation, no-op suppression and conditional recognition of interrupted forward/restoration prefixes. Thirty original-firmware observations are checked again by production Rust recovery; seven restoration sequences and eighteen program replays pass. This does not add a live transport runner, free allocator, persistent journal, identity/idle proof or UI capability.121 SteelSeries tests and20 Prime tests pass;6 artifacts remain ignored. No count or release changes.
