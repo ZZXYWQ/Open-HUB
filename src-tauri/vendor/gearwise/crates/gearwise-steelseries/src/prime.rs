@@ -18,6 +18,8 @@ pub struct Profile {
     pub enabled: bool,
     pub color: Rgb,
     pub brightness: u16,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub program: Option<crate::prime_gradient::Program>,
 }
 impl Default for Profile {
     fn default() -> Self {
@@ -25,6 +27,7 @@ impl Default for Profile {
             enabled: true,
             color: Rgb::new(255, 82, 0),
             brightness: 256,
+            program: None,
         }
     }
 }
@@ -45,6 +48,24 @@ impl Profile {
         if p.brightness > 256 {
             return Err(Error::invalid("Prime native brightness0..256"));
         }
+        if let Some(program) = &p.program {
+            program.packet()?;
+            let native = &data["program"];
+            for color in std::iter::once(&native["initial"]).chain(
+                native["sections"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .map(|s| &s["color"]),
+            ) {
+                if color
+                    .as_object()
+                    .is_some_and(|o| o.keys().any(|k| !["r", "g", "b"].contains(&k.as_str())))
+                {
+                    return Err(Error::invalid("unknown Prime program RGB field"));
+                }
+            }
+        }
         Ok(p)
     }
 }
@@ -60,7 +81,11 @@ pub(crate) fn plan(
     data: &serde_json::Value,
 ) -> Result<(Setting, Vec<Packet>)> {
     let p = Profile::decode(pid, schema, data)?;
-    let config = crate::prime_gradient::Program::steady(p.color).packet()?;
+    let config = p
+        .program
+        .clone()
+        .unwrap_or_else(|| crate::prime_gradient::Program::steady(p.color))
+        .packet()?;
     let mut bright = vec![0x5f];
     bright.extend_from_slice(&p.brightness.to_le_bytes());
     let enable = Packet::output(vec![0x6c, u8::from(p.enabled)]);
@@ -78,6 +103,9 @@ pub fn cache(state: &mut DeviceState, data: &serde_json::Value) -> Result<()> {
     let p = Profile::decode(PID, SCHEMA, data)?;
     state.vendor_profile = Some(serde_json::to_value(&p).expect("Prime profile"));
     state.lighting.clear();
+    if p.enabled && p.program.as_ref().is_some_and(|v| v.duration > 0) {
+        return Ok(());
+    }
     state.lighting.insert(
         0,
         ZoneState {
@@ -100,6 +128,7 @@ pub(crate) fn static_zone(data: &serde_json::Value, zone: u8, want: &ZoneState) 
         LightingEffect::Off => p.enabled = false,
         LightingEffect::Static { color } => {
             p.enabled = true;
+            p.program = None;
             p.color = color
         }
         _ => return Err(Error::Unsupported("Prime dynamic lighting not reviewed")),

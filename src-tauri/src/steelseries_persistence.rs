@@ -48,7 +48,7 @@ fn complete(plan: &Plan) -> Result<(), String> {
     if plan.product==gearwise_steelseries::prime::PID{
         let profiles=plan.settings.iter().filter_map(|s|if let Setting::VendorProfile{schema,data}=s{Some((schema,data))}else{None}).collect::<Vec<_>>();
         if !crate::steelseries::complete_table(plan.product,&buttons)||dpi.len()!=1||rates!=1||!zones.is_empty()||profiles.len()!=1||plan.settings.len()!=buttons.len()+3{return Err("Prime 板载保存需要完整 DPI、回报率、六个可编程控制和完整滚轮灯效".into());}
-        gearwise_steelseries::prime::Profile::decode(plan.product,profiles[0].0,profiles[0].1).map_err(|e|e.to_string())?;return Ok(());
+        let p=gearwise_steelseries::prime::Profile::decode(plan.product,profiles[0].0,profiles[0].1).map_err(|e|e.to_string())?;if p.program.is_some(){return Err("Prime 渐变板载持久性尚未核实，请保存在 Open HUB 配置中".into());}return Ok(());
     }
     if gearwise_steelseries::rival3::supported(plan.product){
         let profiles=plan.settings.iter().filter_map(|s|if let Setting::VendorProfile{schema,data}=s{Some((schema,data))}else{None}).collect::<Vec<_>>();

@@ -14,7 +14,7 @@ interface Candidate{descriptor:Target;rate:number|null;revision:string;blocked:s
 interface Candidates{record:Item;devices:Candidate[];needs_source:boolean;warnings:string[]}
 interface SourceInfo{source:MultiSource;kind:string;serial:string|null}
 function settingLabel(s:MultiSetting,plan:MultiPlan){
- if('VendorProfile'in s&&s.VendorProfile.schema==='steelseries-prime-lighting/1')return `Prime：滚轮常亮或关闭，原生亮度 ${s.VendorProfile.data.brightness}/256`;
+ if('VendorProfile'in s&&s.VendorProfile.schema==='steelseries-prime-lighting/1')return `Prime：${s.VendorProfile.data.program?"原生渐变":"常亮"}${s.VendorProfile.data.enabled?"":"（关闭）"}，原生亮度 ${s.VendorProfile.data.brightness}/256`;
  if('VendorProfile'in s&&s.VendorProfile.schema==='steelseries-rival3-lighting/1')return 'Rival 3：四区颜色、亮度与全局原生灯效';
  if('VendorProfile'in s&&s.VendorProfile.schema==='openhub-rival3-sequence/1')return `Rival 3：四区循环或有限序列，每帧 ${s.VendorProfile.data.step_ms} ms，由 Open HUB 运行`;
  if('VendorProfile'in s&&s.VendorProfile.schema==='openhub-rival3-loop/1')return `Rival 3：四区独立循环灯效，每帧 ${s.VendorProfile.data.step_ms} ms，由 Open HUB 运行`;

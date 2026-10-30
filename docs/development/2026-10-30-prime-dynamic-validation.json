@@ -1,0 +1,19 @@
+{
+  "main_passed": 1107,
+  "main_failed": 0,
+  "main_ignored": 102,
+  "shared_unit_and_doc_passed": 403,
+  "prime_focused_including_two_browser_replays": 9,
+  "ui": "static and dynamic two-profile cases; Rival3 two-firmware regression; IPC mocked",
+  "hardware_tested": false,
+  "partial_models": 44,
+  "complete_models": 0,
+  "installer_created": false,
+  "limitations": [
+    "exact OEM effect conversion",
+    "physical timing and motion",
+    "readback",
+    "dynamic onboard persistence",
+    "PC sync parity"
+  ]
+}

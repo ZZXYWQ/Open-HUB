@@ -7,7 +7,7 @@ Development adapter, 2026-10-30. Only USB 1038:182e is admitted; Prime+, wireles
 - Native 50–18000 CPI in steps of50, one to five stages and selected active stage;125/250/500/1000Hz.
 - Separate physical5b and wheel5c assignment tables. Five top physical buttons and wheel up/down are represented; bottom CPI remains its fixed firmware action. Application primary-left protection leaves six editable inputs2,3,4,5,7,8. Keyboard modifiers, supported mouse/media/scroll/DPI actions use the shared native encoder.
 - Independent per-mouse software macros on all six editable inputs use the existing verified input-source association. They require Open HUB running; no global mouse hook or claim of native macro playback.
-- Native static scroll-wheel RGB, separate raw brightness0–256 and enable/off. Color remains unchanged when brightness changes. Feature reports are643 bytes; output reports65 bytes; real transport enforces at least30ms command spacing. No implicit flash write.
+- Native static scroll-wheel RGB and authored1–16-section gradient programs, separate raw brightness0–256 and enable/off. Color remains unchanged when brightness changes. Feature reports are643 bytes; output reports65 bytes; real transport enforces at least30ms command spacing. No implicit flash write.
 - Complete desired lighting and both key tables support explicit reapplication after failure. Partial failure invalidates the relevant cache and stops sending; uncertain tables cannot be incrementally edited until a full table is applied.
 - Explicit save59/00 requires a complete applied plan for the same current connection. Stale/repeated saves and software macro plans are refused. A sent command is not reported as verified hardware persistence.
 - Exact licensed model artwork, five-stage DPI editor, fixed/writable controls, dedicated lighting editor and Open HUB profile transfer/store roundtrip.
@@ -22,8 +22,8 @@ Reproduce: npm run build; generate native DTO using OPEN_HUB_PRIME_VIEWS and car
 
 ## Remaining OEM parity work
 
-Native libsteel dynamic gradients/acceleration and complete Prism/PC synchronization; onboard macro memory and playback; full readback and persistence verification; original GG private profile import; other advanced OEM settings and real-device validation. Initial UI values are templates/session cache, not hardware observations. These gaps keep this model out of complete acceptance.
+Exact OEM dynamic conversion and verified motion/timing, plus complete Prism/PC synchronization; onboard macro memory and playback; full readback and persistence verification; original GG private profile import; other advanced OEM settings and real-device validation. Initial UI values are templates/session cache, not hardware observations. These gaps keep this model out of complete acceptance.
 
 Rival110 was also investigated, but its OEM ordinary button/wheel mapping relies on a kernel path rather than this native table protocol. [Research gap](development/2026-10-29-rival110-protocol-gap.json) records this; it has no newly admitted device entry and is not counted.
 
-Follow-up: [native gradient codec and source conversion limits](PRIME-NATIVE-GRADIENT-PREPARATION.md). Static lighting shares the reviewed codec; dynamic schema/UI remain pending.
+Follow-up: [native gradient codec and source conversion limits](PRIME-NATIVE-GRADIENT-PREPARATION.md). Static lighting shares the reviewed codec; dynamic schema/UI are connected for authored programs, with original GG conversion and physical timing still pending.

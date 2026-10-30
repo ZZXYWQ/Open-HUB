@@ -2,20 +2,24 @@
 //! This codec does not imply that authored/OEM animation UI or persistence is ready.
 use crate::{link::Packet, models::Report};
 use gearwise_core::{model::Rgb, Error, Result};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Section {
     pub color: Rgb,
     pub weight: u8,
 }
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Motion {
     pub enabled: bool,
     pub increase: u8,
     pub decrease: u8,
     pub minimum: u8,
 }
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Program {
     pub initial: Rgb,
     /// Native duration is the OEM uint16 speed multiplied by10.

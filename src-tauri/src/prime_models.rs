@@ -21,6 +21,7 @@ fn base() -> Plan {
                 enabled: true,
                 color: Rgb::new(171, 205, 239),
                 brightness: 37,
+                program: None,
             }),
         ]
         .into_iter()
@@ -479,6 +480,19 @@ fn prime_complete_apply_then_one_shot_flash_checks_connection_and_rejects_softwa
         .save_native_hardware_at(&id, &software, &key, &root)
         .is_err());
     assert_eq!(log.lock().unwrap().len(), sent);
+    let mut dynamic = plan.clone();
+    dynamic
+        .settings
+        .retain(|s| !matches!(s, Setting::VendorProfile { .. }));
+    dynamic.settings.push(prime::setting(&Profile {
+        program: Some(gradient()),
+        ..Default::default()
+    }));
+    assert!(service
+        .save_native_hardware_at(&id, &dynamic, &key, &root)
+        .unwrap_err()
+        .contains("渐变板载"));
+    assert_eq!(log.lock().unwrap().len(), sent);
     service.stop_software(&runtime).unwrap();
     // Only files created beneath this new UUID test directory are removed.
     let resolved = root.canonicalize().unwrap();
@@ -490,4 +504,138 @@ fn prime_complete_apply_then_one_shot_flash_checks_connection_and_rejects_softwa
     }
     std::fs::remove_dir(root.join("backups")).unwrap();
     std::fs::remove_dir(root).unwrap();
+}
+
+fn gradient() -> gearwise_steelseries::prime_gradient::Program {
+    use gearwise_steelseries::prime_gradient::{Motion, Program, Section};
+    Program {
+        initial: Rgb::new(171, 205, 239),
+        duration: 12340,
+        motion: Motion {
+            enabled: true,
+            increase: 7,
+            decrease: 8,
+            minimum: 9,
+        },
+        sections: vec![
+            Section {
+                color: Rgb::new(0, 0, 0),
+                weight: 127,
+            },
+            Section {
+                color: Rgb::new(171, 205, 239),
+                weight: 128,
+            },
+            Section {
+                color: Rgb::new(16, 32, 48),
+                weight: 63,
+            },
+        ],
+    }
+}
+#[test]
+fn prime_dynamic_native_plan_cache_static_switch_and_isolation() {
+    for enabled in [true, false] {
+        let profile = Profile {
+            enabled,
+            program: Some(gradient()),
+            ..Default::default()
+        };
+        let (mut a, log) = gearwise_steelseries::simulated_model(prime::PID).unwrap();
+        let (mut b, other) = gearwise_steelseries::simulated_model(prime::PID).unwrap();
+        a.apply(&prime::setting(&profile)).unwrap();
+        let records = log.lock().unwrap();
+        let native = records
+            .iter()
+            .find_map(|r| {
+                if let MockRecord::SetFeature(b) = r {
+                    Some(b)
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+        assert_eq!(&native[..6], &[0, 0x62, 3, 171, 205, 239]);
+        assert_eq!(&native[6..10], &12340u32.to_le_bytes());
+        assert_eq!(&native[14..18], &[1, 7, 8, 9]);
+        assert_eq!(
+            &native[18..30],
+            &[0, 0, 0, 127, 171, 205, 239, 128, 16, 32, 48, 63]
+        );
+        assert!(other.lock().unwrap().is_empty());
+        drop(records);
+        let state = a.read_state().unwrap();
+        assert_eq!(state.vendor_profile.unwrap()["program"]["duration"], 12340);
+        if enabled {
+            assert!(state.lighting.is_empty());
+        }
+        a.apply(&Setting::Lighting {
+            zone: 0,
+            state: gearwise_core::model::ZoneState {
+                effect: gearwise_core::model::LightingEffect::Static {
+                    color: Rgb::new(1, 2, 3),
+                },
+                brightness: 50,
+            },
+        })
+        .unwrap();
+        assert!(a
+            .read_state()
+            .unwrap()
+            .vendor_profile
+            .unwrap()
+            .get("program")
+            .is_none());
+        assert!(b
+            .read_state()
+            .unwrap()
+            .vendor_profile
+            .unwrap()
+            .get("program")
+            .is_none());
+    }
+    let mut data = serde_json::to_value(Profile {
+        program: Some(gradient()),
+        ..Default::default()
+    })
+    .unwrap();
+    for path in ["initial", "color"] {
+        let mut bad = data.clone();
+        if path == "initial" {
+            bad["program"]["initial"]["alpha"] = 1.into();
+        } else {
+            bad["program"]["sections"][0]["color"]["alpha"] = 1.into();
+        }
+        assert!(Profile::decode(prime::PID, prime::SCHEMA, &bad).is_err());
+    }
+    data["program"]["sections"] = serde_json::json!([]);
+    assert!(Profile::decode(prime::PID, prime::SCHEMA, &data).is_err());
+}
+#[test]
+#[ignore = "requires saved native gradient production UI profiles"]
+fn prime_dynamic_browser_saved_profiles_roundtrip_native_replay() {
+    let profiles = roundtrip_steelseries_browser_profiles("OPEN_HUB_PRIME_DYNAMIC_UI_PROFILES");
+    assert_eq!(profiles.len(), 2);
+    for p in profiles {
+        let plan = p.multi.as_ref().unwrap();
+        validate(plan).unwrap();
+        let profile = plan
+            .settings
+            .iter()
+            .find_map(|s| {
+                if let Setting::VendorProfile { schema, data } = s {
+                    Some(Profile::decode(prime::PID, schema, data).unwrap())
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+        let mut want = gradient();
+        if !profile.enabled {
+            want.initial = Rgb::new(18, 52, 86);
+            want.sections[1].color = want.initial;
+        }
+        assert_eq!(profile.program, Some(want));
+        assert_eq!(simulate(plan).unwrap()["hardware_tested"], false);
+    }
 }
