@@ -37,3 +37,5 @@ Follow-up: [native gradient codec and source conversion limits](PRIME-NATIVE-GRA
 [Feature readback follow-up](PRIME-FEATURE-READBACK.md) adds bounded read codecs and original USB-class/cache instruction tests. Untagged stale or intermediate cache data is explicitly unverified and cannot establish current identity, idle state or safe upload.
 
 [Output/interrupt reader follow-up](PRIME-OUTPUT-READBACK.md) adds challenge-fenced candidates, exact data preservation across notification/echo collisions and original-firmware interoperation. Physical transfer mapping, stable identity/images, idle state and safe application/UI integration remain incomplete.
+
+[Scoped macro-image collector](PRIME-IMAGE-SESSION.md) adds two equal full macro/table observations with per-I/O operation checks and original-firmware rejection tests. It is not a complete device profile, physical-identity/atomicity proof or live-upload authorization.

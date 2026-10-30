@@ -32,6 +32,7 @@ pub mod prime;
 pub mod prime_gradient;
 pub mod prime_feature_read;
 pub mod prime_output_read;
+pub mod prime_image_session;
 pub mod prime_macro;
 pub mod prime_macro_block;
 pub mod prime_macro_once;

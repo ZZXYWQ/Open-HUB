@@ -61,6 +61,13 @@ impl<T: HidTransport> Reader<T> {
             gap: Duration::from_millis(30),
         })
     }
+    #[cfg(test)]
+    pub(crate) fn omit_test_gap(&mut self) {
+        self.gap = Duration::ZERO;
+    }
+    pub(crate) fn transport_mut(&mut self) -> &mut T {
+        &mut self.io
+    }
     fn write(&mut self, frame: &[u8]) -> Result<()> {
         let n = self.io.write(frame)?;
         if n != frame.len() {

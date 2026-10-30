@@ -1,0 +1,25 @@
+# Prime scoped macro-image observations
+
+2026-10-30. Exact wired Prime 1038:182e, retained firmware 1.0.15+4244c08. This is a development-only collector for the entire observed 5120-byte macro region and the physical/wheel assignment tables. It does not read a complete DPI/lighting profile, enable native macro upload, establish OEM parity or admit another model. Counts remain 44 partial / 0 complete.
+
+## Collection and scope
+
+`prime_image_session::Session<T,F>` owns a production challenge-fenced output reader. Its caller supplies current scope status through a callback. The scope admits USB 1038:182e, interface0 (or unknown interface number -1 with the required vendor collection), usage page ffc0/usage1. It binds path, optional serial, interface, connection generation and operation generation. Empty or oversized identifiers and unrelated interfaces are rejected. The callback must reflect the current logical connection/operation lease, rather than metadata imported from a profile.
+
+Every underlying output write and input read checks scope/cancellation both before and after I/O. The transport wrapper allows only the pinned version read, bounded raw reads of the known tables/context/macro ranges and the reader's request-scratch challenge. Feature operations and configuration/flash/upload commands are denied. Checks after I/O can discard a result but cannot undo an already submitted read. The final check occurs after storage-image validation and before returning the observation; a caller must still revalidate its lease before publishing or later using it.
+
+Each pass reads the pinned version, all three 60-byte macro contexts, both assignment tables and all 5120 macro bytes, then rereads both tables and contexts. Each sampled context must have the original reset routine's inactive marker and cleared held-state fields. The two entire passes must match exactly, including version, contexts, tables and opaque macro bytes. The storage image retains all observed references, including unsupported foreign modes, rather than decoding away unknown content. The result retains the operation scope and explicitly reports physical-identity and atomic-image verification as false.
+
+An ordinary successful collection performs 364 output writes with the production 30ms minimum command gap, plus transport overhead. It makes four multipart context observations. Two equal reads and reset-looking sampled contexts do not freeze firmware or prove continuous inactivity, physically released buttons, an atomic snapshot or absence of changes that revert between samples (ABA). Caller path/serial/generation metadata are not physical authentication. Another app or internal command consumer can invalidate ordering assumptions. The session has no application/service caller and no automatic select/reopen/retry behavior.
+
+## Validation
+
+Seven new unit tests cover complete equal observations, table/library drift, cancellation after a submitted write, active/stale-held contexts, wrong scope/interface/connection/operation, read-only command enforcement and two independent same-model sessions. All 137 SteelSeries tests pass. The main application's Prime subset passes 20 tests; six artifact-dependent tests remain ignored. Both development examples build. A stale-reply scenario also passes through the extracted shared JSON-lines transport helper used by the earlier output-reader example.
+
+The actual Rust session example runs over JSON-lines transport against pinned original ARM setup/RX/staging/dispatch/raw-read/transmit/completion instructions. Eleven scenarios pass: two return exact images (ordinary and legitimate notification-prefixed opaque data); nine reject active contexts, stale held-state, table drift, macro-memory drift, cancellation after a read, connection change after a write, operation change, serial change and cancellation immediately before returning the image. These runs produce 1830 native modeled transmissions. Full context/configuration/macro bytes match the initial image plus only explicit test injections. Peripheral delivery, scope metadata and cancellation are modeled; no physical HID handle or OS input is used.
+
+Report: [machine-readable results](development/2026-10-30-prime-image-session-emulation.json). The harness is `scripts/test-prime-image-session-emulation.py`, using the `prime_image_session_exchange` example and the existing original-firmware verifier. Unicorn remains a separate development dependency; no emulator, vendor firmware or fixture is bundled with the application.
+
+## Remaining work
+
+Physical Windows HID mapping/capture, actual exclusive ownership and fresh per-session entropy, real connection/operation lifecycle integration, runtime/IRQ coverage, stronger image/idle guarantees, persisted recovery journals, allocation/concurrency rules, full macro modes, guarded application/UI integration and hardware readback/persistence checks remain required. This collector alone is not upload authorization or complete compatibility. DPI/lighting readback is separate work.

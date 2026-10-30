@@ -39,3 +39,5 @@ python scripts/test-prime-output-read-emulation.py <firmware.bin> --reader <buil
 Development-only Unicorn2.1.4 remains separately installed. No emulator/vendor firmware/test data was bundled, no runtime dependency was added, and no actual HID handle, mouse, OS input, desktop UI, installer or release was touched. Counts remain44 partial/0 complete.
 
 Remaining: real Windows output/interrupt mapping and complete runtime/notification validation, caller entropy and connection identity, exclusive/cancellable per-device integration, stable whole-image and idle-state checks, persistent journals/transport recovery, complete allocation/copy-on-write/concurrency and macro modes, guarded storage/UI integration, flash readback and actual hardware verification. These candidates must not bypass those requirements.
+
+Follow-up: [scoped macro-image collection](PRIME-IMAGE-SESSION.md) brackets full macro/table observations and compares two passes while checking caller connection/operation status before and after each I/O. Physical identity, continuous inactivity, atomicity and runtime integration remain unverified.

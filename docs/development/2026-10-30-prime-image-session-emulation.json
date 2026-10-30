@@ -1,0 +1,142 @@
+{
+  "firmware_sha256": "205faae43e6a0109167c1f301b5825ab55bc2aa14d0d2f508001dfc92e264662",
+  "cases": [
+    {
+      "case": "equal-full",
+      "writes": 364,
+      "reads": 364,
+      "guards": 1462,
+      "native_transmits": 364,
+      "expected_failure": false,
+      "image_published": true,
+      "modeled_change_injected": false,
+      "configuration_matches_only_explicit_injections": true
+    },
+    {
+      "case": "opaque-tagged",
+      "writes": 492,
+      "reads": 492,
+      "guards": 1974,
+      "native_transmits": 492,
+      "expected_failure": false,
+      "image_published": true,
+      "modeled_change_injected": false,
+      "configuration_matches_only_explicit_injections": true
+    },
+    {
+      "case": "active-context",
+      "writes": 8,
+      "reads": 8,
+      "guards": 34,
+      "native_transmits": 8,
+      "expected_failure": true,
+      "image_published": false,
+      "modeled_change_injected": false,
+      "configuration_matches_only_explicit_injections": true
+    },
+    {
+      "case": "stale-held-context",
+      "writes": 8,
+      "reads": 8,
+      "guards": 34,
+      "native_transmits": 8,
+      "expected_failure": true,
+      "image_published": false,
+      "modeled_change_injected": false,
+      "configuration_matches_only_explicit_injections": true
+    },
+    {
+      "case": "table-drift",
+      "writes": 174,
+      "reads": 174,
+      "guards": 698,
+      "native_transmits": 174,
+      "expected_failure": true,
+      "image_published": false,
+      "modeled_change_injected": true,
+      "configuration_matches_only_explicit_injections": true
+    },
+    {
+      "case": "library-drift",
+      "writes": 364,
+      "reads": 364,
+      "guards": 1461,
+      "native_transmits": 364,
+      "expected_failure": true,
+      "image_published": false,
+      "modeled_change_injected": true,
+      "configuration_matches_only_explicit_injections": true
+    },
+    {
+      "case": "cancel-after-read",
+      "writes": 14,
+      "reads": 14,
+      "guards": 58,
+      "native_transmits": 14,
+      "expected_failure": true,
+      "image_published": false,
+      "modeled_change_injected": true,
+      "configuration_matches_only_explicit_injections": true
+    },
+    {
+      "case": "reconnect-after-write",
+      "writes": 14,
+      "reads": 13,
+      "guards": 56,
+      "native_transmits": 14,
+      "expected_failure": true,
+      "image_published": false,
+      "modeled_change_injected": true,
+      "configuration_matches_only_explicit_injections": true
+    },
+    {
+      "case": "operation-change",
+      "writes": 14,
+      "reads": 13,
+      "guards": 56,
+      "native_transmits": 14,
+      "expected_failure": true,
+      "image_published": false,
+      "modeled_change_injected": true,
+      "configuration_matches_only_explicit_injections": true
+    },
+    {
+      "case": "serial-change",
+      "writes": 14,
+      "reads": 13,
+      "guards": 56,
+      "native_transmits": 14,
+      "expected_failure": true,
+      "image_published": false,
+      "modeled_change_injected": true,
+      "configuration_matches_only_explicit_injections": true
+    },
+    {
+      "case": "cancel-before-publish",
+      "writes": 364,
+      "reads": 364,
+      "guards": 1462,
+      "native_transmits": 364,
+      "expected_failure": true,
+      "image_published": false,
+      "modeled_change_injected": true,
+      "configuration_matches_only_explicit_injections": true
+    }
+  ],
+  "production_scoped_collector_over_original_firmware": true,
+  "caller_scope_status_and_fifo_modeled": true,
+  "device_io": false,
+  "physical_connection_identity_validated": false,
+  "continuous_idle_or_atomicity_validated": false,
+  "live_macro_upload_enabled": false,
+  "emulator": "unicorn 2.1.4",
+  "summary": {
+    "cases_passed": 11,
+    "images_returned": 2,
+    "expected_rejections": 9,
+    "native_transmits": 1830,
+    "steelseries_unit_tests_passed": 137,
+    "main_prime_tests_passed": 20,
+    "main_prime_tests_ignored": 6
+  }
+}
