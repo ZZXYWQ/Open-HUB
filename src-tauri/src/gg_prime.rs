@@ -5,6 +5,11 @@ use gearwise_steelseries::{
     prime,
     prime_gradient::{Motion, Program, Section},
 };
+// GoLisp arithmetic uses float32 when one operand is a float.
+// In particular100 *2.55f32 rounds to255 before integer truncation.
+fn weight(percent: u32) -> u8 {
+    ((percent as f32) * 2.55f32) as u8
+}
 fn shape(v: &Value, keys: &[&str]) -> Result<(), String> {
     let o = v.as_object().ok_or("GG Prime 字段不是对象")?;
     if o.len() != keys.len() || o.keys().any(|k| !keys.contains(&k.as_str())) {
@@ -211,7 +216,7 @@ pub(super) fn convert(
         None
     } else {
         let mut sections = vec![];
-        let weight = |n: u32| (n as f64 * 2.55) as u8;
+
         for i in 0..n {
             let prev = if i == 0 { 0 } else { ps[i - 1] };
             if kind == 1 {
@@ -557,7 +562,16 @@ mod tests {
                 s["lighting_config"]["settings_mask"] = 1.into();
                 s["lighting_config"]["num_colors"] = 0.into();
             }
-            let c=fixture(&s);c.execute("UPDATE configurations SET id=?1",[if steady{"steady-source"}else{"breathe-source"}]).unwrap();
+            let c = fixture(&s);
+            c.execute(
+                "UPDATE configurations SET id=?1",
+                [if steady {
+                    "steady-source"
+                } else {
+                    "breathe-source"
+                }],
+            )
+            .unwrap();
             let mut next = super::super::read(&c).unwrap();
             assert!(next.candidates[0].profile.is_some());
             out.candidates.append(&mut next.candidates);
@@ -565,6 +579,57 @@ mod tests {
         assert_eq!(out.candidates.len(), 3);
         if let Some(path) = std::env::var_os("OPEN_HUB_GG_PRIME_MODES_PREVIEW") {
             std::fs::write(path, serde_json::to_vec_pretty(&out).unwrap()).unwrap();
+        }
+    }
+
+    #[test]
+    fn prime_golisp_float32_percent_weights_cover_entire_domain() {
+        for percent in 0..=100 {
+            assert_eq!(weight(percent), ((percent * 255) / 100) as u8, "{percent}");
+        }
+        assert_eq!(weight(100), 255);
+        assert_eq!((100f64 * 2.55) as u8, 254);
+        for kind in [1, 2] {
+            let mut s = source();
+            s["lighting_config"]["type"] = kind.into();
+            s["lighting_config"]["num_colors"] = 1.into();
+            let out = super::super::read(&fixture(&s)).unwrap();
+            let plan = out.candidates[0]
+                .profile
+                .as_ref()
+                .unwrap()
+                .multi
+                .as_ref()
+                .unwrap();
+            let data = plan
+                .settings
+                .iter()
+                .find_map(|s| {
+                    if let Setting::VendorProfile { data, .. } = s {
+                        Some(data)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap();
+            let profile = prime::Profile::decode(prime::PID, prime::SCHEMA, data).unwrap();
+            let program = profile.program.unwrap();
+            assert_eq!(
+                program
+                    .sections
+                    .iter()
+                    .map(|s| s.weight)
+                    .collect::<Vec<_>>(),
+                if kind == 1 {
+                    vec![0, 255]
+                } else {
+                    vec![0, 127, 127]
+                }
+            );
+            assert_eq!(
+                crate::multibrand::simulate(plan).unwrap()["hardware_tested"],
+                false
+            );
         }
     }
 }

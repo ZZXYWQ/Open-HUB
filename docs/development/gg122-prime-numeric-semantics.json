@@ -1,0 +1,39 @@
+{
+  "engine_sha256": "c1b8e182e62c8bb6667a3c678394c4d6363a532409f3de5a8fd7a31fdf0c0ec1",
+  "arithmetic_reference": "https://techblog.steelseries.com/golisp/language-ref.html",
+  "official_source": "https://github.com/SteelSeries/golisp",
+  "native_symbol_strings": [
+    {
+      "symbol": "github.com/steelseries/golisp.quotientInts",
+      "string_file_offset": "0xb92f2c"
+    },
+    {
+      "symbol": "github.com/steelseries/golisp.quotientFloats",
+      "string_file_offset": "0xb92f57"
+    },
+    {
+      "symbol": "github.com/steelseries/golisp.QuotientImpl",
+      "string_file_offset": "0xb92f84"
+    },
+    {
+      "symbol": "github.com/steelseries/golisp.multiplyFloats",
+      "string_file_offset": "0xb92ed4"
+    },
+    {
+      "symbol": "github.com/steelseries/golisp.ToIntImpl",
+      "string_file_offset": "0xb9307a"
+    }
+  ],
+  "facts": [
+    "Integer-only division truncates; mixed float arguments coerce to float32",
+    "Integer conversion truncates the floating result",
+    "float32(100)*float32(2.55) rounds to255; float64 counterpart truncates to254",
+    "All101 integer percent distances matched independent rational floor(255*p/100) on this domain"
+  ],
+  "limitations": [
+    "Symbol presence and public language semantics are not a full machine-code implementation/version identity proof",
+    "REA Ghidra provider remains unconfigured; no native decompilation was claimed",
+    "No device playback or physical timing test"
+  ],
+  "vendor_executed": false
+}
