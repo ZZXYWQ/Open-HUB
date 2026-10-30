@@ -35,6 +35,7 @@ pub struct SteelSeriesDevice {
     battery_asked: Option<Instant>,
     rival3_lighting_written: bool,
     lighting_revision:u64,
+    prime_buttons_uncertain:bool,
 }
 
 impl SteelSeriesDevice {
@@ -55,6 +56,7 @@ impl SteelSeriesDevice {
             let data=serde_json::to_value(crate::rival3::Profile::default()).expect("Rival3 factory lighting");
             crate::rival3::cache(&mut state,&data).expect("bounded factory lighting");
         }
+        if model.pid==crate::prime::PID{caps.buttons=crate::prime::caps();caps.vendor_profile=Some(crate::prime::SCHEMA.into());caps.lighting[0].name="Scroll wheel".into();let data=serde_json::to_value(crate::prime::Profile::default()).expect("Prime defaults");crate::prime::cache(&mut state,&data).expect("Prime default lighting");for b in &caps.buttons{state.buttons.insert(b.id,b.default_action.clone());}}
         Self {
             control_path:iface.path.clone(),connection_key,
             desc: DeviceDescriptor {
@@ -78,7 +80,7 @@ impl SteelSeriesDevice {
             link,
             battery_asked: None,
             rival3_lighting_written: false,
-            lighting_revision:0,
+            lighting_revision:0,prime_buttons_uncertain:false,
         }
     }
 
@@ -88,6 +90,9 @@ impl SteelSeriesDevice {
         let spec = self.spec;
         match setting {
             Setting::DpiColor{..} | Setting::DpiIndicator(_) | Setting::SensorCalibration(_) | Setting::Tuning(_) => return Err(Error::Unsupported("mouse performance")),
+            Setting::VendorProfile{schema,data} if self.desc.product_id==crate::prime::PID=>crate::prime::plan(self.desc.product_id,schema,data),
+            Setting::Lighting{zone,state} if self.desc.product_id==crate::prime::PID=>{let current=self.state.vendor_profile.as_ref().ok_or(Error::invalid("Prime lighting uncertain; explicitly load a complete profile"))?;let Setting::VendorProfile{schema,data}=crate::prime::static_zone(current,*zone,state)?else{unreachable!()};crate::prime::plan(self.desc.product_id,&schema,&data)},
+            Setting::Button{id,action} if self.desc.product_id==crate::prime::PID=>{if self.prime_buttons_uncertain{return Err(Error::invalid("Prime button state uncertain; apply a complete table"));}Ok((setting.clone(),vec![crate::prime::button_plan(&self.state.buttons,*id,action)?]))},
             Setting::VendorProfile{schema,data}=>crate::rival3::plan_after_write(self.desc.product_id,schema,data,self.state.vendor_profile.as_ref().filter(|_|self.rival3_lighting_written)),
             Setting::Lighting{zone,state} if crate::rival3::supported(self.desc.product_id)=>{
                 let current=self.state.vendor_profile.as_ref().ok_or(Error::invalid("Rival3 lighting state uncertain; load a complete lighting plan"))?;
@@ -265,6 +270,7 @@ impl Device for SteelSeriesDevice {
         if crate::rival3::supported(self.desc.product_id)&&matches!(applied,Setting::VendorProfile{..}){self.lighting_revision=self.lighting_revision.wrapping_add(1);}
         for packet in &packets {
             if let Err(error)=self.link.send(packet){
+                if self.desc.product_id==crate::prime::PID{match applied{Setting::VendorProfile{..}=>{self.state.vendor_profile=None;self.state.lighting.clear();},Setting::Button{..}=>{self.state.buttons.clear();self.prime_buttons_uncertain=true;},_=>{}}return Err(Error::invalid(format!("{error}; Prime state uncertain; explicitly apply a complete plan; no retry")));}
                 if crate::rival3::supported(self.desc.product_id)&&matches!(applied,Setting::VendorProfile{..}){
                     self.state.vendor_profile=None;self.state.lighting.clear();self.rival3_lighting_written=false;
                     return Err(Error::invalid(format!("{error}; Rival3 lighting state uncertain; load and explicitly apply a complete plan; no retry")));
@@ -272,12 +278,14 @@ impl Device for SteelSeriesDevice {
                 return Err(error);
             }
         }
+        if self.desc.product_id==crate::prime::PID{if let Setting::VendorProfile{data,..}=&applied{crate::prime::cache(&mut self.state,data)?;}else{applied.apply_to(&mut self.state);}return Ok(());}
         if let Setting::VendorProfile{data,..}=&applied{crate::rival3::cache(&mut self.state,data)?;self.rival3_lighting_written=true;}
         else{applied.apply_to(&mut self.state);}
         Ok(())
     }
 
     fn apply_button_table(&mut self,actions:&[(u16,gearwise_core::model::ButtonAction)])->Result<()>{
+        if self.desc.product_id==crate::prime::PID{let packets=crate::prime::table(actions)?;for packet in packets{if let Err(e)=self.link.send(&packet){self.state.buttons.clear();self.prime_buttons_uncertain=true;return Err(Error::invalid(format!("{e}; Prime button table uncertain; no retry")));}}self.prime_buttons_uncertain=false;for b in &self.caps.buttons{self.state.buttons.insert(b.id,b.default_action.clone());}for(id,action)in actions{Setting::Button{id:*id,action:action.clone()}.apply_to(&mut self.state);}return Ok(());}
         let known=self.caps.buttons.iter().filter(|b|b.id!=1).map(|b|b.id).collect::<std::collections::BTreeSet<_>>();
         let supplied=actions.iter().map(|(id,_)|*id).collect::<std::collections::BTreeSet<_>>();
         if known.is_empty()||known!=supplied||supplied.len()!=actions.len(){return Err(Error::invalid("complete native button table required"));}
@@ -823,19 +831,10 @@ mod tests {
                 color(0, 1, 2, 3),
             ],
         );
-        assert_eq!(
-            written,
-            [
-                output(&hex("61 03 01 08 00 68 01 19 00")),
-                output(&[0x5d, 0x03]),
-                output(&hex(
-                    "62 01 01 02 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ff"
-                )),
-            ]
-        );
-        let (mut dev, log) = silent(0x182e);
-        dev.save_onboard().unwrap();
-        assert_eq!(drain(&log), [output(&[0x59])]);
+        let padded=|v:&[u8]|{let mut b=v.to_vec();b.resize(64,0);output(&b)};
+        let mut program=vec![0x62,1,1,2,3];program.extend_from_slice(&[0;12]);program.extend_from_slice(&[1,2,3,255]);program.resize(642,0);
+        assert_eq!(written,[padded(&hex("61 03 01 08 00 68 01 19 00")),padded(&[0x5d,3]),feature(&program),padded(&[0x5f,0,1]),padded(&[0x6c,1])]);
+        let(mut dev,log)=silent(0x182e);dev.save_onboard().unwrap();assert_eq!(drain(&log),[padded(&[0x59,0])]);
     }
 
     #[test]
@@ -1269,6 +1268,7 @@ mod tests {
                 dev.capabilities()
                     .buttons
                     .iter()
+                    .filter(|b|b.remappable)
                     .map(|b| button(b.id, ButtonAction::Default)),
             );
             for s in &settings {

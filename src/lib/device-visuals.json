@@ -912,5 +912,22 @@
         "src": "/devices/rivalcfg/steelseries-rival3.svg"
       }
     ]
+  },
+  {
+    "id": "steelseries-prime",
+    "label": "SteelSeries Prime",
+    "vendor": 4152,
+    "products": [
+      6190
+    ],
+    "names": [
+      "SteelSeries Prime"
+    ],
+    "images": [
+      {
+        "label": "有线 Prime 外观与按键",
+        "src": "/devices/rivalcfg/steelseries-prime.svg"
+      }
+    ]
   }
 ]

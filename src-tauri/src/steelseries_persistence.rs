@@ -45,6 +45,11 @@ fn complete(plan: &Plan) -> Result<(), String> {
             }
         })
         .collect::<Vec<_>>();
+    if plan.product==gearwise_steelseries::prime::PID{
+        let profiles=plan.settings.iter().filter_map(|s|if let Setting::VendorProfile{schema,data}=s{Some((schema,data))}else{None}).collect::<Vec<_>>();
+        if !crate::steelseries::complete_table(plan.product,&buttons)||dpi.len()!=1||rates!=1||!zones.is_empty()||profiles.len()!=1||plan.settings.len()!=buttons.len()+3{return Err("Prime 板载保存需要完整 DPI、回报率、六个可编程控制和完整滚轮灯效".into());}
+        gearwise_steelseries::prime::Profile::decode(plan.product,profiles[0].0,profiles[0].1).map_err(|e|e.to_string())?;return Ok(());
+    }
     if gearwise_steelseries::rival3::supported(plan.product){
         let profiles=plan.settings.iter().filter_map(|s|if let Setting::VendorProfile{schema,data}=s{Some((schema,data))}else{None}).collect::<Vec<_>>();
         if !crate::steelseries::complete_table(plan.product,&buttons)||dpi.len()!=1||rates!=1||!zones.is_empty()||profiles.len()!=1||plan.settings.len()!=buttons.len()+3{return Err("Rival3 板载保存需要完整 DPI、回报率、全部八个已知控制与完整灯效方案".into());}
@@ -248,7 +253,7 @@ mod tests {
                 d.capabilities()
                     .buttons
                     .iter()
-                    .filter(|b| b.id != 1)
+                    .filter(|b| b.id != 1 && b.remappable)
                     .map(|b| Setting::Button {
                         id: b.id,
                         action: b.default_action.clone(),
@@ -274,6 +279,10 @@ mod tests {
                 let mut lights=gearwise_steelseries::rival3::Profile::default();
                 for (i,z) in lights.zones.iter_mut().enumerate(){z.color=Rgb{r:10+i as u8,g:20,b:30};z.brightness=80;}
                 plan.settings.push(gearwise_steelseries::rival3::setting(&lights));
+            }
+            if pid==gearwise_steelseries::prime::PID {
+                plan.settings.retain(|s| !matches!(s,Setting::Lighting{..}));
+                plan.settings.push(gearwise_steelseries::prime::setting(&Default::default()));
             }
             if pid==0x1724 {plan.settings.push(Setting::LiftOff(4));}
             if pid==0x1832 {
@@ -305,7 +314,7 @@ mod tests {
                 .save_native_hardware_at(&self.id, &self.plan, &self.connection, &self.root)
         }
         fn saves(&self) -> usize {
-            self.log.lock().unwrap().iter().filter(|r|matches!(r,MockRecord::Write(bytes)if matches!(bytes.as_slice(),[0,9,0]|[0,0x59,0]))).count()
+            self.log.lock().unwrap().iter().filter(|r|matches!(r,MockRecord::Write(bytes)if matches!(bytes.as_slice(),[0,9,0]|[0,0x59,0]) || (bytes.len()==65 && bytes[..3]==[0,0x59,0] && bytes[3..].iter().all(|b|*b==0)))).count()
         }
     }
     impl Drop for Case {
@@ -342,7 +351,7 @@ mod tests {
             assert_eq!(c.saves(), 1);
             assert_eq!(
                 c.log.lock().unwrap().last().unwrap(),
-                &MockRecord::Write(if matches!(pid,0x1710|0x1724|0x1824|0x184c) {
+                &MockRecord::Write(if pid==0x182e {let mut b=vec![0,0x59,0];b.resize(65,0);b} else if matches!(pid,0x1710|0x1724|0x1824|0x184c) {
                     vec![0, 9, 0]
                 } else {
                     vec![0, 0x59, 0]

@@ -137,7 +137,7 @@ impl Case {
             .capabilities
             .buttons
             .iter()
-            .filter(|b| b.id != 1)
+            .filter(|b| b.id != 1 && b.remappable)
             .map(|b| Setting::Button {
                 id: b.id,
                 action: match b.id {
@@ -239,10 +239,15 @@ fn serialless_same_model_pairs_apply_only_to_own_collection_and_stop_one_without
             .stop_device_software(&c.ids[0], &c.runtime)
             .unwrap();
         let table = c.logs[0].lock().unwrap().clone();
-        assert_eq!(table.len(), 1);
+        assert_eq!(table.len(), if pid==0x182e {2} else {1});
         let table=match &table[0]{MockRecord::Write(v) if pid!=0x1724=>v,MockRecord::SetFeature(v) if pid==0x1724=>v,_=>panic!("wrong native button transport")};
         if gearwise_steelseries::rival3::supported(pid){
             assert_eq!(table,&vec![0,7,0,1,0,0x34,0xea,3,0,4,0,0x33,7,0x30,0,0x31,0,0x32,0]);
+        }else if pid==0x182e {
+            assert_eq!(&table[7..12], &[0x61, 0xea, 0, 0, 0]);
+            assert_eq!(&table[17..22], &[4, 0, 0, 0, 0]);
+            assert_eq!(&table[22..27], &[0x51, 0xe1, 7, 0, 0]);
+            assert_eq!(&table[27..32], &[0x30,0,0,0,0]);
         }else{
             assert_eq!(&table[8..13], &[0x61, 0xea, 0, 0, 0]);
             assert_eq!(&table[18..23], &[4, 0, 0, 0, 0]);
@@ -296,7 +301,8 @@ fn missing_keyboard_and_reopened_control_keep_journal_and_never_restore_to_repla
             .service
             .with(|m| Ok(m.device_mut(&c.ids[0]).unwrap().read_state().unwrap()))
             .unwrap();
-        assert!(state.buttons.is_empty());
+        let (mut fresh, _) = opened(pid, "reference");
+        assert_eq!(state.buttons, fresh.read_state().unwrap().buttons);
         assert!(replacement_logs
             .iter()
             .all(|l| l.lock().unwrap().is_empty()));

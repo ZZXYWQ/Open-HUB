@@ -1,7 +1,7 @@
 {
-  "date": "2026-10-29",
+  "date": "2026-10-30",
   "branch": "feature/100-model-compatibility",
-  "conservative_explicit_partial_model_groups": 43,
+  "conservative_explicit_partial_model_groups": 44,
   "named_non_logitech_brand_groups": 23,
   "complete_accepted_models": 0,
   "target_complete_models": 100,
@@ -27,7 +27,8 @@
       "Sensei 310",
       "Sensei Ten",
       "Rival 600",
-      "Rival 3 (original wired, firmware PIDs 1824/184C merged)"
+      "Rival 3 (original wired, firmware PIDs 1824/184C merged)",
+      "Prime (original wired 1038:182e)"
     ],
     "HyperX": [
       "Pulsefire Haste",
@@ -102,7 +103,7 @@
     "Merge cable/receiver PID pairs and duplicate firmware records.",
     "Glorious Model O/O- shared entry conservatively counts as one; old Model O firmware entry is not a second mouse.",
     "SC620 and SC580 research-only shared identities are not admitted or counted.",
-    "These are development scopes, not43 complete mouse adaptations or43 features in the old0.3.7 installer."
+    "These are development scopes, not44 complete mouse adaptations or44 features in the old0.3.7 installer."
   ],
   "sources": [
     "src/lib/compx-models.json",

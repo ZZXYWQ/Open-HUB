@@ -1,3 +1,5 @@
+import {isPrime} from '@/lib/prime';
+import {PrimeLighting} from '@/components/prime-lighting';
 import {isRival3} from '@/lib/rival3';
 import {Rival3Lighting} from '@/components/rival3-lighting';
 import {CompxIndicator} from '@/components/compx-indicator';
@@ -28,6 +30,7 @@ function createEffect(name:string,color:MultiColor):MultiEffect {if(name==='Grad
  }
 }
 export function MultiLighting({view,plan,onChange}:{view:MultiView;plan:MultiPlan;onChange:(p:MultiPlan)=>void}){
+ if(isPrime(plan.vendor,plan.product))return <PrimeLighting plan={plan} onChange={onChange}/>;
  if(isRival3(plan.vendor,plan.product))return <Rival3Lighting view={view} plan={plan} onChange={onChange}/>;
  const zones=view.capabilities.lighting,legacy=legacyModel(plan.vendor,plan.product);const make=(name:string,color:MultiColor)=>{const e=createEffect(name,color);if(isSteelseries(plan.vendor,plan.product)&&steelseriesBreathPeriods(plan.product)&&typeof e==='object'&&'Breathing'in e)e.Breathing.period_ms=3000;if(legacy?.brand==='asus'&&typeof e==='object'){if('Breathing'in e)e.Breathing.period_ms=0;if('ColorCycle'in e)e.ColorCycle.period_ms=0;}return e;};
  const put=(zone:number,state:MultiZoneState)=>onChange({...plan,settings:[...plan.settings.filter(s=>!('Lighting'in s&&s.Lighting.zone===zone)),{Lighting:{zone,state}}]});

@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-30",
+  "scope": "Original wired Prime 1038:182e only; partial integration",
+  "main": {
+    "passed": 1106,
+    "failed": 0,
+    "ignored": 101
+  },
+  "shared": {
+    "unit_passed": 399,
+    "doc_passed": 1,
+    "failed": 0
+  },
+  "prime_focused_including_browser_replay": {
+    "passed": 7,
+    "failed": 0
+  },
+  "production_ui": "Prime two saved profiles; five Rival3 regression scripts passed; headless Edge IPC mocked",
+  "build": "npm run build passed; existing chunk size warning",
+  "source_cleanup": "Eight decoded Lisp sources and two temporary reports hash-verified and deleted",
+  "hardware_tested": false,
+  "partial_models": 44,
+  "complete_models": 0,
+  "installer_created": false,
+  "remaining": [
+    "Native dynamic libsteel lighting",
+    "Onboard macro library/playback",
+    "Complete readback and persistence confirmation",
+    "GG private profile import",
+    "Physical tests and remaining OEM behaviors"
+  ]
+}

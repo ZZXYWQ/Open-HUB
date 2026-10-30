@@ -28,6 +28,7 @@ mod device;
 mod dpi;
 mod light;
 pub mod rival3;
+pub mod prime;
 pub mod rival3_sequence;
 mod link;
 mod proximity;
@@ -95,7 +96,8 @@ impl Driver for SteelSeriesDriver {
         let model = models::for_interface(iface, cfg!(windows))
             .ok_or(Error::Unsupported("not a SteelSeries control interface"))?;
         let io = backend.open(&iface.path)?;
-        let link = Link::new(io, model.spec.wire, self.gap);
+        let gap=if model.pid==prime::PID&&!self.gap.is_zero(){self.gap.max(Duration::from_millis(30))}else{self.gap};
+        let link = Link::new(io, model.spec.wire, gap);
         Ok(vec![Box::new(SteelSeriesDevice::new(model, link, iface))])
     }
 }
@@ -200,10 +202,12 @@ pub fn validate_setting(pid:u16,setting:&gearwise_core::Setting)->Result<()>{
  use gearwise_core::Setting;
  let spec=models::find(pid).ok_or(Error::Unsupported("unknown SteelSeries model"))?.spec;
  match setting{
-  Setting::VendorProfile{schema,data}=>{rival3::plan(pid,schema,data)?;},
+  Setting::VendorProfile{schema,data}=>{if pid==prime::PID{prime::plan(pid,schema,data)?;}else{rival3::plan(pid,schema,data)?;}},
   Setting::Dpi(want)=>{let(applied,_)=dpi::plan(&spec.dpi,want)?;if applied!=*want{return Err(Error::invalid("DPI must exactly match a native sensor step"));}},
   Setting::LiftOff(index) if pid==0x1724=>{proximity::packet(*index)?;},
   Setting::ReportRate(hz)=>{if !spec.rate.codes.iter().any(|(r,_)|r==hz){return Err(Error::invalid("native SteelSeries report rate"));}},
+  Setting::Lighting{zone,state} if pid==prime::PID=>{prime::static_zone(&serde_json::to_value(prime::Profile::default()).unwrap(),*zone,state)?;},
+  Setting::Button{id,action} if pid==prime::PID=>{prime::button_plan(&Default::default(),*id,action)?;},
   Setting::Lighting{zone,state}=>{let(applied,_)=light::plan(spec.light.as_ref().ok_or(Error::Unsupported("lighting"))?,*zone,state)?;if applied!=*state{return Err(Error::invalid("lighting period must match a native firmware rhythm"));}},
   Setting::Button{id,action}=>{buttons::plan(spec.buttons.as_ref().ok_or(Error::Unsupported("button table"))?,&std::collections::BTreeMap::new(),*id,action)?;},
   _=>return Err(Error::Unsupported("SteelSeries setting not enabled in bridge")),
@@ -211,5 +215,5 @@ pub fn validate_setting(pid:u16,setting:&gearwise_core::Setting)->Result<()>{
 }
 #[cfg(feature="simulation")]
 pub fn simulated_model(pid:u16)->Result<(Box<dyn Device>,std::sync::Arc<std::sync::Mutex<Vec<gearwise_core::transport::MockRecord>>>)>{
- if !matches!(pid,0x1710|0x1720|0x1722|0x1832|0x1724|0x1824|0x184c){return Err(Error::Unsupported("unreviewed bridge SteelSeries simulation"));}Ok(testutil::silent(pid))
+ if !matches!(pid,0x1710|0x1720|0x1722|0x1832|0x1724|0x1824|0x184c|0x182e){return Err(Error::Unsupported("unreviewed bridge SteelSeries simulation"));}Ok(testutil::silent(pid))
 }

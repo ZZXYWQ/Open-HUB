@@ -277,5 +277,13 @@
     "bytes": 25904,
     "sha256": "4cadc4f5f7fa3ace0cf4e5713ed41bd71d3047ffeb5495c68348d2f2d17ee8f5",
     "license": "WTFPL v2; docs/RIVALCFG-ARTWORK-LICENSE.txt"
+  },
+  {
+    "file": "/devices/rivalcfg/steelseries-prime.svg",
+    "source": "https://github.com/flozz/rivalcfg/blob/779ea52c68cbf8d21234d9e0d81718225f680819/doc/devices/images/prime_buttons.svg",
+    "bytes": 29596,
+    "sha256": "a3d0688d872cce7b9b30e4848db9c687d6530eda60f7c6817c97d2fc7ac2d5bf",
+    "license": "WTFPL v2; docs/RIVALCFG-ARTWORK-LICENSE.txt",
+    "modified": false
   }
 ]

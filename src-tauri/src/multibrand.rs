@@ -1185,3 +1185,7 @@ pub(crate) use steelseries_models::roundtrip_browser_profiles as roundtrip_steel
 
 #[path="rival3_player.rs"]
 pub(crate) mod rival3_player;
+
+#[cfg(test)]
+#[path="prime_models.rs"]
+mod prime_models;

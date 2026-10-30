@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-29",
+  "scope": "Rival1101038:1729 original GG122 inherited descriptor review; no adaptation or device IO",
+  "source_descriptors": [
+    {
+      "file": "rival-110.edevice",
+      "bytes": 2140,
+      "sha256": "9f4d8474ecb8fc33c0df8a270e98495eb79626fd6bd7e7aad318b717315d8dd5",
+      "source_sha256": "7cfcc3658d362c392ab76c9cc19ce16a1b360007adc052f5eb1ee636516fff15",
+      "mdc_verified": true,
+      "source_executed": false
+    },
+    {
+      "file": "rival-100.edevice",
+      "bytes": 12935,
+      "sha256": "d8e4619e5c47ea58b67862d0c843a6f1756e157b012592524d092f6ad2e628c8",
+      "source_sha256": "6b323818b5b7fb917aa62b248b10dc5d6db2d6546fa56d39461841c9ee3b8247",
+      "mdc_verified": true,
+      "source_executed": false
+    },
+    {
+      "file": "mouse.edevice",
+      "bytes": 93,
+      "sha256": "c35dc8e7743bfe6ab56c615f9c72b4bb3f94111a5842c519f2e0d19115ed2886",
+      "source_sha256": "7a1dcba26e24035a281d5037227e8dc8db005a5cd496241b158db4df6c3b2b46",
+      "mdc_verified": true,
+      "source_executed": false
+    },
+    {
+      "file": "prism-sync-boilerplate.edevice",
+      "bytes": 3843,
+      "sha256": "d24b2ccaff6a3a12877fa7995dc0adccd5c46681f31604d06d8ec693aa4c0a33",
+      "source_sha256": "4fc487f7ade94c8d73ef5a448aa5400b343197e1c193ff59a0530d868e063c0d",
+      "mdc_verified": true,
+      "source_executed": false
+    },
+    {
+      "file": "lighting-type-mouse.edevice",
+      "bytes": 142,
+      "sha256": "3fce106271c0d57e02304d4d2a1e1a17a8ae2df62764d459ad810674b7ea4f3f",
+      "source_sha256": "953f2ae537bff5f27417ff7794d8f9b931de01fd6e7314753ee83ca7afbc011a",
+      "mdc_verified": true,
+      "source_executed": false
+    },
+    {
+      "file": "standard-boilerplate.edevice",
+      "bytes": 36914,
+      "sha256": "a3f44979282a049636928501bf457b1651b8e6a9095d26abb4a2c98fcd6ba536",
+      "source_sha256": "11d231502c076b922ed59987226f8c61ad7e42c2e9a25ea888399415c72379d4",
+      "mdc_verified": true,
+      "source_executed": false
+    }
+  ],
+  "main_product": "1038:1729",
+  "inheritance": "rival-110 includes rival-100",
+  "physical_buttons": 6,
+  "hardware_button_table_api_present": false,
+  "hardware_wheel_table_api_present": false,
+  "button6_mode_command": "0b with mode0 CPI or1 OS",
+  "DPI_range": [
+    200,
+    7200,
+    100
+  ],
+  "kernel_driver_remapping_required_for_original_standard_buttons": true,
+  "unscoped_global_hook_not_implemented": true,
+  "source_executed": false,
+  "hardware_tested": false,
+  "counted_model": false,
+  "blocking_gap": "Independent full standard-button suppression/remapping needs a device-scoped input/filter implementation; hardware button-table reuse is invalid"
+}

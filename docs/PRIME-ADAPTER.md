@@ -1,0 +1,27 @@
+# Original wired SteelSeries Prime
+
+Development adapter, 2026-10-30. Only USB 1038:182e is admitted; Prime+, wireless versions and bootloader182f are excluded. This is partial integration, not complete OEM parity.
+
+## Implemented
+
+- Native 50–18000 CPI in steps of50, one to five stages and selected active stage;125/250/500/1000Hz.
+- Separate physical5b and wheel5c assignment tables. Five top physical buttons and wheel up/down are represented; bottom CPI remains its fixed firmware action. Application primary-left protection leaves six editable inputs2,3,4,5,7,8. Keyboard modifiers, supported mouse/media/scroll/DPI actions use the shared native encoder.
+- Independent per-mouse software macros on all six editable inputs use the existing verified input-source association. They require Open HUB running; no global mouse hook or claim of native macro playback.
+- Native static scroll-wheel RGB, separate raw brightness0–256 and enable/off. Color remains unchanged when brightness changes. Feature reports are643 bytes; output reports65 bytes; real transport enforces at least30ms command spacing. No implicit flash write.
+- Complete desired lighting and both key tables support explicit reapplication after failure. Partial failure invalidates the relevant cache and stops sending; uncertain tables cannot be incrementally edited until a full table is applied.
+- Explicit save59/00 requires a complete applied plan for the same current connection. Stale/repeated saves and software macro plans are refused. A sent command is not reported as verified hardware persistence.
+- Exact licensed model artwork, five-stage DPI editor, fixed/writable controls, dedicated lighting editor and Open HUB profile transfer/store roundtrip.
+
+## Evidence and validation
+
+[Static OEM findings](development/gg122-prime-native-facts.json) record GG122 descriptor/include hashes, MDC integrity and native layout. OEM Lisp, SQL and executable code were not executed. The independently retained rivalcfg Prime profile provides a second implementation reference. The unmodified29,596-byte SVG has source/hash attribution in DEVICE-ARTWORK-SOURCES.json and the existing WTFPL license in RIVALCFG-ARTWORK-LICENSE.txt.
+
+Seven focused Rust tests, including the actual browser-saved profile replay, passed. They cover exact bytes, all six software-macro controls, same-model device isolation, raw brightness bounds, foreign/malformed schemas before I/O, each lighting/table failure, explicit recovery and one-shot connection-scoped flash. Headless Edge edits and saves two complete production React profiles, including Ctrl+C, wheel macro, static/off and37/256 brightness. Rust then imports them through production storage and replays the native compiler. Browser IPC and transport are simulated, so these checks do not establish physical compatibility.
+
+Reproduce: npm run build; generate native DTO using OPEN_HUB_PRIME_VIEWS and cargo test prime_exact_model_template; node scripts/test-prime-ui.cjs; set OPEN_HUB_PRIME_UI_PROFILES to the resulting prime-ui-profiles.json and cargo test prime_ -- --include-ignored.
+
+## Remaining OEM parity work
+
+Native libsteel dynamic gradients/acceleration and complete Prism/PC synchronization; onboard macro memory and playback; full readback and persistence verification; original GG private profile import; other advanced OEM settings and real-device validation. Initial UI values are templates/session cache, not hardware observations. These gaps keep this model out of complete acceptance.
+
+Rival110 was also investigated, but its OEM ordinary button/wheel mapping relies on a kernel path rather than this native table protocol. [Research gap](development/2026-10-29-rival110-protocol-gap.json) records this; it has no newly admitted device entry and is not counted.

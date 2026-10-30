@@ -815,6 +815,8 @@ const PRIME: Spec = Spec {
     save: &[0x59],
 };
 
+const PRIME_REVIEWED: Spec = Spec {control:Control{interface:0,collection:Collection::Exact(0xffc0,1)},wire:Wire{pad:64,dongle:false},..PRIME};
+
 const PRIME_MINI: Spec = Spec {
     control: IFACE_3,
     dpi: DpiSpec {
@@ -1085,7 +1087,7 @@ pub static MODELS: &[Model] = &[
         &RIVAL_600,
     ),
     // Prime, Prime+, Prime Mini
-    model(0x182e, "SteelSeries Prime", Wired, &PRIME),
+    model(0x182e, "SteelSeries Prime", Wired, &PRIME_REVIEWED),
     model(
         0x182a,
         "SteelSeries Prime Rainbow 6 Siege Black Ice Edition",

@@ -1,0 +1,161 @@
+{
+  "source": "Retained official GG122 inert Prime descriptor/include chain, MDC verified; code never executed",
+  "main_product": "1038:182e",
+  "bootloader_product_excluded": "1038:182f",
+  "main_collection": {
+    "interface": 0,
+    "usage_page": "ffc0",
+    "usage": 1
+  },
+  "native_output_bytes": 65,
+  "native_feature_bytes": 643,
+  "physical_mapping": {
+    "command": "5b",
+    "editable_physical_ids": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "slot_bytes": 5,
+    "fixed_last_slot": [
+      48,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "wheel_mapping": {
+    "command": "5c",
+    "logical_ids": [
+      7,
+      8
+    ],
+    "slots": 2,
+    "slot_bytes": 5
+  },
+  "DPI": {
+    "command": "61",
+    "count_index_bytes": [
+      2,
+      3
+    ],
+    "codes": "u16 LE, physical CPI/code50",
+    "stages": [
+      1,
+      5
+    ],
+    "range": [
+      50,
+      18000,
+      50
+    ]
+  },
+  "rate": {
+    "command": "5d",
+    "codes": {
+      "125": 4,
+      "250": 3,
+      "500": 2,
+      "1000": 1
+    }
+  },
+  "static_lighting": {
+    "program_command": "62",
+    "report": "feature643",
+    "section_count": 1,
+    "initial_rgb": "unscaled",
+    "duration_tick_motion": 0,
+    "first_section_weight": 255,
+    "remaining_sections": 15,
+    "brightness_command": "5f",
+    "brightness_range": [
+      0,
+      256
+    ],
+    "brightness_bytes": "u16 LE",
+    "enable_command": "6c",
+    "enable_values": [
+      0,
+      1
+    ]
+  },
+  "save_command": "59 00",
+  "command_gap_ms": 30,
+  "descriptors": [
+    {
+      "file": "prime.edevice",
+      "bytes": 967,
+      "sha256": "77f0c8f38f0a0d5e8ad007143cae4532a846cf473be2ede9e764c6aed7c79657",
+      "source_sha256": "ef8afdfff84caf6b9090bff30772b16d50177ceb196977fdc01271330cd045bb",
+      "mdc_verified": true,
+      "source_executed": false
+    },
+    {
+      "file": "prime_base.edevice",
+      "bytes": 33749,
+      "sha256": "a6518e136709ef8c2c73248882c63ab9b912de94482f6a08b4f8f0c4c4646cf4",
+      "source_sha256": "c87a90183fc6dcc3d32ccccdc4924f25fc39a5365977fdad1ed74cf66cc0ee1d",
+      "mdc_verified": true,
+      "source_executed": false
+    },
+    {
+      "file": "mouse.edevice",
+      "bytes": 93,
+      "sha256": "c35dc8e7743bfe6ab56c615f9c72b4bb3f94111a5842c519f2e0d19115ed2886",
+      "source_sha256": "7a1dcba26e24035a281d5037227e8dc8db005a5cd496241b158db4df6c3b2b46",
+      "mdc_verified": true,
+      "source_executed": false
+    },
+    {
+      "file": "prime_base_libsteel_lighting.edevice",
+      "bytes": 7292,
+      "sha256": "8b6c03bf7acb438cc0fa38603096cfbd6851f410bf6ef93c20bd419d54617c4f",
+      "source_sha256": "dad0c96db6d9463e470d64167af9133d636867809406717a97f0b5e279a65a1b",
+      "mdc_verified": true,
+      "source_executed": false
+    },
+    {
+      "file": "prism-sync-boilerplate.edevice",
+      "bytes": 3843,
+      "sha256": "d24b2ccaff6a3a12877fa7995dc0adccd5c46681f31604d06d8ec693aa4c0a33",
+      "source_sha256": "4fc487f7ade94c8d73ef5a448aa5400b343197e1c193ff59a0530d868e063c0d",
+      "mdc_verified": true,
+      "source_executed": false
+    },
+    {
+      "file": "common_lighting.edevice",
+      "bytes": 3079,
+      "sha256": "7e28859570b822809313cba54f1ff00494094cd205bee33d74815a672d9f8907",
+      "source_sha256": "bd0cb996d049547da04d2d20f253066bbb0aff07fa60123893a0972c5e6d4d96",
+      "mdc_verified": true,
+      "source_executed": false
+    },
+    {
+      "file": "lighting-type-mouse.edevice",
+      "bytes": 142,
+      "sha256": "3fce106271c0d57e02304d4d2a1e1a17a8ae2df62764d459ad810674b7ea4f3f",
+      "source_sha256": "953f2ae537bff5f27417ff7794d8f9b931de01fd6e7314753ee83ca7afbc011a",
+      "mdc_verified": true,
+      "source_executed": false
+    },
+    {
+      "file": "standard-boilerplate.edevice",
+      "bytes": 36914,
+      "sha256": "a3f44979282a049636928501bf457b1651b8e6a9095d26abb4a2c98fcd6ba536",
+      "source_sha256": "11d231502c076b922ed59987226f8c61ad7e42c2e9a25ea888399415c72379d4",
+      "mdc_verified": true,
+      "source_executed": false
+    }
+  ],
+  "source_tested_hardware": false,
+  "remaining": [
+    "dynamic libsteel gradients and acceleration",
+    "hardware readback queries",
+    "onboard macros and preserved firmware macro slots",
+    "complete GG original format conversion",
+    "physical device testing"
+  ]
+}
