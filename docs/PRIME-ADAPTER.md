@@ -35,3 +35,5 @@ Follow-up: [native gradient codec and source conversion limits](PRIME-NATIVE-GRA
 [Macro storage/recovery follow-up](PRIME-MACRO-STORAGE.md) adds offline exclusive replacement and complete foreign-byte preservation, including interrupted restoration history. Actual transport readback, persistent journals, allocation and guarded application/UI integration remain incomplete.
 
 [Feature readback follow-up](PRIME-FEATURE-READBACK.md) adds bounded read codecs and original USB-class/cache instruction tests. Untagged stale or intermediate cache data is explicitly unverified and cannot establish current identity, idle state or safe upload.
+
+[Output/interrupt reader follow-up](PRIME-OUTPUT-READBACK.md) adds challenge-fenced candidates, exact data preservation across notification/echo collisions and original-firmware interoperation. Physical transfer mapping, stable identity/images, idle state and safe application/UI integration remain incomplete.

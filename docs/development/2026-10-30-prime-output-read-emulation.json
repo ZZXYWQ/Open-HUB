@@ -1,0 +1,120 @@
+{
+  "firmware_sha256": "205faae43e6a0109167c1f301b5825ab55bc2aa14d0d2f508001dfc92e264662",
+  "cases": [
+    {
+      "case": "complete-recipe",
+      "native_transmits": 172,
+      "writes": 172,
+      "transport_operations": 344,
+      "expected_failure": false,
+      "read_results": 14,
+      "narrowed": false
+    },
+    {
+      "case": "tagged-data",
+      "native_transmits": 80,
+      "writes": 80,
+      "transport_operations": 160,
+      "expected_failure": false,
+      "read_results": 1,
+      "narrowed": true
+    },
+    {
+      "case": "echo-data",
+      "native_transmits": 80,
+      "writes": 80,
+      "transport_operations": 160,
+      "expected_failure": false,
+      "read_results": 1,
+      "narrowed": true
+    },
+    {
+      "case": "stale-reply",
+      "native_transmits": 3,
+      "writes": 2,
+      "transport_operations": 5,
+      "expected_failure": false,
+      "read_results": 1,
+      "narrowed": false
+    },
+    {
+      "case": "queued-notifications",
+      "native_transmits": 4,
+      "writes": 2,
+      "transport_operations": 6,
+      "expected_failure": false,
+      "read_results": 1,
+      "narrowed": false
+    },
+    {
+      "case": "notify-before-data",
+      "native_transmits": 36,
+      "writes": 34,
+      "transport_operations": 70,
+      "expected_failure": false,
+      "read_results": 2,
+      "narrowed": true
+    },
+    {
+      "case": "busy-target",
+      "native_transmits": 1,
+      "writes": 2,
+      "transport_operations": 4,
+      "expected_failure": true,
+      "read_results": 0,
+      "narrowed": false
+    },
+    {
+      "case": "unconfigured",
+      "native_transmits": 0,
+      "writes": 1,
+      "transport_operations": 2,
+      "expected_failure": true,
+      "read_results": 0,
+      "narrowed": false
+    },
+    {
+      "case": "short-input",
+      "native_transmits": 2,
+      "writes": 2,
+      "transport_operations": 4,
+      "expected_failure": true,
+      "read_results": 0,
+      "narrowed": false
+    },
+    {
+      "case": "short-write",
+      "native_transmits": 0,
+      "writes": 0,
+      "transport_operations": 1,
+      "expected_failure": true,
+      "read_results": 0,
+      "narrowed": false
+    },
+    {
+      "case": "notification-budget",
+      "native_transmits": 33,
+      "writes": 1,
+      "transport_operations": 33,
+      "expected_failure": true,
+      "read_results": 0,
+      "narrowed": false
+    }
+  ],
+  "production_rust_reader_over_original_firmware": true,
+  "peripheral_fifo_and_completion_modeled": true,
+  "device_io": false,
+  "physical_windows_hid_write_mapping_validated": false,
+  "physical_identity_validated": false,
+  "atomic_live_image_validated": false,
+  "live_macro_upload_enabled": false,
+  "emulator": "unicorn 2.1.4",
+  "date": "2026-10-30",
+  "steelseries_unit_tests_passed": 130,
+  "main_prime_tests_passed": 20,
+  "main_prime_tests_ignored": 6,
+  "native_transmits_total": 411,
+  "successful_scenarios": 6,
+  "refused_scenarios": 5,
+  "read_candidates": 20
+}

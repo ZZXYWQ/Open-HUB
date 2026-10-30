@@ -1,0 +1,79 @@
+{
+  "firmware_sha256": "205faae43e6a0109167c1f301b5825ab55bc2aa14d0d2f508001dfc92e264662",
+  "vendor_interface": 0,
+  "vendor_input_bytes": 64,
+  "vendor_output_payload_bytes": 64,
+  "vendor_feature_payload_bytes": 642,
+  "vendor_report_descriptor_ram": "0x20000294",
+  "vendor_report_descriptor_hex": "06c0ff0901a10106c1ff150026ff00750809f09540810209f19540910209f2968202b102c0",
+  "vendor_input_endpoint_hex": "81",
+  "known_notification_prefixes_hex": [
+    "aa55f0",
+    "aa55ff"
+  ],
+  "known_direct_ep81_send_call_sites": [
+    "0x08008f66",
+    "0x0800981e",
+    "0x08009e36"
+  ],
+  "echo_source_address": "0x20001502",
+  "echo_source_window_offset": "0x092a",
+  "echo_bytes": 32,
+  "scope": "Known original firmware output/interrupt sites plus modeled FIFO/USB primitives. No physical ABI, complete runtime, caller entropy, exclusive ownership or atomic image proof.",
+  "regions": [
+    {
+      "name": "interrupt_send",
+      "entry": "0x8007f80",
+      "end": "0x8007fc4",
+      "sha256": "d56ab63f96ad35ef9c374e5abbe01f3761f2ba775287d0d2744c3b936c1f55be"
+    },
+    {
+      "name": "tx_descriptor_prepare",
+      "entry": "0x8007f50",
+      "end": "0x8007f80",
+      "sha256": "1f5fe70602645683aed83391c5a279ffbbb6d540eff8b15efe61267a13b18841"
+    },
+    {
+      "name": "data_in_complete",
+      "entry": "0x80086ac",
+      "end": "0x80086c4",
+      "sha256": "7b67ef5a65f83b183d306d7bd0e044ff33e1c9450797258476d938f404a2e660"
+    },
+    {
+      "name": "command_reply_send",
+      "entry": "0x8009818",
+      "end": "0x8009824",
+      "sha256": "b1c69e746d763f321f8cccc90aa1cf14744d5a1e3b1dc2d7409b9c06d103c2de"
+    },
+    {
+      "name": "dpi_notification",
+      "entry": "0x8009dd0",
+      "end": "0x8009e3a",
+      "sha256": "bd0bdc26e9f93f03fe49c38879ded1b64dac7f94a39f1c78725b35a0b8b8dd20"
+    },
+    {
+      "name": "button_notification_build",
+      "entry": "0x8009e6e",
+      "end": "0x8009ea2",
+      "sha256": "ad1cd6999884201b39ff88ef2fc99e77f41ac7099a293b4c33ca8fffee3e6336"
+    },
+    {
+      "name": "button_notification_send",
+      "entry": "0x8008f4e",
+      "end": "0x8008f70",
+      "sha256": "d8661372119f53700a6ae094d17324f59c50f34a7a03733e8de0081edcdd0590"
+    },
+    {
+      "name": "interface_descriptor_table",
+      "entry": "0x800c0ec",
+      "end": "0x800c11c",
+      "sha256": "68c7bb72801300c3a470b9fa003c25fde4502b8e110b6fa045327cd2cc9c9b94"
+    },
+    {
+      "name": "vendor_report_descriptor",
+      "entry": "0x800c698",
+      "end": "0x800c6bd",
+      "sha256": "34dfd07ba268cd0249143a3b12c11ca275fc37935fd927548867e611a801a2b6"
+    }
+  ]
+}

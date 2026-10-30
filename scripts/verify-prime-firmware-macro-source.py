@@ -108,11 +108,51 @@ def verify_feature(path):
     return data, facts, feature
 
 
+def verify_output(path):
+    data, facts, feature = verify_feature(path)
+    output = json.loads((Path(__file__).resolve().parents[1] /
+        'docs/development/gg122-prime-output-read-source.json').read_text(encoding='utf8'))
+    assert output['firmware_sha256'] == facts['firmware_sha256']
+    base=int(facts['load_base'],16)
+    for region in output['regions']:
+        start,end=int(region['entry'],16)-base,int(region['end'],16)-base
+        assert 0<=start<end<=len(data)
+        assert hashlib.sha256(data[start:end]).hexdigest()==region['sha256'],region['name']
+    descriptor=bytes.fromhex(output['vendor_report_descriptor_hex'])
+    ram=int(output['vendor_report_descriptor_ram'],16)
+    assert struct.unpack_from('<I',data,0x0800c0f0-base)[0]==ram
+    assert data[0x0800c0f5-base]==len(descriptor)
+    source=int(facts['startup']['data_source'],16)+ram-int(facts['startup']['data_start'],16)-base
+    assert data[source:source+len(descriptor)]==descriptor
+    size=count=0;bits={};index=0
+    while index<len(descriptor):
+        prefix=descriptor[index];index+=1;assert prefix!=254
+        length=prefix&3;length=4 if length==3 else length
+        value=int.from_bytes(descriptor[index:index+length],'little');index+=length
+        kind,tag=(prefix>>2)&3,prefix>>4
+        if kind==1 and tag==7:size=value
+        if kind==1 and tag==8:raise AssertionError('unexpected report ID')
+        if kind==1 and tag==9:count=value
+        if kind==0 and tag in (8,9,11):bits[tag]=bits.get(tag,0)+size*count
+    assert bits=={8:512,9:512,11:5136}
+    assert int(output['echo_source_address'],16)-int(feature['raw_window_base'],16)==int(output['echo_source_window_offset'],16)
+    assert int(output['echo_source_address'],16)==int(feature['global_staged_request_address'],16)+6
+    for address in output['known_direct_ep81_send_call_sites']:
+        address=int(address,16);a,z=struct.unpack_from('<HH',data,address-base)
+        assert a&0xf800==0xf000 and z&0xd000==0xd000
+        sign=(a>>10)&1;i1=1^((z>>13)&1)^sign;i2=1^((z>>11)&1)^sign
+        offset=(sign<<24)|(i1<<23)|(i2<<22)|((a&1023)<<12)|((z&2047)<<1)
+        if sign:offset-=1<<25
+        assert address+4+offset==0x08007f80
+    return data,facts,feature,output
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('firmware', type=Path)
     parser.add_argument('--playback', action='store_true')
     parser.add_argument('--feature', action='store_true')
+    parser.add_argument('--output', action='store_true')
     args = parser.parse_args()
     _, facts = verify(args.firmware)
     if args.playback:
@@ -121,5 +161,8 @@ if __name__ == '__main__':
     if args.feature:
         _, _, feature = verify_feature(args.firmware)
         print(f"Verified {len(feature['regions'])} feature setup/stage/cache/source regions. No execution.")
+    if args.output:
+        _, _, _, output = verify_output(args.firmware)
+        print(f"Verified {len(output['regions'])} output/notification/descriptor regions and unnumbered report lengths. No execution.")
     print(f"Verified exact 1038:182e firmware, {facts['command_table_entries']} command entries, "
           f"{len(facts['regions'])} instruction-region digests and read/write pointers. No execution.")

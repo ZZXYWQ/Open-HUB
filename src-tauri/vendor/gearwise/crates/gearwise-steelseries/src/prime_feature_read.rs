@@ -66,6 +66,32 @@ impl Read {
             length,
         })
     }
+    pub(crate) fn is_version(&self) -> bool {
+        self.address.is_none()
+    }
+    pub fn subrange(&self, offset: usize, length: usize) -> Result<Self> {
+        if self.address.is_none()
+            || length == 0
+            || length > 512
+            || offset
+                .checked_add(length)
+                .is_none_or(|end| end > self.length)
+        {
+            return Err(Error::invalid("Prime read subrange"));
+        }
+        Ok(Self {
+            address: self.address.map(|a| a + offset),
+            length,
+        })
+    }
+    pub fn output_report(&self) -> Result<Vec<u8>> {
+        if self.length > 64 {
+            return Err(Error::invalid("Prime output read exceeds64 bytes"));
+        }
+        let mut report = self.report();
+        report.truncate(65);
+        Ok(report)
+    }
     pub fn expected_bytes(&self) -> usize {
         self.length
     }
@@ -178,5 +204,22 @@ mod tests {
         let mut report = vec![0; 643];
         report[0] = 1;
         assert!(read.parse_cached(&report).is_err());
+    }
+    #[test]
+    fn output_subranges_keep_their_parent_extent_and_complete_id_zero_frame() {
+        let part = Read::macro_chunk(4608, 512)
+            .unwrap()
+            .subrange(510, 2)
+            .unwrap();
+        let output = part.output_report().unwrap();
+        assert_eq!(output.len(), 65);
+        assert_eq!(&output[..7], &[0, 0x83, 0, 0x99, 0x26, 2, 0]);
+        assert!(output[7..].iter().all(|b| *b == 0));
+        assert!(Read::version().subrange(0, 1).is_err());
+        assert!(Read::contexts().output_report().is_err());
+        for (offset, length) in [(0, 0), (0, 513), (180, 1), (179, 2), (usize::MAX, 1)] {
+            assert!(Read::contexts().subrange(offset, length).is_err());
+        }
+        assert_eq!(Read::physical().output_report().unwrap().len(), 65);
     }
 }

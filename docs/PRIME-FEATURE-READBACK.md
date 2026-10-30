@@ -41,3 +41,8 @@ cargo run --quiet --manifest-path src-tauri/vendor/gearwise/Cargo.toml -p gearwi
 Development-only Unicorn2.1.4 is installed separately, not bundled. No vendor binary, emulator package or generated test data was added to application resources; no new runtime dependency was introduced. Model counts remain44 partial/0 complete. No installer or release was generated.
 
 Remaining: independently establish a completed, ordered, fresh response protocol (including output/interrupt replies, notifications and pending-request races), stable full-image collection, actual firmware/current-device identity, idle/exclusive access, persistent edit/recovery journals, allocator/copy-on-write and whole-plan macro concurrency, then guarded application/store/UI integration and hardware verification. Cached observations must not bypass those requirements.
+
+
+## Output/interrupt follow-up
+
+[Ordered output read candidates](PRIME-OUTPUT-READBACK.md) adds a production transport reader with challenge completion fences, notification-safe narrow reads and explicit failure bounds. Actual Rust transport calls run against original firmware instructions in eleven modeled FIFO scenarios;130 SteelSeries tests and20 main Prime regressions pass. This does not upgrade cached Feature observations or establish physical identity/atomic images, and no live macro upload is enabled.
