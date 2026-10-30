@@ -1,0 +1,23 @@
+{
+  "main_passed": 1110,
+  "main_failed": 0,
+  "main_ignored": 103,
+  "focused_gg_prime_passed": 3,
+  "browser_saved_profile_replay_passed": 1,
+  "ui_regressions": [
+    "Prime GG default preview/edit/quick-save",
+    "Rival3 steady GG import",
+    "Rival3 dynamic GG import"
+  ],
+  "hardware_tested": false,
+  "partial_models": 44,
+  "complete_models": 0,
+  "installer_created": false,
+  "source": "static original GG122 default JSON plus prior descriptor hashes; no vendor execution",
+  "limitations": [
+    "only type1 settings_mask0 colorshift",
+    "only physical macro trigger conversion",
+    "other effects and motion file schema unverified",
+    "no physical timing/readback/onboard macro verification"
+  ]
+}

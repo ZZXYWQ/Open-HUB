@@ -1,0 +1,226 @@
+{
+  "batch_resolution": {
+    "num_cpi_levels": 5,
+    "active_level_index": 0,
+    "resolution_1": 8,
+    "resolution_2": 16,
+    "resolution_3": 24,
+    "resolution_4": 48,
+    "resolution_5": 64
+  },
+  "button_and_wheel_mappings": {
+    "buttons": [
+      {
+        "function": 1,
+        "key_codes": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "function": 2,
+        "key_codes": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "function": 3,
+        "key_codes": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "function": 4,
+        "key_codes": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "function": 5,
+        "key_codes": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "wheels": [
+      {
+        "function": 49,
+        "key_codes": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "function": 50,
+        "key_codes": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "no_live_deploy": 1
+  },
+  "polling_rate": {
+    "level": 1
+  },
+  "exact_accel": {
+    "level": 0
+  },
+  "exact_aim": {
+    "level": 0
+  },
+  "free_move": {
+    "level": 0
+  },
+  "led_brightness": {
+    "level": 256
+  },
+  "lighting_config": {
+    "type": 1,
+    "speed": 1000,
+    "num_colors": 3,
+    "colors": [
+      {
+        "r": 0,
+        "g": 255,
+        "b": 255
+      },
+      {
+        "r": 255,
+        "g": 0,
+        "b": 255
+      },
+      {
+        "r": 255,
+        "g": 0,
+        "b": 64
+      },
+      {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      },
+      {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      },
+      {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      },
+      {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      },
+      {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      },
+      {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      },
+      {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      },
+      {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      },
+      {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      },
+      {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      },
+      {
+        "r": 0,
+        "g": 0,
+        "b": 0
+      }
+    ],
+    "positions": [
+      {
+        "pos": 0
+      },
+      {
+        "pos": 33
+      },
+      {
+        "pos": 66
+      },
+      {
+        "pos": 0
+      },
+      {
+        "pos": 0
+      },
+      {
+        "pos": 0
+      },
+      {
+        "pos": 0
+      },
+      {
+        "pos": 0
+      },
+      {
+        "pos": 0
+      },
+      {
+        "pos": 0
+      },
+      {
+        "pos": 0
+      },
+      {
+        "pos": 0
+      },
+      {
+        "pos": 0
+      },
+      {
+        "pos": 0
+      }
+    ],
+    "initial_color": {
+      "r": 255,
+      "g": 0,
+      "b": 0
+    },
+    "settings_mask": 0
+  },
+  "lighting_enable": {
+    "enable": 1
+  }
+}

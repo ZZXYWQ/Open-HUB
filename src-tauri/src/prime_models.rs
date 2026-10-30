@@ -639,3 +639,12 @@ fn prime_dynamic_browser_saved_profiles_roundtrip_native_replay() {
         assert_eq!(simulate(plan).unwrap()["hardware_tested"], false);
     }
 }
+
+#[test]
+#[ignore="requires actual saved GG Prime importer UI profile"]
+fn prime_gg_import_browser_saved_profile_native_replay(){
+ let ps=roundtrip_steelseries_browser_profiles("OPEN_HUB_GG_PRIME_UI_PROFILES");assert_eq!(ps.len(),1);
+ let p=&ps[0];let plan=p.multi.as_ref().unwrap();assert_eq!(plan.product,prime::PID);assert_eq!(p.levels[0].x,600);
+ let profile=plan.settings.iter().find_map(|s|if let Setting::VendorProfile{schema,data}=s{Some(Profile::decode(prime::PID,schema,data).unwrap())}else{None}).unwrap();
+ let program=profile.program.unwrap();assert_eq!(program.initial,Rgb::new(18,52,86));assert_eq!(program.duration,10000);assert_eq!(program.sections.iter().map(|s|s.weight).collect::<Vec<_>>(),[0,84,84,86]);assert_eq!(simulate(plan).unwrap()["hardware_tested"],false);
+}

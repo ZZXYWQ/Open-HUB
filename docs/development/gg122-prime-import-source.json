@@ -1,0 +1,28 @@
+{
+  "source": "Retained official GG122 inert SQL; not executed",
+  "migration": "migrations\\3.17.4\\20200214130818_squash.sql",
+  "sha256": "55dab507e0478d64d65629fcada03eca47039c1dff923fe76f22f0a13d904ef4",
+  "device_id": 186,
+  "product": "1038:182e",
+  "name": "prime",
+  "settings_keys": [
+    "batch_resolution",
+    "button_and_wheel_mappings",
+    "polling_rate",
+    "exact_accel",
+    "exact_aim",
+    "free_move",
+    "led_brightness",
+    "lighting_config",
+    "lighting_enable"
+  ],
+  "renderer_factory_verified": false,
+  "admitted_lighting": "type1 settings_mask0 colorshift;14-record table only",
+  "remaining": [
+    "Other effect masks and breathe",
+    "motion fields in original files",
+    "wheel macro trigger format",
+    "multi-normal-key shortcuts",
+    "nondefault driver performance"
+  ]
+}

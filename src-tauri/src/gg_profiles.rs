@@ -14,6 +14,8 @@ mod lighting;
 mod sensei_ten;
 #[path="gg_rival600.rs"]
 mod rival600;
+#[path="gg_prime.rs"]
+mod prime;
 #[path="gg_rival3.rs"]
 mod rival3;
 
@@ -42,7 +44,7 @@ fn read(conn:&Connection)->Result<Prepared,String>{
   if !ids.insert(id.clone()){return Err("GG 配置标识重复".into());}
   let mut c=Candidate{model:format!("{model} · {name}"),profile:None,issues:vec![],notes:vec!["按原始事件转换 DPI、按钮和软件宏。灯效按已核对字段转换，未实现行为会拦截并说明；尚未实机验证。".into(),"导入与保存只处理文件；应用软件动作前请在编辑器选择此鼠标的输入来源。".into()]};
   let p=(||{
-   let pid=match(product,model.as_str()){(0x10381710,"rival_300")=>0x1710,(0x10381720,"rival_310")=>0x1720,(0x10381722,"sensei_310")=>0x1722,(0x10381832,"sensei_ten")=>0x1832,(0x10381724,"rival_600")=>0x1724,(0x10381824,"rival_3")=>0x1824,(0x1038184c,"rival_3")=>0x184c,_=>return Err("此配置不是已核对的 Rival 300 / Rival 310 / Sensei 310 / Sensei Ten / Rival 600 / 原版有线 Rival 3，不能借用其他型号的物理布局".into())};
+   let pid=match(product,model.as_str()){(0x1038182e,"prime")=>0x182e,(0x10381710,"rival_300")=>0x1710,(0x10381720,"rival_310")=>0x1720,(0x10381722,"sensei_310")=>0x1722,(0x10381832,"sensei_ten")=>0x1832,(0x10381724,"rival_600")=>0x1724,(0x10381824,"rival_3")=>0x1824,(0x1038184c,"rival_3")=>0x184c,_=>return Err("此配置不是已核对的 Rival 300 / Rival 310 / Sensei 310 / Sensei Ten / Rival 600 / 原版有线 Rival 3 / Prime，不能借用其他型号的物理布局".into())};
    if id.is_empty()||id.len()>80||name.is_empty()||name.len()>256{return Err("GG 配置名称或标识无效".into());}
    let source=json(&text)?;let(plan,levels,active,rate)=convert(conn,&id,pid,&source,&mut c.notes)?;
    let app_path=associated_program(conn,&id)?;
@@ -58,6 +60,7 @@ fn associated_program(conn:&Connection,id:&str)->Result<Option<String>,String>{
  let(same,path)=&rows[0];if !same{return Err("GG 应用关联与配置所属设备不一致".into());}let path=path.as_ref().filter(|p|!p.trim().is_empty()&&p.len()<=4096&&!p.chars().any(char::is_control)).ok_or("GG 应用路径缺失或无效，不能静默丢失自动切换条件")?;Ok(Some(path.clone()))
 }
 fn convert(conn:&Connection,id:&str,pid:u16,s:&Value,notes:&mut Vec<String>)->Result<(Plan,Vec<Level>,usize,u16),String>{
+ if pid==gearwise_steelseries::prime::PID{return prime::convert(conn,id,pid,s,notes);}
  if gearwise_steelseries::rival3::supported(pid){return rival3::convert(conn,id,pid,s,notes);}
  let physical_buttons=match pid{0x1710|0x1720=>6,0x1722|0x1832=>8,0x1724=>7,_=>return Err("此 GG 型号没有已核对的按键布局".into())};
  let standard=["batch_resolution","resolution_1","resolution_2","raw_cpi","resolution_level","polling_rate","exact_accel","exact_aim","free_move","button_mappings","wheel_mappings","logo_lighting","wheel_lighting","logo_element","wheel_element","logo_color","wheel_color","logo_pulsation","wheel_pulsation","rival_logo_color_sequence","rival_wheel_color_sequence"];
