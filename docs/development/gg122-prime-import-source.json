@@ -21,7 +21,6 @@
   "remaining": [
     "motion fields in original files",
     "wheel macro trigger format",
-    "multi-normal-key shortcuts",
     "nondefault driver performance",
     "Host stream,override and reactive masks",
     "Physical timing and midpoint/quantization parity"
@@ -33,5 +32,6 @@
     "override": 4,
     "reactive": 8
   },
-  "breathe_expansion": "Color/black pairs and closing initial color;2*n+1 records; split each position interval at integer midpoint, then truncate weight*2.55"
+  "breathe_expansion": "Color/black pairs and closing initial color;2*n+1 records; split each position interval at integer midpoint, then truncate weight*2.55",
+  "multi_usage_chords": "Function81 four-byte source records use shared GG keyboard compiler: native single usage+mods, source-scoped held software macro for multiple ordinary usages/modifier-only"
 }

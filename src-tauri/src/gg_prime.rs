@@ -26,7 +26,12 @@ fn rgb(v: &Value) -> Result<Rgb, String> {
     };
     Ok(Rgb::new(c("r")?, c("g")?, c("b")?))
 }
-fn action(v: &Value) -> Result<ButtonAction, String> {
+fn action(
+    v: &Value,
+    config: &str,
+    button: u16,
+    macros: &mut Vec<Macro>,
+) -> Result<ButtonAction, String> {
     shape(v, &["function", "key_codes"])?;
     let keys = codes(v)?;
     let zero = keys.iter().all(|k| *k == 0);
@@ -47,26 +52,7 @@ fn action(v: &Value) -> Result<ButtonAction, String> {
         97 if keys[0] != 0 && keys[1..].iter().all(|k| *k == 0) => {
             ButtonAction::Media(keys[0].into())
         }
-        81 => {
-            let used = keys.iter().copied().filter(|k| *k != 0).collect::<Vec<_>>();
-            let unique = used.iter().copied().collect::<HashSet<_>>();
-            let normal = used
-                .iter()
-                .copied()
-                .filter(|k| !(0xe0..=0xe7).contains(k))
-                .collect::<Vec<_>>();
-            if used.len() != unique.len() || normal.len() != 1 {
-                return Err("GG Prime 多普通键组合尚未转换".into());
-            }
-            ButtonAction::Key {
-                usage: normal[0],
-                mods: Modifiers(
-                    used.iter()
-                        .filter(|k| (0xe0..=0xe7).contains(*k))
-                        .fold(0, |m, k| m | 1 << (*k - 0xe0)),
-                ),
-            }
-        }
+        81 => key_chord(config, button, keys, macros)?,
         _ => return Err("GG Prime 按键动作尚未核对".into()),
     })
 }
@@ -152,17 +138,22 @@ pub(super) fn convert(
         .filter(|a| a.len() == 2)
         .ok_or("GG Prime 需要两个滚轮输入")?;
     let mut buttons = BTreeMap::new();
+    let mut macros = vec![];
     for (i, v) in physical.iter().enumerate() {
-        buttons.insert(i as u16 + 1, action(v)?);
+        buttons.insert(i as u16 + 1, action(v, id, i as u16 + 1, &mut macros)?);
     }
     for (i, v) in wheel.iter().enumerate() {
-        buttons.insert(i as u16 + 7, action(v)?);
+        buttons.insert(i as u16 + 7, action(v, id, i as u16 + 7, &mut macros)?);
     }
-    let mut macros = vec![];
     apply_bindings(conn, id, pid, 5, &mut buttons, &mut macros)?;
     if buttons.remove(&1) != Some(ButtonAction::Mouse(MouseButton::Left)) {
         return Err("GG Prime 导入保留主左键".into());
     }
+    macros.retain(|m| {
+        buttons
+            .values()
+            .any(|a| a == &ButtonAction::Macro(m.id.clone()))
+    });
     let light = &s["lighting_config"];
     shape(
         light,
@@ -630,6 +621,105 @@ mod tests {
                 crate::multibrand::simulate(plan).unwrap()["hardware_tested"],
                 false
             );
+        }
+    }
+
+    #[test]
+    fn prime_original_multi_usage_chords_preserve_order_for_all_editable_inputs() {
+        let chords = [vec![224, 4, 5, 0], vec![4, 5, 6, 7], vec![224, 225, 0, 0]];
+        for button in [2, 3, 4, 5, 7, 8] {
+            for keys in &chords {
+                let mut s = source();
+                let (kind, index) = if button < 6 {
+                    ("buttons", button - 1)
+                } else {
+                    ("wheels", button - 7)
+                };
+                s["button_and_wheel_mappings"][kind][index as usize] =
+                    json!({"function":81,"key_codes":keys});
+                let out = super::super::read(&fixture(&s)).unwrap();
+                let plan = out.candidates[0]
+                    .profile
+                    .as_ref()
+                    .unwrap()
+                    .multi
+                    .as_ref()
+                    .unwrap();
+                assert_eq!(plan.macros.len(), 1);
+                let m = &plan.macros[0];
+                assert_eq!(m.mode, MacroMode::WhileHeld);
+                let used = keys
+                    .iter()
+                    .copied()
+                    .filter(|k| *k != 0)
+                    .collect::<Vec<u8>>();
+                let mut expected = used
+                    .iter()
+                    .copied()
+                    .map(MacroStep::KeyDown)
+                    .collect::<Vec<_>>();
+                expected.push(MacroStep::WaitForRelease);
+                expected.extend(used.iter().rev().copied().map(MacroStep::KeyUp));
+                assert_eq!(m.steps, expected);
+                assert!(plan.settings.iter().any(|s|matches!(s,Setting::Button{id,action:ButtonAction::Macro(reference)}if *id==button && reference==&m.id)));
+                assert_eq!(
+                    crate::multibrand::simulate(plan).unwrap()["software_macros"]
+                        .as_array()
+                        .unwrap()
+                        .len(),
+                    1
+                );
+            }
+        }
+    }
+    #[test]
+    fn prime_chord_invalid_and_overridden_bindings_never_leave_orphan_macros() {
+        for keys in [
+            json!([0, 0, 0, 0]),
+            json!([4, 4, 0, 0]),
+            json!([256, 4, 0, 0]),
+            json!([4, 5, 0]),
+        ] {
+            let mut s = source();
+            s["button_and_wheel_mappings"]["buttons"][4] = json!({"function":81,"key_codes":keys});
+            assert!(super::super::read(&fixture(&s)).unwrap().candidates[0]
+                .profile
+                .is_none());
+        }
+        let mut s = source();
+        s["button_and_wheel_mappings"]["buttons"][4] =
+            json!({"function":81,"key_codes":[224,4,5,0]});
+        let c = fixture(&s);
+        c.execute(
+            "INSERT INTO bindings VALUES('macro','source-guid',?1,'source-macro',?2,0)",
+            rusqlite::params![
+                json!({"hidCode":5,"page":1,"type":0,"direction":1}).to_string(),
+                json!({"type":0,"num_repeat":1,"repeat_delay":0}).to_string()
+            ],
+        )
+        .unwrap();
+        let out = super::super::read(&c).unwrap();
+        let plan = out.candidates[0]
+            .profile
+            .as_ref()
+            .unwrap()
+            .multi
+            .as_ref()
+            .unwrap();
+        assert_eq!(plan.macros.len(), 1);
+        assert!(plan.macros[0].id.starts_with("gg-macro:"));
+        assert_eq!(plan.macros[0].mode, MacroMode::Once);
+        crate::multibrand::simulate(plan).unwrap();
+    }
+    #[test]
+    fn prime_chord_preview_is_production_convertible() {
+        let mut s = source();
+        s["button_and_wheel_mappings"]["buttons"][3] =
+            json!({"function":81,"key_codes":[224,4,5,0]});
+        let out = super::super::read(&fixture(&s)).unwrap();
+        assert!(out.candidates[0].profile.is_some());
+        if let Some(path) = std::env::var_os("OPEN_HUB_GG_PRIME_CHORD_PREVIEW") {
+            std::fs::write(path, serde_json::to_vec_pretty(&out).unwrap()).unwrap();
         }
     }
 }

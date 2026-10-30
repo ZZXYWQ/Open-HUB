@@ -1,0 +1,26 @@
+{
+  "main_passed": 1118,
+  "main_failed": 0,
+  "main_ignored": 105,
+  "gg_suite_passed": 42,
+  "gg_suite_ignored": 12,
+  "editable_input_chord_cases": 18,
+  "two_identical_model_runtime_test_passed": 1,
+  "actual_browser_saved_profile_replay_passed": 1,
+  "ui_regressions": [
+    "legacy GG 13 checks",
+    "Rival3 import"
+  ],
+  "hardware_tested": false,
+  "os_input_emitted": false,
+  "new_runtime_dependencies": false,
+  "partial_models": 44,
+  "complete_models": 0,
+  "installer_created": false,
+  "remaining": [
+    "physical source association and held timing",
+    "wheel pulse timing",
+    "native onboard macro parity",
+    "remaining OEM feature/readback gaps"
+  ]
+}

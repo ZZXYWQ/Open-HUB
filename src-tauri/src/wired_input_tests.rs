@@ -557,3 +557,22 @@ fn wired_browser_profiles_persist_reload_and_run_independently_through_service_a
         .unwrap();
     std::fs::remove_file(file).unwrap();
 }
+
+#[test]
+fn prime_two_scoped_held_chords_wait_for_their_own_release_and_restore_separately(){
+    let c=Case::new(gearwise_steelseries::prime::PID);
+    for unit in 0..2 {
+        let mut plan=c.plan(unit);let keys=if unit==0{[224,4,5]}else{[225,6,7]};
+        plan.macros[0].mode=MacroMode::WhileHeld;
+        plan.macros[0].steps=keys.into_iter().map(MacroStep::KeyDown).chain(std::iter::once(MacroStep::WaitForRelease)).chain(keys.into_iter().rev().map(MacroStep::KeyUp)).collect();
+        c.apply(unit,&plan).unwrap();
+    }
+    let emit=|unit:usize,down|c.runtime.simulate_event(Event::Key{source:c.fixture.sources[unit].source.clone(),vkey:0x7c,down});
+    emit(0,true);c.wait(3);assert_eq!(*c.rec.0.lock().unwrap(),["d224","d4","d5"]);
+    emit(1,true);c.wait(6);assert_eq!(c.rec.0.lock().unwrap()[3..],["d225","d6","d7"]);
+    emit(0,false);c.wait(9);assert_eq!(c.rec.0.lock().unwrap()[6..],["u5","u4","u224"]);
+    assert_eq!(c.runtime.status().source_count,2);
+    c.service.stop_device_software(&c.ids[0],&c.runtime).unwrap();assert_eq!(c.runtime.status().source_count,1);
+    emit(1,false);c.wait(12);assert_eq!(c.rec.0.lock().unwrap()[9..],["u7","u6","u225"]);
+    c.service.stop_device_software(&c.ids[1],&c.runtime).unwrap();assert_eq!(c.runtime.status().source_count,0);
+}

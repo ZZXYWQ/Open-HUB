@@ -46,3 +46,15 @@ Official SteelSeries GoLisp language documentation establishes integer-only trun
 Corrected the percent-weight multiplication from float64 to float32. At a full100-percent interval, float64 calculation truncated to254; GoLisp float32 rounds to255 before integer conversion. All101 distances0–100 are checked against the independent rational integer result floor(255*p/100); one-color original-schema colorshift and breathe go through actual conversion and native simulation. Previously tested odd position midpoints remain integer divisions, and the default0/33/66 weight vectors do not change. Physical firmware timing remains unverified.
 
 Sources: [official language reference](https://techblog.steelseries.com/golisp/language-ref.html), [official GoLisp source](https://github.com/SteelSeries/golisp). Local symbol locations and evidence limits are recorded in development/gg122-prime-numeric-semantics.json.
+
+## Multi-usage keyboard chord follow-up
+
+Original function81 four-byte records now share the existing GG keyboard compiler. One ordinary usage plus modifiers remains a native mapping. Multiple ordinary usages or modifier-only combinations become source-scoped WhileHeld software macros: original nonzero usage order, explicit WaitForRelease, reverse release order. Empty/duplicate/invalid key records still withhold the whole import. The fixed bottom CPI row and protected primary left click remain unchanged. Firmware-side macro support is not inferred from this conversion.
+
+All six editable inputs2/3/4/5/7/8 are exercised with Ctrl+A+B, four ordinary keys, and modifier-only combinations:18 complete production import/compile/native-simulation cases. Existing original macro bindings override a direct chord without leaving an unused generated macro. A native converter preview enters the actual built importer UI; ordinary and quick save preserve all seven Ctrl/A/B hold/release steps. The actual saved JSON passes the independent production store/export/import and driver replay path.
+
+A separate Service/actual driver/memory input runtime test configures two serial-less same-model Prime instances with different three-key held chords. Each source starts its own keys, waits for its own release, emits reverse key-ups and restores separately. All HID and input are memory-backed; this does not prove the physical device keyboard collection association. No OS input or global mouse mapping is used.
+
+Legacy GG import UI and Rival3 import UI regressions pass after correcting a stale M HUB button name in the old test. Full main suite:1118 passed,0 failed,105 ignored; these ignored artifact/physical tests are not counted as passed. Physical held-key behavior, exact wheel pulse/hold timing, actual identity association and native onboard macros remain open.
+
+Reproduce: OPEN_HUB_GG_PRIME_CHORD_PREVIEW plus cargo test gg_profiles emits the chord preview. OPEN_HUB_GG_PRIME_CHORD_UI=1 node scripts/test-gg-prime-import-ui.cjs saves the profile. OPEN_HUB_GG_PRIME_CHORD_UI_PROFILES plus cargo test prime_gg_chord_browser -- --ignored replays it. The source/runtime isolation test is prime_two_scoped_held_chords.

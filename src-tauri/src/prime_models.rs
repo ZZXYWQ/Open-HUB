@@ -657,3 +657,9 @@ fn prime_gg_three_modes_browser_native_replay(){
  if i==2{assert!(profile.program.is_none());assert_eq!(profile.color,Rgb::new(18,52,86));}else{let program=profile.program.unwrap();assert_eq!(program.initial,Rgb::new(18,52,86));assert_eq!(program.sections.iter().map(|s|s.weight).collect::<Vec<_>>(),if i==0{vec![0,84,84,86]}else{vec![0,40,43,40,43,43,43]});}
  assert_eq!(simulate(plan).unwrap()["hardware_tested"],false);}
 }
+
+#[test]
+#[ignore="requires actual GG Prime chord importer UI profile"]
+fn prime_gg_chord_browser_native_replay(){
+ let ps=roundtrip_steelseries_browser_profiles("OPEN_HUB_GG_PRIME_CHORD_UI_PROFILES");assert_eq!(ps.len(),1);let plan=ps[0].multi.as_ref().unwrap();assert_eq!(ps[0].levels[0].x,600);assert_eq!(plan.macros.len(),1);assert_eq!(plan.macros[0].mode,MacroMode::WhileHeld);assert_eq!(plan.macros[0].steps,vec![MacroStep::KeyDown(224),MacroStep::KeyDown(4),MacroStep::KeyDown(5),MacroStep::WaitForRelease,MacroStep::KeyUp(5),MacroStep::KeyUp(4),MacroStep::KeyUp(224)]);assert_eq!(simulate(plan).unwrap()["software_macros"].as_array().unwrap().len(),1);
+}

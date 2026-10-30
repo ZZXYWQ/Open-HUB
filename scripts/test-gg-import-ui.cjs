@@ -19,7 +19,7 @@ const start=base.indexOf(marker)+marker.length,end=base.indexOf('\n});await ',st
   };
  });
  await require('./ui-static-route.cjs')(page,root);await page.goto('http://127.0.0.1:1431');await page.getByRole('button',{name:'配置',exact:true}).click();await page.getByRole('button',{name:'导入配置',exact:true}).click();
- const sources=page.getByRole('region',{name:'按品牌导入配置'}).locator('.hub-source-grid').first();await sources.waitFor();for(const label of ['G HUB 配置导入','M HUB 板载配置导入','导入 Synapse 配置','导入 iCUE 配置','导入 GG 配置'])assert(await sources.getByRole('button',{name:label,exact:true}).isVisible());
+ const sources=page.getByRole('region',{name:'按品牌导入配置'}).locator('.hub-source-grid').first();await sources.waitFor();for(const label of ['G HUB 配置导入','M HUB 配置导入','导入 Synapse 配置','导入 iCUE 配置','导入 GG 配置'])assert(await sources.getByRole('button',{name:label,exact:true}).isVisible());
  await sources.getByRole('button',{name:'导入 GG 配置',exact:true}).click();await page.getByRole('button',{name:'选择 GG 配置数据库',exact:true}).click();await page.getByRole('heading',{name:'rival_310 · GG 游戏配置',exact:true}).waitFor();
  const blocked=page.getByRole('heading',{name:'sensei_310 · 其他鼠标',exact:true}).locator('..');assert.equal(await blocked.getByRole('button').count(),0);assert(await page.getByText('档位 1：800 / 800 · 默认',{exact:true}).isVisible());assert(await page.getByText(/型号绑定 1038:1720/).isVisible());
  await page.getByRole('button',{name:'模拟 GG 转换方案',exact:true}).click();await page.getByRole('status').filter({hasText:'真实驱动模拟通过'}).waitFor();await page.screenshot({path:path.join(out,'gg-preview.png'),fullPage:true});

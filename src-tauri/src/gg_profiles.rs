@@ -88,11 +88,7 @@ fn convert(conn:&Connection,id:&str,pid:u16,s:&Value,notes:&mut Vec<String>)->Re
   code@1..=5=>{if !zero_codes(v)?{return Err("鼠标动作含未知附加键码".into());}ButtonAction::Mouse(mouse(code)?)},
   48=>{if !zero_codes(v)?{return Err("CPI 切换含未知附加键码".into());}ButtonAction::Dpi(DpiFunction::Cycle)},
   97=>{let keys=codes(v)?;if keys[0]==0||keys[1..].iter().any(|k|*k!=0){return Err("GG 媒体动作含空或多键记录，不能无损转换".into());}ButtonAction::Media(u16::from(keys[0]))},
-  81=>{let keys=codes(v)?.into_iter().filter(|k|*k!=0).collect::<Vec<_>>();let mut seen=HashSet::new();if keys.is_empty()||keys.iter().any(|k|!seen.insert(*k)){return Err("GG 快捷键为空或重复".into());}
-   let normal=keys.iter().copied().filter(|k|!(0xe0..=0xe7).contains(k)).collect::<Vec<_>>();if normal.len()==1{let mods=keys.iter().copied().filter(|k|(0xe0..=0xe7).contains(k)).fold(0,|m,k|m|1<<(k-0xe0));ButtonAction::Key{usage:normal[0],mods:Modifiers(mods)}}else{
-    let mut steps=keys.iter().copied().map(MacroStep::KeyDown).collect::<Vec<_>>();steps.push(MacroStep::WaitForRelease);steps.extend(keys.iter().rev().copied().map(MacroStep::KeyUp));let body=Macro{id:format!("gg-key:{id}:{button}"),name:format!("按键 {button} 的原始按住组合"),mode:MacroMode::WhileHeld,steps};crate::host_macros::validate(&body)?;let action=ButtonAction::Macro(body.id.clone());macros.push(body);action
-   }
-  },other=>return Err(format!("GG 按键功能 {other} 尚未转换，未保存部分方案"))
+  81=>key_chord(id,button,codes(v)?,&mut macros)?,other=>return Err(format!("GG 按键功能 {other} 尚未转换，未保存部分方案"))
  };buttons.insert(button,action);}
  apply_bindings(conn,id,pid,physical_buttons,&mut buttons,&mut macros)?;
  if buttons.get(&1)!=Some(&ButtonAction::Mouse(MouseButton::Left)){return Err("GG 原始配置修改了主左键，当前导入保留主左键点击".into());}buttons.remove(&1);
@@ -100,6 +96,20 @@ fn convert(conn:&Connection,id:&str,pid:u16,s:&Value,notes:&mut Vec<String>)->Re
  macros.retain(|m|buttons.values().any(|a|a==&ButtonAction::Macro(m.id.clone())));
  let lights=lighting::parse(pid,s)?;if lights.is_some(){notes.push(if pid==0x1724{"GG 原始八灯区和抬升距离级别已转换；周期按 GG 界面计算，实物尚未验证。原厂驱动层加减速/直线修正只接受默认值。"}else if legacy{"GG 原始灯效两灯区已转换为固定固件模式；主机颜色序列不冒充板载效果，实物尚未验证。"}else{"GG 原始灯效两灯区已转换；周期按 GG 界面计算，实物尚未验证。原厂未激活的调色历史不导入。"}.into());}else{notes.push("来源未包含灯效记录，仅导入已记录的 DPI、按键与宏。".into());}
  let levels=stages.iter().map(|s|Level{x:s.x,y:Some(s.y)}).collect();let mut settings=vec![Setting::Dpi(DpiState{stages,active:active as u8}),Setting::ReportRate(rate)];settings.extend(buttons.into_iter().map(|(id,action)|Setting::Button{id,action}));if let Some(lights)=lights{settings.extend(lights);}if let Some(index)=proximity{settings.push(Setting::LiftOff(index));}let plan=Plan{vendor:0x1038,product:pid,settings,macros,source:None};crate::multibrand::validate(&plan)?;Ok((plan,levels,active,rate))
+}
+// Original four-byte keyboard reports with multiple ordinary usages need a
+// source-scoped held macro. Preserve source order and release in reverse.
+fn key_chord(id:&str,button:u16,keys:Vec<u8>,macros:&mut Vec<Macro>)->Result<ButtonAction,String>{
+ let keys=keys.into_iter().filter(|k|*k!=0).collect::<Vec<_>>();let mut seen=HashSet::new();
+ if keys.is_empty()||keys.iter().any(|k|!seen.insert(*k)){return Err("GG 快捷键为空或重复".into());}
+ let normal=keys.iter().copied().filter(|k|!(0xe0..=0xe7).contains(k)).collect::<Vec<_>>();
+ if normal.len()==1 {
+  let mods=keys.iter().copied().filter(|k|(0xe0..=0xe7).contains(k)).fold(0,|m,k|m|1<<(k-0xe0));
+  return Ok(ButtonAction::Key{usage:normal[0],mods:Modifiers(mods)});
+ }
+ let mut steps=keys.iter().copied().map(MacroStep::KeyDown).collect::<Vec<_>>();steps.push(MacroStep::WaitForRelease);steps.extend(keys.iter().rev().copied().map(MacroStep::KeyUp));
+ let body=Macro{id:format!("gg-key:{id}:{button}"),name:format!("按键 {button} 的原始按住组合"),mode:MacroMode::WhileHeld,steps};crate::host_macros::validate(&body)?;
+ let action=ButtonAction::Macro(body.id.clone());macros.push(body);Ok(action)
 }
 fn apply_bindings(conn:&Connection,id:&str,pid:u16,physical_buttons:usize,buttons:&mut BTreeMap<u16,ButtonAction>,macros:&mut Vec<Macro>)->Result<(),String>{
  let mut stmt=conn.prepare("SELECT type,trigger_data,macro_id,playback_options_data,is_passthrough FROM bindings WHERE config_id=?1 LIMIT 33").map_err(|e|format!("GG 绑定表格式不受支持：{e}"))?;
