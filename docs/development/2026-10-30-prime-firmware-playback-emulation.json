@@ -1,0 +1,33 @@
+{
+  "firmware_sha256": "205faae43e6a0109167c1f301b5825ab55bc2aa14d0d2f508001dfc92e264662",
+  "rust_once_programs": 525,
+  "scheduler_iterations": 3490,
+  "checks": [
+    "rust-coverage-to-native-trigger-and-playback",
+    "525-rust-once-programs-all-key-consumer-usages-mouse-delay-and-compaction",
+    "once-release-at-five-different-boundaries",
+    "once-same-source-retrigger-does-not-restart",
+    "three-context-limit-no-eviction-independent-release",
+    "same-usage-held-by-two-contexts-keeps-union",
+    "zero-byte-and-invalid-write-reset-all-ram-output-contexts",
+    "release-direction-rejects-press-and-runs-on-release",
+    "raw-repeat-counter-zero-wraps-to-256-not-zero-plays",
+    "raw-repeat-delay-counts-scheduler-iterations",
+    "maximum-delay-is-loaded-without-truncation",
+    "raw-fifth-consumer-is-dropped-and-production-compiler-refuses-it",
+    "shared-merged-consumer-limit-can-drop-valid-per-context-usage",
+    "two-isolated-firmware-ram-instances"
+  ],
+  "device_io": false,
+  "physical_timing_validated": false,
+  "usb_release_validated": false,
+  "persistence_validated": false,
+  "compiler_exposed_modes": [
+    1
+  ],
+  "emulator": "unicorn 2.1.4",
+  "date": "2026-10-30",
+  "steelseries_unit_tests_passed": 113,
+  "main_prime_tests_passed": 20,
+  "main_prime_tests_ignored": 6
+}

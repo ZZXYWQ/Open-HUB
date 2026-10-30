@@ -1,0 +1,76 @@
+{
+  "firmware_sha256": "205faae43e6a0109167c1f301b5825ab55bc2aa14d0d2f508001dfc92e264662",
+  "binding_function_hex": "71",
+  "header_marker_hex": "77",
+  "once_playback": 1,
+  "press_direction": 1,
+  "release_direction": 0,
+  "context_count": 3,
+  "consumer_slots_per_context": 4,
+  "consumer_slots_in_merged_frame": 4,
+  "keyboard_bitmap_bytes": 32,
+  "delay_unit": "scheduler iterations, not physically verified milliseconds",
+  "regions": [
+    {
+      "name": "allocate_or_retrigger",
+      "entry": "0x800655c",
+      "end": "0x8006622",
+      "sha256": "3d47a34e046897cc1d4360cbe46ad3ee0180f8094e5021fa32c5b9d10fb392b4"
+    },
+    {
+      "name": "mode_continuation",
+      "entry": "0x8006622",
+      "end": "0x8006648",
+      "sha256": "8b85541e498278031e9a38e1c8ca389386e0f8ee4cc52f71a65b9ab8317c2863"
+    },
+    {
+      "name": "release_binding",
+      "entry": "0x8006678",
+      "end": "0x80066e8",
+      "sha256": "5b8c775c81215bcfe82e84bbdb06a22c23a022f8941ff00d2788328925e51ea3"
+    },
+    {
+      "name": "press_binding",
+      "entry": "0x80066e8",
+      "end": "0x800675e",
+      "sha256": "64ea97f8529bc9a5ca228feebd6e34177a6ffd3f1144c4babd46cf56830a490e"
+    },
+    {
+      "name": "rewind_context",
+      "entry": "0x80088fc",
+      "end": "0x800891a",
+      "sha256": "e1eafefa52389cef80bd44829c37b34e1a27db6885629cab6eed60fd669f9604"
+    },
+    {
+      "name": "macro_scheduler_entry",
+      "entry": "0x8009390",
+      "end": "0x800939e",
+      "sha256": "b235133b2e0c2056319671203adb4f79b5a6af35f6c5d21cf5329f4acf1b492b"
+    },
+    {
+      "name": "macro_merge_and_schedule",
+      "entry": "0x80099ac",
+      "end": "0x8009a84",
+      "sha256": "7d2d2c4c1b199a3a11130d0b545301789992947add69f4ee3120b34f874d9c6c"
+    },
+    {
+      "name": "completion_and_event_decode",
+      "entry": "0x8009aa0",
+      "end": "0x8009bb8",
+      "sha256": "c1150902aab20bfb80816d64f741f87e24344959480f144dff3db53aeb88e12f"
+    },
+    {
+      "name": "consumer_count",
+      "entry": "0x800bee0",
+      "end": "0x800bef8",
+      "sha256": "ee20962aae2222ee0eeafa04f0c095c1c7ba33a90218c57e0a565b108513f270"
+    },
+    {
+      "name": "consumer_compaction",
+      "entry": "0x800bf48",
+      "end": "0x800bf7a",
+      "sha256": "b0bee9a2eda374ef89d23e80ef9b6ba1b954828eae4a222988dfb00151042e59"
+    }
+  ],
+  "scope": "Execute reviewed trigger/scheduler regions in isolated RAM. No boot, USB, physical timing, flash persistence or hardware parity assertion."
+}

@@ -62,10 +62,29 @@ def verify(path):
     return data, facts
 
 
+def verify_playback(path):
+    data, facts = verify(path)
+    playback = json.loads((Path(__file__).resolve().parents[1] /
+        'docs/development/gg122-prime-firmware-playback-source.json').read_text(encoding='utf8'))
+    assert playback['firmware_sha256'] == facts['firmware_sha256']
+    base = int(facts['load_base'], 16)
+    for region in playback['regions']:
+        start, end = int(region['entry'], 16) - base, int(region['end'], 16) - base
+        assert 0 <= start < end <= len(data)
+        assert hashlib.sha256(data[start:end]).hexdigest() == region['sha256'], region['name']
+    assert data[0x08009a66-base:0x08009a6c-base].hex() == '031d2a2a2727'
+    assert data[0x0800662e-base:0x08006633-base].hex() == '0b05090905'
+    return data, facts, playback
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('firmware', type=Path)
+    parser.add_argument('--playback', action='store_true')
     args = parser.parse_args()
     _, facts = verify(args.firmware)
+    if args.playback:
+        _, _, playback = verify_playback(args.firmware)
+        print(f"Verified {len(playback['regions'])} additional trigger/scheduler/helper instruction regions. No execution.")
     print(f"Verified exact 1038:182e firmware, {facts['command_table_entries']} command entries, "
           f"{len(facts['regions'])} instruction-region digests and read/write pointers. No execution.")
