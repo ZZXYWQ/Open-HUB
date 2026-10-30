@@ -3,10 +3,11 @@ from pathlib import Path
 import argparse, hashlib, json, struct
 parser=argparse.ArgumentParser()
 parser.add_argument('engine',type=Path)
+parser.add_argument('--coverage',action='store_true',help='verify descriptor transfer-loop evidence')
 parser.add_argument('--blocks',action='store_true',help='verify complete-block and binding evidence')
 parser.add_argument('--events',action='store_true',help='verify extended canonical-event evidence')
 args=parser.parse_args()
-facts=json.loads((Path(__file__).resolve().parents[1]/('docs/development/gg122-prime-macro-block-source.json' if args.blocks else 'docs/development/gg122-prime-macro-events-source.json' if args.events else 'docs/development/gg122-prime-macro-header-source.json')).read_text(encoding='utf8'))
+facts=json.loads((Path(__file__).resolve().parents[1]/('docs/development/gg122-prime-macro-coverage-source.json' if args.coverage else 'docs/development/gg122-prime-macro-block-source.json' if args.blocks else 'docs/development/gg122-prime-macro-events-source.json' if args.events else 'docs/development/gg122-prime-macro-header-source.json')).read_text(encoding='utf8'))
 b=args.engine.read_bytes()
 assert hashlib.sha256(b).hexdigest()==facts['engine_sha256'],'engine build changed'
 u16=lambda at:struct.unpack_from('<H',b,at)[0]

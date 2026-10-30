@@ -1,0 +1,19 @@
+{
+  "steelseries_driver_passed": 110,
+  "steelseries_driver_failed": 0,
+  "new_coverage_tests": 3,
+  "main_prime_regression_passed": 20,
+  "main_prime_regression_ignored": 6,
+  "source_function_digests": 7,
+  "source_instruction_anchors": 18,
+  "descriptor_declared_image_bytes": 1280,
+  "reviewed_declared_transfer_bytes": 1024,
+  "uncovered_tail_bytes": 256,
+  "physical_capacity_proven": false,
+  "device_io_enabled": false,
+  "allocation_enabled": false,
+  "hardware_tested": false,
+  "partial_models": 44,
+  "complete_models": 0,
+  "installer_created": false
+}
