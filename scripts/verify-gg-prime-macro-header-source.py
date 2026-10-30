@@ -3,9 +3,10 @@ from pathlib import Path
 import argparse, hashlib, json, struct
 parser=argparse.ArgumentParser()
 parser.add_argument('engine',type=Path)
+parser.add_argument('--blocks',action='store_true',help='verify complete-block and binding evidence')
 parser.add_argument('--events',action='store_true',help='verify extended canonical-event evidence')
 args=parser.parse_args()
-facts=json.loads((Path(__file__).resolve().parents[1]/('docs/development/gg122-prime-macro-events-source.json' if args.events else 'docs/development/gg122-prime-macro-header-source.json')).read_text(encoding='utf8'))
+facts=json.loads((Path(__file__).resolve().parents[1]/('docs/development/gg122-prime-macro-block-source.json' if args.blocks else 'docs/development/gg122-prime-macro-events-source.json' if args.events else 'docs/development/gg122-prime-macro-header-source.json')).read_text(encoding='utf8'))
 b=args.engine.read_bytes()
 assert hashlib.sha256(b).hexdigest()==facts['engine_sha256'],'engine build changed'
 u16=lambda at:struct.unpack_from('<H',b,at)[0]
@@ -44,6 +45,13 @@ fields=ptr(typ+56);n=ptr(typ+64);assert n==len(facts['metadata_fields'])
 for i,f in enumerate(facts['metadata_fields']):
     at=fields+i*24
     assert (name(ptr(at)),ptr(at+16),ptr(ptr(at+8)))==(f['name'],f['offset'],f['size'])
+for extra in facts.get('extra_types',[]):
+    typ=int(extra['address'],16)
+    assert ptr(typ)==extra['size'] and read(typ+23,1)[0]&31==25
+    fields=ptr(typ+56);assert ptr(typ+64)==len(extra['fields'])
+    for i,f in enumerate(extra['fields']):
+        at=fields+i*24
+        assert (name(ptr(at)),ptr(at+16),ptr(ptr(at+8)))==(f['name'],f['offset'],f['size'])
 for anchor in facts['anchors']:
     expected=bytes.fromhex(anchor['bytes'])
     assert read(int(anchor['address'],16),len(expected))==expected,anchor['meaning']
