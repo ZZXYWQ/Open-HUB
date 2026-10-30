@@ -1,0 +1,38 @@
+{
+  "firmware_sha256": "205faae43e6a0109167c1f301b5825ab55bc2aa14d0d2f508001dfc92e264662",
+  "rust_read_requests": 14,
+  "observations": 33,
+  "native_config_and_context_bytes_preserved": true,
+  "old_cache_before_main": 14,
+  "post_handler_cache_reads": 14,
+  "reachable_partial_copy_cache": true,
+  "rejected_or_empty_requests_keep_cache": 3,
+  "single_pending_slot_overwrites_earlier_request": true,
+  "get_requested_lengths": [
+    0,
+    1,
+    63,
+    64,
+    512,
+    642
+  ],
+  "oversize_set_stalls": true,
+  "oversize_get_has_no_transfer": true,
+  "usb_primitives_stubbed": [
+    "endpoint-open",
+    "control-transmit",
+    "control-receive",
+    "stall"
+  ],
+  "device_io": false,
+  "physical_usb_timing_validated": false,
+  "fresh_live_snapshot_validated": false,
+  "live_macro_upload_enabled": false,
+  "emulator": "unicorn 2.1.4",
+  "date": "2026-10-30",
+  "rust_cached_observations_checked": 33,
+  "all_cached_observations_freshness_unverified": true,
+  "steelseries_unit_tests_passed": 124,
+  "main_prime_tests_passed": 20,
+  "main_prime_tests_ignored": 6
+}

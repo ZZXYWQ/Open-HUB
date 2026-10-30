@@ -1,0 +1,82 @@
+{
+  "firmware_sha256": "205faae43e6a0109167c1f301b5825ab55bc2aa14d0d2f508001dfc92e264662",
+  "firmware_version": "1.0.15+4244c08",
+  "version_string_address": "0x0800c3b3",
+  "version_reply_bytes": 64,
+  "raw_read_command_hex": "83",
+  "raw_window_base": "0x20000bd8",
+  "raw_offset_field": 2,
+  "raw_length_field": 4,
+  "raw_field_unit": "bytes",
+  "usb_core_base": "0x20000310",
+  "usb_handle_address": "0x200009b4",
+  "class_context_address": "0x20000fd8",
+  "feature_cache_address": "0x2000125c",
+  "feature_payload_max": 642,
+  "report_id": 0,
+  "global_staged_request_address": "0x200014fc",
+  "global_pending_length_address": "0x20001900",
+  "scope": "Original setup/RX/main/GET callbacks with USB endpoint primitives stubbed; no bus, boot, OS input or fresh live snapshot proof. Feature replies are cached and untagged.",
+  "regions": [
+    {
+      "name": "class_initialize",
+      "entry": "0x800884a",
+      "end": "0x80088b4",
+      "sha256": "17c0eda7a74374457e62f411de2cfae96fb3ae0387526fb3214da65ddd18d016"
+    },
+    {
+      "name": "class_setup",
+      "entry": "0x80086f8",
+      "end": "0x8008818",
+      "sha256": "debc9e18e1e146f3af837bb0476c99a1af2c45fb121a91261125ca475c6c7a0a"
+    },
+    {
+      "name": "control_rx_complete",
+      "entry": "0x80086d0",
+      "end": "0x80086f8",
+      "sha256": "7145d5bd5d66774cf1b794a0dbab8cf03abde4b513fa60784f5a69b4ca325d6d"
+    },
+    {
+      "name": "command_stage",
+      "entry": "0x8008b08",
+      "end": "0x8008b2c",
+      "sha256": "3396735d52ca9e5a9d83c08d424face3a459a80e1b91fc9f9658ef36e4cb1c23"
+    },
+    {
+      "name": "main_command_loop",
+      "entry": "0x80091a2",
+      "end": "0x8009218",
+      "sha256": "9ff8099b6b42b95b835daef64865d2c2e49a19d0d2ea44b767ef38c7754eb8f4"
+    },
+    {
+      "name": "main_dispatch_finish",
+      "entry": "0x80097ea",
+      "end": "0x8009818",
+      "sha256": "8fcde5f0ceb44ef5b6dcbe1e2a6777f43238d899418e5617cd2c71a69804f584"
+    },
+    {
+      "name": "raw_window_read",
+      "entry": "0x8008d54",
+      "end": "0x8008d7c",
+      "sha256": "24cdc2b08cb1a23ee7fd97f905b3879ef4c3774c6c2f7c5df4bcaff59c5d2243"
+    },
+    {
+      "name": "version_read",
+      "entry": "0x8008d7c",
+      "end": "0x8008d98",
+      "sha256": "924d767defb889f4226e394fd3de6d95d219cac4519b71c51f0d42030c8ab6de"
+    },
+    {
+      "name": "version_copy_padding",
+      "entry": "0x800bf7a",
+      "end": "0x800bfa4",
+      "sha256": "8bd18200711ae30e724693c4ab77e5b4371eeae42902a0ebe474a322e9df147f"
+    },
+    {
+      "name": "initialized_callbacks",
+      "entry": "0x800c594",
+      "end": "0x800c5d0",
+      "sha256": "1380bc21e0749f8358e2566845d60636c32f344fe941502d56ec0f9827c93177"
+    }
+  ]
+}

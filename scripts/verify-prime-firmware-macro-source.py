@@ -82,14 +82,44 @@ def verify_playback(path):
     return data, facts, playback
 
 
+def verify_feature(path):
+    data, facts = verify(path)
+    feature = json.loads((Path(__file__).resolve().parents[1] /
+        'docs/development/gg122-prime-feature-read-source.json').read_text(encoding='utf8'))
+    assert feature['firmware_sha256'] == facts['firmware_sha256']
+    base = int(facts['load_base'], 16)
+    u32 = lambda at: struct.unpack_from('<I',data,at-base)[0]
+    for region in feature['regions']:
+        start, end = int(region['entry'],16)-base, int(region['end'],16)-base
+        assert 0 <= start < end <= len(data)
+        assert hashlib.sha256(data[start:end]).hexdigest()==region['sha256'], region['name']
+    assert u32(0x08008d78)==int(feature['raw_window_base'],16)
+    assert u32(0x08008b28)+0xf4==int(feature['global_staged_request_address'],16)
+    assert u32(0x080088b0)+0xcc8==int(feature['class_context_address'],16)
+    assert int(feature['class_context_address'],16)+0x284==int(feature['feature_cache_address'],16)
+    assert u32(0x0800c5cc)==0x08008b09
+    assert u32(0x0800c594)==0x0800884b and u32(0x0800c59c)==0x080086f9
+    assert u32(0x0800c5a4)==0x080086d1
+    assert int(feature['usb_handle_address'],16)==int(feature['usb_core_base'],16)+0x6a4
+    assert u32(0x08007fc0)==u32(0x080090e4)==int(feature['usb_core_base'],16)
+    assert u32(0x08008d94)==int(feature['version_string_address'],16)
+    start=int(feature['version_string_address'],16)-base
+    assert data[start:data.index(0,start)].decode('ascii')==feature['firmware_version']
+    return data, facts, feature
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('firmware', type=Path)
     parser.add_argument('--playback', action='store_true')
+    parser.add_argument('--feature', action='store_true')
     args = parser.parse_args()
     _, facts = verify(args.firmware)
     if args.playback:
         _, _, playback = verify_playback(args.firmware)
         print(f"Verified {len(playback['regions'])} additional trigger/scheduler/helper instruction regions. No execution.")
+    if args.feature:
+        _, _, feature = verify_feature(args.firmware)
+        print(f"Verified {len(feature['regions'])} feature setup/stage/cache/source regions. No execution.")
     print(f"Verified exact 1038:182e firmware, {facts['command_table_entries']} command entries, "
           f"{len(facts['regions'])} instruction-region digests and read/write pointers. No execution.")

@@ -33,3 +33,5 @@ Follow-up: [native gradient codec and source conversion limits](PRIME-NATIVE-GRA
 [Onboard macro header research](PRIME-ONBOARD-MACRO-RESEARCH.md) pins native encoder/metadata evidence, canonical event/block codecs and an offline transfer planner. Original firmware read/write, binding and scheduler instructions now pass isolated emulation with525 compiled one-shot programs. A bounded offline once compiler is implemented; complete playback modes, ownership/readback, concurrency admission and safe live upload remain incomplete.
 
 [Macro storage/recovery follow-up](PRIME-MACRO-STORAGE.md) adds offline exclusive replacement and complete foreign-byte preservation, including interrupted restoration history. Actual transport readback, persistent journals, allocation and guarded application/UI integration remain incomplete.
+
+[Feature readback follow-up](PRIME-FEATURE-READBACK.md) adds bounded read codecs and original USB-class/cache instruction tests. Untagged stale or intermediate cache data is explicitly unverified and cannot establish current identity, idle state or safe upload.

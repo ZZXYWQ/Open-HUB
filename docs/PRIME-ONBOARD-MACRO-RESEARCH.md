@@ -102,3 +102,8 @@ Remaining: complete slot/binding ownership and foreign-data preservation, stable
 ## Existing macro storage and restoration follow-up
 
 [Macro image protection](PRIME-MACRO-STORAGE.md) adds complete supplied-image binding census, exclusive in-place one-shot replacement, exact foreign-byte preservation, no-op suppression and conditional recognition of interrupted forward/restoration prefixes. Thirty original-firmware observations are checked again by production Rust recovery; seven restoration sequences and eighteen program replays pass. This does not add a live transport runner, free allocator, persistent journal, identity/idle proof or UI capability.121 SteelSeries tests and20 Prime tests pass;6 artifacts remain ignored. No count or release changes.
+
+
+## Feature readback cache follow-up
+
+[Feature readback evidence](PRIME-FEATURE-READBACK.md) establishes the byte-addressed0x83 read window,14 bounded observation requests and original class setup/RX/main/GET execution.33 firmware cache observations, including stale, intermediate-copy and overwritten-pending cases, pass through production Rust parsing without becoming fresh write authorization.124 SteelSeries tests and20 Prime regressions pass;6 artifacts ignored. No live snapshot or native macro capability is enabled.
