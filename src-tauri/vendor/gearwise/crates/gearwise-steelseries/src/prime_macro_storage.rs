@@ -100,6 +100,9 @@ impl Image {
             references,
         })
     }
+    pub fn scope(&self) -> &str {
+        &self.scope
+    }
     pub fn memory(&self) -> &[u8] {
         &self.memory
     }

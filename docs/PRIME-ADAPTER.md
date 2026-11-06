@@ -39,3 +39,5 @@ Follow-up: [native gradient codec and source conversion limits](PRIME-NATIVE-GRA
 [Output/interrupt reader follow-up](PRIME-OUTPUT-READBACK.md) adds challenge-fenced candidates, exact data preservation across notification/echo collisions and original-firmware interoperation. Physical transfer mapping, stable identity/images, idle state and safe application/UI integration remain incomplete.
 
 [Scoped macro-image collector](PRIME-IMAGE-SESSION.md) adds two equal full macro/table observations with per-I/O operation checks and original-firmware rejection tests. It is not a complete device profile, physical-identity/atomicity proof or live-upload authorization.
+
+[Macro journal follow-up](PRIME-MACRO-JOURNAL.md) adds retained intent/attempt records and conditional restart of recognized interrupted restoration. It does not enable an application native-upload command or count as physical validation.

@@ -10,7 +10,8 @@ use gearwise_core::{
     Error, Result,
     transport::{BusKind, HidInterfaceInfo, HidTransport},
 };
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Scope {
     path: String,
     serial: Option<String>,
@@ -43,6 +44,24 @@ impl Scope {
             connection: connection.into(),
             operation: operation.into(),
         })
+    }
+    pub(crate) fn validate(&self) -> Result<()> {
+        Self::new(
+            &HidInterfaceInfo {
+                path: self.path.clone(),
+                serial: self.serial.clone(),
+                interface_number: self.interface,
+                vendor_id: 0x1038,
+                product_id: 0x182e,
+                usage_page: 0xffc0,
+                usage: 1,
+                bus: BusKind::Usb,
+                ..Default::default()
+            },
+            &self.connection,
+            &self.operation,
+        )
+        .map(|_| ())
     }
     pub fn connection(&self) -> &str {
         &self.connection
@@ -169,6 +188,7 @@ pub struct Session<T: HidTransport, F: FnMut() -> Result<Status> + Send> {
 }
 impl<T: HidTransport, F: FnMut() -> Result<Status> + Send> Session<T, F> {
     pub fn new(io: T, seed: [u8; 16], scope: Scope, check: F) -> Result<Self> {
+        scope.validate()?;
         let mut transport = Scoped {
             io,
             expected: scope.clone(),
@@ -271,6 +291,28 @@ mod tests {
             usage: 1,
             serial: Some("mock-a".into()),
             ..Default::default()
+        }
+    }
+    #[test]
+    fn deserialized_invalid_scopes_are_rejected_before_status_or_transport_use() {
+        let original = Scope::new(&info(), "mock-open-1", "mock-read-1").unwrap();
+        for (field, value) in [
+            ("path", serde_json::json!("")),
+            ("connection", serde_json::json!("")),
+            ("operation", serde_json::json!("")),
+            ("interface", serde_json::json!(2)),
+            ("serial", serde_json::json!("x".repeat(257))),
+        ] {
+            let mut serialized = serde_json::to_value(&original).unwrap();
+            serialized[field] = value;
+            let invalid: Scope = serde_json::from_value(serialized).unwrap();
+            let io = MockTransport::new(|_| panic!("invalid scope used transport"));
+            assert!(
+                Session::new(io, [0x31; 16], invalid, || panic!(
+                    "invalid scope queried status"
+                ))
+                .is_err()
+            );
         }
     }
     fn scope() -> Scope {

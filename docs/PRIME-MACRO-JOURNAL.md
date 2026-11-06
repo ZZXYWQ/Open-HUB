@@ -1,0 +1,34 @@
+# Prime macro write reservations and retained recovery records
+
+2026-11-06. Development-only journal for the exact existing one-shot replacement plan. No application command, hardware upload capability, UI switch, installer or release is enabled by this module. Counts remain 44 partial / 0 complete.
+
+## Intent and transitions
+
+`prime_macro_journal::Journal` creates a new private directory, writes a versioned immutable intent using create-new semantics and calls file `sync_all`. The intent contains the complete original 5120-byte macro memory, both mapping tables, selected control, canonical replacement event records and the full original `Scope` (path, optional serial, interface, connection generation, operation generation). Reopening reconstructs the production edit and its exact packet plan rather than trusting serialized replacement packets. Scope invariants are revalidated, including when a Scope was deserialized. An unchanged/invalid edit creates no directory. An existing directory is never overwritten.
+
+Each subsequent transition is a new numbered JSON file, also create-new and file-synced. Intent and entries carry canonical-payload FNV-1a64 integrity checksums to reject accidental content corruption even when damaged bytes still parse as valid JSON; these checksums do not authenticate a hostile local writer. Only after that succeeds does the API return the next frame. A send error can therefore mean the frame was not applied or was applied without a usable result; the attempt is retained in both cases. The next forward reservation requires the ENTIRE fresh supplied image to match the exact previous command prefix, including both tables and every opaque/foreign byte. Matching only the edited macro is insufficient. Forward commands cannot be implicitly retried, reordered or resumed after restoration starts. Actual sending, lease checks and readback are the caller's responsibility.
+
+Explicit recovery start recognizes only the production storage planner's allowed forward/restoration-prefix history. The full observed starting memory is retained. Each restoration reservation requires the exact previous recovery prefix and records its index before returning the original frame. After an uncertain restore result, explicit recovery restart can recognize the earlier reservation history and establish a new start; it is never automatic. Original or desired terminal states are recorded only when the caller supplies the exact complete original or desired image, respectively. A committed terminal journal cannot initiate recovery. Terminal files remain available; the module neither deletes records nor automatically adopts a journal on reconnect.
+
+A failed file operation poisons that handle and returns no packet. Truncated, oversized, gapped, reordered, unknown or invalid transitions refuse reopening and remain on disk. The parser bounds each file to 96KiB and the journal to 64 transition entries. Root directories must be private/trusted application storage; filesystem race attacks by other local writers are not an authentication boundary. Scope/image metadata is caller-supplied, not physical-device identity. A caller may not turn a serialized profile or a matching model name into an actual connection lease.
+
+File syncing and controlled reopen are implemented; directory-entry durability, filesystem guarantees on abrupt power loss, real process/OS crashes and actual Windows/HID device interruption are not established. A returned clonable packet is not a consumable hardware permit: callers must submit it at most once, guard the current logical/physical connection and input state immediately before/after I/O, and preserve the record on uncertainty. No idle-input lock, firmware freeze or exclusive external-app ownership is supplied by this journal. Read observations themselves still do not prove atomicity or continuous inactivity.
+
+## Validation
+
+Eight journal unit tests exercise persisted send reservations/reopen/full readback, interrupted forward and restoration prefixes across the 512-byte boundary, independent same-model journals, changed scope/tables/opaque bytes, create-new filesystem failure and poisoned handles, malformed/truncated/gapped/oversized logs, valid-JSON backup corruption, invalid/no-op intents and existing-directory protection. An additional scope test rejects deserialized invalid leases before status callbacks or transport use. The storage planner preserves unsupported foreign mode6 and opaque event records. Tests use private temporary files and memory images; they do not inject actual disk hardware failure.
+
+The development `prime_macro_journal_exchange` example combines the production journal and scoped collector over JSON-lines transport. `scripts/test-prime-macro-journal-emulation.py` executes the pinned original ARM USB setup/RX, command dispatch, raw reads, native macro writes, context reset and interrupt transmit/completion instructions. Every modeled Feature submission is checked against its already-readable numbered reservation. Output/read FIFO boundaries, transport acceptance failures, scope status and deterministic fixture seeds are modeled; no HID backend or real input is used. The journal intent and all attempt files are retained separately from the application bundle.
+
+## Remaining integration
+
+A real per-device worker still needs validated Windows report mapping, exclusive ordered collection ownership, current physical identity/connection and input-state admission, unpredictable reader seeds, lease-aware operation cancellation/publication, verified persistence guarantees and guarded application/UI routing. The offline allocator, alias copy-on-write, all playback modes and flash verification also remain incomplete. This implementation only journals the existing exclusive in-place one-shot edit; it does not silently declare other macros or models supported.
+
+```text
+cargo build --manifest-path src-tauri/vendor/gearwise/Cargo.toml -p gearwise-steelseries --example prime_macro_journal_exchange
+python scripts/test-prime-macro-journal-emulation.py <pinned-firmware.bin> --exchange <built-prime_macro_journal_exchange.exe> --storage-fixture <prime-rust-storage-fixture.json> --journal-root <fresh-private-directory> --report <report.json>
+```
+
+Use a fresh private directory for each run; an existing intent is deliberately retained and refused rather than replaced. The storage fixture is emitted by the existing `prime_macro_storage_fixture` development example.
+
+Final validation: all five original-firmware scenarios pass (one committed, two restored, two rejected), with 6188 modeled native interrupt transmissions, 12 reserved Feature attempts and 11 applied Feature writes. All 24 retained intent/transition files pass independent checksum verification. All 146 driver tests and 20 main Prime tests pass; six artifact tests remain ignored. [Report](development/2026-11-06-prime-macro-journal-emulation.json).
