@@ -32,3 +32,5 @@ python scripts/test-prime-macro-journal-emulation.py <pinned-firmware.bin> --exc
 Use a fresh private directory for each run; an existing intent is deliberately retained and refused rather than replaced. The storage fixture is emitted by the existing `prime_macro_storage_fixture` development example.
 
 Final validation: all five original-firmware scenarios pass (one committed, two restored, two rejected), with 6188 modeled native interrupt transmissions, 12 reserved Feature attempts and 11 applied Feature writes. All 24 retained intent/transition files pass independent checksum verification. All 146 driver tests and 20 main Prime tests pass; six artifact tests remain ignored. [Report](development/2026-11-06-prime-macro-journal-emulation.json).
+
+[Playback-policy follow-up](PRIME-MACRO-PROGRAMS.md): `create_program` now retains admitted playback/direction; `create` and prior checksummed records remain press-once compatible. The retained original five journals reopen without migration. This adds no live application caller.

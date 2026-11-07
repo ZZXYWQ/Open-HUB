@@ -5,7 +5,6 @@ use crate::{
     link::Packet,
     prime_macro::event::Event,
     prime_macro_block::binding_offset,
-    prime_macro_once,
     prime_macro_transfer::{self, CHUNK_BYTES, COVERED_BYTES, DECLARED_BYTES},
 };
 use gearwise_core::{Error, Result};
@@ -221,6 +220,23 @@ impl Edit {
 /// Aliases require future copy-on-write allocation; zero-filled bytes alone
 /// do not establish free space. Only the current reviewed prefix is changed.
 pub fn replace_once_in_place(before: &Image, control: u8, events: &[Event]) -> Result<Edit> {
+    replace_program_in_place(
+        before,
+        control,
+        events,
+        crate::prime_macro_program::Playback::Once,
+        crate::prime_macro_program::Trigger::Press,
+    )
+}
+/// Explicit native playback policy. All original ownership/preservation checks
+/// remain required; this does not enable transport or application capability.
+pub fn replace_program_in_place(
+    before: &Image,
+    control: u8,
+    events: &[Event],
+    playback: crate::prime_macro_program::Playback,
+    trigger: crate::prime_macro_program::Trigger,
+) -> Result<Edit> {
     if !matches!(control, 2..=5 | 7 | 8) {
         return Err(Error::invalid("Prime protected/unknown macro control"));
     }
@@ -247,7 +263,7 @@ pub fn replace_once_in_place(before: &Image, control: u8, events: &[Event]) -> R
             "Prime target binding has unadmitted reserved fields",
         ));
     }
-    let bytes = prime_macro_once::compile(events)?.encode()?;
+    let bytes = crate::prime_macro_program::compile(events, playback, trigger)?.encode()?;
     let end = reference.bytes.start + bytes.len();
     if end > reference.bytes.end || end > COVERED_BYTES {
         return Err(Error::invalid(
@@ -288,7 +304,7 @@ pub fn replace_once_in_place(before: &Image, control: u8, events: &[Event]) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{prime_macro::event::Page, prime_macro_block::binding};
+    use crate::{prime_macro::event::Page, prime_macro_block::binding, prime_macro_once};
     fn events(usage: u8) -> Vec<Event> {
         vec![
             Event::Key {

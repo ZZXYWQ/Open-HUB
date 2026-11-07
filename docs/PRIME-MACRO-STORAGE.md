@@ -41,3 +41,5 @@ cargo run --quiet --manifest-path src-tauri/vendor/gearwise/Cargo.toml -p gearwi
 Remaining work: verified real readback and current hardware identity/idle state, exclusive I/O and persistent journals, full allocation/copy-on-write, whole-plan concurrency limits, all macro modes and real timing, failure-safe application/store/UI integration, flash verification and hardware validation. These gaps keep this model out of complete acceptance.
 
 [Persisted reservation follow-up](PRIME-MACRO-JOURNAL.md) now retains an immutable intent and file-synced attempt transitions, reconstructs exact plans on reopen, and verifies full supplied readback before advancement. Real application/transport admission, physical identity, directory power-loss durability and UI integration are still incomplete.
+
+[Explicit playback follow-up](PRIME-MACRO-PROGRAMS.md): `replace_program_in_place` retains the selected admitted native policy; the original once wrapper and all ownership/preservation constraints remain intact.

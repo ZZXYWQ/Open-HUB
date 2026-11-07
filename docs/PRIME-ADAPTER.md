@@ -41,3 +41,5 @@ Follow-up: [native gradient codec and source conversion limits](PRIME-NATIVE-GRA
 [Scoped macro-image collector](PRIME-IMAGE-SESSION.md) adds two equal full macro/table observations with per-I/O operation checks and original-firmware rejection tests. It is not a complete device profile, physical-identity/atomicity proof or live-upload authorization.
 
 [Macro journal follow-up](PRIME-MACRO-JOURNAL.md) adds retained intent/attempt records and conditional restart of recognized interrupted restoration. It does not enable an application native-upload command or count as physical validation.
+
+[Explicit native macro policies](PRIME-MACRO-PROGRAMS.md) add counted/held/toggle and release-direction compiler/storage plans with original-firmware execution coverage. Application native macro controls remain disabled; mode5, concurrency, allocation and physical timing remain incomplete.

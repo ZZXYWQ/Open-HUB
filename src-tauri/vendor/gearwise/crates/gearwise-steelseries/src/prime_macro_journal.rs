@@ -4,6 +4,7 @@ use crate::{
     link::Packet,
     prime_image_session::Scope,
     prime_macro::event::Event,
+    prime_macro_program::{Playback, Trigger},
     prime_macro_storage::{self, Edit, Image},
     prime_macro_transfer::CHUNK_BYTES,
 };
@@ -26,6 +27,16 @@ struct Intent {
     wheel: Vec<u8>,
     control: u8,
     events: Vec<[u8; 4]>,
+    #[serde(default, skip_serializing_if = "is_once")]
+    playback: Playback,
+    #[serde(default, skip_serializing_if = "is_press")]
+    trigger: Trigger,
+}
+fn is_once(p: &Playback) -> bool {
+    *p == Playback::Once
+}
+fn is_press(t: &Trigger) -> bool {
+    *t == Trigger::Press
 }
 impl Intent {
     fn edit(&self) -> Result<Edit> {
@@ -44,7 +55,13 @@ impl Intent {
             .iter()
             .map(|e| Event::decode(e))
             .collect::<Result<Vec<_>>>()?;
-        let edit = prime_macro_storage::replace_once_in_place(&before, self.control, &events)?;
+        let edit = prime_macro_storage::replace_program_in_place(
+            &before,
+            self.control,
+            &events,
+            self.playback,
+            self.trigger,
+        )?;
         if edit.packets().is_empty() {
             return Err(Error::invalid(
                 "unchanged Prime edit needs no write journal",
@@ -225,6 +242,27 @@ impl Journal {
         control: u8,
         events: &[Event],
     ) -> Result<Self> {
+        Self::create_program(
+            directory,
+            scope,
+            before,
+            control,
+            events,
+            Playback::Once,
+            Trigger::Press,
+        )
+    }
+    /// Retain the selected native policy exactly; never silently convert loops
+    /// or release triggers to press-once during reconstruction/recovery.
+    pub fn create_program(
+        directory: &Path,
+        scope: Scope,
+        before: &Image,
+        control: u8,
+        events: &[Event],
+        playback: Playback,
+        trigger: Trigger,
+    ) -> Result<Self> {
         if events.len() > 254 || before.scope() != scope.connection() {
             return Err(Error::invalid("Prime journal connection mismatch"));
         }
@@ -235,6 +273,8 @@ impl Journal {
             physical: before.physical().into(),
             wheel: before.wheel().into(),
             control,
+            playback,
+            trigger,
             events: events
                 .iter()
                 .copied()
@@ -691,6 +731,58 @@ mod tests {
         )
         .unwrap();
         assert!(Journal::open(&temp.0, &lease).is_err());
+    }
+    #[test]
+    fn playback_policies_survive_reopen_and_old_once_intents_remain_readable() {
+        for mode in [
+            Playback::Once,
+            Playback::Counted {
+                count: 3,
+                interval_ticks: 7,
+            },
+            Playback::WhileHeld,
+            Playback::Toggle,
+        ] {
+            let temp = Temp::new();
+            let before = fixture(504);
+            let lease = scope("a", "open-a", "edit-a");
+            let trigger = if mode == Playback::WhileHeld {
+                Trigger::Press
+            } else {
+                Trigger::Release
+            };
+            let mut j = Journal::create_program(
+                &temp.0,
+                lease.clone(),
+                &before,
+                2,
+                &[events(6)[0], events(6)[2]],
+                mode,
+                trigger,
+            )
+            .unwrap();
+            let desired = j.after().clone();
+            let mut current = before;
+            let packet = j.reserve_forward(&current).unwrap();
+            current = apply(&current, &packet);
+            drop(j);
+            let mut j = Journal::open(&temp.0, &lease).unwrap();
+            assert_eq!(j.after(), &desired);
+            let packet = j.reserve_forward(&current).unwrap();
+            current = apply(&current, &packet);
+            j.verify_committed(&current).unwrap();
+            assert_eq!(current, desired);
+        }
+        let temp = Temp::new();
+        let j = journal(&temp.0, 64);
+        let lease = j.scope().clone();
+        drop(j);
+        let bytes = fs::read_to_string(temp.0.join("intent.json")).unwrap();
+        assert!(!bytes.contains("playback") && !bytes.contains("trigger"));
+        assert_eq!(
+            Journal::open(&temp.0, &lease).unwrap().phase(),
+            Phase::Prepared
+        );
     }
     #[test]
     fn another_mouse_journal_is_independent_and_same_bytes_do_not_transfer_ownership() {

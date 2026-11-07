@@ -36,6 +36,7 @@ pub mod prime_image_session;
 pub mod prime_macro;
 pub mod prime_macro_block;
 pub mod prime_macro_once;
+pub mod prime_macro_program;
 pub mod prime_macro_storage;
 pub mod prime_macro_journal;
 pub mod prime_macro_transfer;
