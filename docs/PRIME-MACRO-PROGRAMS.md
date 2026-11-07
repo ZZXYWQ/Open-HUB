@@ -23,3 +23,5 @@ cargo run --quiet --manifest-path src-tauri/vendor/gearwise/Cargo.toml -p gearwi
 ```
 
 Remaining: native mode5 semantics/OEM conversion, verified physical timing/release, per-device concurrent consumer admission, full allocation/binding ownership, real connection/input/exclusive-I/O integration, guarded application/UI routing and flash persistence. Counts remain44 partial/0 complete.
+
+[Consumer-capacity follow-up](PRIME-MACRO-CONCURRENCY.md) now analyzes all referenced mode1..4 programs/aliases against the three-context/four-slot merged queue with explicit caller-reserved headroom. Real non-macro source accounting and application admission remain incomplete.

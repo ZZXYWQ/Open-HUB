@@ -43,3 +43,5 @@ Follow-up: [native gradient codec and source conversion limits](PRIME-NATIVE-GRA
 [Macro journal follow-up](PRIME-MACRO-JOURNAL.md) adds retained intent/attempt records and conditional restart of recognized interrupted restoration. It does not enable an application native-upload command or count as physical validation.
 
 [Explicit native macro policies](PRIME-MACRO-PROGRAMS.md) add counted/held/toggle and release-direction compiler/storage plans with original-firmware execution coverage. Application native macro controls remain disabled; mode5, concurrency, allocation and physical timing remain incomplete.
+
+[Macro consumer-capacity follow-up](PRIME-MACRO-CONCURRENCY.md) bounds the three largest per-control consumer peaks and caller-reserved non-macro headroom. Original firmware confirms126 overlapping-context cases; this does not enable application native macros or prove physical/runtime admission.

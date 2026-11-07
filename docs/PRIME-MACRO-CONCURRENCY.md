@@ -1,0 +1,24 @@
+# Prime macro consumer-queue capacity
+
+2026-11-07. Pinned original wired Prime1038:182e firmware1.0.15+4244c08. This is a capacity analyzer for referenced native macro programs, not actual input/identity admission or a live application upload feature. Counts remain44 partial/0 complete.
+
+`prime_macro_concurrency::analyze(image, reserved_other_slots)` inspects every macro reference in the complete storage image, including unchanged foreign references and exact aliases. Canonical event decoding, balanced bodies and reviewed mode1..4/direction0..1 are required. Unsupported referenced modes/events/directions refuse capacity admission; preserving their bytes in an offline storage plan does not establish that they are safe to execute concurrently.
+
+For each control it finds the peak simultaneously held consumer usages over that program's event prefixes. The original native firmware admits three macro contexts, each with four consumer entries, but merges them into only four shared consumer entries. The analyzer sorts per-control peaks and sums the three largest. It then adds an explicit caller-reserved0..4 slots for ALL non-macro contributors. A sum above four refuses admission. This bound covers arbitrary relative macro start times without depending on synchronized test timing. It may conservatively reject programs whose peaks cannot coincide under additional external restrictions; those restrictions are not assumed. Keyboard bitmap/mouse outputs are not counted as consumer slots.
+
+Two controls referencing the same program can create separate contexts. Their consumers must not be deduplicated by bytecode address or usage value: identical usages still occupy separate merged entries. More than three simultaneous macro sources are not guaranteed to start; the analyzer reports the context limit and does not increase it. The caller must independently establish actual source association, the maximum non-macro consumer contribution, complete runtime coverage, exclusive I/O and current connection/input state. Passing this analyzer is not an assertion that all physical inputs or fourth-source behavior match OEM parity.
+
+## Original-instruction tests
+
+The Rust fixture uses the production compiler, binding encoder, image census and capacity analyzer. It covers every triple of peaks0..4 (125 cases), plus a same-bytecode/same-usage alias case. Each triple's three native contexts executes through the pinned original binding/scheduler/merger instructions. Long body delays create an overlap plateau, and the captured native consumer frame is checked against expected usages, not merely a success code. All36 admitted configurations retain every expected consumer entry. All90 configurations refused with zero external reservation actually truncate entries. The alias case retains three duplicate entries and is counted separately. All126 cases finish without active contexts or held consumer output. There are630 budget combinations checked against the explicit bound, and5,046 original scheduler iterations including the separate raw-mode probe.
+
+The non-macro producer reservation is checked algebraically; actual non-macro producers/hardware input are NOT emulated by this test. The analyzer's arbitrary-relative-timing bound is justified by each independently balanced context's peak and the pinned three-context/four-slot structure, rather than claiming that one synchronized schedule proves every possible runtime schedule. Three unit tests also check six-control aliases, top-three selection, headroom, invalid budgets and unknown referenced programs. All151 driver tests and20 main Prime tests pass; six artifact tests remain ignored. [Machine-readable results](development/2026-11-07-prime-concurrency-emulation.json).
+
+A separate raw native mode5 probe executes a balanced two-event body once, then leaves an active context with a parked16-bit wait counter (65533 after the captured five scheduler iterations). A subsequent matching trigger clears the context in that probe. This observation does not establish the OEM host meaning or its complete delay/retrigger/concurrency behavior. The compiler and analyzer continue to exclude mode5; unknown native mode6 also remains excluded by the analyzer.
+
+```text
+cargo run --quiet --manifest-path src-tauri/vendor/gearwise/Cargo.toml -p gearwise-steelseries --example prime_macro_concurrency_fixture > <fixture.json>
+python scripts/test-prime-concurrency-emulation.py <pinned-firmware.bin> --fixture <fixture.json> --report <report.json>
+```
+
+Unicorn remains a separate development dependency. No emulator, fixture or official firmware is bundled. Real application/UI integration, full mode5/OEM conversion, hardware timing/input release, actual non-macro headroom accounting, allocation/copy-on-write and flash persistence remain incomplete.

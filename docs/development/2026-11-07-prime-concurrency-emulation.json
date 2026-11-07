@@ -1,0 +1,19 @@
+{
+  "firmware_sha256": "205faae43e6a0109167c1f301b5825ab55bc2aa14d0d2f508001dfc92e264662",
+  "native_cases_passed": 126,
+  "lossless_admitted_cases": 36,
+  "dropping_rejected_cases": 90,
+  "budget_combinations_checked": 630,
+  "scheduler_iterations": 5046,
+  "same_usage_aliases_counted_separately": true,
+  "raw_mode5_parked_counter": 65533,
+  "native_mode5_admitted": false,
+  "non_macro_producer_budget_emulated": false,
+  "device_io": false,
+  "physical_input_and_runtime_admission_validated": false,
+  "emulator": "unicorn 2.1.4",
+  "steelseries_tests_passed": 151,
+  "fixture_sha256": "d5f5efb930b7b890a6f7cef73ccca57dc461c5137e82bef91f8add983263cbfe",
+  "main_prime_tests_passed": 20,
+  "main_prime_tests_ignored": 6
+}
