@@ -22,3 +22,5 @@ python scripts/test-prime-concurrency-emulation.py <pinned-firmware.bin> --fixtu
 ```
 
 Unicorn remains a separate development dependency. No emulator, fixture or official firmware is bundled. Real application/UI integration, full mode5/OEM conversion, hardware timing/input release, actual non-macro headroom accounting, allocation/copy-on-write and flash persistence remain incomplete.
+
+[Direct-binding follow-up](PRIME-DIRECT-CONSUMER.md): `analyze_complete_tables` now computes direct61 usage headroom from both tables, respecting native deduplication and ignored trailing bytes. Original direct-binding plus macro-merge execution passes35 cases. Extra producers and the full physical/runtime path still require separate admission.

@@ -1,0 +1,16 @@
+{
+  "firmware_sha256": "205faae43e6a0109167c1f301b5825ab55bc2aa14d0d2f508001dfc92e264662",
+  "cases_passed": 35,
+  "lossless_admitted": 19,
+  "dropping_rejected": 16,
+  "scheduler_iterations": 1400,
+  "ordinary_binding_and_macro_merge_original_instructions": true,
+  "ordinary_duplicate_usages_deduplicated": true,
+  "device_io": false,
+  "physical_switch_path_or_full_main_loop_validated": false,
+  "emulator": "unicorn 2.1.4",
+  "driver_tests_passed": 152,
+  "fixture_sha256": "538ea3828b3144745b7363d23ff75f2e741c7a7b6f3150c576999f6aef120548",
+  "main_prime_tests_passed": 20,
+  "main_prime_tests_ignored": 6
+}

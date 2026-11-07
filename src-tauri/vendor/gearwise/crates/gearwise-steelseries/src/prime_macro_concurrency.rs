@@ -8,6 +8,7 @@ use gearwise_core::{Error, Result};
 use serde::Serialize;
 #[derive(Debug, Serialize)]
 pub struct Admission {
+    pub direct_consumer_usages: Vec<u8>,
     pub per_control: Vec<(u8, u8)>,
     pub macro_peak_slots: u8,
     pub reserved_other_slots: u8,
@@ -64,11 +65,47 @@ pub fn analyze(image: &Image, reserved_other_slots: u8) -> Result<Admission> {
         ));
     }
     Ok(Admission {
+        direct_consumer_usages: Vec::new(),
         per_control,
         macro_peak_slots,
         reserved_other_slots,
         context_limit: 3,
     })
+}
+/// Compute direct-media headroom from both complete tables. Ordinary61
+/// records deduplicate equal usages; macro contexts do not. Unknown functions
+/// refuse this stronger table-wide check. Other producers remain explicit.
+pub fn analyze_complete_tables(image: &Image, other_reserved_slots: u8) -> Result<Admission> {
+    let mut usages = std::collections::BTreeSet::new();
+    for record in image
+        .physical()
+        .chunks_exact(5)
+        .chain(image.wheel().chunks_exact(5))
+    {
+        match record[0] {
+            0x61 => {
+                if record[1] != 0 {
+                    usages.insert(record[1]);
+                }
+            }
+            0x51 | 0x71 => {}
+            0..=8 | 0x30..=0x34 => {}
+            _ => {
+                return Err(Error::Unsupported(
+                    "Prime direct binding headroom not reviewed",
+                ));
+            }
+        }
+    }
+    let total = usages.len() + usize::from(other_reserved_slots);
+    if total > 4 {
+        return Err(Error::invalid(
+            "Prime direct/other consumer sources exceed4 slots",
+        ));
+    }
+    let mut result = analyze(image, total as u8)?;
+    result.direct_consumer_usages = usages.into_iter().collect();
+    Ok(result)
 }
 #[cfg(test)]
 mod tests {
@@ -130,6 +167,23 @@ mod tests {
                 .macro_peak_slots,
             4
         );
+    }
+    #[test]
+    fn complete_tables_deduplicate_direct_media_but_preserve_macro_slot_costs() {
+        let a = image(&[2, 1], false);
+        let mut p = a.physical().to_vec();
+        let mut w = a.wheel().to_vec();
+        p[15..20].copy_from_slice(&[0x61, 0xe9, 0xa5, 0x5a, 0xff]);
+        w[..5].copy_from_slice(&[0x61, 0xe9, 0, 0, 0]);
+        let make = |p: &[u8], w: &[u8]| Image::new(a.scope(), a.memory(), p, w).unwrap();
+        let result = analyze_complete_tables(&make(&p, &w), 0).unwrap();
+        assert_eq!(result.direct_consumer_usages, vec![0xe9]);
+        assert_eq!(result.reserved_other_slots, 1);
+        assert!(analyze_complete_tables(&make(&p, &w), 1).is_err());
+        w[1] = 0xea;
+        assert!(analyze_complete_tables(&make(&p, &w), 0).is_err());
+        p[20..25].copy_from_slice(&[0x62, 0, 1, 0, 0]);
+        assert!(analyze_complete_tables(&make(&p, &a.wheel()), 0).is_err());
     }
     #[test]
     fn foreign_referenced_modes_events_and_directions_refuse_admission() {

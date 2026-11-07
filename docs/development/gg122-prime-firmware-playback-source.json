@@ -70,7 +70,16 @@
       "entry": "0x800bf48",
       "end": "0x800bf7a",
       "sha256": "b0bee9a2eda374ef89d23e80ef9b6ba1b954828eae4a222988dfb00151042e59"
+    },
+    {
+      "name": "ordinary_binding_frame",
+      "entry": "0x800675e",
+      "end": "0x80067f2",
+      "sha256": "ca000dc2adb19af2a0fe0e630ee1b42203bb6a344d7b24a90d24c717344440b4"
     }
   ],
-  "scope": "Execute reviewed trigger/scheduler regions in isolated RAM. No boot, USB, physical timing, flash persistence or hardware parity assertion."
+  "scope": "Execute reviewed trigger/scheduler regions in isolated RAM. No boot, USB, physical timing, flash persistence or hardware parity assertion.",
+  "ordinary_binding_function": "0x800675e",
+  "ordinary_consumer_frame_offset": 40,
+  "ordinary_consumers_deduplicated": true
 }
